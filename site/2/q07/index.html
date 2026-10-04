@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q07 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -178,7 +178,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_separate-done",
-        "board": "e_separate-board"
+        "board": "e_separate-board",
+        "tip": {"id": "inequality-properties", "note": "本题 $x\\in[2,3]$ 时 $x^2-x=x(x-1)>0$，除以正数不变向：$m<\\frac1{x^2-x}$。"}
       },
       {
         "id": "e_condition",
@@ -211,7 +212,8 @@
           "answer": "$m$ 要比 $[2,3]$ 上每一个 $h(x)$ 都小，只需比其中最小的那个；比最大值小，不能保证比每个都小；只检查一个点，别处仍可能不满足。"
         },
         "submit_label": "确认判断",
-        "display": "e_condition-done"
+        "display": "e_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-gt", "note": "本题 $m<h(x)$ 就是 $h(x)>m$：恒成立、大于，看 $h(x)$ 的最低点。"}
       },
       {
         "id": "e_extremum",
@@ -276,7 +278,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_extremum-done",
-        "board": "e_extremum-board"
+        "board": "e_extremum-board",
+        "tip": {"id": "function-monotonicity", "note": "本题分母 $x^2-x$ 在 $[2,3]$ 上从 $2$ 增大到 $6$，都是正数，取倒数后递减：最小值 $h(3)=\\frac16$。"}
       },
       {
         "id": "e_boundary",
@@ -314,7 +317,8 @@
         },
         "submit_label": "确认检查",
         "display": "e_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $m=\\frac16$ 时，$x=3$ 处左边等于 $0$，不满足“$<0$”，排除。"}
       }
     ],
     "interval": [
@@ -387,7 +391,8 @@
           "answer": "要区间上所有点都小于 $0$，只需最高点小于 $0$；最小值小于 $0$ 只能保证一处；只看 $x=2$，$x=3$ 处仍可能不满足。"
         },
         "submit_label": "确认判断",
-        "display": "i_condition-done"
+        "display": "i_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-lt", "note": "本题 $f(x)<0$ 对所有 $x\\in[2,3]$ 成立：恒成立、小于，看区间上的最高点。"}
       },
       {
         "id": "i_extremum",
@@ -469,7 +474,8 @@
         },
         "submit_label": "确认判断",
         "display": "i_extremum-done",
-        "board": "i_extremum-board"
+        "board": "i_extremum-board",
+        "tip": {"id": "quadratic-interval-extremum", "note": "本题二次项系数 $m$ 含参数，按 $m=0$、$m>0$、$m<0$ 分类；对称轴 $x=\\frac12$ 在 $[2,3]$ 左侧，$m>0$ 时最大值 $f(3)$，$m<0$ 时最大值 $f(2)$。"}
       },
       {
         "id": "i_range",
@@ -503,7 +509,8 @@
         },
         "submit_label": "确认判断",
         "display": "i_range-done",
-        "board": "i_range-board"
+        "board": "i_range-board",
+        "tip": {"id": "case-merge", "note": "本题三种情况分别得 $m=0$、$0<m<\\frac16$、$m<0$，取并集得 $m<\\frac16$。"}
       },
       {
         "id": "i_boundary",
@@ -541,7 +548,8 @@
         },
         "submit_label": "确认检查",
         "display": "i_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $m=\\frac16$ 时 $f(3)=0$：最大值取得到且等于 $0$，排除。"}
       }
     ]
   },

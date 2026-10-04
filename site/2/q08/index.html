@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q08 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -197,7 +197,8 @@
           "answer": "要 $[1,3]$ 上所有的 $m$ 都使 $f(m)<0$，只需最大值小于 $0$；最小值小于 $0$ 只能保证一处；只看 $m=2$，别的 $m$ 仍可能不满足。"
         },
         "submit_label": "确认判断",
-        "display": "v_condition-done"
+        "display": "v_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-lt", "note": "本题把 $m$ 当主元，$f(m)<0$ 对所有 $m\\in[1,3]$ 成立：恒成立、小于，看最高点。"}
       },
       {
         "id": "v_extremum",
@@ -262,7 +263,8 @@
         },
         "submit_label": "确认判断",
         "display": "v_extremum-done",
-        "board": "v_extremum-board"
+        "board": "v_extremum-board",
+        "tip": {"id": "linear-interval-extremum", "note": "本题斜率 $x^2-x+1=\\left(x-\\frac12\\right)^2+\\frac34>0$，$f(m)$ 递增，最大值是右端 $f(3)=3x^2-3x-3$。"}
       },
       {
         "id": "v_range",
@@ -296,7 +298,8 @@
         },
         "submit_label": "确认判断",
         "display": "v_range-done",
-        "board": "range-board"
+        "board": "range-board",
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题 $x^2-x-1<0$ 的两根是 $\\frac{1\\pm\\sqrt5}2$，开口向上、小于零，取两根之间。"}
       },
       {
         "id": "v_boundary",
@@ -351,7 +354,8 @@
         },
         "submit_label": "确认检查",
         "display": "v_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题边界处 $x^2-x=1$，原不等式变成 $2m-6<0$，$m=3$ 时等于 $0$，两个边界都排除。"}
       }
     ]
   },

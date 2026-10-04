@@ -1,0 +1,96 @@
+{
+  "node": "quadratic-function-properties",
+  "items": [
+    {
+      "id": "up-no-root",
+      "given": "$f(x)=x^2-2x+3$。",
+      "question": "下面哪一句是对的？",
+      "type": "choice",
+      "options": [
+        {"value": "exists", "label": "存在 $x$ 使 $f(x)<0$", "feedback": "开口向上且 $\\Delta=4-12<0$，图像全在 $x$ 轴上方，没有函数值小于 $0$ 的点。"},
+        {"value": "always", "label": "对一切实数 $x$，$f(x)>0$"},
+        {"value": "roots", "label": "$f(x)=0$ 有两个不相等的实根", "feedback": "$\\Delta=(-2)^2-4\\times3=-8<0$，方程没有实根。"}
+      ],
+      "answer": "always"
+    },
+    {
+      "id": "le-condition",
+      "question": "$a\\ne0$ 时，$ax^2+bx+c\\le 0$ 对一切实数 $x$ 成立的条件是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "strict", "label": "$a<0$ 且 $\\Delta<0$", "feedback": "$\\Delta=0$ 时图像只在顶点碰到 $x$ 轴，函数值仍然 $\\le0$，也符合要求，不能漏掉。"},
+        {"value": "up", "label": "$a>0$ 且 $\\Delta\\le0$", "feedback": "开口向上时，$x$ 足够大函数值就是正的，不可能处处 $\\le0$。"},
+        {"value": "right", "label": "$a<0$ 且 $\\Delta\\le0$"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "param-opening",
+      "question": "$y=(m^2+1)x^2-2x+1$ 的图像开口方向是？",
+      "type": "choice",
+      "options": [
+        {"value": "up", "label": "一定向上"},
+        {"value": "split", "label": "要按 $m$ 的正负分类讨论", "feedback": "不管 $m$ 取什么，$m^2+1\\ge1>0$，不需要分类。"},
+        {"value": "down", "label": "$m<0$ 时向下", "feedback": "开口看二次项系数 $m^2+1$ 的符号，它总是正的。"}
+      ],
+      "answer": "up"
+    },
+    {
+      "id": "degenerate",
+      "question": "$kx^2+2x-1<0$ 对一切实数 $x$ 成立，$k$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "with-zero", "label": "$k<-1$ 或 $k=0$", "feedback": "$k=0$ 时不等式是 $2x-1<0$，$x=1$ 时就不成立。"},
+        {"value": "with-tangent", "label": "$k\\le-1$", "feedback": "$k=-1$ 时左边是 $-(x-1)^2$，在 $x=1$ 处等于 $0$，不满足“$<0$”。"},
+        {"value": "right", "label": "$k<-1$"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "vertex",
+      "question": "$f(x)=-x^2+4x-1$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {"value": "c", "label": "$-1$", "feedback": "$-1$ 是 $f(0)$，不是最高点。配方得 $f(x)=-(x-2)^2+3$。"},
+        {"value": "right", "label": "$3$"},
+        {"value": "none", "label": "没有最大值", "feedback": "开口向下，顶点就是最高点，有最大值。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "tangent-meaning",
+      "given": "$y=x^2+bx+c$ 的判别式 $\\Delta=0$。",
+      "question": "下面哪一句是对的？",
+      "type": "choice",
+      "options": [
+        {"value": "above", "label": "对一切实数 $x$，$y>0$", "feedback": "顶点在 $x$ 轴上，顶点处 $y=0$，只能说 $y\\ge0$。"},
+        {"value": "none", "label": "图像和 $x$ 轴没有公共点", "feedback": "这是 $\\Delta<0$ 的情况。"},
+        {"value": "one", "label": "图像和 $x$ 轴只有一个公共点，就是顶点"}
+      ],
+      "answer": "one"
+    },
+    {
+      "id": "monotone-interval",
+      "question": "$f(x)=x^2-4x$ 在 $[3,5]$ 上的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {"value": "right", "label": "$-3$"},
+        {"value": "vertex", "label": "$-4$", "feedback": "$-4$ 是顶点值 $f(2)$，但 $x=2$ 不在 $[3,5]$ 里。对称轴在区间左侧，函数在区间上递增。"},
+        {"value": "far", "label": "$5$", "feedback": "$f(5)=5$ 是区间上的最大值。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "which-guarantee",
+      "question": "下面哪些条件能保证 $ax^2+bx+c>0$ 对一切实数 $x$ 成立？",
+      "type": "multi",
+      "options": [
+        {"value": "pos", "label": "$a>0$ 且 $\\Delta<0$"},
+        {"value": "tangent", "label": "$a>0$ 且 $\\Delta\\le0$", "feedback": "$\\Delta=0$ 时顶点处的函数值是 $0$，不满足“$>0$”。"},
+        {"value": "const", "label": "$a=0$，$b=0$，$c>0$"},
+        {"value": "c", "label": "$a>0$ 且 $c>0$", "feedback": "例如 $x^2-3x+1$，$a>0$、$c>0$，但 $x=1$ 时函数值是 $-1$。"}
+      ],
+      "answer": ["pos", "const"]
+    }
+  ]
+}

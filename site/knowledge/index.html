@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7f5">
+  <meta name="description" content="数学说知识图谱：高中数学专题练习用到的知识点、方法以及它们之间的前提关系。">
+  <meta property="og:title" content="知识图谱 · 数学说">
+  <meta property="og:description" content="专题练习用到的知识点和方法，以及它们之间的前提关系。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://shuxueshuo.com/knowledge/">
+  <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
+  <link rel="canonical" href="https://shuxueshuo.com/knowledge/">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/knowledge/knowledge.css?v=6">
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <title>知识图谱 · 数学说</title>
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js?v=12" defer></script>
+  <script type="module" src="../assets/auth/site-auth.js?v=4"></script>
+  <script type="module" src="/knowledge/graph.js?v=4"></script>
+</head>
+<body class="kg-page">
+  <a class="skip-link" href="#main">跳到图谱</a>
+  <header class="topbar">
+    <nav class="topbar-inner" aria-label="站内导航">
+      <a class="brand" href="/" aria-label="数学说首页"><span class="brand-mark" aria-hidden="true">数</span>数学说</a>
+      <a class="home-link" href="/">首页 <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="workspace" id="main">
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow"><span>高中数学</span><span class="eyebrow-sep" aria-hidden="true">/</span><a href="/topics/">专题练习</a><span class="eyebrow-sep" aria-hidden="true">/</span><span aria-current="page">知识图谱</span></p>
+      <h1 id="page-title" class="kg-heading"><span class="kg-heading-icon" aria-hidden="true"><svg viewBox="0 0 48 48" width="32" height="32"><path d="M11 25 24 12M11 25l13 13M24 12l13 13M24 38l13-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="25" r="5" fill="currentColor"/><circle cx="24" cy="12" r="4.5" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="38" r="4.5" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="31.5" y="19.5" width="11" height="11" rx="3" fill="#e2a43b"/></svg></span><span class="title-mark">知识图谱</span></h1>
+      <p class="lead">专题练习用到的知识点和方法。知识点之间的箭头指向后续知识；方法连到它的核心知识依据。点选一个节点，看它的说明和关系。</p>
+      <p class="formula-strip">
+        <span class="formula-label">图谱</span>
+        <span class="formula kg-stats" data-kg-stats>加载中…</span>
+      </p>
+    </section>
+
+    <div class="kg-filter" role="group" aria-label="按专题筛选" data-kg-filter></div>
+
+    <section class="kg-board" aria-label="知识图谱" data-kg-board>
+      <div class="kg-canvas">
+        <ul class="kg-legend" aria-label="图例">
+          <li><span class="kg-swatch knowledge" aria-hidden="true"></span>知识点</li>
+          <li><span class="kg-swatch method" aria-hidden="true"></span>方法</li>
+          <li><span class="kg-swatch technique" aria-hidden="true"></span>表达式的变形方法</li>
+          <li><span class="kg-swatch sheet" aria-hidden="true"></span>有图解</li>
+          <li><span class="kg-swatch tab" aria-hidden="true"></span>顶部色条：所属专题</li>
+          <li><span class="kg-line prerequisite" aria-hidden="true"></span>前提</li>
+          <li><span class="kg-line uses" aria-hidden="true"></span>方法的核心依据</li>
+        </ul>
+        <div class="kg-svg-wrap" data-kg-svg></div>
+      </div>
+      <aside class="kg-detail-panel" aria-live="polite" data-kg-panel>
+        <p class="kg-empty">点选图中的一个知识点或方法，这里显示它的说明和关系。</p>
+      </aside>
+    </section>
+
+    <section class="kg-list" aria-label="知识点和方法列表" data-kg-list></section>
+
+    <p class="kg-note">图里只画必要连线：方法之间不连线，节点可以暂时没有连线。各节点用到的题来自专题的逐题、逐步骤对应，目前已整理一元二次不等式恒成立问题，基本不等式整理中。</p>
+
+    <footer class="chapter-footer">
+      <span>数学说 · 知识图谱</span>
+      <a href="https://shuxueshuo.com/knowledge/" aria-label="知识图谱分享地址 shuxueshuo.com/knowledge">shuxueshuo.com/knowledge</a>
+    </footer>
+  </main>
+  <script type="application/json" id="knowledge-config">{"graph": "/data/knowledge/graph.json?v=2", "display": "/data/knowledge/display.json?v=3", "topics": ["/data/knowledge/topics/quadratic-always.json?v=2"]}</script>
+</body>
+</html>

@@ -261,6 +261,25 @@ def test_condition_step_uses_three_fixed_label_roles():
                 for pattern, label in zip(CONDITION_LABELS, labels):
                     assert re.fullmatch(pattern, label), (name, node['id'], label)
 
+def test_condition_step_links_the_extremum_knowledge_tip():
+    knowledge = (ROOT / 'site/assets/explain/knowledge/extremum-transfer.js').read_text()
+    cells = re.search(r'const CELLS = \{(.*?)\};', knowledge, re.S)[1]
+    assert "import(new URL('../explain/explain.js?v=1', runtimeSrc)" in (ROOT / 'site/assets/practice/runtime.js').read_text()
+    seen = 0
+    for name, text, config in all_pages():
+        for nodes in config['routes'].values():
+            for node in nodes:
+                if not node['id'].endswith('_condition'):
+                    continue
+                tip = node.get('tip')
+                assert tip and tip['id'] == 'extremum-transfer', (name, node['id'])
+                quantifier = 'exists' if node['question'].startswith('要使存在') else 'forall'
+                assert re.fullmatch(rf'{quantifier}-(gt|lt)', tip['case']), (name, node['id'], tip['case'])
+                assert f"'{tip['case']}': [" in cells, tip['case']
+                assert tip['note'].startswith('本题'), (name, node['id'])
+                seen += 1
+    assert seen == 11
+
 def test_extremum_choices_share_one_option_set():
     seen = {}
     for name, text, config in all_pages():

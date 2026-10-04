@@ -1,0 +1,67 @@
+/* extremum-transfer explainer; every selector is scoped to .explain-extremum-transfer. */
+.explain-extremum-transfer .kt-relation button:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-extremum-transfer .kt-core { margin:16px 0 12px; font-size:15px; font-weight:600; line-height:1.65; }
+.explain-extremum-transfer .kt-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-extremum-transfer .kt-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-extremum-transfer .kt-explorer { display:grid; gap:8px; padding:14px 14px 12px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-extremum-transfer .kt-relation { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.explain-extremum-transfer .kt-relation button { display:grid; justify-items:center; gap:1px; padding:7px 8px; border:1px solid #d6e6e1; border-radius:11px; background:#fff; color:var(--ink); font:inherit; cursor:pointer; }
+.explain-extremum-transfer .kt-relation button span { font-family:"KaTeX_Main","Times New Roman",serif; font-size:17px; }
+.explain-extremum-transfer .kt-relation button small { color:var(--muted); font-size:12px; }
+.explain-extremum-transfer .kt-relation button[aria-pressed="true"] { border-color:var(--teal); background:#e9f6f2; box-shadow:inset 0 0 0 1px var(--teal); }
+.explain-extremum-transfer .kt-relation button[aria-pressed="true"] small { color:var(--teal-dark); }
+.explain-extremum-transfer .kt-graph { display:block; width:100%; max-width:440px; height:auto; margin:0 auto; cursor:ns-resize; touch-action:none; user-select:none; }
+.explain-extremum-transfer .kt-plot { fill:#f0f7f4; }
+.explain-extremum-transfer .kt-band { fill:#e2f0eb; }
+.explain-extremum-transfer .kt-band-label { fill:#6b8a80; font-size:12px; }
+.explain-extremum-transfer .kt-axis { fill:none; stroke:#9dafaa; stroke-width:1.3; }
+.explain-extremum-transfer .kt-axis-label { fill:#526e64; font-family:Georgia,serif; font-size:14px; font-style:italic; }
+.explain-extremum-transfer .kt-guide { fill:none; stroke:#b9c8c3; stroke-width:1; stroke-dasharray:3 4; }
+.explain-extremum-transfer .kt-curve-outside { fill:none; stroke:#07847d; stroke-width:2; opacity:.25; }
+.explain-extremum-transfer .kt-curve-met { fill:none; stroke:#087f79; stroke-width:4.5; stroke-linecap:round; stroke-linejoin:round; }
+.explain-extremum-transfer .kt-curve-unmet { fill:none; stroke:#c9826b; stroke-width:3; stroke-dasharray:5 4; opacity:.75; }
+.explain-extremum-transfer .kt-line { fill:none; stroke:#b6782c; stroke-width:2.4; }
+.explain-extremum-transfer .kt-handle { fill:#b6782c; }
+.explain-extremum-transfer .kt-handle-text { fill:#fff; font-size:12px; font-weight:600; }
+.explain-extremum-transfer .kt-point { stroke-width:2.6; }
+.explain-extremum-transfer .kt-point.met { fill:#087f79; stroke:#fff; }
+.explain-extremum-transfer .kt-point.unmet { fill:#fff; stroke:#b65c42; }
+.explain-extremum-transfer .kt-point-label { fill:#33504a; font-size:13px; font-weight:600; paint-order:stroke; stroke:#f0f7f4; stroke-width:4px; }
+.explain-extremum-transfer .kt-slider { justify-self:center; width:min(100%,320px); accent-color:#b6782c; }
+.explain-extremum-transfer .kt-status { display:grid; gap:6px; }
+.explain-extremum-transfer .kt-row { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:2px 10px; margin:0; padding:8px 12px; border:1px solid #ecd5ce; border-radius:11px; background:#fdf8f6; }
+.explain-extremum-transfer .kt-row.met { border-color:#bfe0d6; background:#eef8f5; }
+.explain-extremum-transfer .kt-tag { padding:1px 8px; border-radius:6px; background:#1f3b39; color:#fff; font-size:12px; font-weight:600; }
+.explain-extremum-transfer .kt-tag.exists { background:#4f6f9a; }
+.explain-extremum-transfer .kt-question { font-size:14px; font-weight:600; }
+.explain-extremum-transfer .kt-verdict { font-size:14px; color:#a8432f; white-space:nowrap; }
+.explain-extremum-transfer .kt-row.met .kt-verdict { color:var(--teal-dark); }
+.explain-extremum-transfer .kt-why { grid-column:2/-1; color:var(--muted); font-size:12.5px; }
+.explain-extremum-transfer .kt-table { width:100%; margin:16px 0 0; border-collapse:separate; border-spacing:6px; table-layout:fixed; }
+.explain-extremum-transfer .kt-table caption { margin-bottom:2px; color:var(--muted); font-size:12.5px; font-weight:600; text-align:left; padding-left:6px; }
+.explain-extremum-transfer .kt-table th, .explain-extremum-transfer .kt-table td { padding:8px 6px; border-radius:10px; text-align:center; vertical-align:middle; }
+.explain-extremum-transfer .kt-table thead th { padding:4px 6px; font-weight:400; }
+.explain-extremum-transfer .kt-table tbody th { width:24%; background:#f3f6f5; font-size:14px; font-weight:650; }
+.explain-extremum-transfer .kt-table th small, .explain-extremum-transfer .kt-table td small { display:block; color:var(--muted); font-size:11.5px; font-weight:500; }
+.explain-extremum-transfer .kt-table td { position:relative; border:1px solid #e0ebe8; background:#fff; font-size:15px; }
+.explain-extremum-transfer .kt-table td.kt-active-col, .explain-extremum-transfer .kt-table thead th.kt-active-col { background:#eef8f5; }
+.explain-extremum-transfer .kt-table td.kt-active-col { border-color:#bfe0d6; }
+.explain-extremum-transfer .kt-table td.kt-problem-cell { border-color:#d98a1f; box-shadow:inset 0 0 0 1px #d98a1f; background:#fffaf2; }
+.explain-extremum-transfer .kt-table td .kt-badge { position:absolute; top:-9px; right:6px; }
+.explain-extremum-transfer .kt-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.explain-extremum-transfer .kt-motto { margin:10px 0 0; color:var(--teal-dark); font-size:15px; font-weight:650; text-align:center; }
+.explain-extremum-transfer .kt-motto::before { content:"口诀"; margin-right:8px; padding:1px 7px; border-radius:6px; background:#e3f3ee; color:var(--teal-dark); font-size:12px; font-weight:700; vertical-align:1px; }
+.explain-extremum-transfer .kt-small { margin:6px 0 0; color:var(--muted); font-size:12.5px; text-align:center; }
+.explain-extremum-transfer .kt-notes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 0; }
+.explain-extremum-transfer .kt-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-extremum-transfer .kt-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-extremum-transfer .kt-note p, .explain-extremum-transfer .kt-note ul { margin:0 0 6px; }
+.explain-extremum-transfer .kt-note ul { padding-left:18px; }
+.explain-extremum-transfer .kt-note > :last-child { margin-bottom:0; }
+@media(max-width:600px) {
+  .explain-extremum-transfer .kt-core { font-size:14px; }
+  .explain-extremum-transfer .kt-explorer { padding:10px 8px; }
+  .explain-extremum-transfer .kt-table { border-spacing:4px; }
+  .explain-extremum-transfer .kt-table td { font-size:13.5px; }
+  .explain-extremum-transfer .kt-notes { grid-template-columns:1fr; }
+}

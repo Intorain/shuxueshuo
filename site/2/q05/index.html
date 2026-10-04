@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q05 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -150,7 +150,8 @@
           "answer": "存在只要求区间内有一个 $x$ 满足，看图像的最高处是否在横轴上方。所有点都满足是恒成立的要求；一个点不满足，别处仍可能满足。"
         },
         "submit_label": "确认判断",
-        "display": "i_condition-done"
+        "display": "i_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "exists-gt", "note": "本题存在 $x\\in(1,2)$ 使 $f(x)>0$：存在、大于，看最高处；开区间上取不到，就看取值范围的上端。"}
       },
       {
         "id": "i_extremum",
@@ -232,7 +233,8 @@
         },
         "submit_label": "确认判断",
         "display": "i_extremum-done",
-        "board": "i_extremum-board"
+        "board": "i_extremum-board",
+        "tip": {"id": "quadratic-interval-extremum", "note": "本题 $(1,2)$ 是开区间，端点取不到，求的是取值范围的上端：$m\\ge-3$ 时是 $f(2)$，$m<-3$ 时是 $f(1)$。"}
       },
       {
         "id": "i_range",
@@ -266,7 +268,8 @@
         },
         "submit_label": "确认判断",
         "display": "i_range-done",
-        "board": "i_range-board"
+        "board": "i_range-board",
+        "tip": {"id": "case-merge", "note": "本题情况① $m\\ge-3$ 且 $2m+8>0$，得 $m\\ge-3$；情况② $m<-3$ 且 $m+5>0$，得 $-5<m<-3$；取并集得 $m>-5$。"}
       },
       {
         "id": "i_boundary",
@@ -304,7 +307,8 @@
         },
         "submit_label": "确认检查",
         "display": "i_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $m=-5$ 时上端 $f(1)=0$，但 $x=1$ 不在 $(1,2)$ 里，$f(x)$ 始终小于 $0$，没有 $x$ 满足“$>0$”，排除。"}
       }
     ],
     "extremum": [
@@ -405,7 +409,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_separate-done",
-        "board": "e_separate-board"
+        "board": "e_separate-board",
+        "tip": {"id": "inequality-properties", "note": "本题 $x\\in(1,2)$，$x>0$，两边除以 $x$ 不变向：$m>-\\left(x+\\frac4x\\right)$。"}
       },
       {
         "id": "e_condition",
@@ -438,7 +443,8 @@
           "answer": "$m>-h(x)$ 即 $h(x)>-m$。存在只要求区间内有一个 $x$ 满足：水平线 $y=-m$ 上方有 $h(x)$ 的图像即可。因此 $-m$ 小于 $h(x)$ 的取值上端，等价于 $m$ 大于这个上端的相反数。"
         },
         "submit_label": "确认判断",
-        "display": "e_condition-done"
+        "display": "e_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "exists-lt", "note": "本题 $m>-h(x)$ 就是 $-h(x)<m$：存在、小于，看 $-h(x)$ 的最低处，也就是 $h(x)$ 取值的上端。"}
       },
       {
         "id": "e_graph",
@@ -525,7 +531,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_graph-done",
-        "board": "e_graph-board"
+        "board": "e_graph-board",
+        "tip": {"id": "reciprocal-sum-function", "note": "本题 $h(x)=x+\\frac4x$，$k=4$：最低点在 $x=\\sqrt4=2$，最小值 $2\\sqrt4=4$。"}
       },
       {
         "id": "e_extremum",
@@ -590,7 +597,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_extremum-done",
-        "board": "e_extremum-board"
+        "board": "e_extremum-board",
+        "tip": {"id": "reciprocal-sum-function", "note": "本题 $(1,2)$ 在最低点 $x=2$ 左侧，函数递减；两端都取不到，取值范围是 $(4,5)$。"}
       },
       {
         "id": "e_boundary",
@@ -628,7 +636,8 @@
         },
         "submit_label": "确认检查",
         "display": "e_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $m=-5$ 时要 $h(x)>5$，而 $h(x)$ 在 $(1,2)$ 上始终小于 $5$：上端取不到，排除。"}
       }
     ]
   },

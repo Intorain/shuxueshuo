@@ -1,0 +1,95 @@
+{
+  "node": "quadratic-inequality-solve",
+  "items": [
+    {
+      "id": "between",
+      "question": "$x^2-5x+6<0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "outside", "label": "$x<2$ 或 $x>3$", "feedback": "开口向上，小于零是图像在 $x$ 轴下方的部分，在两根之间。"},
+        {"value": "right", "label": "$2<x<3$"},
+        {"value": "closed", "label": "$2\\le x\\le3$", "feedback": "原不等式不带等号，根处的函数值是 $0$，不满足“$<0$”。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "outside-equal",
+      "question": "$x^2-x-6\\ge0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "right", "label": "$x\\le-2$ 或 $x\\ge3$"},
+        {"value": "between", "label": "$-2\\le x\\le3$", "feedback": "开口向上，大于等于零取两根之外，再加上两个根。"},
+        {"value": "open", "label": "$x<-2$ 或 $x>3$", "feedback": "带等号，根 $-2$ 和 $3$ 处函数值是 $0$，要算进去。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "opening-down",
+      "question": "$-x^2+2x+3>0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "noflip", "label": "$x<-1$ 或 $x>3$", "feedback": "两边乘 $-1$ 化成 $x^2-2x-3<0$ 时，不等号要反向，所以取两根之间。"},
+        {"value": "sign", "label": "$-3<x<1$", "feedback": "$x^2-2x-3=(x-3)(x+1)$，两根是 $-1$ 和 $3$。"},
+        {"value": "right", "label": "$-1<x<3$"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "square-gt",
+      "question": "$x^2-4x+4>0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "all", "label": "全体实数", "feedback": "左边是 $(x-2)^2$，$x=2$ 时等于 $0$，不满足“$>0$”。"},
+        {"value": "right", "label": "$x\\ne2$"},
+        {"value": "empty", "label": "无解", "feedback": "除了 $x=2$，$(x-2)^2$ 都是正数。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "square-le",
+      "question": "$x^2-4x+4\\le0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "all", "label": "全体实数", "feedback": "$(x-2)^2$ 只在 $x=2$ 时不是正数。"},
+        {"value": "empty", "label": "无解", "feedback": "带等号，$x=2$ 时 $(x-2)^2=0$，满足“$\\le0$”。"},
+        {"value": "right", "label": "$x=2$"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "no-root",
+      "question": "$x^2+x+1<0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "right", "label": "无解"},
+        {"value": "all", "label": "全体实数", "feedback": "开口向上且 $\\Delta=1-4<0$，图像全在 $x$ 轴上方，函数值总是正的。"},
+        {"value": "vertex", "label": "$x\\ne-\\frac12$", "feedback": "这种形式出现在 $\\Delta=0$ 且求“$>0$”时；这里 $\\Delta<0$。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "parameter",
+      "given": "解关于参数 $m$ 的不等式。",
+      "question": "$m^2+m-2<0$ 的解集是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "outside", "label": "$m<-2$ 或 $m>1$", "feedback": "小于零取两根之间。"},
+        {"value": "sign", "label": "$-1<m<2$", "feedback": "$m^2+m-2=(m+2)(m-1)$，两根是 $-2$ 和 $1$。"},
+        {"value": "right", "label": "$-2<m<1$"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "statements",
+      "question": "下面哪些说法是对的？",
+      "type": "multi",
+      "options": [
+        {"value": "half", "label": "$x^2>4$ 的解集是 $x>2$", "feedback": "$x=-3$ 也满足，解集是 $x<-2$ 或 $x>2$。"},
+        {"value": "flip", "label": "解 $-2x^2+x+1<0$ 时，可以先化成 $2x^2-x-1>0$"},
+        {"value": "between", "label": "$(x-1)(x-3)\\le0$ 的解集是 $1\\le x\\le3$"},
+        {"value": "negative", "label": "开口向上且 $\\Delta<0$ 时，$ax^2+bx+c<0$ 的解集是全体实数", "feedback": "这时图像全在 $x$ 轴上方，$<0$ 无解；$>0$ 的解集才是全体实数。"}
+      ],
+      "answer": ["flip", "between"]
+    }
+  ]
+}

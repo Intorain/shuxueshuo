@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7f5">
+  <meta name="generator" content="tools/build-knowledge-pages.mjs">
+  <meta name="description" content="把已知范围的字母当自变量，固定原来的主元，研究新函数在该范围上的取值。与“换元”不同：这里换的是谁当自变量。">
+  <meta property="og:title" content="更换主元法 · 方法 · 数学说">
+  <meta property="og:description" content="把已知范围的字母当自变量，固定原来的主元，研究新函数在该范围上的取值。与“换元”不同：这里换的是谁当自变量。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://shuxueshuo.com/knowledge/method-variable-swap/">
+  <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
+  <link rel="canonical" href="https://shuxueshuo.com/knowledge/method-variable-swap/">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/knowledge/node.css?v=1">
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <title>更换主元法 · 方法 · 数学说</title>
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js?v=12" defer></script>
+  <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
+  <script type="module" src="/knowledge/node.js?v=1"></script>
+</head>
+<body class="kn-page">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="topbar">
+    <nav class="topbar-inner" aria-label="站内导航">
+      <a class="brand" href="/" aria-label="数学说首页"><span class="brand-mark" aria-hidden="true">数</span>数学说</a>
+      <a class="home-link" href="/">首页 <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="workspace" id="main">
+    <section class="hero kn-hero" aria-labelledby="page-title">
+      <p class="eyebrow"><span>高中数学</span><span class="eyebrow-sep" aria-hidden="true">/</span><a href="/knowledge/#method-variable-swap">知识图谱</a><span class="eyebrow-sep" aria-hidden="true">/</span><span aria-current="page">方法</span></p>
+      <h1 id="page-title" class="kn-title"><span class="title-mark">更换主元法</span></h1>
+      <p class="lead">把已知范围的字母当自变量，固定原来的主元，研究新函数在该范围上的取值。与“换元”不同：这里换的是谁当自变量。</p>
+      
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-explain-title">
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 5 题</button></div>
+      <div class="kn-explain"><div data-explainer="method-variable-swap"><p class="kn-none">图解加载中…</p></div></div>
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-steps-title">
+      <h2 id="kn-steps-title">解题步骤</h2>
+      <div class="kn-topics">
+      <article class="kn-topic">
+        <h3><a href="/2/">一元二次不等式恒成立问题</a></h3>
+        <ol class="kn-flow"><li class="kn-flow-self">判断适用条件</li><li><a class="kn-chip knowledge" href="/knowledge/extremum-transfer/">恒成立、存在成立与函数值域的关系</a></li><li><a class="kn-chip knowledge" href="/knowledge/linear-interval-extremum/">一次函数的图像与性质</a></li><li><a class="kn-chip knowledge" href="/knowledge/quadratic-inequality-solve/">一元二次不等式的解法</a></li><li><a class="kn-chip knowledge" href="/knowledge/case-merge/">分类讨论与结果合并</a></li><li><a class="kn-chip knowledge" href="/knowledge/endpoint-attainability/">边界值的可达性</a></li></ol>
+      </article>
+      </div>
+    </section>
+
+    <script type="application/json" id="kn-drill-data">{"label":"更换主元法","items":[{"id":"choose-variable","question":"对任意 $a\\in[-1,2]$，不等式 $x^2+ax-3\u003c0$ 恒成立，求 $x$ 的取值范围。应把哪个字母当主元？","type":"choice","options":[{"value":"x","label":"$x$：不等式是关于 $x$ 的二次式","feedback":"要求的是 $x$ 的范围，恒成立针对的是给出范围的 $a$；把 $a$ 当自变量、$x$ 当常数。"},{"value":"a","label":"$a$：恒成立针对的是给出范围的 $a$"},{"value":"either","label":"哪个都行","feedback":"主元必须是恒成立针对的那个字母，也就是给出范围的 $a$。"}],"answer":"a"},{"id":"linear-form","given":"对任意 $a\\in[-1,2]$，不等式 $x^2+ax-3\u003c0$ 恒成立。","question":"固定 $x$ 后，$x^2+ax-3$ 关于 $a$ 是什么形式？","type":"choice","options":[{"value":"quadratic","label":"二次式","feedback":"关于 $a$ 只数 $a$ 的次数，$x^2$ 是常数项。"},{"value":"positive","label":"一次函数，斜率一定为正","feedback":"斜率是 $x$，正负取决于 $x$；$x=0$ 时还会退化为常数。"},{"value":"linear","label":"一次形式 $x\\cdot a+(x^2-3)$，$x=0$ 时退化为常数"}],"answer":"linear"},{"id":"check-both-ends","question":"一次形式 $g(a)=ka+b$ 在 $a\\in[-1,2]$ 上恒小于 $0$，等价于哪个条件？","type":"choice","options":[{"value":"both","label":"$g(-1)\u003c0$ 且 $g(2)\u003c0$"},{"value":"coefficients","label":"$k\u003c0$ 且 $b\u003c0$","feedback":"斜率和截距不是区间上的函数值：比如 $g(a)=-5a-1$ 在 $a=-1$ 处等于 $4$。一次形式的最值在两端取到，只看两个端点值。"},{"value":"either","label":"$g(-1)\u003c0$ 或 $g(2)\u003c0$","feedback":"“或”只保证一端，另一端仍可能不小于 $0$；恒成立要两端都满足。"}],"answer":"both"},{"id":"no-swap-needed","question":"对任意实数 $x$，不等式 $x^2+ax+1>0$ 恒成立，求 $a$ 的取值范围。需要更换主元吗？","type":"choice","options":[{"value":"swap","label":"需要：把 $a$ 当主元，变成一次函数","feedback":"主元是恒成立针对的字母 $x$；$a$ 是要求范围的字母，不能当主元。"},{"value":"no","label":"不需要：恒成立针对的 $x$ 本来就是自变量，用判别式法"},{"value":"either","label":"两种都行：$x$ 和 $a$ 都可以当主元","feedback":"主元必须是恒成立针对的字母，这里就是 $x$，不用换。"}],"answer":"no"},{"id":"quadratic-in-variable","question":"对任意 $m\\in[0,2]$，不等式 $m^2-2xm+1>0$ 恒成立，求 $x$ 的取值范围。把 $m$ 当主元后，能只看 $m=0$ 和 $m=2$ 两端吗？","type":"choice","options":[{"value":"ends","label":"能：主元在闭区间上，最值在端点取到","feedback":"关于 $m$ 是开口向上的二次式，最小值可能在顶点 $m=x$ 取到。比如 $x=1$：两端的值都是 $1>0$，但 $m=1$ 时式子等于 $0$，不满足。"},{"value":"constant","label":"不能：$x$ 是要求范围的字母，不能当常数","feedback":"固定 $x$ 当常数正是更换主元的做法；问题在于关于 $m$ 不是一次形式。"},{"value":"no","label":"不能只看两端：关于 $m$ 开口向上，对称轴 $m=x$ 可能落在区间里，最小值在顶点"}],"answer":"no"}]}</script>
+
+    <footer class="chapter-footer">
+      <span>数学说 · 知识图谱</span>
+      <a href="https://shuxueshuo.com/knowledge/method-variable-swap/">shuxueshuo.com/knowledge/method-variable-swap</a>
+    </footer>
+  </main>
+</body>
+</html>

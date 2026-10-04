@@ -1,0 +1,53 @@
+/* inequality-properties explainer; every selector is scoped to .explain-inequality-properties. */
+.explain-inequality-properties .ip-core { margin:16px 0 12px; font-size:15px; font-weight:600; line-height:1.65; }
+.explain-inequality-properties .ip-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-inequality-properties .ip-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-inequality-properties .ip-explorer { display:grid; gap:10px; padding:14px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-inequality-properties .ip-ask { margin:0; color:#33504a; font-size:14px; font-weight:600; }
+.explain-inequality-properties .ip-ops { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.explain-inequality-properties .ip-ops button { padding:8px 6px; border:1px solid #d6e6e1; border-radius:11px; background:#fff; color:var(--ink); font:inherit; font-size:14px; cursor:pointer; }
+.explain-inequality-properties .ip-ops button[aria-pressed="true"] { border-color:var(--teal); background:#e9f6f2; color:var(--teal-dark); font-weight:650; box-shadow:inset 0 0 0 1px var(--teal); }
+.explain-inequality-properties .ip-ops button:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-inequality-properties .ip-panel { display:grid; gap:8px; padding:10px 12px 12px; border:1px solid #e0ebe8; border-radius:14px; background:#fff; }
+.explain-inequality-properties .ip-panel[hidden] { display:none; }
+.explain-inequality-properties .ip-example { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 12px; margin:0; font-size:15px; font-weight:600; }
+.explain-inequality-properties .ip-verdict { padding:2px 10px; border-radius:999px; font-size:13px; font-weight:700; }
+.explain-inequality-properties .ip-verdict.keep { background:#e2f3ee; color:#0b6b5c; }
+.explain-inequality-properties .ip-verdict.flip { background:#fdeadf; color:#b2400c; }
+.explain-inequality-properties .ip-verdict.unsure { background:#f1f0ea; color:#6b5d3a; }
+.explain-inequality-properties .ip-graph { display:block; width:100%; max-width:520px; height:auto; margin:0 auto; }
+.explain-inequality-properties .ip-row { fill:#46605a; font-size:12.5px; font-weight:600; }
+.explain-inequality-properties .ip-line { stroke:#9dafaa; stroke-width:1.4; }
+.explain-inequality-properties .ip-tick { stroke:#b9cbc6; stroke-width:1; }
+.explain-inequality-properties .ip-tick.zero { stroke:#46605a; stroke-width:1.5; }
+.explain-inequality-properties .ip-zero { fill:#46605a; font-size:11.5px; }
+.explain-inequality-properties .ip-connector { fill:none; stroke-width:1.6; stroke-dasharray:4 3; }
+.explain-inequality-properties .ip-connector.p0, .explain-inequality-properties .ip-dot.p0 { stroke:#087f79; }
+.explain-inequality-properties .ip-connector.p1, .explain-inequality-properties .ip-dot.p1 { stroke:#c2410c; }
+.explain-inequality-properties .ip-dot { stroke-width:2; }
+.explain-inequality-properties .ip-dot.p0 { fill:#087f79; }
+.explain-inequality-properties .ip-dot.p1 { fill:#c2410c; }
+.explain-inequality-properties .ip-label { font-size:13px; font-weight:650; }
+.explain-inequality-properties .ip-label.p0 { fill:#0b6b5c; }
+.explain-inequality-properties .ip-label.p1 { fill:#b2400c; }
+.explain-inequality-properties .ip-rule { display:grid; grid-template-columns:auto 1fr; align-items:baseline; gap:2px 10px; margin:0; padding:9px 12px; border:1px solid #bfe0d6; border-radius:11px; background:#eef8f5; font-size:15px; font-weight:600; }
+.explain-inequality-properties .ip-rule small { grid-column:2; color:var(--muted); font-size:12.5px; font-weight:400; line-height:1.6; }
+.explain-inequality-properties .ip-tag { padding:1px 8px; border-radius:6px; background:#1f3b39; color:#fff; font-size:12px; font-weight:600; }
+.explain-inequality-properties .ip-legend { margin:0; color:var(--muted); font-size:12.5px; text-align:center; }
+.explain-inequality-properties .ip-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
+.explain-inequality-properties .ip-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-inequality-properties .ip-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-inequality-properties .ip-note p { margin:0 0 6px; }
+.explain-inequality-properties .ip-note > :last-child { margin-bottom:0; }
+.explain-inequality-properties .ip-link { padding:0; border:0; background:none; color:var(--teal-dark); font:inherit; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+@media(max-width:760px) {
+  .explain-inequality-properties .ip-notes { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .explain-inequality-properties .ip-core { font-size:14px; }
+  .explain-inequality-properties .ip-explorer { padding:10px 8px; }
+  .explain-inequality-properties .ip-ops { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+  .explain-inequality-properties .ip-ops button { font-size:13.5px; padding:7px 4px; }
+  .explain-inequality-properties .ip-panel { padding:8px; }
+  .explain-inequality-properties .ip-rule { padding:8px 10px; font-size:14px; }
+}

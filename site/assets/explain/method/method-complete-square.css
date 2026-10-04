@@ -1,0 +1,44 @@
+/* method-complete-square explainer; every selector is scoped to .explain-method-complete-square. */
+.explain-method-complete-square .sq-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-method-complete-square .sq-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-method-complete-square .sq-explorer { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; padding:14px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-method-complete-square .sq-ask { margin:0; color:#33504a; font-size:14px; font-weight:600; }
+.explain-method-complete-square .sq-stage { display:grid; grid-template-columns:minmax(0,240px) 1fr; align-items:start; gap:16px; }
+.explain-method-complete-square .sq-graph { display:block; width:100%; height:auto; }
+.explain-method-complete-square .sq-piece { stroke:#fff; stroke-width:2; }
+.explain-method-complete-square .sq-piece.square { fill:#cfe9e2; }
+.explain-method-complete-square .sq-piece.strip { fill:#9cc9c0; }
+.explain-method-complete-square .sq-piece.corner { fill:#f2c27b; }
+.explain-method-complete-square .sq-piece.missing { fill:#fff; stroke:#d08a2a; stroke-width:1.6; stroke-dasharray:4 3; }
+.explain-method-complete-square .sq-outline { fill:none; stroke:#087f79; stroke-width:2.6; }
+.explain-method-complete-square .sq-area { fill:#1f3b39; font-size:15px; font-weight:650; }
+.explain-method-complete-square .sq-area.missing { fill:#b2690f; }
+.explain-method-complete-square .sq-side { fill:#46605a; font-size:13.5px; font-weight:600; font-style:italic; }
+.explain-method-complete-square .sq-steps { display:grid; gap:6px; min-width:0; margin:0; padding:0; list-style:none; }
+.explain-method-complete-square .sq-steps li { padding:8px 12px; border:1px solid #e0ebe8; border-radius:11px; background:#fff; color:#46605a; font-size:14px; line-height:1.75; }
+.explain-method-complete-square .sq-steps li[hidden] { display:none; }
+.explain-method-complete-square .sq-steps li.sq-current { border-color:#bfe0d6; background:#eef8f5; color:var(--ink); }
+.explain-method-complete-square .sq-controls { display:flex; justify-content:center; gap:8px; }
+.explain-method-complete-square .sq-controls button { min-width:84px; padding:7px 14px; border:1px solid #cfe1db; border-radius:999px; background:#fff; color:var(--teal-dark); font:inherit; font-size:14px; font-weight:650; cursor:pointer; }
+.explain-method-complete-square .sq-controls .sq-next { border-color:var(--teal); background:var(--teal); color:#fff; }
+.explain-method-complete-square .sq-controls button:disabled { opacity:.4; cursor:default; }
+.explain-method-complete-square .sq-controls button:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-method-complete-square .sq-lead { margin:14px 0 0; padding:12px 14px; border:1px solid #f0dcc0; border-radius:14px; background:#fffaf2; font-size:13.5px; line-height:1.7; }
+.explain-method-complete-square .sq-lead h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-method-complete-square .sq-lead p { margin:0; }
+.explain-method-complete-square .sq-lead .sq-chain { margin:0 0 4px; overflow-x:auto; font-size:15px; }
+.explain-method-complete-square .sq-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
+.explain-method-complete-square .sq-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-method-complete-square .sq-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-method-complete-square .sq-note p { margin:0 0 6px; }
+.explain-method-complete-square .sq-note > :last-child { margin-bottom:0; }
+.explain-method-complete-square .sq-link { padding:0; border:0; background:none; color:var(--teal-dark); font:inherit; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+@media(max-width:760px) {
+  .explain-method-complete-square .sq-notes { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .explain-method-complete-square .sq-explorer { padding:10px 8px; }
+  .explain-method-complete-square .sq-stage { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .explain-method-complete-square .sq-graph { max-width:240px; margin:0 auto; }
+  .explain-method-complete-square .sq-lead .sq-chain { font-size:14px; }
+}

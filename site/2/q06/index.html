@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q06 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -178,7 +178,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_separate-done",
-        "board": "e_separate-board"
+        "board": "e_separate-board",
+        "tip": {"id": "inequality-properties", "note": "本题 $x<0$，两边除以负数 $x$ 要变向：$ax\\ge-x^2-2$ 变成 $a\\le-x-\\frac2x$。"}
       },
       {
         "id": "e_condition",
@@ -211,7 +212,8 @@
           "answer": "$a\\le h(x)$ 即水平线 $y=a$ 不高于 $h(x)$ 的图像。所有 $x<0$ 都要满足，只需比 $h(x)$ 的最低点；只检查一个点，不能保证所有点都满足。"
         },
         "submit_label": "确认判断",
-        "display": "e_condition-done"
+        "display": "e_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-gt", "note": "本题 $a\\le h(x)$ 就是 $h(x)\\ge a$：恒成立、大于等于，看 $h(x)$ 的最低点。"}
       },
       {
         "id": "e_graph",
@@ -298,7 +300,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_graph-done",
-        "board": "e_graph-board"
+        "board": "e_graph-board",
+        "tip": {"id": "reciprocal-sum-function", "note": "本题 $h(x)=-x-\\frac2x=(-x)+\\frac2{-x}$，两项都是正数，最低点在 $x=-\\sqrt2$，最小值 $2\\sqrt2$。"}
       },
       {
         "id": "e_extremum",
@@ -363,7 +366,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_extremum-done",
-        "board": "e_extremum-board"
+        "board": "e_extremum-board",
+        "tip": {"id": "reciprocal-sum-function", "note": "本题区间 $(-\\infty,0)$ 含最低点 $x=-\\sqrt2$，最小值 $h(-\\sqrt2)=2\\sqrt2$ 取得到。"}
       },
       {
         "id": "e_boundary",
@@ -401,7 +405,8 @@
         },
         "submit_label": "确认检查",
         "display": "e_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $a=2\\sqrt2$ 时原不等式为 $(x+\\sqrt2)^2\\ge0$：最小值取得到，原题允许取等，保留。"}
       }
     ],
     "interval": [
@@ -474,7 +479,8 @@
           "answer": "恒成立要求区间上所有点都满足，要看图像的最低处。$x\\to-\\infty$ 时 $f(x)$ 越来越大，没有上端；只看一个点，别处仍可能不满足。"
         },
         "submit_label": "确认判断",
-        "display": "i_condition-done"
+        "display": "i_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-gt", "note": "本题 $f(x)\\ge0$ 对所有 $x<0$ 成立：恒成立、大于等于，看最低处；取不到也可以，只要下端 $\\ge0$。"}
       },
       {
         "id": "i_extremum",
@@ -556,7 +562,8 @@
         },
         "submit_label": "确认判断",
         "display": "i_extremum-done",
-        "board": "i_extremum-board"
+        "board": "i_extremum-board",
+        "tip": {"id": "quadratic-interval-extremum", "note": "本题区间 $(-\\infty,0)$ 是半无限区间，看下端：$a\\le0$ 时对称轴 $x=-\\frac a2\\ge0$，函数在区间上递减，下端是 $f(0)=2$，取不到；$a>0$ 时顶点在区间里，下端是最小值 $2-\\frac{a^2}4$。"}
       },
       {
         "id": "i_range",
@@ -590,7 +597,8 @@
         },
         "submit_label": "确认判断",
         "display": "i_range-done",
-        "board": "i_range-board"
+        "board": "i_range-board",
+        "tip": {"id": "case-merge", "note": "本题情况① $a\\le0$ 时下端 $2>0$，都成立；情况② $a>0$ 且 $2-\\frac{a^2}4\\ge0$，得 $0<a\\le2\\sqrt2$；取并集得 $a\\le2\\sqrt2$。"}
       },
       {
         "id": "i_boundary",
@@ -628,7 +636,8 @@
         },
         "submit_label": "确认检查",
         "display": "i_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $a=2\\sqrt2$ 时最低点 $f(-\\sqrt2)=0$，原题是“$\\ge0$”，允许取等，保留。"}
       }
     ]
   },

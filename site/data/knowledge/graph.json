@@ -1,0 +1,43 @@
+{
+  "nodes": [
+    {"id": "square-nonnegative", "kind": "knowledge", "label": "平方的非负性"},
+    {"id": "amgm-formula", "kind": "knowledge", "label": "基本不等式"},
+    {"id": "homogeneous-expression", "kind": "knowledge", "label": "齐次式"},
+    {"id": "symmetric-polynomial", "kind": "knowledge", "label": "二元对称多项式可以用两变量的和与积表示"},
+    {"id": "inequality-properties", "kind": "knowledge", "label": "不等式的性质"},
+    {"id": "quadratic-function-properties", "kind": "knowledge", "label": "二次函数的图像与性质"},
+    {"id": "quadratic-inequality-solve", "kind": "knowledge", "label": "一元二次不等式的解法"},
+    {"id": "extremum-transfer", "kind": "knowledge", "label": "恒成立、存在成立与函数值域的关系"},
+    {"id": "quadratic-interval-extremum", "kind": "knowledge", "label": "二次函数在区间上的最值与值域"},
+    {"id": "linear-interval-extremum", "kind": "knowledge", "label": "一次函数的图像与性质"},
+    {"id": "reciprocal-sum-function", "kind": "knowledge", "label": "函数 y=x+k/x 的图像与性质"},
+    {"id": "function-monotonicity", "kind": "knowledge", "label": "函数的单调性"},
+    {"id": "case-merge", "kind": "knowledge", "label": "分类讨论与结果合并"},
+    {"id": "endpoint-attainability", "kind": "knowledge", "label": "边界值的可达性"},
+
+    {"id": "method-amgm-direct", "kind": "method", "label": "直接应用基本不等式"},
+    {"id": "method-matching", "kind": "method", "subtype": "technique", "label": "配凑表达式"},
+    {"id": "method-homogeneous", "kind": "method", "subtype": "technique", "label": "配齐次式"},
+    {"id": "method-substitution", "kind": "method", "subtype": "technique", "label": "换元"},
+    {"id": "method-elimination", "kind": "method", "subtype": "technique", "label": "消元"},
+    {"id": "method-fraction-split", "kind": "method", "subtype": "technique", "label": "分式分离"},
+    {"id": "method-sum-product", "kind": "method", "subtype": "technique", "label": "和积换元"},
+    {"id": "method-complete-square", "kind": "method", "subtype": "technique", "label": "配方"},
+    {"id": "method-reciprocal", "kind": "method", "subtype": "technique", "label": "取倒数"},
+    {"id": "method-discriminant", "kind": "method", "label": "判别式法"},
+    {"id": "method-interval-extremum", "kind": "method", "label": "区间最值法"},
+    {"id": "method-separation", "kind": "method", "label": "分离参数法"},
+    {"id": "method-variable-swap", "kind": "method", "label": "更换主元法"}
+  ],
+  "edges": [
+    {"type": "prerequisite", "from": "quadratic-function-properties", "to": "quadratic-inequality-solve"},
+    {"type": "prerequisite", "from": "quadratic-function-properties", "to": "quadratic-interval-extremum"},
+
+    {"type": "uses", "from": "method-amgm-direct", "to": "amgm-formula"},
+    {"type": "uses", "from": "method-homogeneous", "to": "homogeneous-expression"},
+    {"type": "uses", "from": "method-sum-product", "to": "symmetric-polynomial"},
+    {"type": "uses", "from": "method-complete-square", "to": "square-nonnegative"},
+    {"type": "uses", "from": "method-reciprocal", "to": "inequality-properties"},
+    {"type": "uses", "from": "method-discriminant", "to": "quadratic-function-properties"}
+  ]
+}

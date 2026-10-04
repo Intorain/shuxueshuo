@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7f5">
+  <meta name="generator" content="tools/build-knowledge-pages.mjs">
+  <meta name="description" content="分类讨论时，每种情况先把解出的范围与这种情况的前提取交集，再把各种情况的结果取并集；“且”连接、要同时成立的条件取交集。">
+  <meta property="og:title" content="分类讨论与结果合并 · 知识点 · 数学说">
+  <meta property="og:description" content="分类讨论时，每种情况先把解出的范围与这种情况的前提取交集，再把各种情况的结果取并集；“且”连接、要同时成立的条件取交集。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://shuxueshuo.com/knowledge/case-merge/">
+  <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
+  <link rel="canonical" href="https://shuxueshuo.com/knowledge/case-merge/">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/knowledge/node.css?v=1">
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <title>分类讨论与结果合并 · 知识点 · 数学说</title>
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js?v=12" defer></script>
+  <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
+  <script type="module" src="/knowledge/node.js?v=1"></script>
+</head>
+<body class="kn-page">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="topbar">
+    <nav class="topbar-inner" aria-label="站内导航">
+      <a class="brand" href="/" aria-label="数学说首页"><span class="brand-mark" aria-hidden="true">数</span>数学说</a>
+      <a class="home-link" href="/">首页 <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="workspace" id="main">
+    <section class="hero kn-hero" aria-labelledby="page-title">
+      <p class="eyebrow"><span>高中数学</span><span class="eyebrow-sep" aria-hidden="true">/</span><a href="/knowledge/#case-merge">知识图谱</a><span class="eyebrow-sep" aria-hidden="true">/</span><span aria-current="page">知识点</span></p>
+      <h1 id="page-title" class="kn-title"><span class="title-mark">分类讨论与结果合并</span></h1>
+      <p class="lead">分类讨论时，每种情况先把解出的范围与这种情况的前提取交集，再把各种情况的结果取并集；“且”连接、要同时成立的条件取交集。</p>
+      
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-explain-title">
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 8 题</button></div>
+      <div class="kn-explain"><div data-explainer="case-merge"><p class="kn-none">图解加载中…</p></div></div>
+    </section>
+
+    <script type="application/json" id="kn-drill-data">{"label":"分类讨论与结果合并","items":[{"id":"and-intersect","given":"两个端点值都要满足：由 $g(-1)>0$ 得 $x\u003c3$，由 $g(2)>0$ 得 $x>-1$。","question":"$x$ 的取值范围是什么？","type":"choice","options":[{"value":"and","label":"$-1\u003cx\u003c3$"},{"value":"or","label":"$x\u003c3$ 或 $x>-1$，即全体实数","feedback":"两个条件要同时成立，取交集；取并集会把只满足一个条件的数也算进来。"},{"value":"one","label":"$x>-1$","feedback":"$x>-1$ 里有 $x=5$ 这样不满足 $x\u003c3$ 的数。"}],"answer":"and"},{"id":"premise-empty","given":"按对称轴的位置分类讨论。情况③的前提是 $m\\ge2$，在这种情况下解得 $m\u003c\\frac54$。","question":"情况③的结果是什么？","type":"choice","options":[{"value":"solved","label":"$m\u003c\\frac54$","feedback":"解出的范围要与这种情况的前提 $m\\ge2$ 取交集。"},{"value":"empty","label":"无解"},{"value":"premise","label":"$m\\ge2$","feedback":"前提只说明讨论的是哪些 $m$，还要满足解出的条件。"}],"answer":"empty"},{"id":"intersect-endpoint","question":"$x$ 满足 $-1\\le x\u003c3$，并且 $x>0$。$x$ 的取值范围是什么？","type":"choice","options":[{"value":"closed","label":"$0\\le x\u003c3$","feedback":"$x>0$ 不含 $0$；交集里的每个数都要同时满足两个条件，两边都含才含。"},{"value":"first","label":"$-1\\le x\u003c3$","feedback":"还要满足 $x>0$。"},{"value":"right","label":"$0\u003cx\u003c3$"}],"answer":"right"},{"id":"union-endpoint","given":"情况①得 $-2\u003ca\\le1$，情况②得 $1\u003ca\u003c3$。","question":"合并后 $a$ 的取值范围是什么？","type":"choice","options":[{"value":"hole","label":"$-2\u003ca\u003c3$，且 $a\\ne1$","feedback":"$a=1$ 在情况①的结果里；并集里有一边含就含。"},{"value":"union","label":"$-2\u003ca\u003c3$"},{"value":"empty","label":"无解","feedback":"两种情况满足其一即可，取并集，不要求同时满足。"}],"answer":"union"},{"id":"whole-premise","given":"情况①（$a\\le0$）：下端是 $2$，这种情况下所有 $a$ 都满足；情况②（$a>0$）：解得 $0\u003ca\\le4$。","question":"$a$ 的取值范围是什么？","type":"choice","options":[{"value":"second","label":"$0\u003ca\\le4$","feedback":"情况①所有 $a$ 都满足，结果是它的整个前提 $a\\le0$，也要并进来。"},{"value":"symmetric","label":"$-4\\le a\\le4$","feedback":"情况①的前提是 $a\\le0$，其中每个 $a$ 都满足，并不限于 $a\\ge-4$。"},{"value":"union","label":"$a\\le4$"}],"answer":"union"},{"id":"degenerate-case","given":"按二次项系数分三种情况：$m\u003c0$ 时得 $m\u003c0$；$m=0$ 时原不等式为 $-1\u003c0$，成立；$m>0$ 时得 $0\u003cm\u003c\\frac14$。","question":"$m$ 的取值范围是什么？","type":"choice","options":[{"value":"union","label":"$m\u003c\\frac14$"},{"value":"hole","label":"$m\u003c0$ 或 $0\u003cm\u003c\\frac14$","feedback":"$m=0$ 这种情况也成立，要并进来，合并后是一整段。"},{"value":"positive","label":"$0\u003cm\u003c\\frac14$","feedback":"三种情况满足其一即可，每种情况的结果都要并进来。"}],"answer":"union"},{"id":"opening-and-delta","given":"判别式法：要求开口向下 $a\u003c0$，并且由 $\\Delta\u003c0$ 解得 $a\u003c-1$ 或 $a>3$。","question":"$a$ 的取值范围是什么？","type":"choice","options":[{"value":"union","label":"$a\u003c0$ 或 $a>3$","feedback":"开口向下和 $\\Delta\u003c0$ 要同时成立，取交集，不是并集。"},{"value":"delta","label":"$a\u003c-1$ 或 $a>3$","feedback":"还要开口向下 $a\u003c0$，$a>3$ 不满足。"},{"value":"both","label":"$a\u003c-1$"}],"answer":"both"},{"id":"which-union","question":"下面哪些地方应该取并集？","type":"multi","options":[{"value":"cases","label":"分类讨论后，把各种情况的结果合起来"},{"value":"premise","label":"同一种情况里，解出的范围与这种情况的前提","feedback":"同一种情况里，前提和解出的条件要同时成立，取交集。"},{"value":"ends","label":"两个端点值都要满足的条件","feedback":"两个端点要同时满足，取交集。"},{"value":"product","label":"解 $(x-1)(x-3)>0$ 得到的 $x\u003c1$ 与 $x>3$"}],"answer":["cases","product"]}]}</script>
+
+    <footer class="chapter-footer">
+      <span>数学说 · 知识图谱</span>
+      <a href="https://shuxueshuo.com/knowledge/case-merge/">shuxueshuo.com/knowledge/case-merge</a>
+    </footer>
+  </main>
+</body>
+</html>

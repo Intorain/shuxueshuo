@@ -1,0 +1,60 @@
+{
+  "node": "method-interval-extremum",
+  "items": [
+    {
+      "id": "closed-interval",
+      "question": "当 $-1\\le x\\le1$ 时，不等式 $x^2-ax-2<0$ 恒成立。能用区间最值法吗？",
+      "type": "choice",
+      "options": [
+        {"value": "discriminant", "label": "不能，应该用判别式法：$x^2$ 的系数确定非零", "feedback": "判别式管的是整条抛物线；这里只要求 $-1\\le x\\le1$ 时成立，区间外的部分不用管。"},
+        {"value": "yes", "label": "能：$x$ 只在区间 $[-1,1]$ 上取值，看区间上的最高点"},
+        {"value": "opening", "label": "不能：开口向上，没有最大值", "feedback": "闭区间上的一段抛物线一定有最高点和最低点。开口方向不是前提，它只决定最值在顶点还是端点取到。"}
+      ],
+      "answer": "yes"
+    },
+    {
+      "id": "all-real-numbers",
+      "question": "不等式 $x^2+ax+4>0$ 对任意实数 $x$ 恒成立。哪种方法最直接？",
+      "type": "choice",
+      "options": [
+        {"value": "interval", "label": "区间最值法：求 $f(x)$ 在实数范围内的最小值", "feedback": "也能做，最小值在顶点取到；但 $x$ 取全体实数时，直接看整条抛物线与横轴的位置、列 $\\Delta$ 更快。"},
+        {"value": "swap", "label": "更换主元法：把 $a$ 当主元", "feedback": "更换主元法用于恒成立针对的是另一个给出范围的字母；这里恒成立针对的就是 $x$。"},
+        {"value": "discriminant", "label": "判别式法：看整条图像与横轴的位置"}
+      ],
+      "answer": "discriminant"
+    },
+    {
+      "id": "infinite-interval",
+      "question": "当 $x>0$ 时，不等式 $x^2-mx+1\\ge0$ 恒成立。$x$ 的取值范围算“某个区间”吗？",
+      "type": "choice",
+      "options": [
+        {"value": "yes", "label": "算：$(0,+\\infty)$ 也是区间，可以用区间最值法"},
+        {"value": "ends", "label": "不算：区间必须有两个端点", "feedback": "无穷区间也是区间，只是那一端没有端点值，看图像往那一端怎样变化即可。"},
+        {"value": "condition", "label": "不算：$x>0$ 是题目条件，不是取值范围", "feedback": "“当 $x>0$ 时恒成立”说的正是 $x$ 只在 $(0,+\\infty)$ 上取值。"}
+      ],
+      "answer": "yes"
+    },
+    {
+      "id": "opening-down",
+      "question": "当 $1<x<3$ 时，不等式 $-x^2+2x+a>0$ 恒成立。下面说法正确的是哪个？",
+      "type": "choice",
+      "options": [
+        {"value": "opening", "label": "开口向下，所以不能用区间最值法", "feedback": "开口方向不是前提。开口向下只是让最高点可能在顶点、最低处在端点一侧。"},
+        {"value": "discriminant", "label": "应该用判别式法，因为 $x^2$ 的系数确定非零", "feedback": "$x$ 只在 $(1,3)$ 上取值，判别式管的是整条图像，这里用不上。"},
+        {"value": "yes", "label": "能用区间最值法：看区间上的最低处，端点取不到时看取值范围的下端"}
+      ],
+      "answer": "yes"
+    },
+    {
+      "id": "exists",
+      "question": "当 $0\\le x\\le2$ 时，关于 $x$ 的不等式 $x^2-ax+1<0$ 有解。能用区间最值法吗？",
+      "type": "choice",
+      "options": [
+        {"value": "forall-only", "label": "不能：区间最值法只用于恒成立", "feedback": "有解（存在）同样只看区间上的一段图像，只是比的点换成最有利的那一个。"},
+        {"value": "yes", "label": "能：同样只看区间上的一段，比的是最低点"},
+        {"value": "sign", "label": "不能：要先确定 $a$ 的正负", "feedback": "$a$ 的正负不影响能否用这种方法；它影响对称轴的位置，后面再分情况。"}
+      ],
+      "answer": "yes"
+    }
+  ]
+}

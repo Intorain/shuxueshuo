@@ -7,6 +7,7 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
   'use strict';
   const lesson = JSON.parse(document.getElementById('practice-config').textContent);
   const methods = lesson.methods;
+  const runtimeSrc = document.currentScript?.src;
   if (document.currentScript?.src) {
     import(new URL('../learning/learning-marks.js?v=1', document.currentScript.src).href).catch(() => {});
   }
@@ -37,6 +38,7 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
     const blocked = busy;
     const paused = dialoguePause && dialoguePause.until > Date.now();
     for (const button of [...steps.querySelectorAll('button'), ...document.querySelectorAll('[data-switch-route]'), ...picker.querySelectorAll('button')]) {
+      if (button.hasAttribute('data-tip')) continue;
       if (!button.hasAttribute('data-initial-disabled')) button.dataset.initialDisabled = String(button.disabled);
       button.disabled = blocked || (paused && button.hasAttribute('data-hint')) || button.dataset.initialDisabled === 'true';
     }
@@ -338,9 +340,27 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
     const calculationEntry = confirmedPair ? node.attempt_calculations?.[confirmedPair[0]] : null;
     const calculationId = PracticeContext.slotCount(component) === 1
       ? calculationEntry : calculationEntry?.[confirmedPair?.[1]];
+    const tipLink = node.tip && state.feedback && !state.hint && !calculationId
+      ? `<button type="button" class="tip-link" data-tip="${stage}" aria-haspopup="dialog">拿不准？打开图解看看这个知识点 →</button>` : '';
     return tabs + `<p class="question" data-math-text>${escapeHTML(node.question)}</p>` + board +
       UI.controls({stage, label: node.submit_label, ready: ready(stage), feedback: calculationId ? '' : state.feedback, hint: state.hint}) +
-      template(calculationId, state, stage);
+      tipLink + template(calculationId, state, stage);
+  }
+
+  const tipIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><line x1="1" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".6"/><path d="M2.5 2.5 Q8 17 13.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  const tipButton = stage => routeNodes()[stage]?.tip
+    ? `<button type="button" class="tip-chip" data-tip="${stage}" aria-haspopup="dialog">${tipIcon}知识点</button>` : '';
+  let explain = null;
+
+  // Before the step is answered the sheet only teaches the rule; afterwards it also marks this problem's case.
+  function openTip(stage) {
+    const tip = nodeAt(stage)?.tip;
+    if (!tip || !runtimeSrc) return;
+    explain ||= import(new URL('../explain/explain.js?v=1', runtimeSrc).href);
+    explain.then(module => module.openExplainer(tip.id, {tip: stage < state.active ? tip : null, detail: false})).catch(() => {
+      explain = null;
+      announce('知识点暂时打不开，可以继续练习。');
+    });
   }
 
   function renderDisplay(stage, displayState = state, prefix = snapshot.attempt_id) {
@@ -368,7 +388,7 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
     steps.innerHTML = titles.map((title, stage) => {
       if (stage > state.active) return '';
       const done = stage < state.active;
-      return `<article class="step-card ${done ? 'done' : 'active'}" id="step-${stage}" aria-labelledby="step-title-${stage}"><header class="step-heading"><span class="step-number" aria-hidden="true">${done ? '✓' : stage + 1}</span><h2 id="step-title-${stage}" tabindex="-1">${title}</h2><span class="status">${done ? '已完成' : '进行中'}</span></header>${done ? renderDisplay(stage) : renderInteraction(stage)}${conversation(stage)}</article>`;
+      return `<article class="step-card ${done ? 'done' : 'active'}" id="step-${stage}" aria-labelledby="step-title-${stage}"><header class="step-heading"><span class="step-number" aria-hidden="true">${done ? '✓' : stage + 1}</span><h2 id="step-title-${stage}" tabindex="-1">${title}</h2>${tipButton(stage)}<span class="status">${done ? '已完成' : '进行中'}</span></header>${done ? renderDisplay(stage) : renderInteraction(stage)}${conversation(stage)}</article>`;
     }).join('');
     document.querySelector('#progress-fill').style.width = `${state.active / routeNodes().length * 100}%`;
     document.querySelector('#conversation-focus').textContent = completed() ? '本题已完成' : `正在讨论：${titles[state.active]}`;
@@ -483,6 +503,7 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
 
   steps.addEventListener('click', event => {
     const button = event.target.closest('button');
+    if (button?.hasAttribute('data-tip')) { openTip(Number(button.dataset.tip)); return; }
     if (!button || busy) return;
     if (button.hasAttribute('data-method')) sendEvent('ui', {kind: 'method', value: button.dataset.method});
     else if (button.hasAttribute('data-sub-target')) toggleTarget(button);

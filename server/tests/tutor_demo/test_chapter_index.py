@@ -40,7 +40,7 @@ def method_dialogs(home):
     ))
 
 
-@pytest.mark.parametrize("chapter", CHAPTERS)
+@pytest.mark.parametrize("chapter", ["1"])
 def test_method_dialogs_belong_to_their_group(chapter):
     home = (ROOT / f"site/{chapter}/index.html").read_text()
     blocks = [
@@ -65,19 +65,21 @@ def test_method_dialogs_belong_to_their_group(chapter):
     assert sorted(chips) == sorted(dialogs)
 
 
-def test_always_true_dialogs_teach_when_to_use_the_method():
+def test_always_true_explainers_teach_when_to_use_the_method():
     home = (ROOT / "site/2/index.html").read_text()
-    dialogs = method_dialogs(home)
-    assert len(dialogs) == 4
+    methods = re.findall(r'data-explain="(method-[a-z-]+)"', home)
+    assert len(methods) == 4
     problems = set(re.findall(r'class="problem-card" href="/2/q(\d+)/"', home))
-    for dialog_id, content in dialogs.items():
+    for method in methods:
+        content = (ROOT / f"site/assets/explain/method/{method}.js").read_text()
         judge = re.search(r'<section class="method-judge".*?</section>', content, re.S)
-        assert judge, dialog_id
+        assert judge, method
         judge = judge[0]
         signal = re.search(r"读题信号 · 第 (\d\d) 题", judge)
         assert signal and signal[1] in problems
         assert "<mark>" in judge
         assert re.findall(r'class="method-check-no"', judge)
-        targets = re.findall(r'data-method-switch="(method-[a-z]+)"', judge)
-        assert targets and dialog_id not in targets and set(targets) <= set(dialogs)
+        targets = re.findall(r'data-explain-open="(method-[a-z-]+)"', judge)
+        assert targets and method not in targets and set(targets) <= set(methods)
         assert re.search(r'class="method-figure">.*?<svg', content, re.S)
+        assert len(re.findall(r'class="method-step-no"', content)) == 3

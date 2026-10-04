@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q03 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -168,7 +168,8 @@
           "answer": "先解出 $a^2-1=0$ 的所有 $a$，再逐个代入原不等式；一次项 $-(a-1)x$ 也含 $a$。"
         },
         "submit_label": "确认判断",
-        "display": "d_degenerate-done"
+        "display": "d_degenerate-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题 $a^2-1=0$ 有两个解：$a=1$ 时变成 $-1<0$，成立；$a=-1$ 时变成 $2x-1<0$，不恒成立，舍去。"}
       },
       {
         "id": "d_position",
@@ -201,7 +202,8 @@
           "answer": "$<0$ 不允许函数值等于零，也不允许正值。开口方向由 $a^2-1$ 决定；区分“相切”和“不相交”。"
         },
         "submit_label": "确认判断",
-        "display": "d_position-done"
+        "display": "d_position-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题要 $f(x)<0$ 恒成立：开口向下（$a^2-1<0$），且与横轴没有公共点，相切也不行。"}
       },
       {
         "id": "d_delta",
@@ -234,7 +236,8 @@
           "answer": "不相交对应 $\\Delta<0$，相切对应 $\\Delta=0$。上一步不允许相切。"
         },
         "submit_label": "确认判断",
-        "display": "d_delta-done"
+        "display": "d_delta-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题不带等号，只取 $\\Delta<0$：$\\Delta=(a-1)^2+4(a^2-1)=5a^2-2a-3<0$。"}
       },
       {
         "id": "d_range",
@@ -268,7 +271,8 @@
         },
         "submit_label": "确认判断",
         "display": "d_range-done",
-        "board": "range-board"
+        "board": "range-board",
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题 $5a^2-2a-3=(5a+3)(a-1)<0$，取两根之间：$-\\frac35<a<1$；再与前提 $-1<a<1$ 取交集，仍是 $-\\frac35<a<1$。"}
       },
       {
         "id": "d_merge",
@@ -301,7 +305,8 @@
           "answer": "两种情况是“或”的关系，满足任意一种即可，合并时取并集。"
         },
         "submit_label": "确认合并",
-        "display": "d_merge-done"
+        "display": "d_merge-done",
+        "tip": {"id": "case-merge", "note": "本题情况①只留下 $a=1$，情况②得 $-\\frac35<a<1$；取并集得 $-\\frac35<a\\le1$。"}
       },
       {
         "id": "d_boundary",
@@ -356,7 +361,8 @@
         },
         "submit_label": "确认检查",
         "display": "d_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $a=-\\frac35$ 时左边是 $-\\left(\\frac45x-1\\right)^2$，在 $x=\\frac54$ 处等于 $0$，排除；$a=1$ 时是 $-1<0$，保留。"}
       }
     ]
   },

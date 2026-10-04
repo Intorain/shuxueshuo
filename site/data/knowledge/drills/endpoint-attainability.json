@@ -1,0 +1,101 @@
+{
+  "node": "endpoint-attainability",
+  "items": [
+    {
+      "id": "forall-gt-reached",
+      "given": "当 $x\\in[1,3]$ 时，$f(x)=x^2-4x+m>0$ 恒成立；最小值 $f(2)=m-4>0$，得 $m>4$。",
+      "question": "边界 $m=4$ 要保留吗？",
+      "type": "choice",
+      "options": [
+        {"value": "keep", "label": "保留：最低点只是等于 $0$", "feedback": "原题是 $>0$，等于 $0$ 不满足：$m=4$ 时 $f(x)=(x-2)^2$，$x=2$ 处等于 $0$。"},
+        {"value": "drop", "label": "排除：$m=4$ 时 $x=2$ 处左边等于 $0$，不满足 $>0$"},
+        {"value": "closed", "label": "保留：原题的区间是闭区间", "feedback": "闭区间说明最低点取得到；取得到时左边正好等于 $0$，不满足 $>0$。"}
+      ],
+      "answer": "drop"
+    },
+    {
+      "id": "forall-gt-missed",
+      "given": "当 $x\\in(1,3)$ 时，$f(x)=x^2-2x+m>0$ 恒成立；$f(x)$ 在 $(1,3)$ 上递增，下端是 $f(1)=m-1$，取不到，得边界 $m=1$。",
+      "question": "边界 $m=1$ 要保留吗？",
+      "type": "choice",
+      "options": [
+        {"value": "strict", "label": "排除：原题不带等号", "feedback": "$m=1$ 时 $f(x)=(x-1)^2$，在 $(1,3)$ 上每一点都大于 $0$；等于 $0$ 的 $x=1$ 不在范围里。"},
+        {"value": "at-one", "label": "排除：$f(1)=0$", "feedback": "$x=1$ 不在开区间 $(1,3)$ 里，不用管它。"},
+        {"value": "keep", "label": "保留：下端 $0$ 取不到，每一点都大于 $0$"}
+      ],
+      "answer": "keep"
+    },
+    {
+      "id": "forall-ge-tangent",
+      "given": "不等式 $x^2+2x+m\\ge0$ 对任意实数 $x$ 恒成立，由判别式得边界 $m=1$。",
+      "question": "边界 $m=1$ 要保留吗？",
+      "type": "choice",
+      "options": [
+        {"value": "keep", "label": "保留：$m=1$ 时为 $(x+1)^2\\ge0$，取等也满足"},
+        {"value": "touch", "label": "排除：图像与横轴有公共点", "feedback": "$\\ge0$ 允许图像碰到横轴，只是不能穿到横轴下方。"},
+        {"value": "zero", "label": "排除：$x=-1$ 时左边等于 $0$", "feedback": "原题是 $\\ge0$，等于 $0$ 也满足。"}
+      ],
+      "answer": "keep"
+    },
+    {
+      "id": "exists-gt-missed",
+      "given": "存在 $x\\in(2,4)$，使 $f(x)=x^2-4x+m>0$；$f(x)$ 在 $(2,4)$ 上递增，上端是 $f(4)=m$，取不到，得边界 $m=0$。",
+      "question": "边界 $m=0$ 要保留吗？",
+      "type": "choice",
+      "options": [
+        {"value": "near", "label": "保留：上端是 $0$，靠近 $4$ 的点满足", "feedback": "$m=0$ 时 $f(x)=x(x-4)$，在 $(2,4)$ 上都小于 $0$；上端 $0$ 取不到，没有一点大于 $0$。"},
+        {"value": "one", "label": "保留：存在问题只要一个点", "feedback": "这个点必须真的满足 $>0$；$m=0$ 时 $(2,4)$ 里没有这样的点。"},
+        {"value": "drop", "label": "排除：每一点都小于 $0$，上端 $0$ 也取不到"}
+      ],
+      "answer": "drop"
+    },
+    {
+      "id": "exists-le-reached",
+      "given": "存在 $x\\in[0,2]$，使 $x^2-2x+m\\le0$；由最小值 $f(1)=m-1\\le0$ 得边界 $m=1$。",
+      "question": "边界 $m=1$ 要保留吗？",
+      "type": "choice",
+      "options": [
+        {"value": "single", "label": "排除：只有一个点满足", "feedback": "存在问题有一个点满足就够了。"},
+        {"value": "keep", "label": "保留：$m=1$ 时 $x=1$ 处左边等于 $0$，满足 $\\le0$"},
+        {"value": "inside", "label": "排除：最低点在区间内部，不是端点", "feedback": "最低点 $x=1$ 在 $[0,2]$ 里，取得到；取得到又允许取等，就保留。"}
+      ],
+      "answer": "keep"
+    },
+    {
+      "id": "exists-ge-missed",
+      "given": "存在 $x\\in(0,1)$，使 $x+m\\ge2$；$x+m$ 的上端是 $1+m$，取不到，得边界 $m=1$。",
+      "question": "边界 $m=1$ 要保留吗？",
+      "type": "choice",
+      "options": [
+        {"value": "equal", "label": "保留：原题带等号", "feedback": "带等号还要等号那一点取得到：$m=1$ 时要 $x\\ge1$，而 $(0,1)$ 里的 $x$ 都小于 $1$。"},
+        {"value": "drop", "label": "排除：$m=1$ 时要 $x\\ge1$，$(0,1)$ 里没有这样的 $x$"},
+        {"value": "top", "label": "保留：上端 $2$ 正好等于右边", "feedback": "上端 $2$ 要在 $x=1$ 处才取到，而 $x=1$ 不在 $(0,1)$ 里。"}
+      ],
+      "answer": "drop"
+    },
+    {
+      "id": "degenerate-boundary",
+      "given": "不等式 $mx^2-mx-1<0$ 对任意实数 $x$ 恒成立；$m\\ne0$ 时由 $m<0$ 且 $\\Delta<0$ 得 $-4<m<0$。",
+      "question": "两个边界 $m=-4$、$m=0$ 分别怎样？",
+      "type": "choice",
+      "options": [
+        {"value": "both-out", "label": "都排除：原题不带等号", "feedback": "$m=0$ 时原不等式变为 $-1<0$，对所有 $x$ 成立，要保留；不能只看原题带不带等号。"},
+        {"value": "both-in", "label": "都保留", "feedback": "$m=-4$ 时为 $-(2x-1)^2<0$，$x=\\frac12$ 时左边等于 $0$，不成立。"},
+        {"value": "split", "label": "$m=-4$ 排除，$m=0$ 保留"}
+      ],
+      "answer": "split"
+    },
+    {
+      "id": "statements",
+      "question": "关于检查边界，下面哪些说法正确？",
+      "type": "multi",
+      "options": [
+        {"value": "equal-keep", "label": "原题带等号，边界一定保留", "feedback": "存在问题中，等号那一点取不到时，带等号也要排除。"},
+        {"value": "substitute", "label": "拿不准时，把边界值代回原不等式检验"},
+        {"value": "strict-drop", "label": "原题不带等号，边界一定排除", "feedback": "恒成立中，下端取不到时，不带等号的边界也能保留。"},
+        {"value": "point", "label": "要看边界时等号那一点在不在取值范围里"}
+      ],
+      "answer": ["substitute", "point"]
+    }
+  ]
+}

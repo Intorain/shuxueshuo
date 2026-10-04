@@ -1,0 +1,49 @@
+/* reciprocal-sum-function explainer; every selector is scoped to .explain-reciprocal-sum-function. */
+.explain-reciprocal-sum-function .rs-core { margin:16px 0 8px; font-size:15px; font-weight:600; line-height:1.65; }
+.explain-reciprocal-sum-function .rs-why { margin:0 0 12px; color:var(--muted); font-size:13.5px; line-height:1.7; }
+.explain-reciprocal-sum-function .rs-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-reciprocal-sum-function .rs-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-reciprocal-sum-function .rs-explorer { display:grid; gap:10px; padding:14px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-reciprocal-sum-function .rs-switch { display:inline-flex; justify-self:start; padding:3px; border:1px solid #d6e6e1; border-radius:12px; background:#fff; }
+.explain-reciprocal-sum-function .rs-switch button { padding:6px 14px; border:0; border-radius:9px; background:none; color:#46605a; font:inherit; font-size:14px; cursor:pointer; }
+.explain-reciprocal-sum-function .rs-switch button[aria-pressed="true"] { background:#e2f3ee; color:var(--teal-dark); font-weight:650; box-shadow:inset 0 0 0 1px var(--teal); }
+.explain-reciprocal-sum-function .rs-switch button:focus-visible, .explain-reciprocal-sum-function .rs-slider:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-reciprocal-sum-function .rs-graph { display:block; width:100%; max-width:560px; height:auto; margin:0 auto; touch-action:none; cursor:ew-resize; user-select:none; }
+.explain-reciprocal-sum-function .rs-plot { fill:#fff; stroke:#e0ebe8; }
+.explain-reciprocal-sum-function .rs-band { fill:#e3f4ef; }
+.explain-reciprocal-sum-function .rs-axis { fill:none; stroke:#9dafaa; stroke-width:1.3; }
+.explain-reciprocal-sum-function .rs-asymptote { stroke:#c9d8d4; stroke-width:1.2; stroke-dasharray:4 4; }
+.explain-reciprocal-sum-function .rs-asymptote-label { fill:#8aa19b; font-size:12px; }
+.explain-reciprocal-sum-function .rs-tick { fill:#46605a; font-size:12.5px; }
+.explain-reciprocal-sum-function .rs-curve { fill:none; stroke:#9cc9c0; stroke-width:2.2; }
+.explain-reciprocal-sum-function .rs-curve.neg { stroke:#b9cbc6; stroke-dasharray:5 5; }
+.explain-reciprocal-sum-function .rs-curve-on { fill:none; stroke:#087f79; stroke-width:3.6; stroke-linecap:round; }
+.explain-reciprocal-sum-function .rs-vertex { fill:#46605a; }
+.explain-reciprocal-sum-function .rs-label { fill:#33504a; font-size:12.5px; font-weight:600; }
+.explain-reciprocal-sum-function .rs-handle { fill:#b6782c; }
+.explain-reciprocal-sum-function .rs-handle-text { fill:#fff; font-size:11.5px; font-weight:600; }
+.explain-reciprocal-sum-function .rs-point { stroke:#fff; stroke-width:2; }
+.explain-reciprocal-sum-function .rs-point.low { fill:#2563a8; }
+.explain-reciprocal-sum-function .rs-point.high { fill:#c2410c; }
+.explain-reciprocal-sum-function .rs-slider { width:100%; max-width:560px; margin:0 auto; accent-color:#b6782c; }
+.explain-reciprocal-sum-function .rs-status { display:grid; gap:6px; }
+.explain-reciprocal-sum-function .rs-row { display:grid; grid-template-columns:auto 1fr; align-items:baseline; gap:2px 10px; margin:0; padding:8px 12px; border:1px solid #e0ebe8; border-radius:11px; background:#fff; font-size:14.5px; }
+.explain-reciprocal-sum-function .rs-row small { grid-column:2; color:var(--muted); font-size:12.5px; line-height:1.55; }
+.explain-reciprocal-sum-function .rs-tag { padding:1px 8px; border-radius:6px; color:#fff; font-size:12px; font-weight:600; white-space:nowrap; }
+.explain-reciprocal-sum-function .rs-tag.interval { background:#1f3b39; }
+.explain-reciprocal-sum-function .rs-tag.low { background:#2563a8; }
+.explain-reciprocal-sum-function .rs-tag.high { background:#c2410c; }
+.explain-reciprocal-sum-function .rs-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
+.explain-reciprocal-sum-function .rs-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-reciprocal-sum-function .rs-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-reciprocal-sum-function .rs-note p { margin:0 0 6px; }
+.explain-reciprocal-sum-function .rs-note > :last-child { margin-bottom:0; }
+.explain-reciprocal-sum-function .rs-link { padding:0; border:0; background:none; color:var(--teal-dark); font:inherit; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+@media(max-width:760px) {
+  .explain-reciprocal-sum-function .rs-notes { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .explain-reciprocal-sum-function .rs-core { font-size:14px; }
+  .explain-reciprocal-sum-function .rs-explorer { padding:10px 8px; }
+  .explain-reciprocal-sum-function .rs-row { padding:7px 9px; font-size:13.5px; }
+}

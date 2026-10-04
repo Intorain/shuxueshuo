@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q02 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -168,7 +168,8 @@
           "answer": "把 $k=0$ 代入原不等式：$kx^2$ 和 $2kx$ 都变为 $0$，只剩常数项 $-(0+2)$。"
         },
         "submit_label": "确认判断",
-        "display": "d_degenerate-done"
+        "display": "d_degenerate-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题 $k=0$ 时二次项消失，原不等式变成 $-2<0$，对所有 $x$ 成立，这种情况要单独算进去。"}
       },
       {
         "id": "d_position",
@@ -201,7 +202,8 @@
           "answer": "$<0$ 不允许函数值等于零，也不允许正值。开口方向由 $k$ 决定；区分“相切”和“不相交”。"
         },
         "submit_label": "确认判断",
-        "display": "d_position-done"
+        "display": "d_position-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题要 $f(x)<0$ 恒成立：只能开口向下（$k<0$），且与横轴没有公共点；相切时切点处 $f(x)=0$，不满足“$<0$”。"}
       },
       {
         "id": "d_delta",
@@ -234,7 +236,8 @@
           "answer": "不相交对应 $\\Delta<0$，相切对应 $\\Delta=0$。上一步不允许相切。"
         },
         "submit_label": "确认判断",
-        "display": "d_delta-done"
+        "display": "d_delta-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题不带等号，开口向下时只取 $\\Delta<0$：$\\Delta=(2k)^2+4k(k+2)=8k^2+8k<0$。"}
       },
       {
         "id": "d_range",
@@ -268,7 +271,8 @@
         },
         "submit_label": "确认判断",
         "display": "d_range-done",
-        "board": "range-board"
+        "board": "range-board",
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题 $8k^2+8k=8k(k+1)<0$，取两根之间：$-1<k<0$；再与这种情况的前提 $k<0$ 取交集，仍是 $-1<k<0$。"}
       },
       {
         "id": "d_merge",
@@ -301,7 +305,8 @@
           "answer": "两种情况是“或”的关系，满足任意一种即可，合并时取并集。"
         },
         "submit_label": "确认合并",
-        "display": "d_merge-done"
+        "display": "d_merge-done",
+        "tip": {"id": "case-merge", "note": "本题情况①得 $k=0$，情况②得 $-1<k<0$；两种情况是“或”的关系，取并集得 $-1<k\\le0$。"}
       },
       {
         "id": "d_boundary",
@@ -356,7 +361,8 @@
         },
         "submit_label": "确认检查",
         "display": "d_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $k=-1$ 时左边是 $-(x+1)^2$，在 $x=-1$ 处等于 $0$，不满足“$<0$”，排除；$k=0$ 时是 $-2<0$，保留。"}
       }
     ]
   },

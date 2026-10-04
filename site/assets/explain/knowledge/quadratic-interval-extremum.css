@@ -1,0 +1,62 @@
+/* quadratic-interval-extremum explainer; every selector is scoped to .explain-quadratic-interval-extremum. */
+.explain-quadratic-interval-extremum .qi-core { margin:16px 0 12px; font-size:15px; font-weight:600; line-height:1.65; }
+.explain-quadratic-interval-extremum .qi-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-quadratic-interval-extremum .qi-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-quadratic-interval-extremum .qi-explorer { display:grid; gap:10px; padding:14px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-quadratic-interval-extremum .qi-switches { display:flex; flex-wrap:wrap; gap:8px 12px; }
+.explain-quadratic-interval-extremum .qi-switch { display:inline-flex; padding:3px; border:1px solid #d6e6e1; border-radius:12px; background:#fff; }
+.explain-quadratic-interval-extremum .qi-switch button { padding:6px 12px; border:0; border-radius:9px; background:none; color:#46605a; font:inherit; font-size:14px; cursor:pointer; }
+.explain-quadratic-interval-extremum .qi-switch button[aria-pressed="true"] { background:#e2f3ee; color:var(--teal-dark); font-weight:650; box-shadow:inset 0 0 0 1px var(--teal); }
+.explain-quadratic-interval-extremum .qi-switch button:focus-visible, .explain-quadratic-interval-extremum .qi-slider:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-quadratic-interval-extremum .qi-graph { display:block; width:100%; max-width:560px; height:auto; margin:0 auto; touch-action:none; cursor:ew-resize; user-select:none; }
+.explain-quadratic-interval-extremum .qi-plot { fill:#fff; stroke:#e0ebe8; }
+.explain-quadratic-interval-extremum .qi-band { fill:#e3f4ef; }
+.explain-quadratic-interval-extremum .qi-band-label { fill:#2f7d70; font-size:12.5px; }
+.explain-quadratic-interval-extremum .qi-axis { fill:none; stroke:#9dafaa; stroke-width:1.3; }
+.explain-quadratic-interval-extremum .qi-tick { fill:#46605a; font-size:13.5px; }
+.explain-quadratic-interval-extremum .qi-mid { stroke:#46605a; stroke-width:1.6; }
+.explain-quadratic-interval-extremum .qi-curve-outside { fill:none; stroke:#b9cbc6; stroke-width:2; stroke-dasharray:5 5; }
+.explain-quadratic-interval-extremum .qi-curve { fill:none; stroke:#087f79; stroke-width:3.4; stroke-linecap:round; }
+.explain-quadratic-interval-extremum .qi-end { fill:#087f79; }
+.explain-quadratic-interval-extremum .qi-end.open { fill:#fff; stroke:#087f79; stroke-width:1.6; }
+.explain-quadratic-interval-extremum .qi-sym { stroke:#b6782c; stroke-width:1.5; stroke-dasharray:4 4; }
+.explain-quadratic-interval-extremum .qi-handle { fill:#b6782c; }
+.explain-quadratic-interval-extremum .qi-handle-text { fill:#fff; font-size:11.5px; font-weight:600; }
+.explain-quadratic-interval-extremum .qi-point { stroke:#fff; stroke-width:2; }
+.explain-quadratic-interval-extremum .qi-point.low { fill:#2563a8; }
+.explain-quadratic-interval-extremum .qi-point.high { fill:#c2410c; }
+.explain-quadratic-interval-extremum .qi-point.open { fill:#fff; stroke-width:2.4; }
+.explain-quadratic-interval-extremum .qi-point.low.open { stroke:#2563a8; }
+.explain-quadratic-interval-extremum .qi-point.high.open { stroke:#c2410c; }
+.explain-quadratic-interval-extremum .qi-slider { width:100%; max-width:560px; margin:0 auto; accent-color:#b6782c; }
+.explain-quadratic-interval-extremum .qi-status { display:grid; gap:6px; }
+.explain-quadratic-interval-extremum .qi-row { display:grid; grid-template-columns:auto 1fr; align-items:baseline; gap:2px 10px; margin:0; padding:8px 12px; border:1px solid #e0ebe8; border-radius:11px; background:#fff; font-size:14.5px; }
+.explain-quadratic-interval-extremum .qi-row small { grid-column:2; color:var(--muted); font-size:12.5px; line-height:1.55; }
+.explain-quadratic-interval-extremum .qi-tag { padding:1px 8px; border-radius:6px; color:#fff; font-size:12px; font-weight:600; white-space:nowrap; }
+.explain-quadratic-interval-extremum .qi-tag.low { background:#2563a8; }
+.explain-quadratic-interval-extremum .qi-tag.high { background:#c2410c; }
+.explain-quadratic-interval-extremum .qi-table { width:100%; margin:14px 0 0; border-collapse:separate; border-spacing:0; border:1px solid #e0ebe8; border-radius:14px; overflow:hidden; font-size:14px; }
+.explain-quadratic-interval-extremum .qi-table caption { padding:0 0 6px; color:#33504a; font-weight:700; text-align:left; }
+.explain-quadratic-interval-extremum .qi-table th, .explain-quadratic-interval-extremum .qi-table td { padding:8px 12px; border-bottom:1px solid #e0ebe8; text-align:left; vertical-align:top; }
+.explain-quadratic-interval-extremum .qi-table tbody tr:last-child > * { border-bottom:0; }
+.explain-quadratic-interval-extremum .qi-table thead th { background:#f3f8f7; color:#46605a; font-size:13px; font-weight:600; }
+.explain-quadratic-interval-extremum .qi-table tbody th { color:#33504a; white-space:nowrap; }
+.explain-quadratic-interval-extremum .qi-table td { font-weight:650; }
+.explain-quadratic-interval-extremum .qi-table td small { display:block; color:var(--muted); font-size:12.5px; font-weight:400; }
+.explain-quadratic-interval-extremum .qi-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+.explain-quadratic-interval-extremum .qi-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
+.explain-quadratic-interval-extremum .qi-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-quadratic-interval-extremum .qi-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-quadratic-interval-extremum .qi-note p { margin:0 0 6px; }
+.explain-quadratic-interval-extremum .qi-note > :last-child { margin-bottom:0; }
+.explain-quadratic-interval-extremum .qi-link { padding:0; border:0; background:none; color:var(--teal-dark); font:inherit; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+@media(max-width:760px) {
+  .explain-quadratic-interval-extremum .qi-notes { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .explain-quadratic-interval-extremum .qi-core { font-size:14px; }
+  .explain-quadratic-interval-extremum .qi-explorer { padding:10px 8px; }
+  .explain-quadratic-interval-extremum .qi-switch button { padding:6px 9px; font-size:13px; }
+  .explain-quadratic-interval-extremum .qi-row { padding:7px 9px; font-size:13.5px; }
+  .explain-quadratic-interval-extremum .qi-table th, .explain-quadratic-interval-extremum .qi-table td { padding:7px 8px; font-size:13px; }
+}

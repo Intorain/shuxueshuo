@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7f5">
+  <meta name="generator" content="tools/build-knowledge-pages.mjs">
+  <meta name="description" content="把恒成立或存在问题转化为函数在指定区间上的最值或值域，比较顶点与区间的位置，检查边界能否取到。">
+  <meta property="og:title" content="区间最值法 · 方法 · 数学说">
+  <meta property="og:description" content="把恒成立或存在问题转化为函数在指定区间上的最值或值域，比较顶点与区间的位置，检查边界能否取到。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://shuxueshuo.com/knowledge/method-interval-extremum/">
+  <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
+  <link rel="canonical" href="https://shuxueshuo.com/knowledge/method-interval-extremum/">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/knowledge/node.css?v=1">
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <title>区间最值法 · 方法 · 数学说</title>
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js?v=12" defer></script>
+  <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
+  <script type="module" src="/knowledge/node.js?v=1"></script>
+</head>
+<body class="kn-page">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="topbar">
+    <nav class="topbar-inner" aria-label="站内导航">
+      <a class="brand" href="/" aria-label="数学说首页"><span class="brand-mark" aria-hidden="true">数</span>数学说</a>
+      <a class="home-link" href="/">首页 <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="workspace" id="main">
+    <section class="hero kn-hero" aria-labelledby="page-title">
+      <p class="eyebrow"><span>高中数学</span><span class="eyebrow-sep" aria-hidden="true">/</span><a href="/knowledge/#method-interval-extremum">知识图谱</a><span class="eyebrow-sep" aria-hidden="true">/</span><span aria-current="page">方法</span></p>
+      <h1 id="page-title" class="kn-title"><span class="title-mark">区间最值法</span></h1>
+      <p class="lead">把恒成立或存在问题转化为函数在指定区间上的最值或值域，比较顶点与区间的位置，检查边界能否取到。</p>
+      
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-explain-title">
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 5 题</button></div>
+      <div class="kn-explain"><div data-explainer="method-interval-extremum"><p class="kn-none">图解加载中…</p></div></div>
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-steps-title">
+      <h2 id="kn-steps-title">解题步骤</h2>
+      <div class="kn-topics">
+      <article class="kn-topic">
+        <h3><a href="/2/">一元二次不等式恒成立问题</a></h3>
+        <ol class="kn-flow"><li class="kn-flow-self">判断适用条件</li><li><a class="kn-chip knowledge" href="/knowledge/extremum-transfer/">恒成立、存在成立与函数值域的关系</a></li><li><a class="kn-chip knowledge" href="/knowledge/quadratic-interval-extremum/">二次函数在区间上的最值与值域</a></li><li><a class="kn-chip knowledge" href="/knowledge/case-merge/">分类讨论与结果合并</a></li><li><a class="kn-chip knowledge" href="/knowledge/endpoint-attainability/">边界值的可达性</a></li></ol>
+      </article>
+      </div>
+    </section>
+
+    <script type="application/json" id="kn-drill-data">{"label":"区间最值法","items":[{"id":"closed-interval","question":"当 $-1\\le x\\le1$ 时，不等式 $x^2-ax-2\u003c0$ 恒成立。能用区间最值法吗？","type":"choice","options":[{"value":"discriminant","label":"不能，应该用判别式法：$x^2$ 的系数确定非零","feedback":"判别式管的是整条抛物线；这里只要求 $-1\\le x\\le1$ 时成立，区间外的部分不用管。"},{"value":"yes","label":"能：$x$ 只在区间 $[-1,1]$ 上取值，看区间上的最高点"},{"value":"opening","label":"不能：开口向上，没有最大值","feedback":"闭区间上的一段抛物线一定有最高点和最低点。开口方向不是前提，它只决定最值在顶点还是端点取到。"}],"answer":"yes"},{"id":"all-real-numbers","question":"不等式 $x^2+ax+4>0$ 对任意实数 $x$ 恒成立。哪种方法最直接？","type":"choice","options":[{"value":"interval","label":"区间最值法：求 $f(x)$ 在实数范围内的最小值","feedback":"也能做，最小值在顶点取到；但 $x$ 取全体实数时，直接看整条抛物线与横轴的位置、列 $\\Delta$ 更快。"},{"value":"swap","label":"更换主元法：把 $a$ 当主元","feedback":"更换主元法用于恒成立针对的是另一个给出范围的字母；这里恒成立针对的就是 $x$。"},{"value":"discriminant","label":"判别式法：看整条图像与横轴的位置"}],"answer":"discriminant"},{"id":"infinite-interval","question":"当 $x>0$ 时，不等式 $x^2-mx+1\\ge0$ 恒成立。$x$ 的取值范围算“某个区间”吗？","type":"choice","options":[{"value":"yes","label":"算：$(0,+\\infty)$ 也是区间，可以用区间最值法"},{"value":"ends","label":"不算：区间必须有两个端点","feedback":"无穷区间也是区间，只是那一端没有端点值，看图像往那一端怎样变化即可。"},{"value":"condition","label":"不算：$x>0$ 是题目条件，不是取值范围","feedback":"“当 $x>0$ 时恒成立”说的正是 $x$ 只在 $(0,+\\infty)$ 上取值。"}],"answer":"yes"},{"id":"opening-down","question":"当 $1\u003cx\u003c3$ 时，不等式 $-x^2+2x+a>0$ 恒成立。下面说法正确的是哪个？","type":"choice","options":[{"value":"opening","label":"开口向下，所以不能用区间最值法","feedback":"开口方向不是前提。开口向下只是让最高点可能在顶点、最低处在端点一侧。"},{"value":"discriminant","label":"应该用判别式法，因为 $x^2$ 的系数确定非零","feedback":"$x$ 只在 $(1,3)$ 上取值，判别式管的是整条图像，这里用不上。"},{"value":"yes","label":"能用区间最值法：看区间上的最低处，端点取不到时看取值范围的下端"}],"answer":"yes"},{"id":"exists","question":"当 $0\\le x\\le2$ 时，关于 $x$ 的不等式 $x^2-ax+1\u003c0$ 有解。能用区间最值法吗？","type":"choice","options":[{"value":"forall-only","label":"不能：区间最值法只用于恒成立","feedback":"有解（存在）同样只看区间上的一段图像，只是比的点换成最有利的那一个。"},{"value":"yes","label":"能：同样只看区间上的一段，比的是最低点"},{"value":"sign","label":"不能：要先确定 $a$ 的正负","feedback":"$a$ 的正负不影响能否用这种方法；它影响对称轴的位置，后面再分情况。"}],"answer":"yes"}]}</script>
+
+    <footer class="chapter-footer">
+      <span>数学说 · 知识图谱</span>
+      <a href="https://shuxueshuo.com/knowledge/method-interval-extremum/">shuxueshuo.com/knowledge/method-interval-extremum</a>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "node": "method-variable-swap",
+  "items": [
+    {
+      "id": "choose-variable",
+      "question": "对任意 $a\\in[-1,2]$，不等式 $x^2+ax-3<0$ 恒成立，求 $x$ 的取值范围。应把哪个字母当主元？",
+      "type": "choice",
+      "options": [
+        {"value": "x", "label": "$x$：不等式是关于 $x$ 的二次式", "feedback": "要求的是 $x$ 的范围，恒成立针对的是给出范围的 $a$；把 $a$ 当自变量、$x$ 当常数。"},
+        {"value": "a", "label": "$a$：恒成立针对的是给出范围的 $a$"},
+        {"value": "either", "label": "哪个都行", "feedback": "主元必须是恒成立针对的那个字母，也就是给出范围的 $a$。"}
+      ],
+      "answer": "a"
+    },
+    {
+      "id": "linear-form",
+      "given": "对任意 $a\\in[-1,2]$，不等式 $x^2+ax-3<0$ 恒成立。",
+      "question": "固定 $x$ 后，$x^2+ax-3$ 关于 $a$ 是什么形式？",
+      "type": "choice",
+      "options": [
+        {"value": "quadratic", "label": "二次式", "feedback": "关于 $a$ 只数 $a$ 的次数，$x^2$ 是常数项。"},
+        {"value": "positive", "label": "一次函数，斜率一定为正", "feedback": "斜率是 $x$，正负取决于 $x$；$x=0$ 时还会退化为常数。"},
+        {"value": "linear", "label": "一次形式 $x\\cdot a+(x^2-3)$，$x=0$ 时退化为常数"}
+      ],
+      "answer": "linear"
+    },
+    {
+      "id": "check-both-ends",
+      "question": "一次形式 $g(a)=ka+b$ 在 $a\\in[-1,2]$ 上恒小于 $0$，等价于哪个条件？",
+      "type": "choice",
+      "options": [
+        {"value": "both", "label": "$g(-1)<0$ 且 $g(2)<0$"},
+        {"value": "coefficients", "label": "$k<0$ 且 $b<0$", "feedback": "斜率和截距不是区间上的函数值：比如 $g(a)=-5a-1$ 在 $a=-1$ 处等于 $4$。一次形式的最值在两端取到，只看两个端点值。"},
+        {"value": "either", "label": "$g(-1)<0$ 或 $g(2)<0$", "feedback": "“或”只保证一端，另一端仍可能不小于 $0$；恒成立要两端都满足。"}
+      ],
+      "answer": "both"
+    },
+    {
+      "id": "no-swap-needed",
+      "question": "对任意实数 $x$，不等式 $x^2+ax+1>0$ 恒成立，求 $a$ 的取值范围。需要更换主元吗？",
+      "type": "choice",
+      "options": [
+        {"value": "swap", "label": "需要：把 $a$ 当主元，变成一次函数", "feedback": "主元是恒成立针对的字母 $x$；$a$ 是要求范围的字母，不能当主元。"},
+        {"value": "no", "label": "不需要：恒成立针对的 $x$ 本来就是自变量，用判别式法"},
+        {"value": "either", "label": "两种都行：$x$ 和 $a$ 都可以当主元", "feedback": "主元必须是恒成立针对的字母，这里就是 $x$，不用换。"}
+      ],
+      "answer": "no"
+    },
+    {
+      "id": "quadratic-in-variable",
+      "question": "对任意 $m\\in[0,2]$，不等式 $m^2-2xm+1>0$ 恒成立，求 $x$ 的取值范围。把 $m$ 当主元后，能只看 $m=0$ 和 $m=2$ 两端吗？",
+      "type": "choice",
+      "options": [
+        {"value": "ends", "label": "能：主元在闭区间上，最值在端点取到", "feedback": "关于 $m$ 是开口向上的二次式，最小值可能在顶点 $m=x$ 取到。比如 $x=1$：两端的值都是 $1>0$，但 $m=1$ 时式子等于 $0$，不满足。"},
+        {"value": "constant", "label": "不能：$x$ 是要求范围的字母，不能当常数", "feedback": "固定 $x$ 当常数正是更换主元的做法；问题在于关于 $m$ 不是一次形式。"},
+        {"value": "no", "label": "不能只看两端：关于 $m$ 开口向上，对称轴 $m=x$ 可能落在区间里，最小值在顶点"}
+      ],
+      "answer": "no"
+    }
+  ]
+}

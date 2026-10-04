@@ -1,0 +1,160 @@
+{
+  "id": "quadratic-always",
+  "label": "一元二次不等式恒成立问题",
+  "path": "/2/",
+  "nodes": [
+    "method-discriminant",
+    "method-interval-extremum",
+    "method-separation",
+    "method-variable-swap",
+    "method-complete-square",
+    "extremum-transfer",
+    "quadratic-function-properties",
+    "quadratic-inequality-solve",
+    "quadratic-interval-extremum",
+    "linear-interval-extremum",
+    "reciprocal-sum-function",
+    "function-monotonicity",
+    "inequality-properties",
+    "case-merge",
+    "endpoint-attainability"
+  ],
+  "methods": [
+    {"node": "method-discriminant", "route": "discriminant", "group": "group-discriminant", "sequence": ["quadratic-function-properties", "quadratic-inequality-solve", "case-merge", "endpoint-attainability"],
+      "examples": [{"problem": "quadratic-always-q01", "note": "系数确定"}, {"problem": "quadratic-always-q02", "note": "系数含参"}]},
+    {"node": "method-interval-extremum", "route": "interval", "group": "group-interval", "sequence": ["extremum-transfer", "quadratic-interval-extremum", "case-merge", "endpoint-attainability"],
+      "examples": [{"problem": "quadratic-always-q04", "note": "闭区间恒成立"}, {"problem": "quadratic-always-q05", "note": "开区间有解"}]},
+    {"node": "method-separation", "route": "extremum", "group": "group-separation", "sequence": ["inequality-properties", "extremum-transfer", "reciprocal-sum-function", "method-complete-square", "quadratic-function-properties", "function-monotonicity", "quadratic-inequality-solve", "endpoint-attainability"],
+      "examples": [{"problem": "quadratic-always-q06", "note": "除以负数"}, {"problem": "quadratic-always-q07", "note": "除以正数"}]},
+    {"node": "method-variable-swap", "route": "variable", "group": "group-variable", "sequence": ["extremum-transfer", "linear-interval-extremum", "quadratic-inequality-solve", "case-merge", "endpoint-attainability"],
+      "examples": [{"problem": "quadratic-always-q08", "note": "斜率恒正"}, {"problem": "quadratic-always-q09", "note": "斜率不定"}]}
+  ],
+  "problems": {
+    "quadratic-always-q01": {"label": "Q01", "path": "/2/q01/", "routes": {
+      "discriminant": {
+        "d_basis": ["method-discriminant"],
+        "d_rewrite": [],
+        "d_position": ["quadratic-function-properties"],
+        "d_delta": ["quadratic-function-properties"],
+        "d_range": ["quadratic-inequality-solve"],
+        "d_boundary": ["endpoint-attainability"]
+      },
+      "extremum": {
+        "e_basis": ["method-separation"],
+        "e_condition": ["extremum-transfer"],
+        "e_extremum": ["method-complete-square", "quadratic-function-properties"],
+        "e_range": ["quadratic-inequality-solve"],
+        "e_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q02": {"label": "Q02", "path": "/2/q02/", "routes": {
+      "discriminant": {
+        "d_basis": ["method-discriminant"],
+        "d_degenerate": ["quadratic-function-properties"],
+        "d_position": ["quadratic-function-properties"],
+        "d_delta": ["quadratic-function-properties"],
+        "d_range": ["quadratic-inequality-solve", "case-merge"],
+        "d_merge": ["case-merge"],
+        "d_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q03": {"label": "Q03", "path": "/2/q03/", "routes": {
+      "discriminant": {
+        "d_basis": ["method-discriminant"],
+        "d_degenerate": ["quadratic-function-properties"],
+        "d_position": ["quadratic-function-properties"],
+        "d_delta": ["quadratic-function-properties"],
+        "d_range": ["quadratic-inequality-solve", "case-merge"],
+        "d_merge": ["case-merge"],
+        "d_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q04": {"label": "Q04", "path": "/2/q04/", "routes": {
+      "interval": {
+        "i_basis": ["method-interval-extremum"],
+        "i_condition": ["extremum-transfer"],
+        "i_extremum": ["quadratic-interval-extremum"],
+        "i_range": ["case-merge"],
+        "i_boundary": ["endpoint-attainability"]
+      },
+      "extremum": {
+        "e_basis": ["method-separation"],
+        "e_separate": ["inequality-properties"],
+        "e_condition": ["extremum-transfer"],
+        "e_graph": ["reciprocal-sum-function"],
+        "e_extremum": ["reciprocal-sum-function"],
+        "e_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q05": {"label": "Q05", "path": "/2/q05/", "routes": {
+      "interval": {
+        "i_basis": ["method-interval-extremum"],
+        "i_condition": ["extremum-transfer"],
+        "i_extremum": ["quadratic-interval-extremum"],
+        "i_range": ["case-merge"],
+        "i_boundary": ["endpoint-attainability"]
+      },
+      "extremum": {
+        "e_basis": ["method-separation"],
+        "e_separate": ["inequality-properties"],
+        "e_condition": ["extremum-transfer"],
+        "e_graph": ["reciprocal-sum-function"],
+        "e_extremum": ["reciprocal-sum-function"],
+        "e_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q06": {"label": "Q06", "path": "/2/q06/", "routes": {
+      "extremum": {
+        "e_basis": ["method-separation"],
+        "e_separate": ["inequality-properties"],
+        "e_condition": ["extremum-transfer"],
+        "e_graph": ["reciprocal-sum-function"],
+        "e_extremum": ["reciprocal-sum-function"],
+        "e_boundary": ["endpoint-attainability"]
+      },
+      "interval": {
+        "i_basis": ["method-interval-extremum"],
+        "i_condition": ["extremum-transfer"],
+        "i_extremum": ["quadratic-interval-extremum"],
+        "i_range": ["case-merge"],
+        "i_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q07": {"label": "Q07", "path": "/2/q07/", "routes": {
+      "extremum": {
+        "e_basis": ["method-separation"],
+        "e_separate": ["inequality-properties"],
+        "e_condition": ["extremum-transfer"],
+        "e_extremum": ["function-monotonicity", "quadratic-function-properties", "inequality-properties"],
+        "e_boundary": ["endpoint-attainability"]
+      },
+      "interval": {
+        "i_basis": ["method-interval-extremum"],
+        "i_condition": ["extremum-transfer"],
+        "i_extremum": ["quadratic-interval-extremum"],
+        "i_range": ["case-merge"],
+        "i_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q08": {"label": "Q08", "path": "/2/q08/", "routes": {
+      "variable": {
+        "v_basis": ["method-variable-swap"],
+        "v_rewrite": ["method-variable-swap"],
+        "v_condition": ["extremum-transfer"],
+        "v_extremum": ["linear-interval-extremum"],
+        "v_range": ["quadratic-inequality-solve"],
+        "v_boundary": ["endpoint-attainability"]
+      }
+    }},
+    "quadratic-always-q09": {"label": "Q09", "path": "/2/q09/", "routes": {
+      "variable": {
+        "v_basis": ["method-variable-swap"],
+        "v_rewrite": ["method-variable-swap"],
+        "v_condition": ["extremum-transfer"],
+        "v_extremum": ["linear-interval-extremum"],
+        "v_range": ["quadratic-inequality-solve", "case-merge"],
+        "v_boundary": ["endpoint-attainability"]
+      }
+    }}
+  }
+}

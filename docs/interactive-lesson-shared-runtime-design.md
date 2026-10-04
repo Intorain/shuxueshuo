@@ -137,6 +137,18 @@ Q04 的区间最值法按新的标准步骤表编写：“转化为最值条件�
 
 新专题的题型、教学节点与使用表见[恒成立题库设计](quadratic-inequality-always-true-practice-design.md)。下面 Q01–Q30 的数量仍只统计基本不等式专题，不包括 `/2/`。
 
+### 步骤知识点弹层（2026-10-04）
+
+节点可选配置 `tip:{id, case, note}`，在步骤标题右侧显示“知识点”按钮；该步答错（有反馈、未开提示、不是计算题）时，反馈下方另有“拿不准？打开图解看看这个知识点 →”。两者都打开同一个弹层。`id` 选择知识点或方法（须有图解）；`case` 只有 `extremum-transfer` 使用，是总结表中本题对应的一格，其他图解不写；`note` 以“本题”开头，写本题在这一步怎样用到这个知识点，本步完成后才显示在图解顶部（图解里放在“本题”标签后，去掉开头的“本题”）。
+
+弹层是共用的图解外壳 `site/assets/explain/explain.js`（ES module，导出 `openExplainer(id, {tip, topic, detail})`），每个知识点一份图解模块 `site/assets/explain/knowledge/<节点 ID>.js`。`runtime.js` 在第一次点击时按自身地址动态 `import('../explain/explain.js?v=…')`，不点就不加载；加载失败时只播报“知识点暂时打不开”，不影响练习。外壳样式 `explain.css` 与图解自己的样式表都在首次打开时插入，只依赖宿主页的 `--ink`、`--muted`、`--teal`、`--teal-dark`、`--line`、`--paper` 变量，因此专题目录页、知识图谱页也能打开同一份图解；`practice.css` 只保留步骤标题按钮与错答入口的样式。页面上只有一个 `<dialog class="explain-sheet">`，每次打开重新渲染并回到顶部；手机上是底部弹出的面板。本步未完成时 `tip` 为空，只给通用讲解；本步完成后才传 `tip`，显示“本题”说明并标出 `case` 那一格。练习页传 `detail: false`，图解底部不加“查看详情”链接，避免把学生从正在做的题引走。知识点按钮不计入作答，答题忙碌状态不禁用它。
+
+首个知识点 `extremum-transfer`（恒成立／存在 → 最值条件）挂在 `/2/` 的 11 个 `*_condition` 节点上，弹层含可拖动水平线的交互图、四格表、口诀和两段补充。一致性测试检查每个 `*_condition` 节点都有该 `tip`，`case` 的量词与题干一致、对应的格子存在，`note` 以“本题”开头。后续知识点清单见[恒成立题库设计](quadratic-inequality-always-true-practice-design.md)的“步骤知识点清单”。
+
+`/2/` 目录页的方法图解也用同一个外壳（`site/assets/explain/method/`）。图解模块的设计见[知识图谱页面设计](knowledge-graph-pages-design.md)第 6 节。
+
+题页只有整题练习。按知识点练在知识点详情页的“刷题”弹层里，做的是作者另写的小题，不经过题页运行时（[知识图谱页面设计](knowledge-graph-pages-design.md)第 7 节）。曾经做过的“题页自动走到某一步”的专练模式已在发布前删除。
+
 ### 当前公共组件清单（2026-09-29）
 
 统计范围为 `site/1/q01/` 至 `site/1/q30/` 的练习系统，以 `components.js` 导出、`runtime.js` 接线和各题 `practice-config` 为准，不包含另一套几何／二次函数编译题解页的组件。

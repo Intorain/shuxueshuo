@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7f5">
+  <meta name="generator" content="tools/build-knowledge-pages.mjs">
+  <meta name="description" content="判断二次式在全体实数上的符号：先排查二次项系数为 0，再结合开口与判别式建立条件。">
+  <meta property="og:title" content="判别式法 · 方法 · 数学说">
+  <meta property="og:description" content="判断二次式在全体实数上的符号：先排查二次项系数为 0，再结合开口与判别式建立条件。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://shuxueshuo.com/knowledge/method-discriminant/">
+  <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
+  <link rel="canonical" href="https://shuxueshuo.com/knowledge/method-discriminant/">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/knowledge/node.css?v=1">
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <title>判别式法 · 方法 · 数学说</title>
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js?v=12" defer></script>
+  <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
+  <script type="module" src="/knowledge/node.js?v=1"></script>
+</head>
+<body class="kn-page">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="topbar">
+    <nav class="topbar-inner" aria-label="站内导航">
+      <a class="brand" href="/" aria-label="数学说首页"><span class="brand-mark" aria-hidden="true">数</span>数学说</a>
+      <a class="home-link" href="/">首页 <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="workspace" id="main">
+    <section class="hero kn-hero" aria-labelledby="page-title">
+      <p class="eyebrow"><span>高中数学</span><span class="eyebrow-sep" aria-hidden="true">/</span><a href="/knowledge/#method-discriminant">知识图谱</a><span class="eyebrow-sep" aria-hidden="true">/</span><span aria-current="page">方法</span></p>
+      <h1 id="page-title" class="kn-title"><span class="title-mark">判别式法</span></h1>
+      <p class="lead">判断二次式在全体实数上的符号：先排查二次项系数为 0，再结合开口与判别式建立条件。</p>
+      <dl class="kn-relations"><div><dt>核心知识依据</dt><dd><a class="kn-chip knowledge" href="/knowledge/quadratic-function-properties/">二次函数的图像与性质</a></dd></div></dl>
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-explain-title">
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 5 题</button></div>
+      <div class="kn-explain"><div data-explainer="method-discriminant"><p class="kn-none">图解加载中…</p></div></div>
+    </section>
+
+    <section class="kn-section" aria-labelledby="kn-steps-title">
+      <h2 id="kn-steps-title">解题步骤</h2>
+      <div class="kn-topics">
+      <article class="kn-topic">
+        <h3><a href="/2/">一元二次不等式恒成立问题</a></h3>
+        <ol class="kn-flow"><li class="kn-flow-self">判断适用条件</li><li><a class="kn-chip knowledge" href="/knowledge/quadratic-function-properties/">二次函数的图像与性质</a></li><li><a class="kn-chip knowledge" href="/knowledge/quadratic-inequality-solve/">一元二次不等式的解法</a></li><li><a class="kn-chip knowledge" href="/knowledge/case-merge/">分类讨论与结果合并</a></li><li><a class="kn-chip knowledge" href="/knowledge/endpoint-attainability/">边界值的可达性</a></li></ol>
+      </article>
+      </div>
+    </section>
+
+    <script type="application/json" id="kn-drill-data">{"label":"判别式法","items":[{"id":"fixed-coefficient","question":"不等式 $2x^2-ax+1>0$ 对任意实数 $x$ 恒成立。能直接用判别式法吗？","type":"choice","options":[{"value":"discuss","label":"要先讨论 $x^2$ 的系数为 $0$ 的情形","feedback":"$x^2$ 的系数是 $2$，不含参数，不会为 $0$；参数 $a$ 在一次项里，不影响能否用判别式。"},{"value":"yes","label":"能：$x$ 取全体实数，$x^2$ 的系数 $2$ 确定非零"},{"value":"no","label":"不能：含参数的不等式不能用判别式","feedback":"参数在哪一项都可以。判别式法只看两件事：$x$ 是否取全体实数，$x^2$ 的系数是否确定非零。"}],"answer":"yes"},{"id":"coefficient-maybe-zero","question":"不等式 $(m-1)x^2+mx+m>0$ 对任意实数 $x$ 恒成立。怎样用判别式法？","type":"choice","options":[{"value":"direct","label":"直接用开口方向和 $\\Delta$ 列条件","feedback":"$x^2$ 的系数 $m-1$ 可能为 $0$，那时不再是二次式，开口和 $\\Delta$ 都无从谈起。"},{"value":"no","label":"不能用判别式法","feedback":"$x$ 取全体实数；把系数为 $0$ 的情形单独讨论后，其余情形仍可用判别式。"},{"value":"discuss","label":"先讨论 $m-1=0$，再对 $m\\ne1$ 用开口方向和 $\\Delta$"}],"answer":"discuss"},{"id":"interval-not-enough","question":"当 $0\\le x\\le2$ 时，不等式 $x^2-2ax+3>0$ 恒成立。能用“$\\Delta\u003c0$”作为条件吗？","type":"choice","options":[{"value":"no","label":"不能：$x$ 只在区间上取值，只看判别式不够"},{"value":"yes","label":"能：$x^2$ 的系数是 $1$，确定非零","feedback":"系数没问题，但 $x$ 只在 $[0,2]$ 上取值。$\\Delta$ 管的是整条抛物线，区间外的部分在横轴下方也不要紧，用 $\\Delta\u003c0$ 会漏掉一些符合要求的 $a$。"},{"value":"le","label":"能，但要改成 $\\Delta\\le0$","feedback":"问题不在等号：$x$ 只在 $[0,2]$ 上取值，而判别式管的是整条图像。"}],"answer":"no"},{"id":"tangent-allowed","question":"不等式 $x^2+ax+1\\ge0$ 对任意实数 $x$ 恒成立。用判别式法应列出哪个条件？","type":"choice","options":[{"value":"lt","label":"$\\Delta=a^2-4\u003c0$","feedback":"原不等式带等号，图像可以与横轴相切，$\\Delta=0$ 也满足。"},{"value":"ge","label":"$\\Delta=a^2-4\\ge0$","feedback":"$\\Delta>0$ 时抛物线与横轴有两个交点，两点之间的一段在横轴下方，不满足 $\\ge0$。"},{"value":"le","label":"$\\Delta=a^2-4\\le0$"}],"answer":"le"},{"id":"opening-matters","given":"已知 $a\\ne0$。","question":"不等式 $ax^2+2x+1\u003c0$ 对任意实数 $x$ 恒成立，应满足哪个条件？","type":"choice","options":[{"value":"up","label":"$a>0$ 且 $\\Delta\u003c0$","feedback":"开口向上时，抛物线往两边无限升高，不可能整条在横轴下方。"},{"value":"down","label":"$a\u003c0$ 且 $\\Delta\u003c0$"},{"value":"delta","label":"只要 $\\Delta=4-4a\u003c0$","feedback":"$\\Delta\u003c0$ 只说明图像与横轴没有交点；开口向上时整条图像在横轴上方，不满足 $\u003c0$，所以还要 $a\u003c0$。"}],"answer":"down"}]}</script>
+
+    <footer class="chapter-footer">
+      <span>数学说 · 知识图谱</span>
+      <a href="https://shuxueshuo.com/knowledge/method-discriminant/">shuxueshuo.com/knowledge/method-discriminant</a>
+    </footer>
+  </main>
+</body>
+</html>

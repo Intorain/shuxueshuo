@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q09 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -197,7 +197,8 @@
           "answer": "要 $[-1,1]$ 上所有的 $a$ 都使 $f(a)>0$，只需最小值大于 $0$；最大值大于 $0$ 只能保证一处；只看 $a=0$，别的 $a$ 仍可能不满足。"
         },
         "submit_label": "确认判断",
-        "display": "v_condition-done"
+        "display": "v_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-gt", "note": "本题把 $a$ 当主元，$f(a)>0$ 对所有 $a\\in[-1,1]$ 成立：恒成立、大于，看最低点。"}
       },
       {
         "id": "v_extremum",
@@ -262,7 +263,8 @@
         },
         "submit_label": "确认判断",
         "display": "v_extremum-done",
-        "board": "v_extremum-board"
+        "board": "v_extremum-board",
+        "tip": {"id": "linear-interval-extremum", "note": "本题斜率 $x^2-x$ 可正、可负、可为 $0$，不用分类：最小值总在某一端，所以要 $f(-1)>0$ 且 $f(1)>0$。"}
       },
       {
         "id": "v_range",
@@ -296,7 +298,8 @@
         },
         "submit_label": "确认判断",
         "display": "v_range-done",
-        "board": "range-board"
+        "board": "range-board",
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题 $1-x^2>0$ 得 $-1<x<1$；$(x-1)^2>0$ 是完全平方式，只排除 $x=1$；两个条件同时成立，取交集得 $-1<x<1$。"}
       },
       {
         "id": "v_boundary",
@@ -351,7 +354,8 @@
         },
         "submit_label": "确认检查",
         "display": "v_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $x=-1$ 时原不等式为 $2a+2>0$，$a=-1$ 时等于 $0$；$x=1$ 时变成 $0>0$；两个边界都排除。"}
       }
     ]
   },

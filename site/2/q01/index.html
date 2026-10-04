@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>Q01 · 恒成立问题 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
-  <link rel="stylesheet" href="/assets/practice/practice.css?v=55">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script src="/assets/practice/components.js?v=37" defer></script>
   <script src="/assets/practice/context.js?v=14" defer></script>
-  <script src="/assets/practice/runtime.js?v=29" defer></script>
+  <script src="/assets/practice/runtime.js?v=30" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -205,7 +205,8 @@
           "answer": "$\\ge0$ 允许函数值等于零，但不允许负值。区分“相切”和“穿过”。"
         },
         "submit_label": "确认判断",
-        "display": "d_position-done"
+        "display": "d_position-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题 $g(x)=x^2-2x+a^2-3a-3$ 开口向上，要 $g(x)\\ge0$ 恒成立：带等号，图像可以和横轴相切，但不能穿过。"}
       },
       {
         "id": "d_delta",
@@ -238,7 +239,8 @@
           "answer": "相切对应 $\\Delta=0$，不相交对应 $\\Delta<0$。两种允许情况需要合并。"
         },
         "submit_label": "确认判断",
-        "display": "d_delta-done"
+        "display": "d_delta-done",
+        "tip": {"id": "quadratic-function-properties", "note": "本题要“恒 $\\ge0$”，开口向上时对应 $\\Delta\\le0$：不相交 $\\Delta<0$、相切 $\\Delta=0$ 都满足。"}
       },
       {
         "id": "d_range",
@@ -272,7 +274,8 @@
         },
         "submit_label": "确认判断",
         "display": "d_range-done",
-        "board": "range-board"
+        "board": "range-board",
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题 $a^2-3a-4=(a+1)(a-4)\\ge0$，开口向上、带等号，取两根之外并含根：$a\\le-1$ 或 $a\\ge4$。"}
       },
       {
         "id": "d_boundary",
@@ -327,7 +330,8 @@
         },
         "submit_label": "确认检查",
         "display": "d_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $a=-1$、$a=4$ 时原不等式化为 $(x-1)^2\\ge0$：图像与横轴相切，原题带等号，两个边界都保留。"}
       }
     ],
     "extremum": [
@@ -427,7 +431,8 @@
           "answer": "恒成立要求所有点都满足。水平线需要不低于最高点；只检查一个点不够。本题左侧向下无界，没有最小值。"
         },
         "submit_label": "确认判断",
-        "display": "e_condition-done"
+        "display": "e_condition-done",
+        "tip": {"id": "extremum-transfer", "case": "forall-lt", "note": "本题 $f(x)\\le c$ 对所有实数 $x$ 成立：恒成立、小于等于，看 $f(x)$ 的最高点，所以 $c\\ge f(x)_{\\max}$。"}
       },
       {
         "id": "e_extremum",
@@ -506,7 +511,8 @@
             "3": "e_extremum-attempt-4-3",
             "4": "e_extremum-attempt-4-4"
           }
-        }
+        },
+        "tip": {"id": "method-complete-square", "note": "本题 $-x^2+2x+3=-(x^2-2x)+3=4-(x-1)^2\\le4$，$x=1$ 时取等，最大值是 $4$。"}
       },
       {
         "id": "e_range",
@@ -540,7 +546,8 @@
         },
         "submit_label": "确认判断",
         "display": "e_range-done",
-        "board": "range-board"
+        "board": "range-board",
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题由 $a^2-3a\\ge4$ 得 $(a+1)(a-4)\\ge0$，开口向上、带等号，取两根之外并含根：$a\\le-1$ 或 $a\\ge4$。"}
       },
       {
         "id": "e_boundary",
@@ -595,7 +602,8 @@
         },
         "submit_label": "确认检查",
         "display": "e_boundary-done",
-        "board": "boundary-board"
+        "board": "boundary-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题 $a=-1$、$a=4$ 时 $a^2-3a=4$，正好等于 $f(x)$ 的最大值；最大值取得到，原题又允许“$\\le$”，两个边界都保留。"}
       }
     ]
   },

@@ -193,7 +193,8 @@
             "3": "split-attempt-7-3",
             "7": "split-attempt-7-7"
           }
-        }
+        },
+        "tip": {"id": "method-fraction-split", "note": "本题 $3n-7=3(n-3)+2$，所以 $m=\\frac{3n-7}{n-3}=3+\\frac2{n-3}$。"}
       },
       {
         "id": "rewrite",
@@ -233,7 +234,8 @@
           "fixed_product": "preview-rewrite-fixed_product",
           "unchanged": "preview-rewrite-unchanged",
           "wrong_constant": "preview-rewrite-wrong_constant"
-        }
+        },
+        "tip": {"id": "method-matching", "note": "本题 $m+2n=2n+\\frac2{n-3}+3$，把 $2n$ 凑成 $2(n-3)+6$：$2(n-3)+\\frac2{n-3}+9$。"}
       },
       {
         "id": "positive",
@@ -273,7 +275,8 @@
           "from_m": "preview-positive-from_m",
           "from_n": "preview-positive-from_n",
           "cannot": "preview-positive-cannot"
-        }
+        },
+        "tip": {"id": "amgm-formula", "case": "positive", "note": "本题 $m=\\frac{3n-7}{n-3}$，所以 $m-2=\\frac{n-1}{n-3}$。由 $m>2$、$n>1$，左边和分子都为正，所以 $n-3>0$，两项都为正。"}
       },
       {
         "id": "structure",
@@ -303,7 +306,8 @@
           "structure": "两项的积固定为 $4$，要求它们和的最小值。"
         },
         "submit_label": "确认判断",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $2(n-3)\\cdot\\frac2{n-3}=4$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -330,7 +334,8 @@
           "terms": "请核对凑配后含 $n$ 的两个正项；常数 $9$ 最后再加。"
         },
         "submit_label": "确认判断",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $2(n-3)+\\frac2{n-3}\\ge2\\sqrt4=4$，$m+2n\\ge13$。"}
       },
       {
         "id": "equality",
@@ -357,7 +362,8 @@
           "terms": "取等要求应用基本不等式的两个正项相等。"
         },
         "submit_label": "确认判断",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $n-3=1$，即 $n=4$，$m=5$，取得到。"}
       }
     ]
   },

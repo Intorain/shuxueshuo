@@ -352,9 +352,16 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
     ? `<button type="button" class="tip-chip" data-tip="${stage}" aria-haspopup="dialog">${tipIcon}知识点</button>` : '';
   let explain = null;
 
+  // A tip can branch on the student's choices like display does: {field, options: {value: tip}}, nested as needed.
+  // An unanswered field falls back to its first option.
+  const resolveTip = tip => {
+    while (tip?.field) tip = tip.options[state.choices[tip.field]] || Object.values(tip.options)[0];
+    return tip;
+  };
+
   // Before the step is answered the sheet only teaches the rule; afterwards it also marks this problem's case.
   function openTip(stage) {
-    const tip = nodeAt(stage)?.tip;
+    const tip = resolveTip(nodeAt(stage)?.tip);
     if (!tip || !runtimeSrc) return;
     explain ||= import(new URL('../explain/explain.js?v=1', runtimeSrc).href);
     explain.then(module => module.openExplainer(tip.id, {tip: stage < state.active ? tip : null, detail: false})).catch(() => {

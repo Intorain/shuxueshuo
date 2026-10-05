@@ -130,7 +130,7 @@ function render(node) {
   <meta property="og:url" content="${url}">
   <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
   <link rel="canonical" href="${url}">
-  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261005a">
   <link rel="stylesheet" href="/knowledge/node.css?v=1">
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
   <title>${escape(title)}</title>

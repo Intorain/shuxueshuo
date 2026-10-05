@@ -141,7 +141,8 @@
           "structure": "固定的是 $x^2+(9-x^2)=9$；先求两项乘积的上界，再代回带负号的原式。"
         },
         "submit_label": "确认结构",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $x^2+(9-x^2)=9$ 是定值，要求根号内积 $x^2(9-x^2)$ 的最大值：定和求积。"}
       },
       {
         "id": "amgm",
@@ -168,7 +169,8 @@
           "terms": "两个位置应分别对应 $x^2$ 和 $9-x^2$。"
         },
         "submit_label": "确认代入",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $x^2(9-x^2)\\le\\left(\\frac{x^2+9-x^2}2\\right)^2=\\frac{81}4$。"}
       },
       {
         "id": "bound",
@@ -202,7 +204,8 @@
         },
         "submit_label": "确认下界",
         "display": "bound-done",
-        "board": "bound-board"
+        "board": "bound-board",
+        "tip": {"id": "inequality-properties", "note": "本题 $\\sqrt{x^2(9-x^2)}\\le\\frac92$，前面是负号，乘 $-1$ 要变向：$y=-\\sqrt{x^2(9-x^2)}\\ge-\\frac92$。"}
       },
       {
         "id": "equality",
@@ -229,7 +232,8 @@
           "terms": "取等需要两个正项相等：$x^2=9-x^2$。"
         },
         "submit_label": "确认取等",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $x^2=9-x^2$，即 $x^2=\\frac92$；又 $-3<x<0$，所以 $x=-\\frac{3\\sqrt2}2$，取得到。"}
       }
     ]
   },

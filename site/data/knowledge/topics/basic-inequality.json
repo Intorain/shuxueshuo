@@ -1,0 +1,357 @@
+{
+  "id": "basic-inequality",
+  "label": "基本不等式",
+  "path": "/1/",
+  "nodes": [
+    "method-amgm-direct",
+    "method-complete-square",
+    "method-matching",
+    "method-homogeneous",
+    "method-elimination",
+    "method-substitution",
+    "method-fraction-split",
+    "method-reciprocal",
+    "method-sum-product",
+    "amgm-formula",
+    "square-nonnegative",
+    "homogeneous-expression",
+    "symmetric-polynomial",
+    "inequality-properties",
+    "quadratic-function-properties",
+    "quadratic-inequality-solve",
+    "endpoint-attainability"
+  ],
+  "methods": [
+    {"node": "method-amgm-direct", "route": "direct", "group": "group-direct", "sequence": ["amgm-formula", "inequality-properties"],
+      "examples": [{"problem": "q03", "note": "定积求和"}, {"problem": "q01", "note": "定和求积"}]},
+    {"node": "method-complete-square", "route": "square", "group": "group-direct", "sequence": ["square-nonnegative"],
+      "examples": [{"problem": "q02", "note": "配成平方"}]},
+    {"node": "method-matching", "route": "matching", "group": "group-matching", "sequence": ["amgm-formula", "inequality-properties"],
+      "examples": [{"problem": "q06", "note": "凑定积"}, {"problem": "q07", "note": "凑定和"}]},
+    {"node": "method-homogeneous", "route": "homogeneous", "group": "group-homogeneous", "sequence": ["homogeneous-expression", "amgm-formula"],
+      "examples": [{"problem": "q10", "note": "整体乘入"}, {"problem": "q15", "note": "拆项补齐"}]},
+    {"node": "method-elimination", "route": "elimination", "group": "group-elimination", "sequence": ["method-matching", "method-fraction-split", "amgm-formula", "method-complete-square", "quadratic-function-properties", "endpoint-attainability"],
+      "examples": [{"problem": "q16", "note": "解出 y"}, {"problem": "q17", "note": "解出 m²"}]},
+    {"node": "method-substitution", "route": "substitution", "group": "group-substitution", "sequence": ["homogeneous-expression", "method-homogeneous", "amgm-formula"],
+      "examples": [{"problem": "q12", "note": "目标中的分母"}, {"problem": "q21", "note": "条件中的分母"}]},
+    {"node": "method-fraction-split", "route": "split", "group": "group-split", "sequence": ["method-substitution", "amgm-formula"],
+      "examples": [{"problem": "q23", "note": "直接逐项拆开"}, {"problem": "q25", "note": "先换元再拆"}]},
+    {"node": "method-reciprocal", "route": "reciprocal", "group": "group-split", "sequence": ["inequality-properties", "method-substitution", "method-fraction-split", "amgm-formula"],
+      "examples": [{"problem": "q26", "note": "先取倒数"}, {"problem": "q27", "note": "取倒数后换元"}]},
+    {"node": "method-sum-product", "route": "symmetric", "group": "group-symmetric", "sequence": ["symmetric-polynomial", "square-nonnegative", "amgm-formula", "quadratic-inequality-solve"],
+      "examples": [{"problem": "q28", "note": "直接对称"}, {"problem": "q29", "note": "缩放后对称"}]}
+  ],
+  "problems": {
+    "q01": {"label": "Q01", "path": "/1/q01/", "routes": {
+      "direct": {
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      },
+      "elimination": {
+        "eliminate": ["method-elimination"],
+        "quadratic": ["method-complete-square", "quadratic-function-properties"],
+        "feasibility": ["endpoint-attainability"]
+      }
+    }},
+    "q02": {"label": "Q02", "path": "/1/q02/", "routes": {
+      "direct": {
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      },
+      "square": {
+        "rewrite": ["method-complete-square"],
+        "equality": ["square-nonnegative"]
+      }
+    }},
+    "q03": {"label": "Q03", "path": "/1/q03/", "routes": {
+      "direct": {
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q04": {"label": "Q04", "path": "/1/q04/", "routes": {
+      "direct": {
+        "rewrite": ["amgm-formula", "inequality-properties"],
+        "amgm": ["amgm-formula"],
+        "bound": ["inequality-properties"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q05": {"label": "Q05", "path": "/1/q05/", "routes": {
+      "direct": {
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q06": {"label": "Q06", "path": "/1/q06/", "routes": {
+      "matching": {
+        "rewrite": ["method-matching"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q07": {"label": "Q07", "path": "/1/q07/", "routes": {
+      "matching": {
+        "rewrite": ["method-matching"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "bound": ["inequality-properties"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q08": {"label": "Q08", "path": "/1/q08/", "routes": {
+      "matching": {
+        "rewrite": ["method-matching"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      },
+      "symmetric": {
+        "symmetry": ["symmetric-polynomial"],
+        "substitution": ["method-sum-product"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q09": {"label": "Q09", "path": "/1/q09/", "routes": {
+      "matching": {
+        "rewrite": [],
+        "sign": ["amgm-formula"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      },
+      "elimination": {
+        "rewrite": [],
+        "eliminate": ["method-elimination"],
+        "quadratic": ["method-complete-square", "quadratic-function-properties"],
+        "feasibility": ["endpoint-attainability"]
+      }
+    }},
+    "q10": {"label": "Q10", "path": "/1/q10/", "routes": {
+      "homogeneous": {
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q11": {"label": "Q11", "path": "/1/q11/", "routes": {
+      "substitution": {
+        "substitution": ["method-substitution"],
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q12": {"label": "Q12", "path": "/1/q12/", "routes": {
+      "substitution": {
+        "substitution": ["method-substitution"],
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q13": {"label": "Q13", "path": "/1/q13/", "routes": {
+      "homogeneous": {
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q14": {"label": "Q14", "path": "/1/q14/", "routes": {
+      "homogeneous": {
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      },
+      "substitution": {
+        "substitution": ["method-substitution"],
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q15": {"label": "Q15", "path": "/1/q15/", "routes": {
+      "homogeneous": {
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q16": {"label": "Q16", "path": "/1/q16/", "routes": {
+      "elimination": {
+        "eliminate": ["method-elimination"],
+        "split": ["method-fraction-split"],
+        "rewrite": ["method-matching"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q17": {"label": "Q17", "path": "/1/q17/", "routes": {
+      "elimination": {
+        "eliminate": ["method-elimination"],
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q18": {"label": "Q18", "path": "/1/q18/", "routes": {
+      "elimination": {
+        "factor": ["method-matching"],
+        "eliminate": ["method-elimination"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q19": {"label": "Q19", "path": "/1/q19/", "routes": {
+      "elimination": {
+        "eliminate": ["method-elimination"],
+        "split": ["method-fraction-split"],
+        "rewrite": ["method-matching"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q20": {"label": "Q20", "path": "/1/q20/", "routes": {
+      "elimination": {
+        "eliminate": ["method-elimination"],
+        "split": ["method-fraction-split"],
+        "rewrite": ["method-matching"],
+        "positive": ["amgm-formula"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q21": {"label": "Q21", "path": "/1/q21/", "routes": {
+      "substitution": {
+        "substitution": ["method-substitution"],
+        "express": ["method-substitution"],
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q22": {"label": "Q22", "path": "/1/q22/", "routes": {
+      "substitution": {
+        "substitution": ["method-substitution"],
+        "express": ["method-substitution"],
+        "homogeneity": ["homogeneous-expression"],
+        "rewrite": ["method-homogeneous"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q23": {"label": "Q23", "path": "/1/q23/", "routes": {
+      "split": {
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q24": {"label": "Q24", "path": "/1/q24/", "routes": {
+      "split": {
+        "substitution": ["method-substitution"],
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q25": {"label": "Q25", "path": "/1/q25/", "routes": {
+      "split": {
+        "substitution": ["method-substitution"],
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q26": {"label": "Q26", "path": "/1/q26/", "routes": {
+      "reciprocal": {
+        "transform": ["method-reciprocal", "inequality-properties"],
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }},
+    "q27": {"label": "Q27", "path": "/1/q27/", "routes": {
+      "reciprocal": {
+        "transform": ["method-reciprocal", "inequality-properties"],
+        "substitution": ["method-substitution"],
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"],
+        "back": ["method-reciprocal", "inequality-properties"]
+      }
+    }},
+    "q28": {"label": "Q28", "path": "/1/q28/", "routes": {
+      "symmetric": {
+        "symmetry": ["symmetric-polynomial"],
+        "substitution": ["method-sum-product"],
+        "condition": ["symmetric-polynomial"],
+        "inequality": ["square-nonnegative"],
+        "range": ["quadratic-inequality-solve"],
+        "equality": ["square-nonnegative"]
+      }
+    }},
+    "q29": {"label": "Q29", "path": "/1/q29/", "routes": {
+      "symmetric": {
+        "symmetry": ["symmetric-polynomial"],
+        "construct": ["symmetric-polynomial"],
+        "substitution": ["method-sum-product"],
+        "condition": ["symmetric-polynomial"],
+        "inequality": ["square-nonnegative"],
+        "range": ["quadratic-inequality-solve"],
+        "equality": ["square-nonnegative"]
+      }
+    }},
+    "q30": {"label": "Q30", "path": "/1/q30/", "routes": {
+      "symmetric": {
+        "symmetry": ["symmetric-polynomial"],
+        "construct": ["symmetric-polynomial"],
+        "substitution": ["method-sum-product"],
+        "condition": ["symmetric-polynomial"],
+        "inequality": ["square-nonnegative", "amgm-formula"],
+        "solve": ["quadratic-inequality-solve"],
+        "equality": ["square-nonnegative"]
+      },
+      "elimination": {
+        "eliminate": ["method-elimination"],
+        "split": ["method-fraction-split"],
+        "structure": ["amgm-formula"],
+        "amgm": ["amgm-formula"],
+        "equality": ["amgm-formula"]
+      }
+    }}
+  }
+}

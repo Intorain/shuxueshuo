@@ -115,7 +115,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题 $\\frac1a$ 是负一次，$\\frac ab$ 是零次，条件 $2a+b$ 是一次：目标不是齐次式，只需给 $\\frac1a$ 配次数。"}
       },
       {
         "id": "rewrite",
@@ -176,7 +177,8 @@
           "whole": "rewrite-whole",
           "first": "rewrite-first",
           "second": "rewrite-second"
-        }
+        },
+        "tip": {"id": "method-homogeneous", "case": "local", "note": "本题 $\\frac ab$ 已是零次，只给 $\\frac1a$ 乘 $2a+b$：$\\frac{2a+b}a=2+\\frac ba$。整体乘会把 $\\frac ab$ 乘成一次的 $\\frac{2a^2}b+a$。"}
       },
       {
         "id": "structure",
@@ -206,7 +208,8 @@
           "structure": "两项的积固定为 $1$，要求它们和的最小值。"
         },
         "display": "structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $\\frac1a=\\frac{2a+b}a=2+\\frac ba$，原式 $=2+\\frac ba+\\frac ab$，$\\frac ba\\cdot\\frac ab=1$：定积求和。"}
       },
       {
         "id": "amgm",
@@ -233,7 +236,8 @@
           "terms": "请核对配式后的两个正项。"
         },
         "display": "amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac ba+\\frac ab\\ge2$，原式 $\\ge4$。"}
       },
       {
         "id": "equality",
@@ -260,7 +264,8 @@
           "terms": "取等要求应用基本不等式的两个比值项相等。"
         },
         "display": "equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $a=b$，与 $2a+b=1$ 联立得 $a=b=\\frac13$，取得到。"}
       }
     ]
   },

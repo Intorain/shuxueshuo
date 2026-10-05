@@ -21,10 +21,9 @@ root.querySelector('[data-map-stats]').innerHTML = [
 
 const card = (id, route) => {
   const node = nodes.get(id);
-  const others = alsoIn(id);
   return `<li><button type="button" class="tm-card ${node.kind} ${node.subtype || ''}" data-node="${id}">
     <span class="tm-card-name">${escape(node.label)}</span>
-    <span class="tm-card-meta">${problemsInRoute(route, id).length} 题${node.sheet ? '<i class="tm-sheet-dot" aria-label="有图解"></i>' : ''}${others.length ? `<em>也在 ${others.map(other => escape(other.label)).join('、')}</em>` : ''}</span>
+    <span class="tm-card-meta">${problemsInRoute(route, id).length} 题${node.sheet ? '<i class="tm-sheet-dot" aria-label="有图解"></i>' : ''}</span>
   </button></li>`;
 };
 

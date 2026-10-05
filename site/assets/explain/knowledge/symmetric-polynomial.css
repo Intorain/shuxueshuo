@@ -1,0 +1,42 @@
+/* symmetric-polynomial explainer; every selector is scoped to .explain-symmetric-polynomial. */
+.explain-symmetric-polynomial .sp-core { margin:16px 0 12px; font-size:15px; font-weight:600; line-height:1.65; }
+.explain-symmetric-polynomial .sp-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-symmetric-polynomial .sp-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-symmetric-polynomial .sp-explorer { display:grid; gap:10px; padding:14px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-symmetric-polynomial .sp-ask { margin:0; color:#33504a; font-size:14px; font-weight:600; }
+.explain-symmetric-polynomial .sp-picks { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.explain-symmetric-polynomial .sp-picks button { padding:8px 6px; border:1px solid #d6e6e1; border-radius:11px; background:#fff; color:var(--ink); font:inherit; font-size:14.5px; cursor:pointer; }
+.explain-symmetric-polynomial .sp-picks button[aria-pressed="true"] { border-color:var(--teal); background:#e9f6f2; color:var(--teal-dark); box-shadow:inset 0 0 0 1px var(--teal); }
+.explain-symmetric-polynomial .sp-picks button:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-symmetric-polynomial .sp-panel { display:grid; gap:8px; padding:10px 12px 12px; border:1px solid #e0ebe8; border-radius:14px; background:#fff; }
+.explain-symmetric-polynomial .sp-panel[hidden] { display:none; }
+.explain-symmetric-polynomial .sp-swap { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0; }
+.explain-symmetric-polynomial .sp-swap div { display:grid; justify-items:center; gap:4px; padding:8px; border-radius:10px; background:#f3f8f7; }
+.explain-symmetric-polynomial .sp-swap dt { color:var(--muted); font-size:12.5px; }
+.explain-symmetric-polynomial .sp-swap dd { margin:0; font-size:15.5px; font-weight:600; }
+.explain-symmetric-polynomial .sp-verdict { justify-self:center; margin:0; padding:2px 12px; border-radius:999px; font-size:13px; font-weight:700; }
+.explain-symmetric-polynomial .sp-verdict.same { background:#e2f3ee; color:#0b6b5c; }
+.explain-symmetric-polynomial .sp-verdict.changed { background:#fdeadf; color:#b2400c; }
+.explain-symmetric-polynomial .sp-result { margin:0; padding:9px 12px; border:1px solid #bfe0d6; border-radius:11px; background:#eef8f5; font-size:14.5px; line-height:1.75; text-align:center; }
+.explain-symmetric-polynomial .sp-table { width:100%; margin:14px 0 0; border-collapse:separate; border-spacing:0; border:1px solid #e0ebe8; border-radius:14px; overflow:hidden; font-size:14px; }
+.explain-symmetric-polynomial .sp-table caption { padding:0 0 6px; color:#33504a; font-weight:700; text-align:left; }
+.explain-symmetric-polynomial .sp-table th, .explain-symmetric-polynomial .sp-table td { padding:8px 12px; border-bottom:1px solid #e0ebe8; text-align:left; }
+.explain-symmetric-polynomial .sp-table tbody tr:last-child > * { border-bottom:0; }
+.explain-symmetric-polynomial .sp-table thead th { background:#f3f8f7; color:#46605a; font-size:13px; font-weight:600; }
+.explain-symmetric-polynomial .sp-table td + td { font-weight:650; }
+.explain-symmetric-polynomial .sp-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
+.explain-symmetric-polynomial .sp-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-symmetric-polynomial .sp-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-symmetric-polynomial .sp-note p { margin:0 0 6px; }
+.explain-symmetric-polynomial .sp-note > :last-child { margin-bottom:0; }
+.explain-symmetric-polynomial .sp-link { padding:0; border:0; background:none; color:var(--teal-dark); font:inherit; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+@media(max-width:760px) {
+  .explain-symmetric-polynomial .sp-notes { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .explain-symmetric-polynomial .sp-core { font-size:14px; }
+  .explain-symmetric-polynomial .sp-explorer { padding:10px 8px; }
+  .explain-symmetric-polynomial .sp-picks { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+  .explain-symmetric-polynomial .sp-panel { padding:8px; }
+  .explain-symmetric-polynomial .sp-table th, .explain-symmetric-polynomial .sp-table td { padding:7px 9px; font-size:13px; }
+}

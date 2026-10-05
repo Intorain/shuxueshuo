@@ -230,7 +230,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题令 $x=4a+b$，$y=a+2b$，目标 $5a+3b=x+y$ 是一次，条件 $\\frac1x+\\frac1y=3$ 是负一次，相乘得零次式。"}
       },
       {
         "id": "rewrite",
@@ -308,7 +309,8 @@
             "1/x+1/y": "rewrite-calculation-second-1",
             "1": "rewrite-calculation-second-2"
           }
-        }
+        },
+        "tip": {"id": "method-homogeneous", "note": "本题条件等于 $3$，要乘 $\\frac13\\left(\\frac1x+\\frac1y\\right)=1$：原式 $=\\frac13(x+y)\\left(\\frac1x+\\frac1y\\right)$。"}
       },
       {
         "id": "structure",
@@ -338,7 +340,8 @@
           "structure": "两项的积固定为 $1$，要求它们和的最小值。"
         },
         "display": "structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题展开得 $\\frac13\\left(2+\\frac yx+\\frac xy\\right)$，$\\frac yx\\cdot\\frac xy=1$：定积求和。"}
       },
       {
         "id": "amgm",
@@ -365,7 +368,8 @@
           "terms": "请核对展开后的两个正项。"
         },
         "display": "amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac yx+\\frac xy\\ge2$，原式 $\\ge\\frac43$。"}
       },
       {
         "id": "equality",
@@ -392,7 +396,8 @@
           "terms": "取等要求应用基本不等式的两个比值项相等。"
         },
         "display": "equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $x=y=\\frac23$，即 $a=\\frac2{21}$，$b=\\frac27$，取得到。"}
       }
     ]
   },

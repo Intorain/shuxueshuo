@@ -193,7 +193,8 @@
             "6/5": "split-attempt-1-6_5",
             "1": "split-attempt-1-1"
           }
-        }
+        },
+        "tip": {"id": "method-fraction-split", "note": "本题 $m^2=\\frac{1-n^4}{5n^2}=\\frac1{5n^2}-\\frac{n^2}5$，加上 $n^2$ 得 $m^2+n^2=\\frac1{5n^2}+\\frac{4n^2}5$。"}
       },
       {
         "id": "structure",
@@ -223,7 +224,8 @@
           "structure": "两项的积固定为 $\\frac4{25}$，要求它们和的最小值。"
         },
         "submit_label": "确认判断",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $\\frac1{5n^2}\\cdot\\frac{4n^2}5=\\frac4{25}$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -250,7 +252,8 @@
           "terms": "请核对分式分离后的两个正项。"
         },
         "submit_label": "确认判断",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac1{5n^2}+\\frac{4n^2}5\\ge2\\sqrt{\\frac4{25}}=\\frac45$。"}
       },
       {
         "id": "equality",
@@ -277,7 +280,8 @@
           "terms": "取等要求应用基本不等式的两个正项相等。"
         },
         "submit_label": "确认判断",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $\\frac1{5n^2}=\\frac{4n^2}5$，即 $n^2=\\frac12$，此时 $m^2=\\frac3{10}\\ge0$，取得到。"}
       }
     ]
   },

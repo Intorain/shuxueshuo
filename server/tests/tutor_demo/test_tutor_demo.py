@@ -50,7 +50,7 @@ def send(client, view, op=None, text=None, kind=None, event_id=None):
 
 
 @pytest.mark.parametrize(
-    "route,technique", [("direct", None), ("1", "square"), ("1", "vertex")]
+    "route,technique", [("direct", None), ("elimination", "square"), ("elimination", "vertex")]
 )
 def test_full_ui_routes_and_public_contract(route, technique):
     tutor = Tutor()
@@ -84,7 +84,7 @@ def test_invalid_ui_and_stale_revision():
     client, view = client_session()
     old = deepcopy(view)
     view = send(client, view, action("method", "direct")).json()
-    assert send(client, old, action("method", "1"), event_id="stale").status_code == 409
+    assert send(client, old, action("method", "elimination"), event_id="stale").status_code == 409
     for op in [action("fill", "m", 0), action("fill", "m", 1), action("submit")]:
         view = send(client, view, op).json()
     assert view["state"]["active"] == 0
@@ -312,7 +312,7 @@ def test_elimination_feasibility_evidence_fills_yes():
     )
     client, view = client_session(tutor)
     for op in [
-        action("method", "1"),
+        action("method", "elimination"),
         action("choice", "m"),
         action("submit"),
         action("choice", "square"),

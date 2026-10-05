@@ -112,7 +112,8 @@
           "positive_sum": "preview-positive_sum",
           "lost_outer_minus": "preview-lost_outer_minus",
           "wrong_constant": "preview-wrong_constant"
-        }
+        },
+        "tip": {"id": "amgm-formula", "case": "positive", "note": "本题 $x<0$，$x$ 与 $\\frac4x$ 都是负数，不满足一正；先提出负号，对正数 $-x$、$-\\frac4x$ 用基本不等式。"}
       },
       {
         "id": "amgm",
@@ -147,7 +148,8 @@
           "terms": "这里使用正数形式的基本不等式。x 与 4/x 均为负，应选择正项 −x、−4/x，且两个位置分别对应这两项。"
         },
         "submit_label": "确认代入",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $(-x)+\\left(-\\frac4x\\right)\\ge2\\sqrt{(-x)\\cdot\\left(-\\frac4x\\right)}=4$。"}
       },
       {
         "id": "bound",
@@ -178,7 +180,8 @@
         },
         "submit_label": "确认关系",
         "display": "bound-done",
-        "board": "bound-context"
+        "board": "bound-context",
+        "tip": {"id": "inequality-properties", "note": "本题由 $(-x)+\\left(-\\frac4x\\right)\\ge4$，两边乘 $-1$ 要变向：$x+\\frac4x\\le-4$，再减 $4$ 得原式 $\\le-8$。"}
       },
       {
         "id": "equality",
@@ -205,7 +208,8 @@
           "terms": "基本不等式取等时，参与公式的两个正项相等：−x=−4/x。"
         },
         "submit_label": "确认取等",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $-x=-\\frac4x$，即 $x^2=4$；又 $x<0$，所以 $x=-2$，最大值 $-8$ 取得到。"}
       }
     ]
   },

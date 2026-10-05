@@ -108,7 +108,8 @@
           "structure": "固定的是两个指数项的积：$2^a\\cdot2^b=2^{a+b}=8$；目标是它们的和，这是定积求和。"
         },
         "submit_label": "确认结构",
-        "display": "direct-structure-done"
+        "display": "direct-structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $2^a\\cdot2^b=2^{a+b}=8$ 是定值，要求和的最小值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -135,7 +136,8 @@
           "terms": "两个位置需要分别对应 $2^a$ 和 $2^b$。"
         },
         "submit_label": "确认关系",
-        "display": "direct-amgm-done"
+        "display": "direct-amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $2^a+2^b\\ge2\\sqrt{2^a\\cdot2^b}=2\\sqrt8=4\\sqrt2$。"}
       },
       {
         "id": "equality",
@@ -162,7 +164,8 @@
           "terms": "取等要求参与不等式的两项相等：$2^a=2^b$。"
         },
         "submit_label": "确认取等",
-        "display": "direct-equality-done"
+        "display": "direct-equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $2^a=2^b$，即 $a=b$，与 $a+b=3$ 联立得 $a=b=\\frac32$，取得到。"}
       }
     ]
   },

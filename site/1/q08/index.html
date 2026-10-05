@@ -147,7 +147,8 @@
           "structure": "两项的积固定为 $4$，目标是求和的最小值。"
         },
         "display": "matching-structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $(x+y)\\cdot\\frac4{x+y}=4$ 是定值，要求和的最小值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -174,7 +175,8 @@
           "terms": "请核对两个位置对应的数学项。"
         },
         "display": "matching-amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $x+y+\\frac4{x+y}\\ge2\\sqrt4=4$。"}
       },
       {
         "id": "equality",
@@ -201,7 +203,8 @@
           "terms": "请核对两个位置对应的数学项。"
         },
         "display": "matching-equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $x+y=2$，与 $xy=1$ 联立得 $x=y=1$，取得到。"}
       }
     ],
     "symmetric": [
@@ -235,7 +238,8 @@
         },
         "display": "symmetric-symmetry-done",
         "submit_label": "确认判断",
-        "board": "symmetry-scan"
+        "board": "symmetry-scan",
+        "tip": {"id": "symmetric-polynomial", "note": "本题交换 $x$、$y$ 后，条件 $xy=1$ 与目标 $\\frac{x^2+y^2+6}{x+y}$ 都不变，可以用 $s=x+y$、$p=xy$ 改写。"}
       },
       {
         "id": "substitution",
@@ -298,7 +302,8 @@
           "structure": "两项的积固定为 $4$，目标是求和的最小值。"
         },
         "display": "symmetric-structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $x^2+y^2=s^2-2p=s^2-2$，目标化成 $s+\\frac4s$，$s\\cdot\\frac4s=4$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -325,7 +330,8 @@
           "terms": "请核对两个位置对应的数学项。"
         },
         "display": "symmetric-amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $s+\\frac4s\\ge2\\sqrt4=4$。"}
       },
       {
         "id": "equality",
@@ -352,7 +358,8 @@
           "terms": "请核对两个位置对应的数学项。"
         },
         "display": "symmetric-equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $s=2$，即 $x+y=2$、$xy=1$，得 $x=y=1$，取得到。"}
       }
     ]
   },

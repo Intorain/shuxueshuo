@@ -107,7 +107,8 @@
           "structure": "两项相乘恒为 1，题目要求的是它们的和的最小值。"
         },
         "submit_label": "确认结构",
-        "display": "direct-structure-done"
+        "display": "direct-structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $x^2\\cdot\\frac1{x^2}=1$ 是定值，要求和的最小值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -134,7 +135,8 @@
           "terms": "两个位置需要分别对应 x² 和 1/x²。"
         },
         "submit_label": "确认关系",
-        "display": "direct-amgm-done"
+        "display": "direct-amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $x^2+\\frac1{x^2}\\ge2\\sqrt{x^2\\cdot\\frac1{x^2}}=2$。"}
       },
       {
         "id": "equality",
@@ -161,7 +163,8 @@
           "terms": "两个位置需要分别对应 x² 和 1/x²。"
         },
         "submit_label": "确认取等",
-        "display": "direct-equality-done"
+        "display": "direct-equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $x^2=\\frac1{x^2}$，即 $x^4=1$，$x=\\pm1$，取得到，最小值是 $2$。"}
       }
     ],
     "square": [
@@ -225,7 +228,8 @@
           "terms": "平方项为零，需要 x 与 1/x 相等。"
         },
         "submit_label": "确认取等",
-        "display": "square-equality-done"
+        "display": "square-equality-done",
+        "tip": {"id": "square-nonnegative", "note": "本题 $x^2+\\frac1{x^2}=\\left(x-\\frac1x\\right)^2+2\\ge2$，平方项为 $0$ 要 $x=\\frac1x$，即 $x=\\pm1$。"}
       }
     ]
   },

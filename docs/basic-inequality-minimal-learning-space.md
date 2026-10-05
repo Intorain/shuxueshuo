@@ -290,3 +290,23 @@ t^2-st+p=0.
 - WHY 能复述两步：无序对；一元二次两根 + 韦达  
 - 不把「令 \(s,p\)」说成定义，而说成对无序对建坐标  
 - 做题仍先交换检验，再改写
+
+---
+
+## 9. 与练习站知识图谱的对应
+
+练习站 `/1/` 的知识地图、知识图谱用的是全局图谱节点（`site/data/knowledge/graph.json`），逐题逐步骤的对应写在 `site/data/knowledge/topics/basic-inequality.json`，见[知识图谱页面设计](knowledge-graph-pages-design.md)与[知识点与方法清单](knowledge-graph-topic-inventory.md)。本文的原子不直接变成图谱节点；本文题号来自课程源数据，与 `/1/` 的 q01–q30 不是同一套编号。
+
+| 原子 | 对应的图谱节点 |
+|---|---|
+| `T`、`P`、`E` | `amgm-formula`（一正、三相等是这个节点的使用条件，步骤提示用 `case` 区分） |
+| `S`、`A` | `amgm-formula`（二定：观察结构、看出定和或定积） |
+| `Sum` | `method-amgm-direct` |
+| `Arr` | `method-matching` |
+| `Sym` | `method-sum-product`，依据 `symmetric-polynomial` |
+| `Hom` | `method-homogeneous`，依据 `homogeneous-expression` |
+| `Iter` | 暂无节点：`/1/` 当前没有多次应用的题 |
+| `U` | `method-substitution` |
+| `X` | `method-elimination` |
+
+图谱里另有原子未覆盖的节点：`method-fraction-split`、`method-reciprocal`、`method-complete-square`，以及 `square-nonnegative`、`inequality-properties`、`quadratic-function-properties`、`quadratic-inequality-solve`、`endpoint-attainability`。图谱的前提边只按清单第 5 节建立，不从本文的 Hasse 边自动导入。

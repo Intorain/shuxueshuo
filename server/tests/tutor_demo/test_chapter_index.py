@@ -34,37 +34,6 @@ def test_directory_matches_groups(chapter):
         assert 1 <= int(number) <= len(groups)
 
 
-def method_dialogs(home):
-    return dict(re.findall(
-        r'<dialog class="method-sheet" id="(method-[a-z]+)".*?>(.*?)</dialog>', home, re.S,
-    ))
-
-
-@pytest.mark.parametrize("chapter", ["1"])
-def test_method_dialogs_belong_to_their_group(chapter):
-    home = (ROOT / f"site/{chapter}/index.html").read_text()
-    blocks = [
-        block.split("</section>")[0]
-        for block in re.split(r'(?=<section class="type-group")', home)[1:]
-    ]
-    dialogs = method_dialogs(home)
-    chips = []
-    for block in blocks:
-        for dialog_id in re.findall(r'data-method-dialog="(method-[a-z]+)"', block):
-            chips.append(dialog_id)
-            content = dialogs[dialog_id]
-            group_index = re.search(r'class="type-index" aria-hidden="true">(\d\d)<', block)[1]
-            assert f'<span class="type-index" aria-hidden="true">{group_index}</span>' in content
-            title = re.search(r"<h3 [^>]*>(.*?)</h3>", block)[1]
-            assert re.search(rf'id="{dialog_id}-title"[^>]*>{re.escape(title)} · 图解</h2>', content)
-            problems = set(re.findall(rf'class="problem-card" href="(/{chapter}/q\d+/)"', block))
-            examples = re.findall(rf'<a href="(/{chapter}/q\d+/)"', content)
-            assert examples and set(examples) <= problems
-            for href, number in re.findall(rf'<a href="/{chapter}/q(\d+)/">.*?第 (\d+) 题', content):
-                assert href == number
-    assert sorted(chips) == sorted(dialogs)
-
-
 def test_always_true_explainers_teach_when_to_use_the_method():
     home = (ROOT / "site/2/index.html").read_text()
     methods = re.findall(r'data-explain="(method-[a-z-]+)"', home)

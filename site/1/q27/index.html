@@ -113,7 +113,8 @@
           "min_reciprocal": "preview-transform-min_reciprocal",
           "max_reciprocal": "preview-transform-max_reciprocal",
           "min_denominator": "preview-transform-min_denominator"
-        }
+        },
+        "tip": {"id": "inequality-properties", "note": "本题 $x>0$ 时 $y=\\frac{2x+1}{x^2+1}>0$；同正取倒数，大小顺序颠倒，$y$ 最大对应 $\\frac1y$ 最小。"}
       },
       {
         "id": "substitution",
@@ -154,7 +155,8 @@
         "scope_boards": {
           "2x+1": "substitution-denominator",
           "x": "substitution-rename"
-        }
+        },
+        "tip": {"id": "method-substitution", "note": "本题令 $t=2x+1>1$，$x=\\frac{t-1}2$，$x^2+1=\\frac{t^2-2t+5}4$。"}
       },
       {
         "id": "split",
@@ -220,7 +222,8 @@
             "2": "split-attempt-5-2",
             "5": "split-attempt-5-5"
           }
-        }
+        },
+        "tip": {"id": "method-fraction-split", "note": "本题 $\\frac1y=\\frac{t^2-2t+5}{4t}=\\frac14\\left(t-2+\\frac5t\\right)$。"}
       },
       {
         "id": "structure",
@@ -250,7 +253,8 @@
           "structure": "两项的积固定为 $5$，要求它们和的最小值。"
         },
         "submit_label": "确认判断",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $t\\cdot\\frac5t=5$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -277,7 +281,8 @@
           "terms": "请核对分离后的两个正项。"
         },
         "submit_label": "确认判断",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $t+\\frac5t\\ge2\\sqrt5$，$\\frac1y\\ge\\frac{2\\sqrt5-2}4=\\frac{\\sqrt5-1}2$。"}
       },
       {
         "id": "equality",
@@ -304,7 +309,8 @@
           "terms": "取等要求应用基本不等式的两项相等。"
         },
         "submit_label": "确认判断",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $t=\\sqrt5>1$，即 $x=\\frac{\\sqrt5-1}2>0$，取得到。"}
       },
       {
         "id": "back",
@@ -344,7 +350,8 @@
           "reciprocal_back": "preview-back-reciprocal_back",
           "forgot_back": "preview-back-forgot_back",
           "forgot_both": "preview-back-forgot_both"
-        }
+        },
+        "tip": {"id": "inequality-properties", "note": "本题 $\\frac1y\\ge\\frac{\\sqrt5-1}2>0$，取倒数变向：$y\\le\\frac2{\\sqrt5-1}=\\frac{\\sqrt5+1}2$。"}
       }
     ]
   },

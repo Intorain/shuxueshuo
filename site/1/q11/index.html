@@ -149,7 +149,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题令 $t=a+1$，则 $t+b=3$；$\\frac2t+\\frac4b$ 是负一次，$t+b$ 是一次，相乘得零次式。"}
       },
       {
         "id": "rewrite",
@@ -210,7 +211,8 @@
           "whole": "rewrite-whole",
           "first": "rewrite-first",
           "second": "rewrite-second"
-        }
+        },
+        "tip": {"id": "method-homogeneous", "note": "本题 $t+b=3$ 不等于 $1$，要乘 $\\frac{t+b}3=1$：原式 $=\\frac13\\left(\\frac2t+\\frac4b\\right)(t+b)$。"}
       },
       {
         "id": "structure",
@@ -240,7 +242,8 @@
           "structure": "两项的积固定为 $8$，要求它们和的最小值。"
         },
         "display": "structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题展开得 $\\frac13\\left(6+\\frac{2b}t+\\frac{4t}b\\right)$，$\\frac{2b}t\\cdot\\frac{4t}b=8$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -267,7 +270,8 @@
           "terms": "请核对展开后的两个正项。"
         },
         "display": "amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac{2b}t+\\frac{4t}b\\ge2\\sqrt8=4\\sqrt2$，原式 $\\ge\\frac{6+4\\sqrt2}3$。"}
       },
       {
         "id": "equality",
@@ -294,7 +298,8 @@
           "terms": "取等要求应用基本不等式的两个比值项相等。"
         },
         "display": "equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $b=\\sqrt2t$，与 $t+b=3$ 联立得 $t=3(\\sqrt2-1)$，在 $(1,3)$ 内，取得到。"}
       }
     ]
   },

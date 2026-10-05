@@ -112,7 +112,7 @@ def test_local_state_matches_server_including_errors_and_route_switch(
         )
     ]
     actions += [
-        operation("switch_route", "1"),
+        operation("switch_route", "elimination"),
         operation("choice", variable),
         operation("submit"),
         operation("choice", technique),

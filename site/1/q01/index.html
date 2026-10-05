@@ -63,7 +63,7 @@
   <script type="application/json" id="practice-config">
 {
   "id": "q01",
-  "version": 5,
+  "version": 6,
   "variables": [
     "m",
     "n"
@@ -75,7 +75,7 @@
       "label": "直接应用基本不等式"
     },
     {
-      "id": "1",
+      "id": "elimination",
       "label": "消参法"
     }
   ],
@@ -105,7 +105,8 @@
           "structure": "再看看题目：固定的是 m + n，要求的是 mn 的最大值。"
         },
         "submit_label": "确认结构",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $m+n=2$ 是定值，要求积 $mn$ 的最大值：定和求积。"}
       },
       {
         "id": "amgm",
@@ -128,7 +129,8 @@
           "terms": "两个位置需要分别对应题目中的 m 和 n。"
         },
         "submit_label": "确认代入",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $m+n\\ge2\\sqrt{mn}$，即 $2\\sqrt{mn}\\le2$，所以 $mn\\le1$。"}
       },
       {
         "id": "equality",
@@ -151,10 +153,11 @@
           "terms": "两个位置需要分别对应题目中的 m 和 n。"
         },
         "submit_label": "确认取等",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $m=n$，与 $m+n=2$ 联立得 $m=n=1$，都是正数，取得到。"}
       }
     ],
-    "1": [
+    "elimination": [
       {
         "id": "eliminate",
         "title": "观察结构",
@@ -223,7 +226,8 @@
             "square": "square-done",
             "vertex": "vertex-done"
           }
-        }
+        },
+        "tip": {"field": "technique", "options": {"square": {"field": "variable", "options": {"m": {"id": "method-complete-square", "note": "本题 $mn=m(2-m)=-(m-1)^2+1\\le1$，$m=1$ 时取到最大值 $1$。"}, "n": {"id": "method-complete-square", "note": "本题 $mn=n(2-n)=-(n-1)^2+1\\le1$，$n=1$ 时取到最大值 $1$。"}}}, "vertex": {"field": "variable", "options": {"m": {"id": "quadratic-function-properties", "note": "本题 $y=-m^2+2m$ 开口向下，对称轴 $m=1$ 在 $(0,2)$ 内，顶点处取到最大值 $1$。"}, "n": {"id": "quadratic-function-properties", "note": "本题 $y=-n^2+2n$ 开口向下，对称轴 $n=1$ 在 $(0,2)$ 内，顶点处取到最大值 $1$。"}}}}}
       },
       {
         "id": "feasibility",
@@ -254,13 +258,14 @@
         },
         "submit_label": "确认验证",
         "board": "feasible-board",
-        "display": "feasible-done"
+        "display": "feasible-done",
+        "tip": {"id": "endpoint-attainability", "note": "本题候选值 $m=n=1$：两数都为正，和为 $2$，满足原题条件，最大值 $1$ 取得到。"}
       }
     ]
   },
   "completion": "lesson-completion",
   "comparisons": {
-    "1": "comparison"
+    "elimination": "comparison"
   }
 }
   </script>

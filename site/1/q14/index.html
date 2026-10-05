@@ -62,7 +62,7 @@
   <script type="application/json" id="practice-config">
 {
   "id": "q14",
-  "version": 1,
+  "version": 2,
   "variables": [
     "x",
     "y"
@@ -70,7 +70,7 @@
   "method_question": "这道题，你准备采用哪种解题方案？",
   "methods": [
     {
-      "id": "direct",
+      "id": "homogeneous",
       "label": "直接乘 1"
     },
     {
@@ -79,7 +79,7 @@
     }
   ],
   "routes": {
-    "direct": [
+    "homogeneous": [
       {
         "id": "rewrite",
         "title": "整体乘 1",
@@ -186,7 +186,8 @@
           "structure": "两项的积固定为 $4$，要求它们和的最小值。"
         },
         "display": "direct-structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $\\left(x+\\frac1y\\right)\\left(\\frac1x+4y\\right)=5+4xy+\\frac1{xy}$，$4xy\\cdot\\frac1{xy}=4$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -213,7 +214,8 @@
           "terms": "请核对展开后积为定值的两个正项。"
         },
         "display": "direct-amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $4xy+\\frac1{xy}\\ge2\\sqrt4=4$，原式 $\\ge9$。"}
       },
       {
         "id": "equality",
@@ -240,7 +242,8 @@
           "terms": "取等要求应用基本不等式的两项相等。"
         },
         "display": "direct-equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $xy=\\frac12$，与 $\\frac1x+4y=1$ 联立得 $x=3$，$y=\\frac16$，取得到。"}
       }
     ],
     "substitution": [
@@ -322,7 +325,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题令 $t=\\frac1y$，目标 $x+t$ 是一次，条件 $\\frac1x+\\frac4t$ 是负一次，相乘得零次式。"}
       },
       {
         "id": "rewrite",
@@ -400,7 +404,8 @@
             "1/x+1/t": "sub-calculation-second-1",
             "1": "sub-calculation-second-2"
           }
-        }
+        },
+        "tip": {"id": "method-homogeneous", "note": "本题条件 $\\frac1x+\\frac4t=1$，整体乘入：$x+t=(x+t)\\left(\\frac1x+\\frac4t\\right)$。"}
       },
       {
         "id": "structure",
@@ -430,7 +435,8 @@
           "structure": "两项的积固定为 $4$，要求它们和的最小值。"
         },
         "display": "sub-structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题展开得 $5+\\frac{4x}t+\\frac tx$，$\\frac{4x}t\\cdot\\frac tx=4$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -457,7 +463,8 @@
           "terms": "请核对展开后积为定值的两个正项。"
         },
         "display": "sub-amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac{4x}t+\\frac tx\\ge4$，原式 $\\ge9$。"}
       },
       {
         "id": "equality",
@@ -484,7 +491,8 @@
           "terms": "取等要求应用基本不等式的两项相等。"
         },
         "display": "sub-equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $t=2x$，代入 $\\frac1x+\\frac4t=1$ 得 $x=3$，$t=6$（即 $y=\\frac16$），取得到。"}
       }
     ]
   },

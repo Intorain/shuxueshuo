@@ -1,0 +1,52 @@
+/* amgm-formula explainer; every selector is scoped to .explain-amgm-formula. */
+.explain-amgm-formula .ag-core { margin:16px 0 12px; font-size:15px; font-weight:600; line-height:1.65; }
+.explain-amgm-formula .ag-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.explain-amgm-formula .ag-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
+.explain-amgm-formula .ag-explorer { display:grid; gap:10px; padding:14px; border:1px solid #dbe8e4; border-radius:16px; background:linear-gradient(180deg,#f5fbfa,#fbfdfc); }
+.explain-amgm-formula .ag-ask { margin:0; color:#33504a; font-size:14px; font-weight:600; }
+.explain-amgm-formula .ag-graph { display:block; width:100%; max-width:440px; height:auto; margin:0 auto; }
+.explain-amgm-formula .ag-arc { fill:#eef8f5; stroke:#9cc9c0; stroke-width:1.6; }
+.explain-amgm-formula .ag-diameter { stroke:#46605a; stroke-width:1.6; }
+.explain-amgm-formula .ag-radius { stroke:#b6782c; stroke-width:1.8; stroke-dasharray:5 4; }
+.explain-amgm-formula .ag-radius-label { fill:#9a5f17; font-size:13px; font-weight:650; }
+.explain-amgm-formula .ag-chord { stroke:#087f79; stroke-width:3; stroke-linecap:round; }
+.explain-amgm-formula .ag-chord.equal { stroke:#c2410c; }
+.explain-amgm-formula .ag-chord-label { fill:#0b6b5c; font-size:13px; font-weight:650; }
+.explain-amgm-formula .ag-top { fill:#087f79; stroke:#fff; stroke-width:2; }
+.explain-amgm-formula .ag-top.equal { fill:#c2410c; }
+.explain-amgm-formula .ag-split { fill:#46605a; }
+.explain-amgm-formula .ag-part { fill:#33504a; font-size:13.5px; font-weight:650; font-style:italic; }
+.explain-amgm-formula .ag-slider { width:100%; max-width:440px; margin:0 auto; accent-color:#087f79; }
+.explain-amgm-formula .ag-slider:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-amgm-formula .ag-readout { margin:0; color:#33504a; font-size:14.5px; font-weight:650; font-variant-numeric:tabular-nums; text-align:center; }
+.explain-amgm-formula .ag-legend { margin:0; color:var(--muted); font-size:12.5px; text-align:center; }
+.explain-amgm-formula .ag-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:16px 0 8px; }
+.explain-amgm-formula .ag-tabs button { padding:8px 6px; border:1px solid #d6e6e1; border-radius:11px; background:#fff; color:var(--ink); font:inherit; font-size:14px; cursor:pointer; }
+.explain-amgm-formula .ag-tabs button[aria-selected="true"] { border-color:var(--teal); background:#e9f6f2; color:var(--teal-dark); font-weight:650; box-shadow:inset 0 0 0 1px var(--teal); }
+.explain-amgm-formula .ag-tabs button:focus-visible { outline:3px solid #82cfc7; outline-offset:2px; }
+.explain-amgm-formula .ag-panel { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fff; font-size:14px; line-height:1.75; }
+.explain-amgm-formula .ag-panel[hidden] { display:none; }
+.explain-amgm-formula .ag-panel h3 { margin:0 0 8px; font-size:14.5px; font-weight:700; }
+.explain-amgm-formula .ag-panel p { margin:0 0 8px; }
+.explain-amgm-formula .ag-panel > :last-child { margin-bottom:0; }
+.explain-amgm-formula .ag-uses { display:grid; gap:6px; margin:0 0 8px; padding:0; list-style:none; }
+.explain-amgm-formula .ag-uses li { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; padding:8px 10px; border:1px solid #bfe0d6; border-radius:10px; background:#eef8f5; font-weight:600; }
+.explain-amgm-formula .ag-use-tag { padding:1px 8px; border-radius:6px; background:#1f3b39; color:#fff; font-size:12px; font-weight:600; }
+.explain-amgm-formula .ag-wrong { padding:8px 10px; border-left:3px solid #c2410c; border-radius:0 10px 10px 0; background:#fdf3ed; }
+.explain-amgm-formula .ag-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
+.explain-amgm-formula .ag-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }
+.explain-amgm-formula .ag-note h3 { margin:0 0 6px; font-size:14px; font-weight:700; }
+.explain-amgm-formula .ag-note p { margin:0 0 6px; }
+.explain-amgm-formula .ag-note > :last-child { margin-bottom:0; }
+.explain-amgm-formula .ag-link { padding:0; border:0; background:none; color:var(--teal-dark); font:inherit; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+@media(max-width:760px) {
+  .explain-amgm-formula .ag-notes { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .explain-amgm-formula .ag-core { font-size:14px; }
+  .explain-amgm-formula .ag-explorer { padding:10px 8px; }
+  .explain-amgm-formula .ag-readout { font-size:13.5px; }
+  .explain-amgm-formula .ag-tabs { gap:6px; }
+  .explain-amgm-formula .ag-tabs button { padding:7px 4px; font-size:13.5px; }
+  .explain-amgm-formula .ag-panel { padding:10px 12px; font-size:13.5px; }
+}

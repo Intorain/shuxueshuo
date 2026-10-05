@@ -16,7 +16,7 @@ from .test_tutor_demo import Tutor, action, client_session, send
 
 def finish_elimination(client, view):
     for op in [
-        action("method", "1"),
+        action("method", "elimination"),
         action("choice", "n"),
         action("submit"),
         action("choice", "vertex"),
@@ -75,7 +75,7 @@ def test_mid_path_switch_and_switch_back_create_distinct_attempts():
     view = send(client, view, action("method", "direct")).json()
     view = send(client, view, action("fill", "n", 0)).json()
     first = view["attempt_id"]
-    view = send(client, view, action("switch_route", "1")).json()
+    view = send(client, view, action("switch_route", "elimination")).json()
     assert view["attempts"][0]["status"] == "paused"
     assert view["attempts"][0]["state"]["pairs"][0] == ["n", ""]
     view = send(client, view, action("switch_route", "direct")).json()
@@ -220,7 +220,7 @@ def test_multiple_valid_choices_require_student_selection():
             reply="确认",
             intent="answer",
             evidence=["elimination_relation"],
-            actions=[Action(kind="method", value="1")],
+            actions=[Action(kind="method", value="elimination")],
         )
     )
     client, view = client_session(tutor)
@@ -237,7 +237,7 @@ def test_multiple_valid_choices_require_student_selection():
 def test_context_separates_conditions_completed_results_and_current_reference():
     lesson = load_lesson("q01")
     state = fresh_state(lesson)
-    apply_action(state, Action(kind="method", value="1"), lesson)
+    apply_action(state, Action(kind="method", value="elimination"), lesson)
     context = turn_context(lesson, state, [])
     assert context["problem_conditions"] == lesson["problem"]["conditions"]
     assert context["completed_results"] == []

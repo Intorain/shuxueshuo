@@ -113,7 +113,8 @@
           "min_reciprocal": "preview-transform-min_reciprocal",
           "max_reciprocal": "preview-transform-max_reciprocal",
           "min_denominator": "preview-transform-min_denominator"
-        }
+        },
+        "tip": {"id": "inequality-properties", "note": "本题 $x>0$ 时 $y>0$；同正取倒数，大小顺序颠倒，$y$ 最大对应 $\\frac1y$ 最小。"}
       },
       {
         "id": "split",
@@ -179,7 +180,8 @@
             "2": "split-attempt-4-2",
             "4": "split-attempt-4-4"
           }
-        }
+        },
+        "tip": {"id": "method-fraction-split", "note": "本题 $\\frac1y=\\frac{x^2+4}{2x}=\\frac x2+\\frac2x$。"}
       },
       {
         "id": "structure",
@@ -209,7 +211,8 @@
           "structure": "两项的积固定为 $1$，要求它们和的最小值。"
         },
         "submit_label": "确认判断",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $\\frac x2\\cdot\\frac2x=1$ 是定值，求 $\\frac1y$ 的最小值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -236,7 +239,8 @@
           "terms": "请核对分离后的两个正项。"
         },
         "submit_label": "确认判断",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac x2+\\frac2x\\ge2$，即 $\\frac1y\\ge2$。"}
       },
       {
         "id": "equality",
@@ -263,7 +267,8 @@
           "terms": "取等要求应用基本不等式的两项相等。"
         },
         "submit_label": "确认判断",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $\\frac x2=\\frac2x$，即 $x=2$，此时 $y=\\frac12$ 是最大值。"}
       }
     ]
   },

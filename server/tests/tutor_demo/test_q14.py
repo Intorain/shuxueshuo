@@ -40,7 +40,7 @@ def tail(first, second):
 
 def actions(route, switch=False):
     start = [operation("switch_route" if switch else "method", route)]
-    if route == "direct":
+    if route == "homogeneous":
         return (
             start
             + fills("first", "1/x+4y")
@@ -71,7 +71,7 @@ def test_page_and_teacher_contract():
     assert len(ids) == len(set(ids))
     for key in ("id", "version", "methods"):
         assert page[key] == teacher[key]
-    assert [m["id"] for m in page["methods"]] == ["direct", "substitution"]
+    assert [m["id"] for m in page["methods"]] == ["homogeneous", "substitution"]
     templates = set(re.findall(r'<template id="([^"]+)"', text))
     assert page["completion"] in templates
     for route, nodes in page["routes"].items():
@@ -116,7 +116,7 @@ def test_substitution_candidates_are_single_targets():
 
 
 def test_both_routes_match_local_and_server():
-    ops = pending(actions("direct") + actions("substitution", switch=True))
+    ops = pending(actions("homogeneous") + actions("substitution", switch=True))
     script = """
 require(process.argv[1]);
 const {lesson, operations} = JSON.parse(require('fs').readFileSync(0,'utf8'));
@@ -144,14 +144,14 @@ console.log(JSON.stringify(operations.map(op=>{view=PracticeContext.apply(view,o
             assert len(view["completed"]) == len(browser["completed"])
             if view["state"]["feedback"]:
                 errors.append((view["state"]["method"], view["state"]["active"]))
-        assert errors.count(("direct", 0)) == 3
-        assert {("direct", 1), ("direct", 3)} <= set(errors)
+        assert errors.count(("homogeneous", 0)) == 3
+        assert {("homogeneous", 1), ("homogeneous", 3)} <= set(errors)
         assert errors.count(("substitution", 0)) == 2
         assert errors.count(("substitution", 1)) == 1
         assert errors.count(("substitution", 2)) == 2
         assert {("substitution", 3), ("substitution", 5)} <= set(errors)
         assert [(a["route"], a["status"]) for a in view["attempts"]] == [
-            ("direct", "completed"),
+            ("homogeneous", "completed"),
             ("substitution", "completed"),
         ]
         assert not tutor.calls
@@ -162,7 +162,7 @@ console.log(JSON.stringify(operations.map(op=>{view=PracticeContext.apply(view,o
 @pytest.mark.parametrize(
     "route,turns,active",
     [
-        ("direct", [["whole_scope"], ["unit_factor"]], [0, 1]),
+        ("homogeneous", [["whole_scope"], ["unit_factor"]], [0, 1]),
         (
             "substitution",
             [["reciprocal_target"], ["target_degree"], ["condition_degree"]],
@@ -189,7 +189,7 @@ def test_evidence_accumulates_across_turns(route, turns, active):
                     revision=session.revision,
                     kind="text",
                     text="本轮证据",
-                    lesson_version=1,
+                    lesson_version=2,
                     pending_operations=pending([operation("method", route)])
                     if i == 0
                     else [],
@@ -197,7 +197,7 @@ def test_evidence_accumulates_across_turns(route, turns, active):
                 EvidenceTutor(evidence),
             )
             assert view["state"]["active"] == active[i]
-        if route == "direct":
+        if route == "homogeneous":
             assert view["state"]["pairs"][0] == ["whole", "1/x+4y"]
         else:
             assert view["state"]["pairs"][0][0] == "1/y"
@@ -268,7 +268,7 @@ def test_calculation_survives_dialogue_but_clears_on_edits_and_route_changes():
     async def run():
         session = Session(load_lesson("q14"))
         tutor = QuestionTutor()
-        ops = [operation("method", "direct")] + fills("first", "1/x+4y")
+        ops = [operation("method", "homogeneous")] + fills("first", "1/x+4y")
         for i, op in enumerate(ops):
             view = await session.handle(
                 Event(
@@ -284,7 +284,7 @@ def test_calculation_survives_dialogue_but_clears_on_edits_and_route_changes():
                     kind=kind,
                     text="为什么这样不行？" if kind == "text" else "",
                     revision=session.revision,
-                    lesson_version=1,
+                    lesson_version=2,
                     pending_operations=[],
                 ),
                 tutor,
@@ -337,7 +337,7 @@ def test_calculation_survives_dialogue_but_clears_on_edits_and_route_changes():
 
 @pytest.mark.live_llm
 @pytest.mark.skipif(os.getenv("RUN_TUTOR_LIVE") != "1", reason="Explicit live opt-in")
-@pytest.mark.parametrize("route", ["direct", "substitution"])
+@pytest.mark.parametrize("route", ["homogeneous", "substitution"])
 def test_live_q14_dialogue_and_confirmed_calculation(route):
     from shuxueshuo_server.tutor_demo.llm import DeepSeekTutor
 
@@ -348,7 +348,7 @@ def test_live_q14_dialogue_and_confirmed_calculation(route):
             return proposal
 
     lower_bound = "我对原式用基本不等式得到x+1/y≥2√(x/y)，由x>1、0<y<1/4得到原式>4，这不也是常数下界吗？"
-    if route == "direct":
+    if route == "homogeneous":
         initial = [operation("method", route)] + fills("first", "1/x+4y")
         turns = [
             ("我只给第一项乘条件表达式，为什么这样不行？请按我的选择展开。", 0),
@@ -394,7 +394,7 @@ def test_live_q14_dialogue_and_confirmed_calculation(route):
                         kind="text",
                         text=text,
                         revision=session.revision,
-                        lesson_version=1,
+                        lesson_version=2,
                         pending_operations=pending(initial) if i == 0 else [],
                     ),
                     tutor,

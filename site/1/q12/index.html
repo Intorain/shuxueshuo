@@ -151,7 +151,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题令 $x=2m+1$，$y=n+1$，则 $x+y=8$；$\\frac1x+\\frac1y$ 是负一次，$x+y$ 是一次，相乘得零次式。"}
       },
       {
         "id": "rewrite",
@@ -212,7 +213,8 @@
           "whole": "rewrite-whole",
           "first": "rewrite-first",
           "second": "rewrite-second"
-        }
+        },
+        "tip": {"id": "method-homogeneous", "note": "本题 $x+y=8$，要乘 $\\frac{x+y}8=1$：原式 $=\\frac18\\left(\\frac1x+\\frac1y\\right)(x+y)$。"}
       },
       {
         "id": "structure",
@@ -242,7 +244,8 @@
           "structure": "两项的积固定为 $1$，要求它们和的最小值。"
         },
         "display": "structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题展开得 $\\frac18\\left(2+\\frac yx+\\frac xy\\right)$，$\\frac yx\\cdot\\frac xy=1$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -269,7 +272,8 @@
           "terms": "请核对展开后的两个正项。"
         },
         "display": "amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac yx+\\frac xy\\ge2$，原式 $\\ge\\frac18\\times4=\\frac12$。"}
       },
       {
         "id": "equality",
@@ -296,7 +300,8 @@
           "terms": "取等要求应用基本不等式的两个比值项相等。"
         },
         "display": "equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $x=y=4$，即 $m=\\frac32$，$n=3$，取得到。"}
       }
     ]
   },

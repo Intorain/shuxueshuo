@@ -115,7 +115,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题拆成 $\\left(\\frac ba+\\frac ab\\right)+\\left(\\frac1a+\\frac1b\\right)$：前一组零次，后一组负一次，条件 $a+b$ 一次。"}
       },
       {
         "id": "rewrite",
@@ -193,7 +194,8 @@
             "a": "calc-second-a",
             "1": "calc-second-one"
           }
-        }
+        },
+        "tip": {"id": "method-homogeneous", "case": "local", "note": "本题 $\\frac ba+\\frac ab$ 已是零次，只给 $\\frac1a+\\frac1b$ 乘 $a+b$，第二组展开得 $2+\\frac ba+\\frac ab$。整体乘会把前一组乘成一次。"}
       },
       {
         "id": "structure",
@@ -223,7 +225,8 @@
           "structure": "两项的积固定为 $4$，要求它们和的最小值。"
         },
         "display": "structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $\\frac1a+\\frac1b=\\left(\\frac1a+\\frac1b\\right)(a+b)=2+\\frac ba+\\frac ab$，原式 $=2+\\frac{2b}a+\\frac{2a}b$，两项积为 $4$：定积求和。"}
       },
       {
         "id": "amgm",
@@ -250,7 +253,8 @@
           "terms": "请核对配式后的两个正项。"
         },
         "display": "amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac{2b}a+\\frac{2a}b\\ge2\\sqrt4=4$，原式 $\\ge6$。"}
       },
       {
         "id": "equality",
@@ -277,7 +281,8 @@
           "terms": "取等要求应用基本不等式的两个比值项相等。"
         },
         "display": "equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $a=b$，与 $a+b=1$ 联立得 $a=b=\\frac12$，取得到。"}
       }
     ]
   },

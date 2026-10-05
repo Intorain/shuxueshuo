@@ -27,6 +27,8 @@ body:has(.explain-sheet[open]) { overflow:hidden; }
 /* Method explainers: core idea, when to use it, a figure, three steps. */
 .method-tag { flex-shrink:0; margin:2px 8px 0 0; padding:2px 8px; border-radius:7px; background:#1f3b39; color:#fff; font-size:12px; font-weight:600; letter-spacing:.06em; }
 .method-core { display:grid; grid-template-columns:auto 1fr; align-items:start; margin:16px 0 12px; font-size:15px; font-weight:600; line-height:1.6; }
+.method-problem { display:flex; align-items:baseline; gap:8px; margin:0 0 12px; padding:10px 14px; border:1px solid #f0dcc0; border-radius:12px; background:#fffaf2; color:#5e4520; font-size:14px; line-height:1.7; }
+.method-problem-badge { flex:none; padding:1px 7px; border-radius:6px; background:#d98a1f; color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.04em; }
 .method-judge { margin:0 0 14px; padding:14px 16px; border:1px solid #f0dcc0; border-radius:16px; background:#fffaf2; }
 .method-judge-title { display:flex; align-items:center; margin:0 0 10px; font-size:15px; }
 .method-judge-title .method-tag { margin-top:0; background:#a8650f; }
@@ -83,7 +85,67 @@ body:has(.explain-sheet[open]) { overflow:hidden; }
 .g-text.alt { fill:#a8650f; }
 .g-text.bad { fill:#c2412f; }
 
+/* Expression figures (basic-inequality methods): square and circle slots, boxed terms, worked lines. Generic class names, so scoped to the explainer. */
+:is(.explain-sheet, .explain-inline) .method-kinds { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0; padding:0; list-style:none; }
+:is(.explain-sheet, .explain-inline) .method-kinds li { display:grid; gap:2px; padding:8px 4px; border:1px solid #e0ebe8; border-radius:10px; background:#fff; font-size:14px; }
+:is(.explain-sheet, .explain-inline) .method-kind-label { color:var(--muted); font-size:11.5px; font-weight:600; }
+:is(.explain-sheet, .explain-inline) .method-kinds-note { margin:10px 0 4px; color:var(--ink-soft); font-size:13px; }
+:is(.explain-sheet, .explain-inline) .mini-slot { display:inline-block; width:13px; height:13px; vertical-align:-1px; border:1.8px solid #0da3bc; border-radius:3px; background:#f8fdfe; }
+:is(.explain-sheet, .explain-inline) .mini-slot.circle { border-color:#eaa01d; border-radius:50%; background:#fffcf5; }
+:is(.explain-sheet, .explain-inline) .method-steps .mini-slot { width:11px; height:11px; border-width:1.6px; }
+:is(.explain-sheet, .explain-inline) .method-formula { display:flex; align-items:center; justify-content:center; gap:10px; margin:8px 0 12px; color:var(--ink); font-family:var(--math); }
+:is(.explain-sheet, .explain-inline) .method-formula .slot { display:inline-block; flex-shrink:0; width:46px; height:46px; border:3px solid #0da3bc; border-radius:10px; background:#f8fdfe; }
+:is(.explain-sheet, .explain-inline) .method-formula .slot.circle { border-color:#eaa01d; border-radius:50%; background:#fffcf5; }
+:is(.explain-sheet, .explain-inline) .method-formula .slot.small { width:34px; height:34px; border-width:2.5px; }
+:is(.explain-sheet, .explain-inline) .method-formula .op { font-size:30px; line-height:1; }
+:is(.explain-sheet, .explain-inline) .method-formula .coef { margin-right:-6px; font-weight:600; }
+:is(.explain-sheet, .explain-inline) .method-formula .dot { font-size:24px; }
+:is(.explain-sheet, .explain-inline) .radical { display:inline-flex; align-items:stretch; }
+:is(.explain-sheet, .explain-inline) .radical-sign { flex-shrink:0; width:18px; height:auto; color:var(--ink); }
+:is(.explain-sheet, .explain-inline) .radicand { display:inline-flex; align-items:center; gap:6px; padding:6px 4px 2px 6px; border-top:2.4px solid var(--ink); }
+:is(.explain-sheet, .explain-inline) .method-template { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; margin:2px 0 12px; }
+:is(.explain-sheet, .explain-inline) :is(.method-template, .method-demo) .op { font-family:var(--math); font-size:18px; line-height:1; color:var(--ink-soft); }
+:is(.explain-sheet, .explain-inline) .method-template .slot { display:inline-block; width:30px; height:30px; border:2.5px solid #0da3bc; border-radius:7px; background:#f8fdfe; }
+:is(.explain-sheet, .explain-inline) .method-template .slot.circle { border-color:#eaa01d; border-radius:50%; background:#fffcf5; }
+:is(.explain-sheet, .explain-inline) .method-word { padding:5px 10px; border:1px solid #e0ebe8; border-radius:9px; background:#fff; font-size:13.5px; font-weight:600; }
+:is(.explain-sheet, .explain-inline) .method-node { display:inline-grid; justify-items:center; gap:1px; padding:6px 11px; border:1px solid #e0ebe8; border-radius:10px; background:#fff; }
+:is(.explain-sheet, .explain-inline) .method-node small { white-space:nowrap; color:var(--muted); font-size:11.5px; font-weight:600; }
+:is(.explain-sheet, .explain-inline) .method-node b { display:inline-flex; align-items:center; gap:4px; font-size:14px; font-weight:600; white-space:nowrap; }
+:is(.explain-sheet, .explain-inline) .method-arrow { display:inline-grid; justify-items:center; color:#d08a2a; line-height:1.1; }
+:is(.explain-sheet, .explain-inline) .method-arrow small { color:var(--muted); font-size:11px; }
+:is(.explain-sheet, .explain-inline) .method-arrow i { font-style:normal; font-size:16px; }
+:is(.explain-sheet, .explain-inline) .hole { display:inline-block; width:24px; height:18px; border:1.8px dashed var(--teal); border-radius:5px; background:#f2faf8; vertical-align:middle; }
+:is(.explain-sheet, .explain-inline) .hole-frac { display:inline-grid; justify-items:center; gap:2px; font-family:var(--math); font-size:13px; line-height:1; }
+:is(.explain-sheet, .explain-inline) .hole-frac .hole { width:30px; height:16px; }
+:is(.explain-sheet, .explain-inline) .hole-frac > span:first-child { padding:0 8px 2px; border-bottom:1.6px solid var(--ink); }
+:is(.explain-sheet, .explain-inline) .method-demo { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 8px; margin:0 0 10px; padding:10px 12px; border:1px dashed #cfe0db; border-radius:12px; background:#fff; }
+:is(.explain-sheet, .explain-inline) .method-demo-tag { flex-basis:100%; color:var(--muted); font-size:12px; font-weight:600; }
+:is(.explain-sheet, .explain-inline) .method-demo-body { display:inline-flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px; font-size:15px; }
+:is(.explain-sheet, .explain-inline) .method-demo-group { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+:is(.explain-sheet, .explain-inline) .method-demo math { math-style:normal; }
+:is(.explain-sheet, .explain-inline) .term { display:inline-flex; align-items:center; padding:3px 8px; border:2px solid #0da3bc; border-radius:8px; background:#f8fdfe; }
+:is(.explain-sheet, .explain-inline) .term.circle { border-color:#eaa01d; border-radius:999px; background:#fffcf5; }
+:is(.explain-sheet, .explain-inline) .term.plain { border:1px solid #cfe3de; background:var(--teal-soft); }
+:is(.explain-sheet, .explain-inline) .method-demo + .method-pill { margin-top:2px; }
+:is(.explain-sheet, .explain-inline) .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
 @media(max-width:720px) {
+  :is(.explain-sheet, .explain-inline) .method-kinds { grid-template-columns:repeat(2,1fr); }
+  :is(.explain-sheet, .explain-inline) .method-formula { gap:7px; }
+  :is(.explain-sheet, .explain-inline) .method-formula .slot { width:38px; height:38px; }
+  :is(.explain-sheet, .explain-inline) .method-formula .slot.small { width:28px; height:28px; }
+  :is(.explain-sheet, .explain-inline) .method-formula .op { font-size:25px; }
+  :is(.explain-sheet, .explain-inline) .method-template { flex-wrap:nowrap; gap:4px; }
+  :is(.explain-sheet, .explain-inline) .method-node { padding:5px 7px; }
+  :is(.explain-sheet, .explain-inline) .method-node small { font-size:10.5px; }
+  :is(.explain-sheet, .explain-inline) .method-node b { font-size:12.5px; }
+  :is(.explain-sheet, .explain-inline) .method-node b.wrap { flex-wrap:wrap; justify-content:center; }
+  :is(.explain-sheet, .explain-inline) .method-arrow small { font-size:10px; }
+  :is(.explain-sheet, .explain-inline) .method-demo { padding:9px 8px; }
+  :is(.explain-sheet, .explain-inline) .method-demo-body { gap:4px 5px; font-size:14px; }
+  :is(.explain-sheet, .explain-inline) .method-demo-group { gap:5px; }
+  :is(.explain-sheet, .explain-inline) .method-demo math { math-style:compact; }
+  :is(.explain-sheet, .explain-inline) .term { padding:2px 6px; }
   .method-core { font-size:14px; }
   .method-judge { padding:12px; }
   .method-signal { padding:9px 10px; font-size:14px; }
@@ -105,6 +167,10 @@ body:has(.explain-sheet[open]) { overflow:hidden; }
 }
 @media(max-width:380px) {
   .method-figure { padding:14px 10px 12px; }
+  :is(.explain-sheet, .explain-inline) .method-formula { gap:5px; }
+  :is(.explain-sheet, .explain-inline) .method-formula .slot { width:34px; height:34px; }
+  :is(.explain-sheet, .explain-inline) .method-formula .slot.small { width:26px; height:26px; }
+  :is(.explain-sheet, .explain-inline) .method-formula .op { font-size:22px; }
 }
 @media(prefers-reduced-motion:reduce) {
   .explain-sheet[open] { animation:none; }

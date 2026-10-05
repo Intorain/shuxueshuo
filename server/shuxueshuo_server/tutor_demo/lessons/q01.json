@@ -1,6 +1,6 @@
 {
   "id": "q01",
-  "version": 5,
+  "version": 6,
   "problem": {
     "statement": "设正实数 $m,n$ 满足 $m+n=2$，求 $mn$ 的最大值。",
     "conditions": [
@@ -15,7 +15,7 @@
       "label": "直接应用基本不等式"
     },
     {
-      "id": "1",
+      "id": "elimination",
       "label": "消参法"
     }
   ],
@@ -120,7 +120,7 @@
       ],
       "label": "直接应用基本不等式"
     },
-    "1": {
+    "elimination": {
       "nodes": [
         {
           "id": "eliminate",

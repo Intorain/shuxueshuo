@@ -146,7 +146,8 @@
           "answer": "和为正不代表两项都正。先讨论 $ab$ 的符号；若 $ab>0$，两数同号，再结合 $2a+3b=1>0$ 判断。"
         },
         "submit_label": "确认思路",
-        "display": "sign-done"
+        "display": "sign-done",
+        "tip": {"id": "amgm-formula", "case": "positive", "note": "本题 $ab>0$ 时两数同号，又 $2a+3b=1>0$，所以 $a,b>0$；先在正积情形下求上界，最后再与 $ab<0$ 的情形比较。"}
       },
       {
         "id": "structure",
@@ -180,7 +181,8 @@
           "structure": "固定的是 $2a+3b=1$，目标是求乘积 $6ab$ 的最大值。"
         },
         "submit_label": "确认思路",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $2a+3b=1$ 是定值，要求 $ab$ 的最大值，先看积 $2a\\cdot3b=6ab$：定和求积。"}
       },
       {
         "id": "amgm",
@@ -215,7 +217,8 @@
           "terms": "请对应条件中的两项 $2a$、$3b$，留意系数。"
         },
         "submit_label": "确认思路",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $2a\\cdot3b\\le\\left(\\frac{2a+3b}2\\right)^2=\\frac14$，所以 $ab\\le\\frac1{24}$。"}
       },
       {
         "id": "equality",
@@ -246,7 +249,8 @@
           "terms": "请对应条件中的两项 $2a$、$3b$，留意系数。"
         },
         "submit_label": "确认思路",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $2a=3b$，与 $2a+3b=1$ 联立得 $a=\\frac14$，$b=\\frac16$，代回原条件成立，取得到。"}
       }
     ],
     "elimination": [
@@ -356,7 +360,8 @@
             "a": "quadratic-a",
             "b": "quadratic-b"
           }
-        }
+        },
+        "tip": {"field": "technique", "options": {"square": {"field": "variable", "options": {"a": {"id": "method-complete-square", "note": "本题 $b=\\frac{1-2a}3$，$ab=\\frac{a(1-2a)}3=-\\frac23\\left(a-\\frac14\\right)^2+\\frac1{24}\\le\\frac1{24}$。"}, "b": {"id": "method-complete-square", "note": "本题 $a=\\frac{1-3b}2$，$ab=\\frac{b(1-3b)}2=-\\frac32\\left(b-\\frac16\\right)^2+\\frac1{24}\\le\\frac1{24}$。"}}}, "vertex": {"field": "variable", "options": {"a": {"id": "quadratic-function-properties", "note": "本题 $ab=-\\frac23a^2+\\frac a3$ 开口向下，对称轴 $a=\\frac14$，顶点处 $ab=\\frac1{24}$；$a=\\frac14$ 不是要排除的 $0$、$\\frac12$。"}, "b": {"id": "quadratic-function-properties", "note": "本题 $ab=-\\frac32b^2+\\frac b2$ 开口向下，对称轴 $b=\\frac16$，顶点处 $ab=\\frac1{24}$；$b=\\frac16$ 不是要排除的 $0$、$\\frac13$。"}}}}}
       },
       {
         "id": "feasibility",
@@ -387,7 +392,8 @@
         },
         "submit_label": "确认思路",
         "display": "feasibility-done",
-        "board": "feasibility-board"
+        "board": "feasibility-board",
+        "tip": {"id": "endpoint-attainability", "note": "本题候选值 $a=\\frac14$，$b=\\frac16$：两数非零，代回 $\\left(\\frac1a-2\\right)\\left(\\frac1b-3\\right)=2\\times3=6$，成立。"}
       }
     ]
   },

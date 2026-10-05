@@ -22,11 +22,10 @@
 .tm-card.technique { border-style: dashed; background: #fff; }
 .tm-card-name { font-size: 13.5px; font-weight: 650; line-height: 1.45; }
 .tm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.tm-card-meta em { color: #8a5a10; font-style: normal; }
 .tm-sheet-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
 .tm-card:hover, .tm-card.is-same { border-color: var(--teal); background: #eef8f5; box-shadow: 0 0 0 3px rgba(8, 127, 121, .12); }
 .tm-card.is-selected { border-color: var(--teal-dark); background: var(--teal); color: #fff; }
-.tm-card.is-selected .tm-card-meta, .tm-card.is-selected .tm-card-meta em { color: #e5f2ef; }
+.tm-card.is-selected .tm-card-meta { color: #e5f2ef; }
 .tm-card:focus-visible, .tm-method:focus-visible, .tm-dialog:focus-visible { outline: 3px solid #82cfc7; outline-offset: 2px; }
 
 .tm-detail { margin-top: 14px; padding: 16px 18px; border: 1px solid #9fd0c6; border-radius: 16px; background: var(--paper); box-shadow: 0 18px 36px -24px rgba(8, 127, 121, .45); font-size: 14px; scroll-margin: 16px; }

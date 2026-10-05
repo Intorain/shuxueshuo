@@ -12,7 +12,7 @@
   <meta property="og:url" content="https://shuxueshuo.com/knowledge/homogeneous-expression/">
   <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
   <link rel="canonical" href="https://shuxueshuo.com/knowledge/homogeneous-expression/">
-  <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
+  <link rel="stylesheet" href="/1/chapter.css?v=20261005a">
   <link rel="stylesheet" href="/knowledge/node.css?v=1">
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
   <title>齐次式 · 知识点 · 数学说</title>
@@ -38,7 +38,12 @@
       <dl class="kn-relations"><div><dt>以它为核心依据的方法</dt><dd><a class="kn-chip method" href="/knowledge/method-homogeneous/">配齐次式</a></dd></div></dl>
     </section>
 
-    <p class="kn-none kn-pending">图解和刷题还在整理中。</p>
+    <section class="kn-section" aria-labelledby="kn-explain-title">
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 8 题</button></div>
+      <div class="kn-explain"><div data-explainer="homogeneous-expression"><p class="kn-none">图解加载中…</p></div></div>
+    </section>
+
+    <script type="application/json" id="kn-drill-data">{"label":"齐次式","items":[{"id":"degree","question":"$\\frac{x^2}y$ 是几次式？","type":"choice","options":[{"value":"two","label":"二次","feedback":"分母的次数要减掉：$2-1=1$。"},{"value":"three","label":"三次","feedback":"除以 $y$ 是乘 $y^{-1}$，次数是 $2+(-1)$。"},{"value":"right","label":"一次"}],"answer":"right"},{"id":"zero-degree","question":"下面哪个是零次式？","type":"choice","options":[{"value":"right","label":"$\\frac xy+\\frac yx$"},{"value":"mixed","label":"$x+\\frac1y$","feedback":"$x$ 是一次，$\\frac1y$ 是负一次，各项次数不同。"},{"value":"neg","label":"$\\frac{x+y}{xy}$","feedback":"分子一次、分母二次，是负一次式。"}],"answer":"right"},{"id":"multiply","question":"$a+b=1$ 时，要把 $\\frac1a+\\frac2b$ 配成零次式，应乘上什么？","type":"choice","options":[{"value":"square","label":"$(a+b)^2$","feedback":"负一次乘二次得到一次式，不是零次。"},{"value":"right","label":"$a+b$"},{"value":"ab","label":"$ab$","feedback":"$ab$ 不等于 $1$，乘上去式子的值就变了。"}],"answer":"right"},{"id":"not-one","question":"$2a+b=2$ 时，$\\frac1a+\\frac1b$ 应写成什么？","type":"choice","options":[{"value":"direct","label":"$\\left(\\frac1a+\\frac1b\\right)(2a+b)$","feedback":"$2a+b=2$，不是 $1$，直接乘值变成原来的 $2$ 倍。"},{"value":"double","label":"$2\\left(\\frac1a+\\frac1b\\right)(2a+b)$","feedback":"应乘 $\\frac{2a+b}2=1$，系数是 $\\frac12$。"},{"value":"right","label":"$\\frac12\\left(\\frac1a+\\frac1b\\right)(2a+b)$"}],"answer":"right"},{"id":"ratio","question":"$x,y>0$ 时，$\\frac{x^2+y^2}{xy}$ 的值只和什么有关？","type":"choice","options":[{"value":"sum","label":"$x+y$","feedback":"$x=1,y=1$ 和 $x=0.5,y=1.5$ 的和相同，值却不同。"},{"value":"right","label":"比值 $\\frac xy$"},{"value":"product","label":"$xy$","feedback":"$x=y=1$ 和 $x=4,y=\\frac14$ 的积相同，值却不同。"}],"answer":"right"},{"id":"compute","question":"$a,b>0$，$a+b=1$，$\\frac1a+\\frac4b$ 的最小值是多少？","type":"choice","options":[{"value":"right","label":"$9$"},{"value":"four","label":"$4$","feedback":"$(a+b)\\left(\\frac1a+\\frac4b\\right)=5+\\frac ba+\\frac{4a}b\\ge5+4$，别漏常数 $5$。"},{"value":"five","label":"$5$","feedback":"$5$ 只是常数部分，$\\frac ba+\\frac{4a}b$ 还至少是 $4$。"}],"answer":"right"},{"id":"substitute","question":"$x,y>0$，令 $t=\\frac xy$，$\\frac xy+\\frac{4y}x$ 变成什么？","type":"choice","options":[{"value":"flip","label":"$\\frac1t+4t$","feedback":"$\\frac xy=t$，$\\frac yx=\\frac1t$，所以是 $t+\\frac4t$。"},{"value":"right","label":"$t+\\frac4t$"},{"value":"times","label":"$t+4t$","feedback":"$\\frac{4y}x=4\\cdot\\frac yx=\\frac4t$。"}],"answer":"right"},{"id":"statements","question":"下面哪些说法是对的？","type":"multi","options":[{"value":"scale","label":"$x$、$y$ 同时乘 $k$（$k>0$），零次式的值不变"},{"value":"one-one","label":"一次式乘一次式得零次式","feedback":"次数相加：$1+1=2$，得到二次式。"},{"value":"neg-one","label":"负一次式乘一次式得零次式"},{"value":"coef","label":"数字系数也算进次数","feedback":"次数只看字母的指数，$5x$ 和 $x$ 都是一次。"}],"answer":["scale","neg-one"]}]}</script>
 
     <footer class="chapter-footer">
       <span>数学说 · 知识图谱</span>

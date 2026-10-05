@@ -120,7 +120,8 @@
           "4": "factor-done",
           "5": "factor-check-5",
           "6": "factor-check-6"
-        }
+        },
+        "tip": {"id": "method-matching", "note": "本题 $2ab+2a+b=3$ 两边加 $1$，凑成 $(2a+1)(b+1)=4$。"}
       },
       {
         "id": "eliminate",
@@ -190,7 +191,8 @@
           "structure": "两项的积固定为 $\\frac14$，要求它们和的最小值。"
         },
         "submit_label": "确认判断",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题原式 $=\\frac{b+1}4+\\frac1b=\\frac b4+\\frac1b+\\frac14$，$\\frac b4\\cdot\\frac1b=\\frac14$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -217,7 +219,8 @@
           "terms": "请核对拆项后含 $b$ 的两个正项；常数 $\\frac14$ 最后再加。"
         },
         "submit_label": "确认判断",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac b4+\\frac1b\\ge2\\sqrt{\\frac14}=1$，原式 $\\ge\\frac54$。"}
       },
       {
         "id": "equality",
@@ -244,7 +247,8 @@
           "terms": "取等要求应用基本不等式的两个正项相等。"
         },
         "submit_label": "确认判断",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $\\frac b4=\\frac1b$，即 $b=2$，此时 $2a+1=\\frac43$，$a=\\frac16>0$，取得到。"}
       }
     ]
   },

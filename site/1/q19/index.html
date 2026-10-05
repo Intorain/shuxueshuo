@@ -193,7 +193,8 @@
             "36": "split-attempt-37-36",
             "37": "split-attempt-37-37"
           }
-        }
+        },
+        "tip": {"id": "method-fraction-split", "note": "本题 $a+4b=a+\\frac{36a}{a-1}$，而 $36a=36(a-1)+36$，所以 $\\frac{36a}{a-1}=36+\\frac{36}{a-1}$。"}
       },
       {
         "id": "rewrite",
@@ -233,7 +234,8 @@
           "fixed_product": "preview-rewrite-fixed_product",
           "unchanged": "preview-rewrite-unchanged",
           "wrong_constant": "preview-rewrite-wrong_constant"
-        }
+        },
+        "tip": {"id": "method-matching", "note": "本题把 $a$ 凑成 $a-1$：$a+\\frac{36}{a-1}+36=(a-1)+\\frac{36}{a-1}+37$，两项积为 $36$。"}
       },
       {
         "id": "structure",
@@ -263,7 +265,8 @@
           "structure": "两项的积固定为 $36$，要求它们和的最小值。"
         },
         "submit_label": "确认判断",
-        "display": "structure-done"
+        "display": "structure-done",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $(a-1)\\cdot\\frac{36}{a-1}=36$ 是定值（由 $b>0$ 知 $a>1$）：定积求和。"}
       },
       {
         "id": "amgm",
@@ -290,7 +293,8 @@
           "terms": "请核对改写后含 $a$ 的两个正项；常数 $37$ 最后再加。"
         },
         "submit_label": "确认判断",
-        "display": "amgm-done"
+        "display": "amgm-done",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $(a-1)+\\frac{36}{a-1}\\ge2\\sqrt{36}=12$，$a+4b\\ge49$。"}
       },
       {
         "id": "equality",
@@ -317,7 +321,8 @@
           "terms": "取等要求应用基本不等式的两个正项相等。"
         },
         "submit_label": "确认判断",
-        "display": "equality-done"
+        "display": "equality-done",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $a-1=6$，即 $a=7$，$b=\\frac{21}2$，取得到。"}
       }
     ]
   },

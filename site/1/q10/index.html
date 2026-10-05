@@ -108,7 +108,8 @@
         },
         "display": "homogeneity-done",
         "submit_label": "确认结构",
-        "board": "degree-board"
+        "board": "degree-board",
+        "tip": {"id": "homogeneous-expression", "note": "本题 $\\frac5x+\\frac4y$ 是负一次，$x+5y$ 是一次，相乘得零次式。"}
       },
       {
         "id": "rewrite",
@@ -199,7 +200,8 @@
           "structure": "两项的积固定为 $100$，要求它们和的最小值。"
         },
         "display": "structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $\\left(\\frac5x+\\frac4y\\right)(x+5y)=25+\\frac{25y}x+\\frac{4x}y$，$\\frac{25y}x\\cdot\\frac{4x}y=100$ 是定值：定积求和。"}
       },
       {
         "id": "amgm",
@@ -226,7 +228,8 @@
           "terms": "请核对展开后的两个正项。"
         },
         "display": "amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $\\frac{25y}x+\\frac{4x}y\\ge2\\sqrt{100}=20$，原式 $\\ge25+20=45$。"}
       },
       {
         "id": "equality",
@@ -253,7 +256,8 @@
           "terms": "取等要求应用基本不等式的两个比值项相等。"
         },
         "display": "equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $\\frac{25y}x=\\frac{4x}y$，即 $2x=5y$，与 $x+5y=1$ 联立得 $x=\\frac13$，$y=\\frac2{15}$，取得到。"}
       }
     ]
   },

@@ -1,6 +1,6 @@
 {
   "id": "q14",
-  "version": 1,
+  "version": 2,
   "problem": {
     "statement": "设 $x>0,\\ y>0$，$\\frac1x+4y=1$，则 $x+\\frac1y$ 的最小值为？",
     "conditions": [
@@ -12,7 +12,7 @@
   },
   "methods": [
     {
-      "id": "direct",
+      "id": "homogeneous",
       "label": "直接乘 1"
     },
     {
@@ -21,7 +21,7 @@
     }
   ],
   "routes": {
-    "direct": {
+    "homogeneous": {
       "label": "直接乘 1",
       "nodes": [
         {

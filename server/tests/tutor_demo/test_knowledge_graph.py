@@ -111,12 +111,39 @@ def test_explainer_modules_follow_the_contract():
             assert selectors and all(s.startswith(f'.explain-{id} ') for s in selectors), id
 
 
+def sheet_source(id):
+    return (ROOT / 'site/assets/explain' / ('method' if id.startswith('method-') else 'knowledge') / f'{id}.js').read_text()
+
+
+def tip_leaves(nodes, index):
+    """Resolve a step's tip into its {id, case?, note} leaves. A tip may branch on a choice made at or before this
+    step, {field, options}, with one option per accepted answer."""
+    answers = {node['interaction']['field']: node['expected_answer']['one_of'] for node in nodes[:index + 1]
+               if node['interaction']['type'] == 'choice'}
+    pending = [nodes[index]['tip']]
+    while pending:
+        tip = pending.pop()
+        if 'field' in tip:
+            assert set(tip) == {'field', 'options'} and sorted(tip['options']) == sorted(answers[tip['field']]), tip
+            pending.extend(tip['options'].values())
+        else:
+            yield tip
+
+
 def test_practice_tips_point_at_graph_nodes_with_sheets():
     tips = set()
     for path in sorted(glob(str(ROOT / 'site/*/q[0-9]*/index.html'))):
         config = json.loads(re.search(r'id="practice-config">\s*(.*?)</script>', open(path).read(), re.S)[1])
-        tips |= {node['tip']['id'] for nodes in config['routes'].values() for node in nodes if 'tip' in node}
+        for nodes in config['routes'].values():
+            for index in (index for index, node in enumerate(nodes) if 'tip' in node):
+                for tip in tip_leaves(nodes, index):
+                    tips.add(tip['id'])
+                    assert set(tip) <= {'id', 'case', 'note'} and tip['note'].startswith('本题'), (path, tip)
+                    if 'case' in tip:
+                        assert f"'{tip['case']}'" in sheet_source(tip['id']), (path, tip)
     assert tips and all(DISPLAY[id].get('sheet') == id for id in tips)
+    for id in tips:
+        assert 'problemNote(tip.note)' in sheet_source(id), id
 
 
 TOPIC_FILES = {path.stem: json.loads(path.read_text()) for path in sorted((DATA / 'topics').glob('*.json'))}
@@ -150,11 +177,11 @@ def test_topic_problems_match_practice_pages_step_by_step():
             for route, steps in config['routes'].items():
                 mapped = problem['routes'][route]
                 assert list(mapped) == [step['id'] for step in steps], (problem_id, route)
-                for step in steps:
+                for index, step in enumerate(steps):
                     ids = mapped[step['id']]
                     assert len(ids) == len(set(ids)) and set(ids) <= set(topic['nodes']), (problem_id, step['id'])
                     if 'tip' in step:
-                        assert step['tip']['id'] in ids, (problem_id, step['id'])
+                        assert all(tip['id'] in ids for tip in tip_leaves(steps, index)), (problem_id, step['id'])
 
 
 def test_topic_methods_cover_routes_in_step_order():
@@ -206,10 +233,14 @@ def test_pages_open_explainers_through_the_shell():
         if explain_buttons:
             assert "import {openExplainer} from '/assets/explain/explain.js?v=1'" in catalog
             assert f"topic: '{name}'" in catalog and 'method-sheet' not in catalog
-            assert explain_buttons == [method['node'] for method in topic['methods']]
+            # A group can hold several methods (/1/ group-direct also has 配方); its chip opens the first one.
+            leads = {}
             for method in topic['methods']:
-                block = catalog.split(f'id="{method["group"]}"', 1)[1].split('</section>', 1)[0]
-                assert f'data-explain="{method["node"]}"' in block, method['node']
+                leads.setdefault(method['group'], method['node'])
+            assert explain_buttons == list(leads.values())
+            for group, node in leads.items():
+                block = catalog.split(f'id="{group}"', 1)[1].split('</section>', 1)[0]
+                assert f'data-explain="{node}"' in block, node
 
 
 def test_detail_pages_are_generated_for_every_node():

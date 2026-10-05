@@ -1,0 +1,60 @@
+{
+  "node": "method-sum-product",
+  "items": [
+    {
+      "id": "square-sum",
+      "question": "$x+y=4$，$xy=3$，$x^2+y^2$ 等于多少？",
+      "type": "choice",
+      "options": [
+        {"value": "one", "label": "$13$", "feedback": "$x^2+y^2=s^2-2p=16-6$，是减 $2p$。"},
+        {"value": "right", "label": "$10$"},
+        {"value": "plus", "label": "$22$", "feedback": "$(x+y)^2=x^2+y^2+2xy$，所以要减去 $2p$。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "range",
+      "question": "实数 $x$、$y$ 满足 $x^2+y^2+xy=1$，$x+y$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "unit", "label": "$[-1,1]$", "feedback": "$x=y=\\frac{\\sqrt3}3$ 时 $x+y=\\frac{2\\sqrt3}3>1$。由 $p=s^2-1\\le\\frac{s^2}4$ 得 $s^2\\le\\frac43$。"},
+        {"value": "pos", "label": "$\\left[0,\\frac{2\\sqrt3}3\\right]$", "feedback": "$x=y=-\\frac{\\sqrt3}3$ 时 $x+y<0$。"},
+        {"value": "right", "label": "$\\left[-\\frac{2\\sqrt3}3,\\frac{2\\sqrt3}3\\right]$"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "why",
+      "question": "换成 $s$、$p$ 以后，为什么还要加上 $s^2\\ge4p$？",
+      "type": "choice",
+      "options": [
+        {"value": "right", "label": "保证存在实数 $x$、$y$ 满足 $x+y=s$，$xy=p$"},
+        {"value": "pos", "label": "保证 $s>0$", "feedback": "$s^2\\ge4p$ 管的是 $x$、$y$ 是不是实数，和 $s$ 的正负无关。"},
+        {"value": "prod", "label": "保证 $p>0$", "feedback": "$p$ 可以是负数，例如 $x=1$，$y=-1$。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "positive",
+      "question": "$x,y>0$，$x+y+xy=3$，$x+y$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {"value": "three", "label": "$3$", "feedback": "$p=3-s\\le\\frac{s^2}4$，得 $(s+6)(s-2)\\ge0$，$s\\ge2$。"},
+        {"value": "right", "label": "$2$"},
+        {"value": "one", "label": "$1$", "feedback": "$s=1$ 时 $p=2>\\frac{s^2}4$，这样的实数 $x$、$y$ 不存在。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "product-range",
+      "question": "实数 $x$、$y$ 满足 $x^2+y^2=2$，$xy$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "right", "label": "$[-1,1]$"},
+        {"value": "pos", "label": "$[0,1]$", "feedback": "$x=1$，$y=-1$ 时 $xy=-1$。"},
+        {"value": "upper", "label": "$(-\\infty,1]$", "feedback": "$p=\\frac{s^2-2}2$，$s\\in[-2,2]$，所以 $p\\ge-1$。"}
+      ],
+      "answer": "right"
+    }
+  ]
+}

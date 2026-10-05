@@ -1,0 +1,60 @@
+{
+  "node": "method-reciprocal",
+  "items": [
+    {
+      "id": "basic",
+      "question": "$x>0$ 时，$\\frac x{x^2+4}$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {"value": "four", "label": "$4$", "feedback": "$4$ 是 $\\frac1y=x+\\frac4x$ 的最小值，还要取倒数换回 $y$。"},
+        {"value": "right", "label": "$\\frac14$"},
+        {"value": "half", "label": "$\\frac12$", "feedback": "$x+\\frac4x\\ge2\\sqrt4=4$，所以 $y\\le\\frac14$。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "check",
+      "question": "对 $y$ 取倒数之前，要先确认什么？",
+      "type": "choice",
+      "options": [
+        {"value": "right", "label": "$y$ 恒为正（或恒为负），不等于 $0$"},
+        {"value": "max", "label": "$y$ 有最大值", "feedback": "有没有最值要算了才知道；取倒数前要保证 $y$ 同号且不为 $0$。"},
+        {"value": "bigger", "label": "分母比分子大", "feedback": "和分子分母的大小无关，要看 $y$ 的符号。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "convert",
+      "question": "$y>0$，求 $y$ 的最大值，取倒数后转化为什么？",
+      "type": "choice",
+      "options": [
+        {"value": "max", "label": "求 $\\frac1y$ 的最大值", "feedback": "$y>0$ 时 $y$ 越大，$\\frac1y$ 越小，要求 $\\frac1y$ 的最小值。"},
+        {"value": "square", "label": "求 $y^2$ 的最小值", "feedback": "取倒数后看的是 $\\frac1y$，不是 $y^2$。"},
+        {"value": "right", "label": "求 $\\frac1y$ 的最小值"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "range",
+      "question": "$x>0$ 时，$y=\\frac x{x^2+x+1}$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {"value": "inverse", "label": "$[3,+\\infty)$", "feedback": "这是 $\\frac1y=x+\\frac1x+1$ 的范围，还要取倒数。"},
+        {"value": "right", "label": "$\\left(0,\\frac13\\right]$"},
+        {"value": "three", "label": "$(0,3]$", "feedback": "$\\frac1y\\ge3$，所以 $0<y\\le\\frac13$。"}
+      ],
+      "answer": "right"
+    },
+    {
+      "id": "sign",
+      "question": "$x\\in\\mathbb R$，求 $y=\\frac x{x^2+1}$ 的最值，能直接写 $\\frac1y=x+\\frac1x\\ge2$ 吗？",
+      "type": "choice",
+      "options": [
+        {"value": "yes", "label": "能，所以 $y\\le\\frac12$", "feedback": "$x=0$ 时 $y=0$ 不能取倒数；$x<0$ 时 $y<0$，$x+\\frac1x\\le-2$。"},
+        {"value": "right", "label": "不能，要分 $x>0$、$x=0$、$x<0$ 讨论"},
+        {"value": "never", "label": "不能，这题不能用取倒数", "feedback": "在 $x>0$ 和 $x<0$ 两段分别取倒数：$x>0$ 时 $0<y\\le\\frac12$，$x<0$ 时 $-\\frac12\\le y<0$；$x=0$ 时直接代入得 $y=0$，单独处理。"}
+      ],
+      "answer": "right"
+    }
+  ]
+}

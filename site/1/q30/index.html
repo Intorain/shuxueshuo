@@ -110,7 +110,8 @@
         },
         "display": "symmetry-done",
         "submit_label": "确认判断",
-        "board": "symmetry-scan"
+        "board": "symmetry-scan",
+        "tip": {"id": "symmetric-polynomial", "note": "本题交换 $a$、$b$ 后，$2ab=a+2b+3$ 变成 $2ab=b+2a+3$，$a+2b$ 也变了，都不对称。"}
       },
       {
         "id": "construct",
@@ -150,7 +151,8 @@
           "x_a_y_2b": "preview-construct_form-x_a_y_2b",
           "x_2a_y_b": "preview-construct_form-x_2a_y_b",
           "x_2a_y_2b": "preview-construct_form-x_2a_y_2b"
-        }
+        },
+        "tip": {"id": "symmetric-polynomial", "case": "construct", "note": "本题令 $x=a$，$y=2b$：条件 $2ab=a+2b+3$ 化成 $xy=x+y+3$，目标 $a+2b=x+y$，都对称。"}
       },
       {
         "id": "substitution",
@@ -223,7 +225,8 @@
           "plus_3": "preview-condition_form-plus_3",
           "minus_3": "preview-condition_form-minus_3",
           "double_p": "preview-condition_form-double_p"
-        }
+        },
+        "tip": {"id": "symmetric-polynomial", "note": "本题 $xy=x+y+3$，即 $p=s+3$。"}
       },
       {
         "id": "inequality",
@@ -264,7 +267,8 @@
           "p_le": "preview-inequality_form-p_le",
           "s_ge": "preview-inequality_form-s_ge",
           "p_ge": "preview-inequality_form-p_ge"
-        }
+        },
+        "tip": {"field": "inequality_form", "options": {"p_le": {"id": "square-nonnegative", "note": "本题由 $(x-y)^2\\ge0$ 得 $p\\le\\frac{s^2}4$，代入 $p=s+3$ 得 $s^2-4s-12\\ge0$。"}, "s_ge": {"id": "amgm-formula", "case": "apply", "note": "本题 $x,y>0$，$s\\ge2\\sqrt p$，代入 $p=s+3$ 得 $s\\ge2\\sqrt{s+3}$，两边平方得 $s^2-4s-12\\ge0$。"}}}
       },
       {
         "id": "solve",
@@ -304,7 +308,8 @@
           "ge_6": "preview-solve_form-ge_6",
           "both": "preview-solve_form-both",
           "between": "preview-solve_form-between"
-        }
+        },
+        "tip": {"id": "quadratic-inequality-solve", "note": "本题 $s^2-4s-12=(s+2)(s-6)\\ge0$，得 $s\\le-2$ 或 $s\\ge6$；又 $s=x+y>0$，所以 $s\\ge6$。"}
       },
       {
         "id": "equality",
@@ -331,7 +336,8 @@
           "terms": "下界来自 $p\\le\\frac{s^2}{4}$ 取等，也就是 $(x-y)^2=0$。"
         },
         "display": "symmetric-equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "square-nonnegative", "note": "本题取等要 $x=y$，又 $s=6$，所以 $x=y=3$，即 $a=3$，$b=\\frac32$。"}
       }
     ],
     "elimination": [
@@ -439,7 +445,8 @@
             "3": "elimination-split-attempt-4-3",
             "4": "elimination-split-attempt-4-4"
           }
-        }
+        },
+        "tip": {"id": "method-fraction-split", "note": "本题 $\\frac{a+3}{a-1}=1+\\frac4{a-1}$，所以 $a+2b=a+1+\\frac4{a-1}=(a-1)+\\frac4{a-1}+2$。"}
       },
       {
         "id": "structure",
@@ -469,7 +476,8 @@
           "structure": "两项的积固定为 $4$，要求它们和的最小值。"
         },
         "display": "elimination-structure-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "fixed", "note": "本题 $(a-1)\\cdot\\frac4{a-1}=4$ 是定值（$a>1$）：定积求和。"}
       },
       {
         "id": "amgm",
@@ -496,7 +504,8 @@
           "terms": "请核对改写后含 $a$ 的两个正项；常数 $2$ 最后再加。"
         },
         "display": "elimination-amgm-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "apply", "note": "本题 $(a-1)+\\frac4{a-1}\\ge2\\sqrt4=4$，$a+2b\\ge6$。"}
       },
       {
         "id": "equality",
@@ -523,7 +532,8 @@
           "terms": "取等要求应用基本不等式的两个正项相等。"
         },
         "display": "elimination-equality-done",
-        "submit_label": "确认判断"
+        "submit_label": "确认判断",
+        "tip": {"id": "amgm-formula", "case": "equal", "note": "本题取等要 $a-1=2$，即 $a=3$，$b=\\frac32$，取得到。"}
       }
     ]
   },

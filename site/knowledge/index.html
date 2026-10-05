@@ -12,14 +12,14 @@
   <meta property="og:image" content="https://shuxueshuo.com/assets/images/share-default.png">
   <link rel="canonical" href="https://shuxueshuo.com/knowledge/">
   <link rel="stylesheet" href="/1/chapter.css?v=20261003a">
-  <link rel="stylesheet" href="/knowledge/knowledge.css?v=6">
+  <link rel="stylesheet" href="/knowledge/knowledge.css?v=7">
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
   <title>知识图谱 · 数学说</title>
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script type="module" src="../assets/auth/site-auth.js?v=4"></script>
-  <script type="module" src="/knowledge/graph.js?v=4"></script>
+  <script type="module" src="/knowledge/graph.js?v=5"></script>
 </head>
 <body class="kg-page">
   <a class="skip-link" href="#main">跳到图谱</a>
@@ -44,15 +44,10 @@
 
     <section class="kg-board" aria-label="知识图谱" data-kg-board>
       <div class="kg-canvas">
-        <ul class="kg-legend" aria-label="图例">
-          <li><span class="kg-swatch knowledge" aria-hidden="true"></span>知识点</li>
-          <li><span class="kg-swatch method" aria-hidden="true"></span>方法</li>
-          <li><span class="kg-swatch technique" aria-hidden="true"></span>表达式的变形方法</li>
-          <li><span class="kg-swatch sheet" aria-hidden="true"></span>有图解</li>
-          <li><span class="kg-swatch tab" aria-hidden="true"></span>顶部色条：所属专题</li>
-          <li><span class="kg-line prerequisite" aria-hidden="true"></span>前提</li>
-          <li><span class="kg-line uses" aria-hidden="true"></span>方法的核心依据</li>
-        </ul>
+        <div class="kg-canvas-head">
+          <ul class="kg-legend" aria-label="图例" data-kg-legend></ul>
+          <button type="button" class="kg-view-toggle" data-kg-view hidden></button>
+        </div>
         <div class="kg-svg-wrap" data-kg-svg></div>
       </div>
       <aside class="kg-detail-panel" aria-live="polite" data-kg-panel>

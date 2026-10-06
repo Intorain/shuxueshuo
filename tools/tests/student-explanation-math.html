@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>讲解模式：公式渲染回归</title>
+<link rel="stylesheet" href="../../site/assets/practice/vendor/katex-0.18.9/katex.min.css">
+<link rel="stylesheet" href="../../site/assets/practice/practice.css">
+<link rel="stylesheet" href="../../site/assets/student-explanation/explanation.css">
+<script src="../../site/assets/practice/vendor/katex-0.18.9/katex.min.js"></script>
+<script src="../../site/assets/practice/vendor/katex-0.18.9/auto-render.min.js"></script>
+<script src="../../site/assets/practice/math-text.js"></script>
+<script src="../../site/assets/student-explanation/math.js"></script>
+<body class="explanation-page">
+<main class="workspace">
+  <h1>讲解模式：公式渲染回归</h1>
+  <p id="report" role="status">正在检查</p>
+  <article class="explain-card">
+    <h2>展开分母 · 截图中的五行原始内容</h2>
+    <div id="proof" class="explain-result explain-proof"></div>
+  </article>
+  <article class="explain-card">
+    <h2>其他格式与安全回退</h2>
+    <div id="formats" class="explain-result explain-proof"></div>
+  </article>
+</main>
+<script>
+  const cases = [
+    [String.raw`展开 $(2m+1)(7−2m)$：`, 1],
+    [String.raw`\[(2m+1)(7−2m)=2m\cdot 7−2m\cdot 2m+1\cdot 7−1\cdot 2m\]`, 1],
+    [String.raw`\[=14m−4m^2+7−2m=−4m^2+12m+7\]`, 1],
+    [String.raw`\[\therefore \frac{8}{(2m+1)(7−2m)}=\frac{8}{−4m^2+12m+7}\]`, 1],
+    [String.raw`由 $0<m<3$ 知分母 $−4m^2+12m+7=−4(m−\tfrac32)^2+16>0$`, 2],
+    [String.raw`\because a+b=10\quad\therefore(a+b)^2=100`, 1],
+    [String.raw`$$x^2+2x+1=(x+1)^2$$`, 1],
+    [String.raw`由 \(x>1\)，得 \(x^2>1\)。`, 2],
+    [String.raw`\frac{1}{`, 0],
+    [String.raw`<img src=x onerror=alert(1)> $x+1$`, 1],
+    [String.raw`\[\href{javascript:alert(1)}{x}\]`, 1],
+  ];
+  const failures = [];
+  cases.forEach(([source, count], index) => {
+    const line = document.createElement('div');
+    line.className = 'explain-line';
+    (index < 5 ? document.querySelector('#proof') : document.querySelector('#formats')).append(line);
+    ExplanationMath.renderLine(line, source);
+    if (line.querySelectorAll('.katex').length !== count || line.querySelector('.katex-error, img, a, script')) {
+      failures.push(index + 1);
+    }
+    if (index === 8 && line.textContent !== source) failures.push('invalid source lost');
+  });
+  document.querySelector('#report').textContent = failures.length
+    ? `FAIL: ${failures.join(', ')}` : `PASS: ${cases.length} cases`;
+</script>

@@ -56,6 +56,8 @@ def test_main_hosts_tutor_api_and_preserves_lifecycles(monkeypatch, blank_limits
         assert lifecycle == ["product.started"]
         assert client.get("/api/health").json() == {"status": "ok"}
         assert "/api/product/v1/health" in client.get("/openapi.json").json()["paths"]
+        assert not any("/explanation/" in path for path in client.get("/openapi.json").json()["paths"])
+        assert client.post("/api/tutor-demo/explanation/sessions", json={}).status_code == 404
         assert client.post("/api/tutor-demo/sessions", json={"lesson_id": "q01"}).status_code == 503
         # Lifecycle/teaching behavior below is independent of authentication.
         app.dependency_overrides[tutor_api.require_tutor_user] = lambda: {"id": "test-student"}

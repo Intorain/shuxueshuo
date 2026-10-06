@@ -1,6 +1,7 @@
 """DeepSeek adapter. Credentials and teacher prompts never go to the browser."""
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Literal
@@ -8,9 +9,10 @@ from typing import Literal
 from dotenv import dotenv_values
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from openai import AsyncOpenAI
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 ROOT = Path(__file__).parent
+logger = logging.getLogger(__name__)
 
 
 class Action(BaseModel):
@@ -32,7 +34,14 @@ class TutorUnavailable(Exception):
     pass
 
 
+class ModelResponseInvalid(TutorUnavailable):
+    """A completed provider call whose output needs regeneration, not a network error."""
+
+
 class DeepSeekTutor:
+    proposal_type = Proposal
+    max_tokens = 1600
+
     def __init__(self):
         config = {**dotenv_values(ROOT.parents[1] / ".env"), **os.environ}
         self.key = config.get("DEEPSEEK_API_KEY")
@@ -59,6 +68,9 @@ class DeepSeekTutor:
             },
         ]
 
+    def decode_response(self, content):
+        return self.proposal_type.model_validate(json.loads(content))
+
     async def respond(self, **data) -> Proposal:
         if not self.key:
             raise TutorUnavailable("未配置 DEEPSEEK_API_KEY")
@@ -72,14 +84,21 @@ class DeepSeekTutor:
                 messages=self.prompts(**data),
                 response_format={"type": "json_object"},
                 extra_body={"thinking": {"type": "disabled"}},
-                max_tokens=1600,
+                max_tokens=self.max_tokens,
             )
+            if response.choices[0].finish_reason == "length":
+                raise ModelResponseInvalid("模型输出被截断")
             if response.choices[0].finish_reason != "stop":
                 raise ValueError("incomplete response")
-            return Proposal.model_validate(
-                json.loads(response.choices[0].message.content or "")
-            )
+            return self.decode_response(response.choices[0].message.content or "")
+        except ModelResponseInvalid:
+            logger.warning("tutor response rejected: invalid model output")
+            raise
+        except (json.JSONDecodeError, ValidationError) as exc:
+            logger.warning("tutor response rejected: %s", type(exc).__name__)
+            raise ModelResponseInvalid("模型输出格式不完整") from exc
         except Exception as exc:
+            logger.warning("tutor response rejected: %s: %.600s", type(exc).__name__, exc)
             # Do not send provider errors/credentials or unvalidated model output to clients.
             raise TutorUnavailable("老师暂时未能回复，请保留输入并重试。") from exc
 

@@ -74,7 +74,9 @@ uv run python tools/run_site.py \
 
 ## 4. 行为与配置
 
-AI 次数按已登录账号每日累计，默认 `TUTOR_USER_DAILY_CALL_LIMIT=50`，北京时间零点恢复。跨题目、设备和重新登录累计，成功请求的幂等重试不重复扣次。单次教学会话 50 次与全站每日 200 次继续作为上限；页面分别提示个人或全站用尽，仍可点选练习。限额账本统一使用登录服务的 PostgreSQL，应用 `0006_tutor_usage` 迁移后从零计数，不导入旧 SQLite。无需配置 `TUTOR_USAGE_DB` 或额外数据库连接。详见 [教学额度说明](../server/shuxueshuo_server/tutor_demo/README.md#小范围公开试用控制)。
+**本地开发入口 `tools/run_site.py` 不限制模型调用次数**：会话、个人每日和全站每日额度均不拦截，也不写入生产额度账本。练习对话、讲解模式及格式自动重试均适用；登录、会话归属、并发和幂等保护仍保留。该入口要求 `settings.mode=local` 且认证环境为 `development`，并只监听回环地址。
+
+线上入口仍使用以下规则：AI 次数按已登录账号每日累计，默认 `TUTOR_USER_DAILY_CALL_LIMIT=50`，北京时间零点恢复。跨题目、设备和重新登录累计，成功请求的幂等重试不重复扣次。单次教学会话 50 次与全站每日 200 次继续作为上限；页面分别提示个人或全站用尽，仍可点选练习。限额账本统一使用登录服务的 PostgreSQL，应用 `0006_tutor_usage` 迁移后从零计数，不导入旧 SQLite。无需配置 `TUTOR_USAGE_DB` 或额外数据库连接。详见 [教学额度说明](../server/shuxueshuo_server/tutor_demo/README.md#小范围公开试用控制)。
 
 - 默认登录期限 30 天，可通过 `AUTH_SESSION_SECONDS` 配置。
 - 验证码有效期 5 分钟，每个验证码最多核验 5 次；手机号 60 秒发送冷却，每 24 小时最多发送 10 次。

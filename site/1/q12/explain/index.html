@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>我来讲解 · Q12 · 数学说</title>
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <link rel="stylesheet" href="/assets/practice/practice.css?v=56">
+  <link rel="stylesheet" href="/assets/student-explanation/explanation.css?v=12">
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js?v=10" defer></script>
+  <script src="/assets/practice/components.js?v=20" defer></script>
+  <script src="/assets/student-explanation/math.js?v=1" defer></script>
+  <script src="/assets/student-explanation/explanation.js?v=24" defer></script>
+  <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
+</head>
+<body class="explanation-page">
+  <header class="topbar"><div class="topbar-inner">
+    <a class="brand" href="/1/"><span class="brand-mark" aria-hidden="true">数</span>数学说</a>
+    <span class="demo-label">我来讲解 · Demo</span>
+    <button id="restart" class="reset-button" type="button">重新开始</button>
+  </div></header>
+  <main class="workspace">
+    <a class="chapter-return" href="/1/q12/">← 返回 Q12 练习</a>
+    <nav class="explain-modes" aria-label="交互方式">
+      <a href="/1/q12/explain/page/">纯页面</a>
+      <span class="explain-mode-soon">纯对话（准备中）</span>
+      <span aria-current="page">页面 + 对话</span>
+    </nav>
+    <section class="problem-card explain-problem" aria-label="原题">
+      <p data-math-text>已知正数 $m,n$ 满足 $2m+n=6$，求 $\frac1{2m+1}+\frac1{n+1}$ 的最小值。</p>
+    </section>
+
+    <div id="branch-tabs" class="explain-branches" role="tablist" aria-label="已保留的思路"></div>
+
+    <section id="board" aria-label="你的讲解板书"></section>
+
+    <section id="frontier" class="explain-frontier" aria-labelledby="frontier-title">
+      <div class="explain-section-head"><h2 id="frontier-title">现在的式子</h2><span class="explain-note">点选下方的数学对象</span></div>
+      <div id="current-expression" class="explain-formula" aria-label="当前式子，可点选其中的项"></div>
+      <div id="conditions" class="explain-conditions"></div>
+
+      <div id="focus-banner" class="explain-focus" hidden>
+        <p id="focus-text"></p>
+        <button id="leave-focus" type="button">先跳过，继续往下讲</button>
+      </div>
+      <div id="thread" class="explain-thread" aria-label="正在进行的讨论"></div>
+      <div id="attempts"></div>
+      <div id="clarify"></div>
+
+      <div class="explain-composer">
+        <div id="selected" class="explain-selected" aria-label="已选中的对象"></div>
+        <h3 class="explain-subhead">我想：</h3>
+        <p id="generation-status" class="explain-note" role="status" aria-live="polite" hidden></p>
+        <div id="candidates" class="explain-candidate-ops" role="group" aria-label="我想做的数学操作"></div>
+        <label for="message" class="sr-only">你的讲解</label>
+        <textarea id="message" rows="3" maxlength="2000" placeholder="比如：两个分母加起来是定值，所以……"></textarea>
+        <div class="explain-send-row">
+          <button id="help" type="button">给点提示</button>
+          <button id="undo" type="button" disabled>撤回上一步</button>
+          <span>可用键盘上的语音输入；Ctrl/⌘ + Enter 提交</span>
+          <button id="send" class="primary" type="button" disabled>讲完了，继续 →</button>
+        </div>
+        <p id="network-status" role="status" aria-live="polite"></p>
+        <button id="retry" type="button" hidden>重试这次提交</button>
+        <details id="tools" class="explain-tools">
+          <summary>直接写式子</summary>
+          <p class="explain-note">用 * 表示乘法、/ 表示除法；在式子上点选的项会填进来。系统会据此生成推导和下一步操作。</p>
+          <form id="operation-form">
+            <label>我准备做什么<select id="operation"><option value="claim">核对一个等式</option><option value="substitute">定义新变量</option><option value="multiply">给当前式子乘一个因子</option><option value="expand">展开当前式子</option><option value="combine">合并分母相同的项</option><option value="amgm">对两项用基本不等式</option><option value="attain">检查取等关系</option></select></label>
+            <div class="explain-fields">
+              <label id="a-label"><span>等式左边</span><input id="operand-a" maxlength="120" placeholder="如 (2*m+1)+(n+1)" autocomplete="off"></label>
+              <label id="b-label"><span>等式右边</span><input id="operand-b" maxlength="120" placeholder="如 8" autocomplete="off"></label>
+              <label id="name-label" hidden>新变量<input id="variable-name" maxlength="1" placeholder="如 x" autocomplete="off"></label>
+            </div>
+            <button class="primary" type="submit">提交这一步</button>
+          </form>
+        </details>
+      </div>
+    </section>
+    <p class="explain-footnote">推导和选项由 AI 生成，尚未经独立数学验算。讲解暂存在本次服务会话中，刷新页面或服务重启后需重新开始。</p>
+  </main>
+</body>
+</html>

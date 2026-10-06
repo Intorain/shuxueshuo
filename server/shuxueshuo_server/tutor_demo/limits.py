@@ -4,6 +4,7 @@ The site PostgreSQL pool stores only counters and internal user/session IDs,
 never conversations or credentials. Reserve all counters atomically before a call.
 """
 
+import logging
 import os
 import time
 from datetime import datetime, timedelta
@@ -20,6 +21,9 @@ from starlette.concurrency import run_in_threadpool
 
 from ..product import models as m
 from ..product.db import transaction
+from .llm import ModelResponseInvalid
+
+logger = logging.getLogger(__name__)
 
 
 class DialogueLimited(Exception):
@@ -112,11 +116,18 @@ class BudgetedTutor:
         self.remaining = None
 
     async def respond(self, **data):
-        self.remaining = await run_in_threadpool(self.budget.reserve, self.session_id, user_id=self.user_id)
-        try:
-            return await self.tutor.respond(**data)
-        except BaseException:
-            # A timeout/cancelled request may already have been billed.
-            with CancelScope(shield=True):
-                await run_in_threadpool(self.budget.failed, self.session_id)
-            raise
+        attempts = min(2, max(1, getattr(self.tutor, "format_attempts", 1)))
+        for attempt in range(attempts):
+            self.remaining = await run_in_threadpool(self.budget.reserve, self.session_id, user_id=self.user_id)
+            try:
+                return await self.tutor.respond(**data)
+            except BaseException as exc:
+                if isinstance(exc, ModelResponseInvalid) and attempt + 1 < attempts:
+                    # No failure cooldown between the two attempts of one event.
+                    # Regenerate from the same context; never promote broken output.
+                    logger.warning("retrying model output format once")
+                    continue
+                # A timeout/cancelled request may already have been billed.
+                with CancelScope(shield=True):
+                    await run_in_threadpool(self.budget.failed, self.session_id)
+                raise

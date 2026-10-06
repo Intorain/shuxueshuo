@@ -98,6 +98,8 @@ RUN_TUTOR_LIVE=1 uv run pytest tests/tutor_demo/test_tutor_live.py -q -s
 
 ## 小范围公开试用控制
 
+本节次数额度用于线上入口。本地开发使用 `tools/run_site.py` 时，练习对话与讲解模式均不限模型调用次数，不读写次数账本；该入口仅接受 local/development 配置，保留登录、归属、并发和幂等保护。
+
 所有 tutor HTTP 入口（独立服务与主应用）按登录账号累计 AI 额度：每个账号每天默认 50 次，跨题目、会话、设备累计，退出再登录不会重置；每日按 Asia/Shanghai（北京时间）零点恢复。另保留每个教学 session 最多 50 次与全站每天最多 200 次的费用保护上限；session 上限不应低于个人每日额度，否则学生只能“重新练习”丢掉进度来继续提问。个人额度并不保证全站上限耗尽后仍能调用。账号 ID 由登录依赖取得，不接受客户端指定。文字提问、提示、偏题均计数；切换路径不会重置同一 session 额度。本地点选和成功请求的幂等重放不计数。模型调用前原子扣除，超时、失败、取消也不退还，避免失败重试消耗失控；失败后默认冷却 5 秒。会话正有请求执行时，新的对话请求返回 429，不排队调用第二次模型。
 
 `limits.py` 在同一个 PostgreSQL 事务中检查并扣除个人每日、全站每日及 session 三种计数；数据库不可写时关闭模型调用，返回 503。只保存内部用户 ID、会话 ID、日期、次数和重试时间，不保存手机号、题目或聊天。额度不足返回 429 和 `user_daily_limit`（个人）、`session_limit`（本次会话）或 `daily_limit`（全站），短暂繁忙返回 `session_busy` / `retry_cooldown` 与 Retry-After。实际调用模型的成功响应带 `X-Tutor-Calls-Remaining`（个人当日剩余次数，幂等重放不带），前端在剩余 5 次及以下时提示。额度不足时前端暂停输入和提示，保留输入、进度及全部点选操作；短暂停用到期自动恢复，每日额度次日恢复。个人限额在“重新练习”后仍保留，退出或换号时清除前端的个人限额提示；全站限额不因换号解除。
@@ -122,3 +124,6 @@ RUN_TUTOR_LIVE=1 uv run pytest tests/tutor_demo/test_tutor_live.py -q -s
 本版已有按账号的每日配额，新建 session 不会补充个人每日额度。全站上限继续保护总调用量，尚未增加教学 API 的 IP 配额。日请求数上限也不是精确金额上限。适用于短期小范围反馈，不是完整公开服务的安全方案。只发布静态页面不会启动这些服务端控制，需同时部署并重启后端。
 
 验证：`uv run pytest tests/tutor_demo/test_pilot_limits.py -m 'not live_llm' -q`。真实教学边界验证需显式开启：`RUN_TUTOR_LIVE=1 uv run pytest tests/tutor_demo/test_pilot_limits.py -m live_llm -q -s`。
+
+
+讲解实验 API 默认不注册。只有 `create_router(..., enable_explanation=True)` 才启用；本地 `tools/run_site.py` 显式开启，生产主入口沿用默认关闭。Q12 不展示实验入口，手动访问地址见 [实验访问与隔离说明](../../../docs/student-explanation-context-design.md#实验访问地址与隔离边界2026-10-06)。

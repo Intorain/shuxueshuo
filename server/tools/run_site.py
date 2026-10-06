@@ -24,7 +24,20 @@ from shuxueshuo_server.product.db import engine
 from shuxueshuo_server.tutor_demo.api import create_router
 
 
+class LocalModelBudget:
+    """No application call quota in this loopback-only development entry point."""
+
+    def reserve(self, session_id, *, user_id):
+        return None
+
+    def failed(self, session_id):
+        pass
+
+
 def create_local_app(settings, config):
+    if settings.mode != "local" or config.environment != "development":
+        raise ValueError("run_site.py requires local development configuration")
+
     @asynccontextmanager
     async def lifespan(app):
         db = engine(settings.url())
@@ -44,7 +57,7 @@ def create_local_app(settings, config):
 
     app = FastAPI(lifespan=lifespan)
     install_auth(app, config=config)
-    app.include_router(create_router())
+    app.include_router(create_router(budget=LocalModelBudget(), enable_explanation=True))
     app.mount("/", StaticFiles(directory=REPO / "site", html=True), name="site")
     return app
 

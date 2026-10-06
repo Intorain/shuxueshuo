@@ -1,0 +1,29 @@
+{
+  "id": "basic_inequality_explain",
+  "capabilities": {
+    "claim": {"label": "整理关系", "description": "学生断言恒成立的等式，a 为左式，b 为右式。保留原式，即使学生说错。"},
+    "substitute": {"label": "换元", "description": "定义一个新变量 name，a 是被替代的表达式。支持目标的分母整体换元，允许只换一个。"},
+    "multiply": {"label": "给式子乘一个因子", "description": "给当前整个目标式乘因子 a。程序验证 a=1 并展开；学生没有说出的配式不能擅自构造。"},
+    "expand": {"label": "展开化简", "description": "展开当前目标式，按分母拆成单项。无参数。"},
+    "combine": {"label": "合并同分母的项", "description": "把当前目标式中分母相同的项合并成一个分式，常数项合在一起（合并同类项、通分）。无参数。"},
+    "amgm": {"label": "用基本不等式", "description": "对学生指定的两项 a,b 应用基本不等式。对象不明确先澄清。"},
+    "attain": {"label": "检查取等", "description": "检验学生提出的取等关系 a=b；允许学生给出候选变量值，例如 a=m,b=3/2。"}
+  },
+  "judgments": {
+    "applied_terms": {"label": "指明对哪两项使用", "owners": ["amgm"], "implied": true},
+    "fixed_product": {"label": "两项的积是定值", "owners": ["amgm"], "check": "fixed_product"},
+    "fixed_sum": {"label": "两项的和是定值", "owners": ["amgm"], "check": "fixed_sum"},
+    "sum_target": {"label": "要求的是这两项之和的最小值", "owners": ["amgm"], "check": "sum_target"},
+    "relation_written": {"label": "说出了两项之和满足的不等关系", "owners": ["amgm"], "compare": "pair_sum_min",
+                         "hint": "value 填学生说的下界数值（如 1/4），没说数值留空"},
+    "positivity": {"label": "两项都为正", "owners": ["amgm"], "check": "positivity"},
+    "unit_factor": {"label": "所乘的因子等于 1", "owners": ["multiply"]},
+    "scope": {"label": "乘在整个式子上", "owners": ["multiply"]},
+    "target_degree": {"label": "目标式是负一次齐次式", "owners": ["multiply"], "expect": ["-1", "负一", "负一次"],
+                      "hint": "value 填学生说的次数，如 -1"},
+    "condition_degree": {"label": "条件是一次齐次式", "owners": ["multiply"], "expect": ["1", "一", "一次", "正一次"],
+                         "hint": "value 填学生说的次数，如 1"},
+    "denominator_sum": {"label": "两个分母的和是定值", "owners": ["claim", "multiply"]},
+    "equality_condition": {"label": "指出取等条件", "owners": ["attain"], "implied": true}
+  }
+}

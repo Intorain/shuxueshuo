@@ -1,0 +1,31 @@
+{
+  "id": "q12",
+  "title": "Q12 · 我来讲解",
+  "problem_ir": "basic_inequality/q12",
+  "statement": "已知正数 m,n 满足 2m+n=6，求 1/(2m+1)+1/(n+1) 的最小值。",
+  "conditions": ["m>0", "n>0", "2*m+n=6"],
+  "target": "min(1/(2*m+1)+1/(n+1))",
+  "capability_packs": ["basic_inequality_explain"],
+  "reference_routes": [
+    {"id": "substitution", "label": "换元后配齐次式", "steps": [
+      {"op": "substitute", "a": "2*m+1", "name": "x"},
+      {"op": "substitute", "a": "n+1", "name": "y"},
+      {"op": "multiply", "a": "(x+y)/8"},
+      {"op": "amgm", "a": "y/(8*x)", "b": "x/(8*y)"},
+      {"op": "attain", "a": "x", "b": "y"}
+    ]},
+    {"id": "direct", "label": "直接乘两个分母的和", "steps": [
+      {"op": "claim", "a": "(2*m+1)+(n+1)", "b": "8"},
+      {"op": "multiply", "a": "((2*m+1)+(n+1))/8"},
+      {"op": "amgm", "a": "(n+1)/(8*(2*m+1))", "b": "(2*m+1)/(8*(n+1))"},
+      {"op": "attain", "a": "2*m+1", "b": "n+1"}
+    ]}
+  ],
+  "interpretation_examples": [
+    {"text": "两个分母加起来是7", "operations": [{"op": "claim", "a": "(2*m+1)+(n+1)", "b": "7", "name": "", "source": "两个分母加起来是7", "inferred": []}], "note": "忠实保留错误数值，由程序核验。"},
+    {"text": "m=n的时候取等", "operations": [{"id": "op1", "op": "attain", "a": "m", "b": "n", "name": "", "source": "m=n的时候取等", "inferred": []}], "judgments": [], "note": "取等条件是 attain 操作，不是判断；说错也照实提议，由程序回代核验。"},
+    {"text": "设x=2m+1", "operations": [{"op": "substitute", "a": "2*m+1", "b": "", "name": "x", "source": "设x=2m+1", "inferred": []}], "note": "只定义一个变量，不补出另一个定义。"},
+    {"text": "那两个分式用基本不等式，因为它们乘起来是定值", "operations": [{"id": "op1", "op": "amgm", "a": "(n+1)/(8*(2*m+1))", "b": "(2*m+1)/(8*(n+1))", "name": "", "source": "那两个分式用基本不等式", "inferred": ["a", "b"]}], "judgments": [{"key": "fixed_product", "quote": "它们乘起来是定值", "value": "", "operation": "op1", "step": null, "objects": []}], "note": "指代解析出的参数标记 inferred；理由单独提取为判断，并用 operation 指向它解释的本轮操作。"},
+    {"text": "（正在讨论第 3 步）它们和至少是1/4", "operations": [], "judgments": [{"key": "relation_written", "quote": "和至少是1/4", "value": "1/4", "operation": "", "step": 3, "objects": []}], "note": "补充已有步骤的理由时用 step 写步骤编号；学生说的数值原样填入 value，由程序核对。"}
+  ]
+}

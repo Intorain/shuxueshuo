@@ -35,7 +35,7 @@ def require_tutor_user(
 TutorUser = Annotated[dict, Depends(require_tutor_user)]
 
 
-def create_router(tutor=None, budget=None):
+def create_router(tutor=None, budget=None, *, explanation_interpreter=None, enable_explanation=False):
     """Share the same API and cleanup lifecycle with the production app."""
     tutor = tutor or DeepSeekTutor()
     sessions = Sessions()
@@ -99,20 +99,26 @@ def create_router(tutor=None, budget=None):
         except TutorUnavailable:
             raise HTTPException(503, "老师暂时未能回复，请保留输入并重试。") from None
 
+    if enable_explanation:
+        from .explanation.api import create_explanation_router
+
+        router.include_router(create_explanation_router(require_tutor_user, explanation_interpreter, budget))
     return router
 
 
-def create_app(tutor=None, budget=None, *, auth=None):
+def create_app(tutor=None, budget=None, *, auth=None, explanation_interpreter=None, enable_explanation=False):
     """Standalone entry fails closed without auth; use tools/run_site.py for login."""
     app = FastAPI(title="数学说 Q01 tutor demo")
     install_auth(app, auth=auth, config=auth.config if auth else AuthConfig())
-    app.include_router(create_router(tutor, budget))
+    app.include_router(create_router(tutor, budget, explanation_interpreter=explanation_interpreter,
+                                    enable_explanation=enable_explanation))
     site = Path(__file__).resolve().parents[3] / "site"
     for url, relative, name in (
         ("/1", "1", "basic-inequality"),
         ("/2", "2", "quadratic-always"),
         ("/topics", "topics", "topics"),
         ("/assets/practice", "assets/practice", "practice-assets"),
+        ("/assets/student-explanation", "assets/student-explanation", "student-explanation-assets"),
         ("/assets/auth", "assets/auth", "auth-assets"),
         ("/assets/learning", "assets/learning", "learning-assets"),
         ("/demo", "demo", "legacy-demo"),

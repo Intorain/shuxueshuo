@@ -2,23 +2,29 @@
 
 第一阶段已接通账号、验证码核验、持久化登录 session、全站登录组件和登出。普通阿里云 `SendSms` 已由用户完成真实投递测试。第二阶段已接通 AI 登录限制与教学会话账号隔离；第三阶段已接通 PostgreSQL 学习标记、自评和题库展示。本文记录本地验证，尚未部署本次改动。
 
-## 1. 独立本地实例
+## 1. 固定本地实例
 
-本机需要项目已有的 PostgreSQL 17 和 `uv`。以下命令在仓库根目录执行，创建独立开发数据库，不修改正在使用的产品实例。数据和模拟验证码均位于静态站点目录以外。
+日常手动测试统一复用 `local` 实例，不随测试日期更换端口和目录。需要项目已有的 PostgreSQL 17 和 `uv`。
+
+| 配置 | 固定值 |
+| --- | --- |
+| 网站与 API | `http://127.0.0.1:8779/` |
+| 数据库 | `127.0.0.1:5432`，库名 `product`，应用用户 `product_app` |
+| macOS 数据根 | `~/Library/Application Support/shuxueshuo/local/` |
+| 数据库密码 | 数据根下 `config/app.env` 的 `PRODUCT_APP_PASSWORD` |
+| 登录密钥 | 数据根下 `config/student-auth.env`，重启时复用 |
+
+已有实例日常启动只需在仓库根目录运行：
 
 ```bash
-cd server
-uv run python -m shuxueshuo_server.product.admin.cli \
-  --mode local --data-dir /private/tmp/sss-auth-stage1 \
-  --instance auth-stage1 --port 55439 install
-
-uv run python tools/run_site.py \
-  --data-dir /private/tmp/sss-auth-stage1 --instance auth-stage1
+uv run --project server python server/tools/run_site.py
 ```
 
-打开 <http://127.0.0.1:8767/> 或 <http://127.0.0.1:8767/1/q01/>。页面与 API 同源；只监听 `127.0.0.1`，不要换成 `localhost`，也不要对外转发这个测试端口。
+启动器会启动或复用已安装的 PostgreSQL，随后提供静态网页、登录、学习记录和导师 API；不启动 Studio、RabbitMQ 或 Worker。数据库数据、账号和练习记录都保存在持久目录。启动日志打印实际网站地址、数据库端口和数据目录，不打印密码。显式 `--data-dir / --instance / --port` 仍可用于隔离联调；其中 `--port` 只控制网站端口，数据库端口由实例配置决定。
 
-已有独立实例需要新迁移时，用相同 `--data-dir`、`--instance` 执行管理 CLI 的 `migrate` 命令。不要把生产实例的数据库 URL 用于自动化测试。
+打开 <http://127.0.0.1:8779/> 或 <http://127.0.0.1:8779/1/q01/>。页面与 API 同源；只监听 `127.0.0.1`，不要换成 `localhost`，也不要对外转发这个开发端口。
+
+仅新机器首次运行 `./deploy/product/manage.sh --mode local install`。已有实例需要升级表结构或导入新题目时，先停止连接它的网站与产品服务，再运行 `./deploy/product/manage.sh --mode local deploy`（先备份，再迁移、导入和自检）。日常重启不需要安装、迁移或恢复数据库。自动化测试仍使用第 5 节的隔离实例，不能使用日常或生产数据库。
 
 ## 2. 模拟短信登录
 
@@ -28,7 +34,7 @@ uv run python tools/run_site.py \
 2. 点击“获取验证码”。本地开发站点的验证码固定为 `000000`，页面自动填入并登录；导航显示“尾号 xxxx”，点开账号菜单可退出。
 3. 切换到其他题库或题目页，确认仍登录；退出后恢复游客状态。
 
-固定验证码只在“模拟短信 + 写入本地目录”时生效（`tools/run_site.py` 启动的本地站点），模拟模式本身仅允许回环地址访问；此时不做发送冷却与频率限制，发送接口额外返回 `dev_code`。验证码仍有 5 分钟有效期、一次性核验和核验频率限制。模拟短信同时写到 `/private/tmp/sss-auth-stage1/work/mock-sms/<challenge_id>.json`。自动化测试注入的内存模拟短信仍生成随机验证码，并完整执行限流；真实短信模式从不返回验证码。临时目录可能被系统清理；需要长期保留测试账号时，使用自己的独立持久数据目录。
+固定验证码只在“模拟短信 + 写入本地目录”时生效（`tools/run_site.py` 启动的本地站点），模拟模式本身仅允许回环地址访问；此时不做发送冷却与频率限制，发送接口额外返回 `dev_code`。验证码仍有 5 分钟有效期、一次性核验和核验频率限制。模拟短信同时写到数据根下的 `work/mock-sms/<challenge_id>.json`。自动化测试注入的内存模拟短信仍生成随机验证码，并完整执行限流；真实短信模式从不返回验证码。
 
 登录 HMAC 密钥首次启动时自动生成到实例的 `config/student-auth.env`，不会打印到日志。正常重启复用该密钥，已登录会话仍有效。更换密钥会使旧凭证无法使用。
 
@@ -39,7 +45,7 @@ uv run python tools/run_site.py \
 - 登录过期时重新验证，同一账号保留本地练习与待重试请求；重试沿用原事件 ID，避免重复模型调用。
 - 显式退出或切换账号会重置当前页的临时练习和对话，丢弃旧账号的迟到响应。
 - `/api/tutor-demo` 整组接口检查 Cookie；匿名返回 401，登录服务关闭时返回 503，其他账号的会话返回 404。写入接口同时检查 Origin。
-- 统一使用上述 8767 同源入口；旧 8765 静态页跨端口调用 8766 的方式已移除。独立 `tutor_demo.api:app` 未配置登录服务时禁止调用 AI，但仍可本地点选练习。
+- 统一使用上述 8779 同源入口；旧 8765 静态页跨端口调用 8766 的方式已移除。独立 `tutor_demo.api:app` 未配置登录服务时禁止调用 AI，但仍可本地点选练习。
 
 ### 学习标记验收（第三阶段）
 
@@ -66,8 +72,7 @@ ALIYUN_SMS_TEMPLATE_CODE=
 签名、验证码模板需可用；本版模板变量名为 `code`。在本地关闭模拟站点进程，再启动：
 
 ```bash
-uv run python tools/run_site.py \
-  --data-dir /private/tmp/sss-auth-stage1 --instance auth-stage1 --sms aliyun_sms
+uv run --project server python server/tools/run_site.py --sms aliyun_sms
 ```
 
 此时填入自己的真实手机号，验证码会发到手机，产生正常短信费用。后端通过 HTTPS 主动调用阿里云，无需为本地站点设置公网回调。配置缺失直接报错，不会静默回退模拟短信。
@@ -90,7 +95,14 @@ uv run python tools/run_site.py \
 
 ## 5. 验证命令
 
-在 `server/` 下执行：
+自动化测试与日常手动测试分开。首次在仓库根目录创建专用测试实例，以后重复使用同一目录和端口；已有测试实例只需 `db-start`，代码需要新迁移时用 `deploy`：
+
+```bash
+./deploy/product/manage.sh --mode local \
+  --data-dir /private/tmp/sss-auth-stage1 --instance auth-stage1 --port 55439 install
+```
+
+然后在 `server/` 下执行：
 
 ```bash
 PRODUCT_TEST_DATA_DIR=/private/tmp/sss-auth-stage1 \
@@ -100,12 +112,13 @@ uv run pytest tests/auth -q
 
 自动化测试验证真实 PostgreSQL、应用角色权限、并发验证码消费、手机号唯一身份、session 持久化与退出、CSRF、发送与核验限制、模拟文件权限和短信适配器契约，不调用付费短信或模型。缺少独立数据库配置时数据库测试会跳过，不能把跳过当作通过。
 
-本地站点按 Ctrl+C 停止；如需停止该独立数据库：
+日常网站按 Ctrl+C 停止，数据库保持运行。需要停止固定数据库时，在仓库根目录执行：
 
 ```bash
-uv run python -m shuxueshuo_server.product.admin.cli \
-  --mode local --data-dir /private/tmp/sss-auth-stage1 --instance auth-stage1 db-stop
+./deploy/product/manage.sh --mode local db-stop
 ```
+
+再次运行默认网站命令会重新启动数据库，数据不会清空。隔离测试实例的管理命令必须继续附上其 `--data-dir / --instance`。
 
 ## 6. 验证结果（2026-10-03）
 

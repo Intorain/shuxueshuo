@@ -1454,6 +1454,9 @@ button.shape[aria-expanded=true] {
 .network-feedback:has(#network-status:empty) { display: none; }
 #request-retry { border: 0; padding: 8px; background: transparent; color: #07847d; cursor: pointer; }
 .send-button:not(:disabled) { background: #07847d; cursor: pointer; }
+.practice-record-status { margin:16px 0; color:var(--muted); font-size:14px; line-height:1.7; }
+.practice-record-status button { margin:8px 8px 0 0; padding:8px 14px; min-height:42px; border:1px solid var(--teal); border-radius:10px; background:var(--paper); color:var(--teal); }
+.practice-record-status button:disabled { opacity:.6; }
 .step-card[aria-busy="true"] { opacity: .9; }
 
 .conversation-history { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 14px; }

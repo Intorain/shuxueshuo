@@ -2,6 +2,7 @@
 !server/
 !server/**
 server/.venv
+server/.venv-ocr
 server/.env
 server/**/.env*
 server/**/*.db
@@ -9,6 +10,8 @@ server/**/*.sqlite*
 server/**/__pycache__
 server/.pytest_cache
 server/*.egg-info
+server/tests
+server/tests/**
 !internal/
 !internal/schemas/
 !internal/schemas/**
@@ -16,3 +19,17 @@ server/*.egg-info
 !deploy/product/
 !deploy/product/requirements.lock
 !deploy/product/Dockerfile.admin
+
+!site/
+!site/data/
+!site/data/knowledge/
+!site/data/knowledge/**
+!site/assets/
+!site/assets/explain/
+!site/assets/explain/**
+!site/1/
+!site/1/**
+!site/2/
+!site/2/**
+!tools/
+!tools/export-knowledge-text.mjs

@@ -167,6 +167,10 @@ uv sync --frozen
 
 **静态文件**：在服务器执行 `git pull`，或从本机 rsync `site/`：
 
+此方式适用于纯外观与普通静态页面。若同时改变交互题目的步骤、教师 JSON、知识节点／图解正文或小题，
+还须更新配套镜像并导入数据库，见[个人知识图谱内容发布](product/README.md#个人知识图谱内容发布)。
+`git pull` 不会更新正在运行的镜像。产品 Docker 环境的 API 发布以[服务器发布手册](release.md)为准。
+
 ```bash
 cd /home/ronghao/code/shuxueshuo && git pull
 ```

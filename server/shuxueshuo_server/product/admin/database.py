@@ -17,6 +17,11 @@ from ..repositories import insert, row, UserContext
 from ..storage import LocalArtifactStorage
 
 MUTABLE = {
+    'knowledge_drill_attempts': 'status completed_at',
+    'knowledge_drill_answers': 'selected is_correct answered_at',
+    'student_practice_attempts': 'status updated_at completed_at',
+    'student_practice_events': 'displayed_at',
+    'student_step_results': 'passed submit_count wrong_count hint_used last_grading_source last_submitted_at summary_through_sequence',
     'student_learning_marks': 'practiced learning_status',
     'tutor_daily_usage': 'calls',
     'tutor_user_daily_usage': 'calls',
@@ -89,7 +94,7 @@ def grant(c):
         columns = ','.join('"' + x.name + '"' for x in m.metadata.tables[table].c)
         c.exec_driver_sql(f'REVOKE UPDATE ({columns}) ON "{table}" FROM product_app')
         c.exec_driver_sql(f'GRANT SELECT ON "{table}" TO product_app')
-        if table not in ('users', 'workspaces', 'workspace_members', 'student_phone_identities'):
+        if table not in ('users', 'workspaces', 'workspace_members', 'student_phone_identities') and not table.startswith(('knowledge_nodes', 'knowledge_edges', 'knowledge_drill_items', 'practice_')):
             c.exec_driver_sql(f'GRANT INSERT ON "{table}" TO product_app')
         if table in MUTABLE:
             columns = ','.join('"' + x + '"' for x in MUTABLE[table].split())

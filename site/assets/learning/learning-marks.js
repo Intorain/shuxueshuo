@@ -6,6 +6,9 @@ document.head.append(css);
 await import('../auth/site-auth.js?v=4');
 await window.SiteAuth?.ready;
 const auth = window.SiteAuth;
+let aliases={};
+try {const response=await fetch('/data/knowledge/problem-id-aliases.json?v=1');if(response.ok)aliases=await response.json();}catch{}
+const canonical=id=>aliases[id]||id;
 
 async function api(path, method, body, user) {
   const controller = new AbortController();
@@ -34,7 +37,7 @@ async function api(path, method, body, user) {
 
 const config = document.getElementById('practice-config');
 if (config) {
-  const {id} = JSON.parse(config.textContent);
+  const id = canonical(JSON.parse(config.textContent).id);
   const panel = document.createElement('section');
   panel.id = 'learning-mark'; panel.className = 'learning-mark'; panel.hidden = true;
   panel.setAttribute('aria-label', '本题学习记录');
@@ -104,7 +107,7 @@ if (config) {
     }
   });
   window.addEventListener('site-auth-change', event => { void state.setUser(event.detail.user?.id || null, event.detail.reason); });
-  window.addEventListener('practice-completed', event => { if (event.detail.problemId === id) state.complete(); });
+  window.addEventListener('practice-completed', event => { if (canonical(event.detail.problemId) === id) state.complete(); });
   // The local completion event can precede loading this optional module.
   if (document.getElementById('completion').dataset.learningCompleted === 'true') state.complete();
   void state.setUser(auth?.user?.id || null);
@@ -133,7 +136,7 @@ if (config) {
     const counts = {pending: 0, mastered: 0, review: 0};
     let firstPending = null;
     for (const card of cards) {
-      const mark = (marks || []).find(row => row.problem_id === card.dataset.problemId) || emptyMark();
+      const mark = (marks || []).find(row => canonical(row.problem_id) === canonical(card.dataset.problemId)) || emptyMark();
       const value = presentation(mark);
       const number = card.querySelector('.problem-number');
       if (marks && mark.practiced) {

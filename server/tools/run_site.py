@@ -1,7 +1,8 @@
 """Same-origin local site + login + tutor, without starting Studio/workers.
 
-Run from server/: uv run python tools/run_site.py --data-dir /private/tmp/sss-auth-stage1 --instance auth-stage1
-Install/migrate the independent product instance first (see docs/site-login-local-testing.md).
+Run from server/: uv run python tools/run_site.py
+Uses the persistent local product instance and serves http://127.0.0.1:8779/.
+Install/migrate it first (see docs/site-login-local-testing.md).
 """
 
 import argparse
@@ -18,6 +19,8 @@ from sqlalchemy import text
 
 from shuxueshuo_server.auth.api import install_auth
 from shuxueshuo_server.auth.config import AuthConfig
+from shuxueshuo_server.product.admin import native
+from shuxueshuo_server.product.admin.cli import instance_lock
 from shuxueshuo_server.product.application import schema_head
 from shuxueshuo_server.product.config import REPO, Settings, write_private
 from shuxueshuo_server.product.db import engine
@@ -64,12 +67,20 @@ def create_local_app(settings, config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", required=True)
-    parser.add_argument("--instance", default="auth-stage1")
-    parser.add_argument("--port", type=int, default=8767)
+    parser.add_argument(
+        "--data-dir", help="Defaults to the persistent local product data directory"
+    )
+    parser.add_argument("--instance", default="local")
+    parser.add_argument("--port", type=int, default=8779, help="Website port (default: 8779)")
     parser.add_argument("--sms", choices=["mock", "aliyun_sms"], default="mock")
     args = parser.parse_args()
     settings = Settings.load("local", args.data_dir, args.instance)
+    if not (settings.pgdata / "PG_VERSION").is_file():
+        raise RuntimeError(
+            "Install the local database first; see docs/site-login-local-testing.md"
+        )
+    with instance_lock(settings.root):
+        native.start(settings)
     load_dotenv(REPO / "server/.env")
     # Private per-instance secret survives restarts. Never print it.
     private = settings.root / "config/student-auth.env"
@@ -86,6 +97,12 @@ def main():
         AUTH_MOCK_DIRECTORY=str(settings.root / "work/mock-sms"),
     )
     config = AuthConfig.from_env()
+    print(f"Local site: http://127.0.0.1:{args.port}/", flush=True)
+    print(
+        f"Database: 127.0.0.1:{settings.port}/product; instance: {settings.instance}",
+        flush=True,
+    )
+    print(f"Persistent data: {settings.root}", flush=True)
     if args.sms == "mock":
         print(f"Mock SMS files: {config.mock_directory} (local only, do not share)")
     uvicorn.run(

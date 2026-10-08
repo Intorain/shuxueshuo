@@ -39,7 +39,7 @@ def main(argv=None):
     p.add_argument('--port', type=int)
     p.add_argument('--pg-bin')
     p.add_argument('command', choices=['configure', 'install', 'deploy', 'resume', 'bootstrap', 'migrate', 'seed', 'doctor', 'status', 'db-start', 'db-stop', 'backup', 'restore',
-        'services-install', 'services-start', 'services-stop', 'services-status', 'services-doctor'])
+        'publish-learning', 'services-install', 'services-start', 'services-stop', 'services-status', 'services-doctor'])
     p.add_argument('--backup')
     p.add_argument('--target')
     args = p.parse_args(argv)
@@ -81,8 +81,11 @@ def execute(settings, args):
         with stopped_writes(settings, keep_on_failure=True):
             saved = backup(settings, fenced=True)
             database.migrate(settings)
+            publish_learning(settings)
             result = database.doctor(settings, maintenance=True)
         return {**result, **saved}
+    if operation == 'publish-learning':
+        return publish_learning(settings)
     if operation == 'resume':
         result = database.doctor(settings, maintenance=True)
         with psycopg.connect(database.dsn(settings.url('bootstrap')), autocommit=True) as c:
@@ -113,6 +116,8 @@ def execute(settings, args):
             db.dispose()
         if operation == 'seed':
             return {'workspace_id': context.workspace_id, 'user_id': context.user_id}
+    if operation == 'install':
+        publish_learning(settings)
     if operation in ('install', 'doctor'):
         return database.doctor(settings)
     if operation == 'backup':
@@ -122,6 +127,16 @@ def execute(settings, args):
         from .backup import restore_data
         return restore_data(settings, args.backup)
 
+
+
+
+def publish_learning(settings):
+    from ...learning.content import load_content, publish
+    db = engine(settings.url('migration'))
+    try:
+        return publish(db, load_content())
+    finally:
+        db.dispose()
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -20,7 +20,7 @@
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
-  <script type="module" src="/knowledge/node.js?v=1"></script>
+  <script type="module" src="/knowledge/node.js?v=3"></script>
 </head>
 <body class="kn-page">
   <a class="skip-link" href="#main">跳到正文</a>
@@ -39,11 +39,11 @@
     </section>
 
     <section class="kn-section" aria-labelledby="kn-explain-title">
-      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 8 题</button></div>
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 5 题</button></div>
       <div class="kn-explain"><div data-explainer="symmetric-polynomial"><p class="kn-none">图解加载中…</p></div></div>
     </section>
 
-    <script type="application/json" id="kn-drill-data">{"label":"二元对称多项式可以用两变量的和与积表示","items":[{"id":"which","question":"下面哪个是对称式？","type":"choice","options":[{"value":"diff","label":"$x^2-y^2$","feedback":"交换后得 $y^2-x^2$，变成了相反数。"},{"value":"right","label":"$x^2y+xy^2$"},{"value":"linear","label":"$x+2y$","feedback":"交换后得 $y+2x$，和原式不同。"}],"answer":"right"},{"id":"square-sum","question":"设 $s=x+y$，$p=xy$，$x^2+y^2$ 等于什么？","type":"choice","options":[{"value":"right","label":"$s^2-2p$"},{"value":"plus","label":"$s^2+2p$","feedback":"$s^2=x^2+2xy+y^2$，要减去 $2p$。"},{"value":"one","label":"$s^2-p$","feedback":"$(x+y)^2$ 里交叉项是 $2xy$，要减 $2p$。"}],"answer":"right"},{"id":"cube","question":"$x+y=3$，$xy=1$，$x^3+y^3$ 等于多少？","type":"choice","options":[{"value":"forgot","label":"$24$","feedback":"$x^3+y^3=s^3-3sp$，$3sp=3\\times3\\times1=9$，不是 $3$。"},{"value":"cube","label":"$27$","feedback":"$27$ 是 $(x+y)^3$，还要减去 $3xy(x+y)$。"},{"value":"right","label":"$18$"}],"answer":"right"},{"id":"reciprocal","question":"设 $s=x+y$，$p=xy$（$p\\ne0$），$\\frac1x+\\frac1y$ 等于什么？","type":"choice","options":[{"value":"flip","label":"$\\frac ps$","feedback":"通分得 $\\frac{x+y}{xy}$，分子是和，分母是积。"},{"value":"right","label":"$\\frac sp$"},{"value":"sum","label":"$\\frac1s$","feedback":"$\\frac1x+\\frac1y\\ne\\frac1{x+y}$，要先通分。"}],"answer":"right"},{"id":"real","question":"给定 $s$、$p$，要有实数 $x$、$y$ 满足 $x+y=s$，$xy=p$，需要什么条件？","type":"choice","options":[{"value":"right","label":"$s^2\\ge4p$"},{"value":"le","label":"$s^2\\le4p$","feedback":"$s=2$，$p=2$ 满足它，但 $t^2-2t+2=0$ 没有实根。"},{"value":"root","label":"$s\\ge2\\sqrt p$","feedback":"这是 $x,y>0$ 时的结论；对实数来说 $s$ 可以是负数，应写 $s^2\\ge4p$。"}],"answer":"right"},{"id":"range","question":"实数 $x$、$y$ 满足 $x^2+y^2=2$，$x+y$ 的取值范围是什么？","type":"choice","options":[{"value":"pos","label":"$[0,2]$","feedback":"$x=y=-1$ 时 $x+y=-2$。"},{"value":"right","label":"$[-2,2]$"},{"value":"root","label":"$[-\\sqrt2,\\sqrt2]$","feedback":"$x=y=1$ 时 $x+y=2>\\sqrt2$。由 $p=\\frac{s^2-2}2\\le\\frac{s^2}4$ 得 $s^2\\le4$。"}],"answer":"right"},{"id":"construct","question":"$x^2+4y^2-2xy$ 不对称，怎样换元能变成对称式？","type":"choice","options":[{"value":"swap","label":"令 $a=2x$，$b=y$","feedback":"得 $\\frac{a^2}4+4b^2-ab$，仍不对称。$4y^2=(2y)^2$，应令 $b=2y$。"},{"value":"direct","label":"直接设 $s=x+y$，$p=xy$","feedback":"不对称的式子写不成只含 $s$、$p$ 的式子，要先换元。"},{"value":"right","label":"令 $a=x$，$b=2y$"}],"answer":"right"},{"id":"statements","question":"下面哪些能写成只含 $s=x+y$、$p=xy$ 的式子？","type":"multi","options":[{"value":"diff-sq","label":"$(x-y)^2$"},{"value":"diff","label":"$x-y$","feedback":"交换 $x$、$y$ 后变号，不是对称式。$(x-y)^2$ 才能写成 $s^2-4p$。"},{"value":"sp","label":"$x^2y+xy^2$"},{"value":"sq-diff","label":"$x^2-y^2$","feedback":"交换后变成相反数，不是对称式。"}],"answer":["diff-sq","sp"]}]}</script>
+    <script type="application/json" id="kn-drill-data">{"node":"symmetric-polynomial","label":"二元对称多项式可以用两变量的和与积表示"}</script>
 
     <footer class="chapter-footer">
       <span>数学说 · 知识图谱</span>

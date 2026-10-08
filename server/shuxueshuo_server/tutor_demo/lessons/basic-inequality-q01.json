@@ -1,0 +1,267 @@
+{
+  "id": "basic-inequality-q01",
+  "version": 6,
+  "problem": {
+    "statement": "设正实数 $m,n$ 满足 $m+n=2$，求 $mn$ 的最大值。",
+    "conditions": [
+      "m > 0，n > 0",
+      "m + n = 2"
+    ],
+    "target": "(mn)max"
+  },
+  "methods": [
+    {
+      "id": "direct",
+      "label": "直接应用基本不等式"
+    },
+    {
+      "id": "elimination",
+      "label": "消参法"
+    }
+  ],
+  "routes": {
+    "direct": {
+      "nodes": [
+        {
+          "id": "structure",
+          "title": "观察结构",
+          "question": "定和求积还是定积求和？",
+          "required_evidence": [
+            "positive_terms",
+            "fixed_sum",
+            "product_target"
+          ],
+          "criteria": "学生理解两正数 m、n 的和固定，要求乘积最大值。只说基本不等式，仅选择方法，不完成结构。明确说定和求积/和为2求mn最大可结合题目正数条件通过；答案为定和求积，两个数学项为m、n。",
+          "completion_reply": "是的，这是定和求积。",
+          "interaction": {
+            "type": "structure",
+            "terms": [
+              "m",
+              "n"
+            ]
+          },
+          "expected_answer": {
+            "terms": [
+              "m",
+              "n"
+            ],
+            "fixed": "sum",
+            "target": "product"
+          },
+          "feedback": {
+            "terms": "两个位置需要分别对应题目中的 m 和 n。",
+            "structure": "再看看题目：固定的是 m + n，要求的是 mn 的最大值。"
+          },
+          "results": []
+        },
+        {
+          "id": "amgm",
+          "title": "应用基本不等式",
+          "question": "对 m、n 应用基本不等式，能得到什么关系？",
+          "required_evidence": [
+            "amgm_relation"
+          ],
+          "criteria": "明确表达 m+n≥2√(mn) 或等价 (m+n)/2≥√(mn)，也接受对m、n使用AM-GM并给出mn≤1的正确推导；仅猜答案1或只说基本不等式不足。",
+          "completion_reply": "关系正确。结合 m+n=2，整理可得 mn≤1。",
+          "interaction": {
+            "type": "amgm",
+            "terms": [
+              "m",
+              "n"
+            ]
+          },
+          "expected_answer": {
+            "terms": [
+              "m",
+              "n"
+            ]
+          },
+          "feedback": {
+            "terms": "两个位置需要分别对应题目中的 m 和 n。"
+          },
+          "results": [
+            "m+n≥2√(mn)",
+            "2≥2√(mn)",
+            "1≥√(mn)",
+            "mn≤1"
+          ]
+        },
+        {
+          "id": "equality",
+          "title": "验证取等",
+          "question": "什么条件下，刚才的基本不等式能取等号？",
+          "required_evidence": [
+            "equal_terms"
+          ],
+          "criteria": "表达m=n或n=m或m=n=1。结合上文问句，“两数相等”也是等价答案。固定等号，两槽填m、n，顺序不限。",
+          "completion_reply": "是的，取等条件是 m=n，结合原题条件可得 m=n=1。",
+          "interaction": {
+            "type": "equality",
+            "terms": [
+              "m",
+              "n"
+            ]
+          },
+          "expected_answer": {
+            "terms": [
+              "m",
+              "n"
+            ]
+          },
+          "feedback": {
+            "terms": "两个位置需要分别对应题目中的 m 和 n。"
+          },
+          "results": [
+            "m=n",
+            "m=n=1",
+            "满足原条件且mn=1，最大值1"
+          ]
+        }
+      ],
+      "label": "直接应用基本不等式"
+    },
+    "elimination": {
+      "nodes": [
+        {
+          "id": "eliminate",
+          "title": "观察结构",
+          "question": "利用 m + n = 2，你准备怎样消去一个变量？",
+          "required_evidence": [
+            "elimination_relation"
+          ],
+          "criteria": "n=2-m时variable=m；m=2-n时variable=n（variable指保留的变量）。只说消参法（也叫条件消元），仅选择方法，需继续问用哪一个变量表示另一个。",
+          "completion_reply": "消参关系正确。",
+          "interaction": {
+            "type": "choice",
+            "field": "variable",
+            "options": [
+              {
+                "value": "m",
+                "label": "$n=2-m$"
+              },
+              {
+                "value": "n",
+                "label": "$m=2-n$"
+              }
+            ],
+            "description": "保留的变量：m 表示 n=2-m，n 表示 m=2-n"
+          },
+          "expected_answer": {
+            "one_of": [
+              "m",
+              "n"
+            ]
+          },
+          "feedback": {
+            "answer": "还需要表达你对这个问题的判断。"
+          },
+          "results": [
+            "保留变量{{variable}}，0<{{variable}}<2",
+            "mn={{variable}}(2-{{variable}})=2{{variable}}-{{variable}}²"
+          ]
+        },
+        {
+          "id": "quadratic",
+          "title": "求二次式的上界",
+          "question": "怎样判断这个二次式的最大值？",
+          "required_evidence": [
+            "bound_strategy"
+          ],
+          "criteria": "学生选择配方/平方非负则technique=square，二次函数顶点/抛物线求最值则vertex。选择策略即可通过，具体推导由系统执行。",
+          "completion_reply": "这个思路可行，可以得到 mn≤1。",
+          "interaction": {
+            "type": "choice",
+            "field": "technique",
+            "options": [
+              {
+                "value": "square",
+                "label": "配方，看平方项的取值"
+              },
+              {
+                "value": "vertex",
+                "label": "利用二次函数的顶点"
+              }
+            ],
+            "description": "square为配方，vertex为二次函数顶点；系统完成后续计算"
+          },
+          "expected_answer": {
+            "one_of": [
+              "square",
+              "vertex"
+            ]
+          },
+          "feedback": {
+            "answer": "还需要表达你对这个问题的判断。"
+          },
+          "results": [
+            "mn=1-({{variable}}-1)²≤1",
+            "或令y=2{{variable}}-{{variable}}²，开口向下，顶点(1,1)在定义域内"
+          ]
+        },
+        {
+          "id": "feasibility",
+          "title": "验证取值",
+          "question": "这个取值满足原题的所有条件吗？",
+          "required_evidence": [
+            "feasible_values"
+          ],
+          "criteria": "验证m=n=1均为正且和为2。若系统刚问是否满足所有原题条件，明确肯定也可接受；疑问句“满足吗”不是回答。",
+          "completion_reply": "是的，两数都为正且和为2，上界可以取到。",
+          "interaction": {
+            "type": "choice",
+            "field": "feasible",
+            "options": [
+              {
+                "value": "yes",
+                "label": "满足：两数为正，且和为 2"
+              },
+              {
+                "value": "no",
+                "label": "不满足原题条件"
+              }
+            ],
+            "description": "验证取值满足原题条件，yes为满足，no为不满足"
+          },
+          "expected_answer": {
+            "one_of": [
+              "yes"
+            ]
+          },
+          "feedback": {
+            "answer": "把 m = n = 1 代回原题：两数是否都为正？它们的和是不是 2？"
+          },
+          "results": [
+            "{{variable}}=1时另一个变量也为1，满足原条件，最大值1"
+          ]
+        }
+      ],
+      "label": "消参法"
+    }
+  },
+  "initial_state": {
+    "active": 0,
+    "method": null,
+    "swapped": false,
+    "pairs": [
+      [
+        "",
+        ""
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "",
+        ""
+      ]
+    ],
+    "feedback": "",
+    "hint": false,
+    "choices": {
+      "variable": null,
+      "technique": null,
+      "feasible": null
+    }
+  }
+}

@@ -24,7 +24,7 @@
 | 本地 Context | `site/assets/practice/context.js`：本地校验、步骤推进、路径尝试、结构化事件以及重试后的进度合并 |
 | 公共页面流程 | `site/assets/practice/runtime.js`：加载 HTML 配置、渲染模板、操作记录、按需对话、状态回填、提示计时 |
 | 公共样式与数学显示 | `practice.css`、`math-text.js` 及站内 KaTeX；不需要服务器安装 LaTeX |
-| 每题教师 JSON | `server/shuxueshuo_server/tutor_demo/lessons/q01.json`：老师需要的题目、步骤和判定依据 |
+| 每题教师 JSON | `server/shuxueshuo_server/tutor_demo/lessons/basic-inequality-q01.json`：老师需要的题目、步骤和判定依据 |
 | 通用 Prompt | `tutor-system.jinja` 定义教学规则，`tutor-turn.jinja` 组织本轮教学上下文 |
 | 后台 API | 校验并重放页面操作、调用 DeepSeek、验证模型建议、维护服务端 Context |
 

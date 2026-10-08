@@ -20,7 +20,7 @@
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
-  <script type="module" src="/knowledge/node.js?v=1"></script>
+  <script type="module" src="/knowledge/node.js?v=3"></script>
 </head>
 <body class="kn-page">
   <a class="skip-link" href="#main">跳到正文</a>
@@ -39,11 +39,11 @@
     </section>
 
     <section class="kn-section" aria-labelledby="kn-explain-title">
-      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 8 题</button></div>
+      <div class="kn-section-head"><h2 id="kn-explain-title">图解</h2><button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 5 题</button></div>
       <div class="kn-explain"><div data-explainer="square-nonnegative"><p class="kn-none">图解加载中…</p></div></div>
     </section>
 
-    <script type="application/json" id="kn-drill-data">{"label":"平方的非负性","items":[{"id":"two-squares","question":"要说明 $x^2+y^2-2x+4y+5\\ge0$，把它写成什么？","type":"choice","options":[{"value":"right","label":"$(x-1)^2+(y+2)^2$"},{"value":"sign","label":"$(x+1)^2+(y-2)^2$","feedback":"$(x+1)^2$ 展开是 $x^2+2x+1$，一次项符号不对。"},{"value":"positive","label":"要先假设 $x,y>0$","feedback":"平方和对任意实数都不小于 $0$，不需要正数条件。"}],"answer":"right"},{"id":"equality","question":"$(a-2b)^2\\ge0$ 什么时候取等号？","type":"choice","options":[{"value":"zero","label":"只有 $a=b=0$","feedback":"只要 $a-2b=0$ 就行，例如 $a=2$，$b=1$。"},{"value":"right","label":"$a=2b$"},{"value":"neg","label":"$a=-2b$","feedback":"$a=-2b$ 时 $a-2b=-4b$，不一定为 $0$。"}],"answer":"right"},{"id":"not-always","given":"$a$、$b$ 是任意实数。","question":"下面哪个不一定成立？","type":"choice","options":[{"value":"sq","label":"$a^2+b^2\\ge2ab$","feedback":"移项就是 $(a-b)^2\\ge0$，对任意实数都成立。"},{"value":"prod","label":"$ab\\le\\left(\\frac{a+b}2\\right)^2$","feedback":"$\\left(\\frac{a+b}2\\right)^2-ab=\\left(\\frac{a-b}2\\right)^2\\ge0$，对任意实数都成立。"},{"value":"right","label":"$a+b\\ge2\\sqrt{ab}$"}],"answer":"right"},{"id":"sum-product","question":"实数 $x$、$y$ 满足 $x+y=2$，$xy=p$，$p$ 的取值范围是什么？","type":"choice","options":[{"value":"right","label":"$p\\le1$"},{"value":"ge","label":"$p\\ge1$","feedback":"$x=3$，$y=-1$ 时 $p=-3$。由 $(x-y)^2=(x+y)^2-4xy\\ge0$ 得 $4-4p\\ge0$。"},{"value":"lt","label":"$p\u003c1$","feedback":"$x=y=1$ 时 $p=1$，等号取得到。"}],"answer":"right"},{"id":"both-sides","question":"$a^2+b^2=2$，$ab$ 的取值范围是什么？","type":"choice","options":[{"value":"upper","label":"$ab\\le1$","feedback":"只用了 $(a-b)^2\\ge0$。由 $(a+b)^2\\ge0$ 还得 $2ab\\ge-2$。"},{"value":"pos","label":"$0\\le ab\\le1$","feedback":"$a=1$，$b=-1$ 时 $ab=-1$。"},{"value":"right","label":"$-1\\le ab\\le1$"}],"answer":"right"},{"id":"recip-square","question":"$x\\ne0$ 时，$x^2+\\frac1{x^2}$ 的最小值是多少？","type":"choice","options":[{"value":"zero","label":"$0$","feedback":"$x^2+\\frac1{x^2}=\\left(x-\\frac1x\\right)^2+2$，平方项最小是 $0$，原式最小是 $2$。"},{"value":"right","label":"$2$"},{"value":"none","label":"没有最小值","feedback":"$x=\\pm1$ 时 $x-\\frac1x=0$，取到 $2$。"}],"answer":"right"},{"id":"four-ab","question":"$(a+b)^2$ 和 $4ab$ 的大小关系是什么？","type":"choice","options":[{"value":"positive","label":"只有 $a,b>0$ 时 $(a+b)^2\\ge4ab$","feedback":"$(a+b)^2-4ab=(a-b)^2\\ge0$，对任意实数都成立。"},{"value":"right","label":"对任意实数 $(a+b)^2\\ge4ab$"},{"value":"le","label":"$(a+b)^2\\le4ab$","feedback":"$a=1$，$b=0$ 时 $1>0$，方向反了。"}],"answer":"right"},{"id":"statements","question":"下面哪些式子对一切实数 $x$ 都不小于 $0$？","type":"multi","options":[{"value":"sq","label":"$x^2-4x+4$"},{"value":"minus","label":"$x^2-4x+3$","feedback":"$x=2$ 时值为 $-1$。配方得 $(x-2)^2-1$。"},{"value":"plus","label":"$x^2+x+1$"},{"value":"neg","label":"$-(x-1)^2$","feedback":"平方前面是负号，$x\\ne1$ 时为负。"}],"answer":["sq","plus"]}]}</script>
+    <script type="application/json" id="kn-drill-data">{"node":"square-nonnegative","label":"平方的非负性"}</script>
 
     <footer class="chapter-footer">
       <span>数学说 · 知识图谱</span>

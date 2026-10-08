@@ -13,13 +13,14 @@ cd "$HOME/projects/code/shuxueshuo"
 | 服务 | 本地入口／端口 | 职责 | 启动／停止命令 | 脚本或实现位置 |
 | --- | --- | --- | --- | --- |
 | PostgreSQL 17.10 | `127.0.0.1:5432`，数据库 `product` | 保存用户、题目、修订、构建、执行权、产物索引、事件及调用审计，是业务状态的权威来源 | 启动：`./deploy/product/manage.sh --mode local db-start`；停止：`./deploy/product/manage.sh --mode local db-stop`。整套启动也会自动启动数据库 | [统一管理入口](../deploy/product/manage.sh)、[原生数据库生命周期](../server/shuxueshuo_server/product/admin/native.py) |
+| 学生网站／学习 API | `http://127.0.0.1:8779/` | 提供题库、登录、导师对话和个人知识图谱；复用上述 `5432` 数据库 | 单独启动：`uv run --project server python server/tools/run_site.py`；Ctrl+C 停网站，数据库保留 | [启动器](../server/tools/run_site.py)、[手动测试说明](site-login-local-testing.md) |
 | RabbitMQ 4.3.2 | `127.0.0.1:5672`；节点内部通信端口 `25672` | 持久保存待消费消息，并向 Worker 投递；不保存题意或最终网页。管理网页插件未启用 | 随整套启动：`./deploy/product/manage.sh --mode local services-start`；随整套停止：`./deploy/product/manage.sh --mode local services-stop` | [原生 RabbitMQ 管理](../server/shuxueshuo_server/product/admin/broker.py)、[服务生命周期](../server/shuxueshuo_server/product/admin/runtime.py) |
 | Celery Worker 5.6.3 | 无 HTTP 入口；连接 RabbitMQ 和 PostgreSQL | 消费任务、获取执行权、启动构建子进程、续租、处理取消和异常退出。当前最多同时执行 **1 个构建** | 随整套启动／停止：`services-start`／`services-stop`，完整命令同上 | [Worker 实现](../server/shuxueshuo_server/product/transport.py)、[服务生命周期](../server/shuxueshuo_server/product/admin/runtime.py) |
 | Publisher／恢复扫描进程 | 无 HTTP 入口；连接 PostgreSQL 和 RabbitMQ | 将数据库 outbox 消息可靠发布到 RabbitMQ；每约 15 秒扫描过期租约，安排恢复消息 | 随整套启动／停止：`services-start`／`services-stop`，完整命令同上 | [发布与恢复实现](../server/shuxueshuo_server/product/transport.py)、[服务生命周期](../server/shuxueshuo_server/product/admin/runtime.py) |
 | FastAPI／Uvicorn | `http://127.0.0.1:8000/api/product/v1`；WebSocket：`ws://127.0.0.1:8000/api/product/v1/ws` | 提供上传、题目、构建、修订、重建、取消、审查、受控产物访问及实时事件接口 | 随整套启动／停止：`services-start`／`services-stop`，完整命令同上 | [API 入口](../server/shuxueshuo_server/main.py)、[产品接口](../server/shuxueshuo_server/product/api.py)、[服务生命周期](../server/shuxueshuo_server/product/admin/runtime.py) |
 | Next.js 前端 | [Review](http://127.0.0.1:3000/review/runs) | 上传、进度、解析网页及审查材料界面；代理 HTTP 请求。当前以 `next dev` 开发模式运行，支持热更新 | 随整套启动／停止：`services-start`／`services-stop`，完整命令同上 | [前端 npm scripts](../frontend/package.json)、[产品 Review](../frontend/app/review/runs/product-ui.tsx)、[服务生命周期](../server/shuxueshuo_server/product/admin/runtime.py) |
 
-除 PostgreSQL 外，当前 CLI 没有按服务名分别 start/stop 的子命令。RabbitMQ、Worker、publisher、API 和前端由统一生命周期管理，启动时注入实例配置、记录 PID 和源码版本，停止时排空任务。不要另起默认 RabbitMQ 节点或旧 Review Worker。
+学生网站由 `run_site.py` 单独启动，不包含在 `services-start / services-stop` 中，也不启动 Worker 等产品服务。除 PostgreSQL 外，当前 CLI 没有按服务名分别 start/stop 的子命令。RabbitMQ、Worker、publisher、产品 API 和前端由统一生命周期管理，启动时注入实例配置、记录 PID 和源码版本，停止时排空任务。不要另起默认 RabbitMQ 节点或旧 Review Worker。
 
 ## 常用命令
 

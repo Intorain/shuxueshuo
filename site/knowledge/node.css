@@ -95,3 +95,5 @@
   .kd-option { padding: 11px 12px; font-size: 14.5px; }
   .kd-review li { flex-direction: column; gap: 4px; }
 }
+
+.kd-network {margin:12px 20px;color:var(--muted);font-size:13px;}

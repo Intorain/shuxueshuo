@@ -1,6 +1,6 @@
 /* Topic knowledge map: one column per method, its steps' knowledge in route order. */
-import {loadKnowledge, escapeHtml as escape, openSheet, kindLabel} from '/knowledge/data.js?v=2';
-import {detailHref} from '/assets/explain/links.js?v=1';
+import {loadKnowledge, escapeHtml as escape, openSheet, kindLabel} from '/knowledge/data.js?v=3';
+import {detailHref} from '/assets/explain/links.js?v=2';
 
 const root = document.querySelector('[data-topic-map]');
 const config = JSON.parse(document.getElementById('topic-map-config').textContent);

@@ -254,3 +254,45 @@ RELEASE=$(cat /srv/shuxueshuo/config/release-path)
 若同时升级了抽取代码，仍须打**新产品包**再 `services-start`；只改密钥可只重启。视觉字段进入依赖指纹，旧 Doubao / 旧模型冻结构建会要求重建。
 
 首轮、修复与独立视觉复核固定为 thinking enabled / reasoning_effort low、非流式 JSON object。`DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` 继续只控制下游 Solver 等文本路径。
+
+## 个人知识图谱内容发布
+
+`0008_practice_identity` 迁移题目别名，`0009_learning_graph` 增加公共内容和学生练习表。
+`install`、`deploy` 在迁移后自动执行内容校验与导入；手动 `migrate` 后需执行同一版本的
+`publish-learning`。导入器核对题页、教师 JSON 与专题映射，失败停止发布；应用账号不能编辑公共内容。
+管理镜像只包含导出脚本 `tools/export-knowledge-text.mjs`、`site/data/knowledge/`、
+`site/assets/explain/` 和 `site/1/`、`site/2/` 题页；构建时用镜像内的 Node.js/Python 执行完整内容校验。
+新增专题目录时须同步增加管理 Dockerfile 及 dockerignore 的输入范围；漏项会使构建校验失败。
+API/Worker 镜像保留页面生成所需的 `site/assets/`，排除仅供主站展示的 `xiaohongshu/` 图片，
+不包含整套公共题页。主站仍由宿主机 Nginx 读取仓库的 `site/`。
+
+**镜像中的副本不会阻止静态网页用 `git pull` 发布。** 纯外观更新可单独发布；涉及入库内容时必须同步导入，
+宿主机 `git pull` 不会更新镜像内的原稿：
+
+| 改动 | 需要执行 |
+| --- | --- |
+| 主站样式、布局、图片或不参与学习数据的普通页面 | 更新宿主机静态文件及缓存；不需要数据库导入或重建 API |
+| 知识节点、图解正文、专题关联、小题 | 用包含新原稿的管理镜像执行 `publish-learning`，配套切换静态文件 |
+| 题目、路线、步骤、教师 JSON 或后端逻辑 | 更新管理/API 镜像及相应静态文件，导入配套内容；表结构变化按 `deploy` 执行迁移 |
+| Worker 内嵌的题页生成 JS/CSS | 若要新生成的产物也使用新资源，须更新 API/Worker 镜像 |
+
+这不新增常驻数据库服务。首次切换必须清除旧公开小题 JSON，详见
+[个人知识图谱六阶段实现与验收](../../docs/student-knowledge-graph-implementation.md)。
+
+镜像验收（独立临时 PostgreSQL 容器，不使用宿主机数据库）：
+
+```bash
+docker buildx build --load --provenance=false --sbom=false --platform linux/amd64 \
+  -f deploy/product/Dockerfile.admin -t shuxueshuo-product-admin:learning-check .
+docker buildx build --load --provenance=false --sbom=false --platform linux/amd64 \
+  -f deploy/product/Dockerfile.app -t shuxueshuo-product-app:learning-check .
+cd server
+RUN_PRODUCT_IMAGE_INTEGRATION=1 \
+PRODUCT_TEST_ADMIN_IMAGE=shuxueshuo-product-admin:learning-check \
+PRODUCT_TEST_APP_IMAGE=shuxueshuo-product-app:learning-check \
+uv run pytest tests/product/test_learning_image.py -q
+```
+
+验收会在只读、非 root 管理容器中执行 `install`、两次 `publish-learning`、`doctor`，比对图解导出内容，
+并用 API/Worker 镜像实际编译独立题页；结束后删除本轮专用容器与数据卷。这里允许未提交工作树用于本地验收，
+不生成正式发布包；正式交付仍使用要求干净提交的 `build-release.sh`。

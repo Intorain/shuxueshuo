@@ -47,7 +47,7 @@ export const escapeHtml = text => String(text).replace(/[&<>"]/g, ch => ({'&': '
 
 let explainModule = null;
 export function openSheet(id, options = {}) {
-  explainModule ||= import('/assets/explain/explain.js?v=1');
+  explainModule ||= import('/assets/explain/explain.js?v=2');
   explainModule.then(module => module.openExplainer(id, options)).catch(() => { explainModule = null; });
 }
 

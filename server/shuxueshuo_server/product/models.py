@@ -360,3 +360,7 @@ student_learning_marks = sa.Table('student_learning_marks', metadata,
     col('learning_status', sa.Text, default=sa.text("'unmarked'")),
     sa.CheckConstraint("learning_status IN ('unmarked','mastered','needs_review')", name='learning_status'),
     sa.CheckConstraint("practiced OR learning_status = 'unmarked'", name='learning_practiced'))
+
+# Learning tables participate in permission checks and backup inventories.
+from ..learning.models import register as register_learning
+register_learning(metadata)

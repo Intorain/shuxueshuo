@@ -1,7 +1,7 @@
 /* Explainers: every graph node with one has its own module under knowledge/ or method/,
    shown in a shared dialog (openExplainer) or inside a node's detail page (renderExplainer). */
 import {escapeHtml as escape} from './shared/html.js?v=1';
-import {TOPIC_URL, detailHref} from './links.js?v=1';
+import {TOPIC_URL, detailHref} from './links.js?v=2';
 
 const MODULE_VERSION = 1;
 const GRAPH_URL = '/data/knowledge/graph.json?v=2';

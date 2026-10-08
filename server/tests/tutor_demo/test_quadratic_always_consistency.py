@@ -264,7 +264,7 @@ def test_condition_step_uses_three_fixed_label_roles():
 def test_condition_step_links_the_extremum_knowledge_tip():
     knowledge = (ROOT / 'site/assets/explain/knowledge/extremum-transfer.js').read_text()
     cells = re.search(r'const CELLS = \{(.*?)\};', knowledge, re.S)[1]
-    assert "import(new URL('../explain/explain.js?v=1', runtimeSrc)" in (ROOT / 'site/assets/practice/runtime.js').read_text()
+    assert "import(new URL('../explain/explain.js?v=2', runtimeSrc)" in (ROOT / 'site/assets/practice/runtime.js').read_text()
     seen = 0
     for name, text, config in all_pages():
         for nodes in config['routes'].values():

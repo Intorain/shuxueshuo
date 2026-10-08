@@ -17,11 +17,17 @@
 | --- | --- |
 | `server/shuxueshuo_server/product/**`、`deploy/product/**`（Compose/管理脚本） | **本机构建发布包 → 上传 → `services-start` 或 `deploy`** |
 | `frontend/**`（Studio 工作台） | **本机构建 `shuxueshuo-studio` → 上传 → `docker load` 换容器** |
-| `deploy/nginx/**`、主站静态 `site/**`、仓库说明 | 服务器 **`git pull`**，必要时 `nginx -t && reload` |
+| `deploy/nginx/**`、主站纯样式／布局／图片、普通静态页、仓库说明 | 服务器 **`git pull`**，必要时 `nginx -t && reload` |
+| 知识节点、图解正文、专题映射、私有小题原稿 | 更新管理镜像并执行 **`publish-learning`**，配套更新主站静态文件 |
+| 交互题目的步骤／选项／教师 JSON、学习记录或导师后端 | **新产品包与配套静态文件一起发布**，确保原稿、运行时及数据库关联一致 |
 | OCR wrapper / `deploy/ocr/**`（含 sidecar 脚本；镜像未变） | 服务器 **`git pull`**（sidecar 从仓库挂载）；compose/runner 变更仍须 **新产品包** |
 | 仅改 `server/.env` 模型密钥 | 改宿主机文件（**勿提交**）；**重启** api/worker/publisher 容器即可，无需新发布包 |
 
 以前「服务器 `git pull` 就发布」适合宿主机直接跑 `uvicorn`。现在产品与 Studio 跑在 **固定 digest 的镜像**里，业务代码变更必须打进镜像再换容器。
+
+主站仍由 Nginx 直接读取宿主机 `site/`，纯静态改动继续可以 `git pull`。镜像内的文件副本供内容导入与题页生成使用，
+不会随宿主机更新。涉及这些用途时，按[内容发布规则](product/README.md#个人知识图谱内容发布)同步对应镜像；
+仅改主站外观不要求所有镜像一起重建。
 
 ## 环境约定（占位符）
 

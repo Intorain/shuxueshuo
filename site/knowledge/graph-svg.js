@@ -1,5 +1,5 @@
 /* Flat SVG view of the knowledge graph: used without WebGL, with reduced motion, or when chosen. */
-import {kindLabel} from '/knowledge/data.js?v=2';
+import {kindLabel} from '/knowledge/data.js?v=3';
 import {NODE_W, NODE_H, wrap, PROGRESS} from '/knowledge/graph-layout.js?v=1';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -99,6 +99,14 @@ export function mount({data, box, topicColor, container, select, preview}) {
   nodeLayer.addEventListener('pointerleave', () => preview(null));
 
   return {
+    mastery(map) {
+      nodeElements.forEach((element,id)=>{
+        element.querySelector('.kg-mastery-dot')?.remove();
+        const value=map?.get(id);if(!value)return;
+        const dot=svg('circle',{class:'kg-mastery-dot',cx:9,cy:9,r:4,fill:{mastered:'#00836c',needs_review:'#d38b26',unassessed:'#a4b2ba'}[value.status]});
+        dot.append(Object.assign(svg('title'),{textContent:{mastered:'已掌握',needs_review:'待巩固',unassessed:'未评估'}[value.status]}));element.append(dot);
+      });
+    },
     highlight({id, related, edgeState}) {
       nodeElements.forEach((element, key) => {
         element.classList.toggle('is-selected', key === id);

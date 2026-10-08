@@ -217,13 +217,36 @@ def test_knowledge_page_loads_the_data_files():
     assert 'confused' not in script + page
 
 
+def test_identity_migration_invalidates_the_cached_module_chain():
+    # Include ancestors: a fresh leaf URL is ineffective if a cached importer
+    # still loads the old URL. These are the first versions using canonical IDs.
+    minimum = {
+        'links': 2, 'learning-marks': 2, 'explain': 2, 'data': 3,
+        'graph-svg': 3, 'graph-3d': 3, 'graph': 7, 'topic-map': 3,
+        'node': 3, 'runtime': 35, 'practice-records': 4,
+    }
+    references = {name: set() for name in minimum}
+    folders = ('site/1', 'site/2', 'site/knowledge', 'site/assets/explain',
+               'site/assets/practice', 'site/assets/learning')
+    paths = [p for folder in folders for p in (ROOT / folder).rglob('*')
+             if p.suffix in {'.html', '.js'}]
+    paths.append(ROOT / 'tools/build-knowledge-pages.mjs')
+    for path in paths:
+        for name, version in re.findall(r'/([\w-]+)\.js\?v=(\d+)', path.read_text()):
+            if name in minimum:
+                references[name].add(int(version))
+                assert int(version) >= minimum[name], (path, name, version)
+    # Entry pages, static imports and lazy imports must agree on each module.
+    assert all(len(versions) == 1 for versions in references.values()), references
+
+
 def test_pages_open_explainers_through_the_shell():
     shell = (EXPLAIN / 'explain.js').read_text()
     assert "new URL('explain.css?v=1', import.meta.url)" in shell and (EXPLAIN / 'explain.css').exists()
     graph_url = re.search(r"GRAPH_URL = '([^']+)'", shell)[1]
     topic_version = re.search(r"topics/\$\{id\}\.json\?(v=\d+)", (EXPLAIN / 'links.js').read_text())[1]
-    assert "import('/assets/explain/explain.js?v=1')" in (ROOT / 'site/knowledge/data.js').read_text()
-    assert "import(new URL('../explain/explain.js?v=1', runtimeSrc)" in (ROOT / 'site/assets/practice/runtime.js').read_text()
+    assert "import('/assets/explain/explain.js?v=2')" in (ROOT / 'site/knowledge/data.js').read_text()
+    assert "import(new URL('../explain/explain.js?v=2', runtimeSrc)" in (ROOT / 'site/assets/practice/runtime.js').read_text()
     for name, topic in TOPIC_FILES.items():
         catalog = (ROOT / 'site' / topic['path'].strip('/') / 'index.html').read_text()
         for page in (catalog, (ROOT / 'site/knowledge/index.html').read_text()):
@@ -231,7 +254,7 @@ def test_pages_open_explainers_through_the_shell():
             assert graph_url in urls and f'/data/knowledge/topics/{name}.json?{topic_version}' in urls
         explain_buttons = re.findall(r'data-explain="([a-z-]+)"', catalog)
         if explain_buttons:
-            assert "import {openExplainer} from '/assets/explain/explain.js?v=1'" in catalog
+            assert "import {openExplainer} from '/assets/explain/explain.js?v=2'" in catalog
             assert f"topic: '{name}'" in catalog and 'method-sheet' not in catalog
             # A group can hold several methods (/1/ group-direct also has 配方); its chip opens the first one.
             leads = {}
@@ -254,7 +277,7 @@ def test_detail_pages_are_generated_for_every_node():
         assert (f'data-explainer="{id}"' in page) == ('sheet' in DISPLAY[id]), id
 
 
-DRILLS = {path.stem: json.loads(path.read_text()) for path in sorted((DATA / 'drills').glob('*.json'))}
+DRILLS = {path.stem: json.loads(path.read_text()) for path in sorted((ROOT / 'server/shuxueshuo_server/learning/drills').glob('*.json'))}
 
 
 def test_detail_pages_do_not_list_problems():
@@ -264,8 +287,8 @@ def test_detail_pages_do_not_list_problems():
         assert not any(f'href="{path}"' in page for path in problem_paths), id
     for path in ('site/knowledge/topic-map.js', 'site/knowledge/graph.js', 'site/assets/explain/explain.js'):
         source = (ROOT / path).read_text()
-        assert re.search(r"import \{[^}]*detailHref[^}]*\} from '[./a-z]*links\.js\?v=1'", source), path
-        assert 'problem.path' not in source and 'drill' not in source, path
+        assert re.search(r"import \{[^}]*detailHref[^}]*\} from '[./a-z]*links\.js\?v=2'", source), path
+        assert 'problem.path' not in source , path
     assert 'drill' not in (ROOT / 'site/assets/practice/runtime.js').read_text()
 
 
@@ -274,9 +297,9 @@ def test_drill_files_embed_into_their_detail_pages():
     for name, drill in DRILLS.items():
         assert drill['node'] == name and name in NODES
         page = (ROOT / f'site/knowledge/{name}/index.html').read_text()
-        assert f'刷题 · {len(drill["items"])} 题</button>' in page
+        assert '刷题 · 5 题</button>' in page
         embedded = json.loads(re.search(r'<script type="application/json" id="kn-drill-data">(.*?)</script>', page, re.S)[1])
-        assert embedded == {'label': NODES[name]['label'], 'items': [{k: v for k, v in item.items() if k != 'source'} for item in drill['items']]}
+        assert embedded == {'label': NODES[name]['label'], 'node': name}
         for item in drill['items']:
             # An abstract f(x) on a closed interval need not attain its extremes, so the premise must say it does.
             if re.search(r'_\{\\(max|min)\}', ' '.join(option['label'] for option in item['options'])):

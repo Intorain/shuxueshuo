@@ -20,6 +20,7 @@ let timerId = 0, now = 1000, mode = 'timeout';
 const posted = [];
 let loginCalls = 0, finishLogin;
 const scope = {
+  recorderReady: Promise.resolve(null),
   Date: {now: () => now}, AbortController,
   setTimeout: (callback, delay) => { timers.set(++timerId, {callback, delay}); return timerId; },
   clearTimeout: id => timers.delete(id),
@@ -152,6 +153,7 @@ const vm = require('node:vm');
 const source = require('node:fs').readFileSync(process.argv[1], 'utf8');
 let onAuthChange, cleared = 0;
 const scope = {
+  recorderReady: Promise.resolve(null),
   document: {getElementById: () => ({dataset: {}})},
   generation: 0, requestController: null, busy: false, dialoguePause: null, dialogueTimer: 9,
   remote: null, pendingOperations: [], retryRequest: null, retryButton: {}, networkStatus: {},

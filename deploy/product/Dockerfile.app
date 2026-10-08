@@ -13,6 +13,7 @@ RUN /opt/product/bin/pip install --no-cache-dir --require-hashes -r /tmp/require
 COPY server /app/server
 COPY tools /app/tools
 COPY internal /app/internal
+# API/Worker generate pages with these assets; Nginx serves the public site separately.
 COPY site/assets /app/site/assets
 RUN test -f /app/server/uv.lock \
  && test -f /app/tools/build-lesson-page.mjs \

@@ -1,6 +1,6 @@
 # Q01 对话教学演示
 
-每题 HTML 是学生课程，后台 `lessons/q01.json` 是老师的教学说明。Q01 的 `site/1/q01/index.html` 保存展示模板和本地组件配置，公共 JS 独立完成练习。后台只在主动对话或提示时使用，部署时随现有 `shuxueshuo_server.main:app` 运行。数学展示是作者提供的课程内容，不依赖通用证明器。
+每题 HTML 是学生课程，后台 `lessons/basic-inequality-q01.json` 是老师的教学说明。Q01 的 `site/1/q01/index.html` 保存展示模板和本地组件配置，公共 JS 独立完成练习。LLM 只在主动对话或提示时使用；登录后的提交另通过学习记录接口保存，部署时随现有 `shuxueshuo_server.main:app` 运行。数学展示是作者提供的课程内容，不依赖通用证明器。
 
 ## 启动
 
@@ -10,10 +10,10 @@
 
 ```sh
 cd server
-uv run python tools/run_site.py --data-dir /private/tmp/sss-auth-stage1 --instance auth-stage1
+uv run python tools/run_site.py
 ```
 
-先按 [登录本地测试文档](../../../docs/site-login-local-testing.md) 安装独立数据库，再打开 `http://127.0.0.1:8767/1/q01/`。登录和教学 API 均同源。旧 8765/8766 跨端口方式已移除；单独启动 `tutor_demo.api:app` 未配置登录服务时 AI 返回 503，本地点选仍可用。
+先按 [登录本地测试文档](../../../docs/site-login-local-testing.md) 准备持久化 `local` 数据库（默认 `5432`），再打开 `http://127.0.0.1:8779/1/q01/`。日常启动无需指定数据目录或端口，自动启动或复用同一数据库。登录和教学 API 均同源。旧 8765/8766 跨端口方式已移除；单独启动 `tutor_demo.api:app` 未配置登录服务时 AI 返回 503，本地点选仍可用。
 
 ```sh
 uv run pytest tests/tutor_demo -q
@@ -29,7 +29,7 @@ uv run pytest tests/tutor_demo -q
 
 发布需同时包含登录迁移、公共登录静态资源与真实短信配置。发布后检查匿名 `POST /api/tutor-demo/sessions` 返回 401，登录后携带 Cookie 和本站 Origin、发送 JSON `{"lesson_id":"q01"}` 返回 201，再在页面发送一句话验证实际 DeepSeek 配置。`/api/health` 仅说明后台存活，不验证模型密钥。
 
-当前会话在进程内存中，沿用现有 Compose 的单进程 API；不能直接增加 Uvicorn workers 或 API 副本。重启会清空会话，已有页面需重新体验。未来多实例与进度恢复需要共享存储。
+当前会话在进程内存中，沿用现有 Compose 的单进程 API；不能直接增加 Uvicorn workers 或 API 副本。重启会清空会话，已有页面需重新体验。已记录的路线、已通过步骤和对话可从学习记录恢复；未提交的输入及模型临时会话不恢复。多实例的导师会话仍需共享存储。
 
 ## 会话契约
 
@@ -127,3 +127,5 @@ RUN_TUTOR_LIVE=1 uv run pytest tests/tutor_demo/test_tutor_live.py -q -s
 
 
 讲解实验 API 默认不注册。只有 `create_router(..., enable_explanation=True)` 才启用；本地 `tools/run_site.py` 显式开启，生产主入口沿用默认关闭。Q12 不展示实验入口，手动访问地址见 [实验访问与隔离说明](../../../docs/student-explanation-context-design.md#实验访问地址与隔离边界2026-10-06)。
+
+学习记录与公共内容发布见[六阶段实现记录](../../../docs/student-knowledge-graph-implementation.md)。必须同时发布数据库迁移、公共内容和同版静态资源。

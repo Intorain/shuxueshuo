@@ -6,10 +6,38 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
 (() => {
   'use strict';
   const lesson = JSON.parse(document.getElementById('practice-config').textContent);
+  const recorderReady = practiceAuthReady.then(() => import(new URL('../learning/practice-records.js?v=4', runtimeSrc).href)).then(module => module.createRecorder(lesson, (history, {force = false} = {}) => {
+    // Resume saved, confirmed progress only; never infer success from unsubmitted inputs.
+    const route = lesson.routes[history.route_id];
+    const active = history.active_step ? route.findIndex(node => node.id === history.active_step) : route.length;
+    if (!force && (state.active !== 0 || snapshot.completed.length)) {
+      // A slow start can finish after local submissions. Matching progress needs
+      // no UI restore; differing progress requires an explicit recovery instead.
+      return state.method === history.route_id && state.active === active;
+    }
+    if (!force && state.method && state.method !== history.route_id) return false;
+    generation++; requestController?.abort(); busy = false;
+    remote = null; pendingOperations = []; retryRequest = null;
+    retryButton.hidden = true; networkStatus.textContent = '';
+    snapshot = PracticeContext.create(lesson, crypto.randomUUID());
+    state = snapshot.state; state.method = history.route_id;
+    for (const saved of history.steps.filter(item => item.passed)) {
+      const index = route.findIndex(n => n.id === saved.step_id), node = route[index];
+      // Server links a passing rule grade to its answer; dialogue passes use the standard conclusion.
+      const answer = saved.answer;
+      if (node.interaction.type === 'choice') state.choices[node.interaction.field] = answer?.value || node.expected_answer.one_of[0];
+      else { state.pairs[index] = answer?.terms || [...node.expected_answer.terms]; if (node.interaction.type === 'structure') state.swapped = (answer?.fixed || node.expected_answer.fixed) === 'product'; }
+      snapshot.completed.push({stage:index,node:node.id,route:state.method,state:structuredClone(state),source:'saved'});
+    }
+    state.active = history.active_step ? route.findIndex(n => n.id === history.active_step) : route.length;
+    snapshot.completed = snapshot.completed.filter((item,index,items)=>items.findIndex(x=>x.node===item.node&&x.route===item.route)===index);
+    snapshot.messages = history.events.filter(e => ['message','hint'].includes(e.event_type)).map(e => ({role:e.payload.role === 'student'?'student':'assistant',kind:'text',text:e.payload.text,stage:route.findIndex(n=>n.id===e.step_id),route:state.method,attempt_id:snapshot.attempt_id}));
+    snapshot.state = state; render();
+  })).catch(() => null);
   const methods = lesson.methods;
   const runtimeSrc = document.currentScript?.src;
   if (document.currentScript?.src) {
-    import(new URL('../learning/learning-marks.js?v=1', document.currentScript.src).href).catch(() => {});
+    import(new URL('../learning/learning-marks.js?v=2', document.currentScript.src).href).catch(() => {});
   }
   let titles = [];
   let remote = null;
@@ -138,9 +166,26 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
         networkStatus.textContent = '老师正在思考…';
         timeout = setTimeout(() => controller.abort(), 55000);
         try {
+          if (!payload.practice_attempt_id) Object.assign(payload, await (await recorderReady)?.dialogue(snapshot));
+          if (thisGeneration !== generation) return;
           if (!remote) {
-            const started = await post(`${api}/sessions`, {lesson_id: lesson.id});
+            const started = await post(`${api}/sessions`, {lesson_id: lesson.id, practice_attempt_id: payload.practice_attempt_id || null});
             if (thisGeneration !== generation) return;
+            if (payload.practice_attempt_id) {
+              // Confirmed submissions were restored by the server. Only synchronize
+              // the current unsubmitted selections, without recording them as answers.
+              const current = lesson.routes[state.method]?.[state.active], actions = [];
+              if (current?.interaction.type === 'choice') {
+                const value = state.choices[current.interaction.field];
+                if (value) actions.push({kind:'choice',value});
+              } else if (current) {
+                state.pairs[state.active].slice(0,PracticeContext.slotCount(current.interaction)).forEach((value,index)=>{if(value)actions.push({kind:'fill',index,value});});
+                if(current.interaction.type==='structure')actions.push({kind:'swap',value:state.swapped?'product':'sum'});
+              }
+              pendingOperations = actions.map(action=>({event_id:crypto.randomUUID(),action,position:PracticeContext.position(started)}));
+              payload.pending_operations = structuredClone(pendingOperations);
+              payload.revision = started.revision;
+            }
             remote = {session_id: started.session_id, revision: started.revision, user_id: user.id};
           }
           if (remote.user_id !== user.id) { restart(); return; }
@@ -170,6 +215,20 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
       remote = {session_id: data.session_id, revision: data.revision, user_id: user.id};
       pendingOperations = merged.remaining;
       acceptSnapshot(merged.view);
+      recorderReady.then(r=>r?.routed(snapshot));
+      if (data.learning_delivery) requestAnimationFrame(() => {
+        const messages = [...document.querySelectorAll('.chat-message.assistant')];
+        const reply = data.messages.at(-1)?.text;
+        const target = messages.reverse().find(el => el.querySelector('[data-math-text]')?.dataset.mathSource === reply || el.textContent === reply) || messages[0];
+        if (!target) return;
+        const observer = new IntersectionObserver(entries => {
+          if (thisGeneration !== generation) {observer.disconnect();return;}
+          if (document.visibilityState === 'visible' && entries.some(entry=>entry.isIntersecting)) {
+            recorderReady.then(r=>r?.displayed(data.learning_delivery));observer.disconnect();
+          }
+        });
+        observer.observe(target);
+      });
       if (payload.kind === 'text' && messageInput.value.trim() === payload.text) messageInput.value = '';
       networkStatus.textContent = remainingCalls === 0 ? '今天的 AI 提问与提示次数已用完，明天零点恢复；仍可继续点选练习。'
         : remainingCalls > 0 && remainingCalls <= 5 ? `今天还可以向老师提问或要提示 ${remainingCalls} 次。` : '';
@@ -182,7 +241,8 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
       if (thisGeneration !== generation) return;
       const limited = ['session_limit', 'user_daily_limit', 'daily_limit', 'retry_cooldown', 'session_busy'].includes(error.code);
       const exhausted = ['session_limit', 'user_daily_limit', 'daily_limit'].includes(error.code);
-      retryRequest = exhausted ? null : payload; retryButton.hidden = limited;
+      const recovering = error.code === 'learning_recovery';
+      retryRequest = exhausted || recovering ? null : payload; retryButton.hidden = limited || recovering;
       if (limited) {
         dialoguePause = {code: error.code, message: error.message, until: error.code === 'session_limit' ? Infinity : Date.now() + Math.max(1, error.retryAfter || 5) * 1000};
         clearTimeout(dialogueTimer);
@@ -206,8 +266,11 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
     if (kind === 'ui') {
       const oldActive = state.active, oldAttempt = snapshot.attempt_id;
       const operation = {event_id: crypto.randomUUID(), action, position: PracticeContext.position(snapshot)};
+      const previousView = structuredClone(snapshot);
       pendingOperations.push(operation);
       acceptSnapshot(PracticeContext.apply(snapshot, operation, lesson));
+      const nextView = structuredClone(snapshot);
+      recorderReady.then(r => r?.action(previousView, operation, nextView));
       showProgress(oldActive, oldAttempt);
       announce(state.feedback || '已记录你的选择。');
       return;
@@ -217,7 +280,8 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
       lesson_version: lesson.version, pending_operations: structuredClone(pendingOperations), kind, text});
   }
 
-  function restart({accountChanged = false} = {}) {
+  function restart({accountChanged = false, initial = false} = {}) {
+    if (!initial) recorderReady.then(r => r?.reset());
     generation++; requestController?.abort(); busy = false;
     document.getElementById('completion').dataset.learningCompleted = 'false';
     if (dialoguePause?.code !== 'daily_limit' && !(dialoguePause?.code === 'user_daily_limit' && !accountChanged)) {
@@ -363,8 +427,15 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
   function openTip(stage) {
     const tip = resolveTip(nodeAt(stage)?.tip);
     if (!tip || !runtimeSrc) return;
-    explain ||= import(new URL('../explain/explain.js?v=1', runtimeSrc).href);
-    explain.then(module => module.openExplainer(tip.id, {tip: stage < state.active ? tip : null, detail: false})).catch(() => {
+    const view = structuredClone(snapshot), ticket = generation;
+    explain ||= import(new URL('../explain/explain.js?v=2', runtimeSrc).href);
+    explain.then(async module => {
+      if (ticket !== generation || snapshot.attempt_id !== view.attempt_id) return;
+      const shown = await module.openExplainer(tip.id, {tip: stage < view.state.active ? tip : null, detail: false});
+      if (shown && ticket === generation && snapshot.attempt_id === view.attempt_id && document.visibilityState === 'visible') {
+        recorderReady.then(r => r?.reference(view, stage, tip.id));
+      }
+    }).catch(() => {
       explain = null;
       announce('知识点暂时打不开，可以继续练习。');
     });
@@ -577,5 +648,5 @@ const practiceAuthReady = typeof document !== 'undefined' && document.currentScr
     if (document.hidden) pauseIdle();
     else resumeIdle();
   });
-  restart();
+  restart({initial: true});
 })();

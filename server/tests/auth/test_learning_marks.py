@@ -23,7 +23,7 @@ def test_learning_defaults_completion_status_and_chapter_isolation(client, auth,
     login(client, auth, phone)
     assert client.get('/api/learning/marks').json() == {'marks': []}
     default = client.get('/api/learning/marks/q01').json()
-    assert default == {'problem_id': 'q01', 'practiced': False, 'learning_status': 'unmarked'}
+    assert default == {'problem_id': 'basic-inequality-q01', 'practiced': False, 'learning_status': 'unmarked'}
     assert status(client, 'mastered').status_code == 409
     first = complete(client)
     assert first.status_code == 200

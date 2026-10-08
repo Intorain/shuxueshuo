@@ -1,9 +1,11 @@
 /* Knowledge graph page: selection, detail panel, topic filter and personal coverage.
    Drawing is done by graph-3d.js (WebGL) or graph-svg.js (flat). */
-import {loadKnowledge, escapeHtml as escape, openSheet, kindLabel} from '/knowledge/data.js?v=2';
-import {detailHref} from '/assets/explain/links.js?v=1';
+import {loadKnowledge, escapeHtml as escape, openSheet, kindLabel} from '/knowledge/data.js?v=3';
+import {detailHref} from '/assets/explain/links.js?v=2';
 import {layout, TOPIC_COLORS, PROGRESS} from '/knowledge/graph-layout.js?v=1';
 
+import {states, block as masteryBlock, badge, watch} from '/knowledge/personal.js?v=1';
+let mastery=null;
 const config = JSON.parse(document.getElementById('knowledge-config').textContent);
 const data = await loadKnowledge(config);
 const {graph, nodes, topics, prerequisites, uses, before, after, usedBy, usesOf, topicsOf, practiceOf} = data;
@@ -95,8 +97,9 @@ let progressTicket = 0;
 async function loadProgress(user) {
   const ticket = ++progressTicket;
   signedIn = Boolean(user);
-  let next = null;
+  let next = null, nextMastery = null;
   if (user) {
+    try { nextMastery = await states(user); } catch { /* Keep unavailable distinct from unassessed. */ }
     try {
       const response = await fetch('/api/learning/marks', {
         credentials: 'same-origin', cache: 'no-store', headers: {'X-Learning-User': user.id},
@@ -105,8 +108,10 @@ async function loadProgress(user) {
     } catch { /* Coverage is optional; the graph works without it. */ }
   }
   if (ticket !== progressTicket) return;
-  progress = next;
+  progress = next; mastery = nextMastery;
   view?.progress(progress);
+  view?.mastery?.(mastery);
+  document.querySelectorAll('[data-item]').forEach(item=>{item.querySelector('summary .kn-mastery')?.remove();item.querySelector('summary')?.insertAdjacentHTML('beforeend',badge(mastery?.get(item.dataset.item)));});
   renderLegend();
   refreshPanel();
 }
@@ -137,6 +142,7 @@ function detail(id) {
     <h2 class="kg-title">${escape(node.label)}</h2>
     ${node.summary ? `<p class="kg-summary">${escape(node.summary)}</p>` : ''}
     <p class="kg-actions"><a class="kg-detail-link" href="${detailHref(id)}">查看详情 →</a>${node.sheet ? `<button type="button" class="kg-sheet-button" data-sheet="${node.sheet}">看图解</button>` : ''}</p>
+    ${masteryBlock(mastery?.get(id))}
     ${progressBlock(id)}
     <dl class="kg-relations">${rows.map(([title, ids, empty]) => `<div><dt>${title}</dt><dd>${chips(ids, empty)}</dd></div>`).join('')}</dl>`;
 }
@@ -237,8 +243,9 @@ function renderLegend() {
     ['knowledge', '知识点'], ['method', '方法'], ['technique', '表达式的变形方法'], ['sheet', '有图解'],
     ['tab', '顶部色条：所属专题'], ['line prerequisite', '前提'], ['line uses', '方法的核心依据'],
   ];
+  const assessment = mastery ? '<li>节点检测：绿色 已掌握 · 橙色 待巩固 · 灰色 未评估</li>' : '';
   const coverage = progress ? `<li class="kg-legend-coverage">${mode === '3d' ? '外圈' : '底部细条'}：按你完成的题目和自评汇总${PROGRESS.map(([key, label]) => `<span><i class="kg-coverage-swatch ${key}" aria-hidden="true"></i>${label}</span>`).join('')}</li>` : '';
-  legend.innerHTML = items.map(([kind, label]) => `<li><span class="kg-swatch ${kind}" aria-hidden="true"></span>${label}</li>`).join('') + coverage;
+  legend.innerHTML = items.map(([kind, label]) => `<li><span class="kg-swatch ${kind}" aria-hidden="true"></span>${label}</li>`).join('') + assessment + coverage;
 }
 
 async function mountView(next) {
@@ -252,7 +259,7 @@ async function mountView(next) {
   renderLegend();
   const context = {data, box, topicColor, container, select, preview};
   try {
-    view = (await import(mode === '3d' ? '/knowledge/graph-3d.js?v=1' : '/knowledge/graph-svg.js?v=1')).mount(context);
+    view = (await import(mode === '3d' ? '/knowledge/graph-3d.js?v=3' : '/knowledge/graph-svg.js?v=3')).mount(context);
   } catch (error) {
     if (mode !== '3d') throw error;
     console.warn('3D graph unavailable, using the flat view.', error);
@@ -260,6 +267,7 @@ async function mountView(next) {
   }
   view.filter(filter.test);
   view.progress(progress);
+  view.mastery?.(mastery);
   view.highlight(stateFor(selected));
   if (selected) view.focus(selected);
 }
@@ -301,4 +309,5 @@ window.addEventListener('site-auth-change', event => { void loadProgress(event.d
 await mountView(mode);
 applyFilter();
 select(fromHash(), {scroll: true, focus: true});
+watch(()=>loadProgress(window.SiteAuth?.user));
 void window.SiteAuth?.ready.then(() => loadProgress(window.SiteAuth.user));

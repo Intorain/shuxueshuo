@@ -3,15 +3,18 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
+from starlette.concurrency import run_in_threadpool
 
 from ..auth.api import install_auth, require_origin, require_user, service
 from ..auth.config import AuthConfig
 from ..auth.service import AuthService
+from ..learning import practice
 from .limits import BudgetedTutor, BudgetUnavailable, CallBudget, DialogueLimited
 from .llm import DeepSeekTutor, TutorUnavailable
 from .session import Conflict, Event, InvalidAction, Sessions
@@ -19,7 +22,8 @@ from .session import Conflict, Event, InvalidAction, Sessions
 
 class Start(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    lesson_id: str = "q01"
+    lesson_id: str = "basic-inequality-q01"
+    practice_attempt_id: UUID | None = None
 
 
 def require_tutor_user(
@@ -52,9 +56,20 @@ def create_router(tutor=None, budget=None, *, explanation_interpreter=None, enab
                        dependencies=[Depends(require_tutor_user)])
 
     @router.post("/sessions", status_code=201)
-    async def start(body: Start, user: TutorUser):
+    async def start(body: Start, user: TutorUser, request: Request):
         try:
-            return sessions.create(body.lesson_id, owner_user_id=user['id']).view()
+            session = sessions.prepare(body.lesson_id, owner_user_id=user['id'])
+            if body.practice_attempt_id:
+                await run_in_threadpool(
+                    practice.restore_session,
+                    service(request).db,
+                    UUID(user['id']),
+                    body.practice_attempt_id,
+                    session,
+                )
+            view = session.view()
+            sessions.register(session)
+            return view
         except KeyError:
             raise HTTPException(404, "没有找到这道题。") from None
         except InvalidAction as exc:
@@ -76,11 +91,55 @@ def create_router(tutor=None, budget=None, *, explanation_interpreter=None, enab
             # Reuse the site's authenticated database pool; no second database URL.
             ledger = budget if budget is not None else CallBudget(service(request).db)
             budgeted = BudgetedTutor(tutor, ledger, session_id, user_id=user['id'])
-            result = await session.handle(body, budgeted)
+            responder = budgeted
+            if body.practice_attempt_id is not None:
+                if body.kind == "ui" or not body.practice_step_id:
+                    raise InvalidAction("学习记录需要明确的对话步骤。")
+                route = await run_in_threadpool(
+                    practice.begin_dialogue,
+                    service(request).db,
+                    UUID(user['id']),
+                    body.practice_attempt_id,
+                    body,
+                    body.practice_step_id,
+                    session.lesson["id"],
+                )
+
+                class BoundTutor:
+                    async def respond(self, **kwargs):
+                        context = kwargs["context"]
+                        actual = context["node"]
+                        if context["state"]["method"] != route or (
+                            actual and actual["id"] != body.practice_step_id
+                        ):
+                            raise InvalidAction(
+                                "对话内容与记录步骤不一致，请刷新后继续。"
+                            )
+                        return await budgeted.respond(**kwargs)
+
+                responder = BoundTutor()
+            result = await session.handle(body, responder)
+            if body.practice_attempt_id is not None:
+                delivery = await run_in_threadpool(
+                    practice.finish_dialogue,
+                    service(request).db,
+                    UUID(user['id']),
+                    body.practice_attempt_id,
+                    body,
+                    body.practice_step_id,
+                    result,
+                )
+                result = dict(
+                    result,
+                    learning_delivery={
+                        "attempt_id": str(body.practice_attempt_id),
+                        "event_id": delivery,
+                    },
+                )
             # A header keeps idempotent replays byte-identical to the original body.
             if isinstance(budgeted.remaining, int):
                 response.headers["X-Tutor-Calls-Remaining"] = str(budgeted.remaining)
-            return result
+            return {key: value for key, value in result.items() if key != "learning_intent"}
         except DialogueLimited as exc:
             return JSONResponse(status_code=429, content={
                 "detail": str(exc), "code": exc.code, "retry_after": exc.retry_after,

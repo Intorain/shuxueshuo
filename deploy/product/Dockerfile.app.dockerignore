@@ -37,6 +37,8 @@ internal/docs/**
 !site/
 !site/assets/
 !site/assets/**
+site/assets/xiaohongshu
+site/assets/xiaohongshu/**
 !deploy/
 !deploy/product/
 !deploy/product/requirements.lock

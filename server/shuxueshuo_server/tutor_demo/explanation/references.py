@@ -46,7 +46,9 @@ def load_references(problem_id):
         solutions.append({"id": route["id"], "title": route["label"],
                           "operations": deepcopy(route["steps"]),
                           "sources": [f"explanation/problems/{problem_id}.json#reference_routes/{route['id']}"]})
-    lesson_path = ROOT.parent / "lessons" / f"{problem_id}.json"
+    from ...learning.identity import canonical_id
+    lesson_id = canonical_id(problem_id)
+    lesson_path = ROOT.parent / "lessons" / f"{lesson_id}.json"
     if lesson_path.is_file():
         lesson = json.loads(lesson_path.read_text())
         for key, route in lesson.get("routes", {}).items():
@@ -59,6 +61,6 @@ def load_references(problem_id):
                 solution = {"id": key, "title": route["label"], "sources": []}
                 solutions.append(solution)
             solution["derivation"] = derivation
-            solution["sources"].append(f"lessons/{problem_id}.json#routes/{key}")
+            solution["sources"].append(f"lessons/{lesson_id}.json#routes/{key}")
     family_id = raw.get("family_id") or raw.get("problem_ir", "").partition("/")[0]
     return {"reference_solutions": solutions, "family_guidance": family_guidance(family_id)}

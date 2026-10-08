@@ -215,7 +215,7 @@ Q12 demo 优先覆盖以下可组合能力：
 
 ## 9. Q12 demo
 
-题目来源：[Q12 页面](../site/1/q12/index.html)、[教师配置](../server/shuxueshuo_server/tutor_demo/lessons/q12.json)。
+题目来源：[Q12 页面](../site/1/q12/index.html)、[教师配置](../server/shuxueshuo_server/tutor_demo/lessons/basic-inequality-q12.json)。
 
 已知正数 \(m,n\) 满足 \(2m+n=6\)，求
 

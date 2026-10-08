@@ -224,7 +224,7 @@ flowchart LR
 | 概念 | 回答的问题 | Q12 的现状 |
 | --- | --- | --- |
 | 能力清单 | 执行器能核验哪些操作，参数是什么 | `explanation/lesson.json` 的 `capabilities`：`claim`、`substitute`、`multiply`、`expand`、`combine`（合并同分母的项）、`amgm`、`attain` |
-| 参考解法 | 这道题已知的完整解题路线及每一步的预期答案 | `tutor_demo/lessons/q12.json` 的换元路线 6 个节点；直接乘 1 路线只写在设计文档里 |
+| 参考解法 | 这道题已知的完整解题路线及每一步的预期答案 | `tutor_demo/lessons/basic-inequality-q12.json` 的换元路线 6 个节点；直接乘 1 路线只写在设计文档里 |
 | 关键判断策略 | 某类操作中，哪些判断必须由学生说出，哪些允许系统代算 | 散落在 `q12.json` 每个节点的 `required_evidence` 和 `criteria` 文字中 |
 
 能力清单与解题方法无关，它只描述执行器"会做什么"。对应到 solver，相当于 `basic_inequality_core` 中的 `organize_expressions`、`introduce_semantic_substitution`、`apply_two_term_amgm`、`close_equality_and_restore` 等 method；这些在 solver 里目前仍是 `catalog_only`，未向模型开放，讲解模式暂时用自己的 6 个操作。

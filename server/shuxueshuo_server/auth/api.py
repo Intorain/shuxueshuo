@@ -204,7 +204,9 @@ def install_auth(app, *, auth=None, config=None):
         return response
 
     from ..learning.api import router as learning_router
+    from ..learning.graph_api import router as graph_router
 
     app.include_router(learning_router)
+    app.include_router(graph_router)
     app.include_router(router)
     app.add_middleware(AuthBoundary)

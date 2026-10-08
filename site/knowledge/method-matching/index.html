@@ -20,7 +20,7 @@
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
-  <script type="module" src="/knowledge/node.js?v=1"></script>
+  <script type="module" src="/knowledge/node.js?v=3"></script>
 </head>
 <body class="kn-page">
   <a class="skip-link" href="#main">跳到正文</a>
@@ -53,7 +53,7 @@
       </div>
     </section>
 
-    <script type="application/json" id="kn-drill-data">{"label":"配凑表达式","items":[{"id":"shift","question":"$x>2$ 时，$x+\\frac1{x-2}$ 的最小值是多少？","type":"choice","options":[{"value":"two","label":"$2$","feedback":"$(x-2)+\\frac1{x-2}\\ge2$，原式还要加回 $2$。"},{"value":"right","label":"$4$"},{"value":"direct","label":"$2\\sqrt{\\frac x{x-2}}$","feedback":"$x\\cdot\\frac1{x-2}$ 不是定值，结果里不能含 $x$。先凑成 $(x-2)+\\frac1{x-2}+2$。"}],"answer":"right"},{"id":"sum","question":"$0\u003cx\u003c3$ 时，$x(3-x)$ 的最大值是多少？","type":"choice","options":[{"value":"right","label":"$\\frac94$"},{"value":"nine","label":"$9$","feedback":"$x+(3-x)=3$，$x(3-x)\\le\\left(\\frac32\\right)^2$。"},{"value":"half","label":"$\\frac32$","feedback":"$\\frac32$ 是取等时 $x$ 的值。"}],"answer":"right"},{"id":"coefficient","question":"$0\u003cx\u003c\\frac13$ 时，$x(1-3x)$ 的最大值是多少？","type":"choice","options":[{"value":"quarter","label":"$\\frac14$","feedback":"$3x(1-3x)\\le\\frac14$，原式是它的 $\\frac13$。"},{"value":"none","label":"和不是定值，不能用基本不等式","feedback":"写成 $\\frac13\\cdot3x(1-3x)$，$3x+(1-3x)=1$ 就是定值。"},{"value":"right","label":"$\\frac1{12}$"}],"answer":"right"},{"id":"rewrite","question":"$x>1$ 时，$\\frac{x^2}{x-1}$ 应凑成什么？","type":"choice","options":[{"value":"missing","label":"$x+\\frac1{x-1}$","feedback":"$x^2=(x-1)(x+1)+1$，所以 $\\frac{x^2}{x-1}=x+1+\\frac1{x-1}$，少了 $1$。"},{"value":"right","label":"$(x-1)+\\frac1{x-1}+2$"},{"value":"direct","label":"不用凑，$x^2\\cdot\\frac1{x-1}$ 直接用","feedback":"这是一项，不是两项相加；要先拆成两项积为定值的形式。"}],"answer":"right"},{"id":"negative","question":"$x\u003c1$ 时，$x+\\frac1{x-1}$ 有什么最值？","type":"choice","options":[{"value":"min3","label":"最小值 $3$","feedback":"$x-1\u003c0$，不满足一正。$(x-1)+\\frac1{x-1}\\le-2$。"},{"value":"right","label":"最大值 $-1$"},{"value":"max-neg2","label":"最大值 $-2$","feedback":"$(x-1)+\\frac1{x-1}\\le-2$，原式还要加 $1$。"}],"answer":"right"}]}</script>
+    <script type="application/json" id="kn-drill-data">{"node":"method-matching","label":"配凑表达式"}</script>
 
     <footer class="chapter-footer">
       <span>数学说 · 知识图谱</span>

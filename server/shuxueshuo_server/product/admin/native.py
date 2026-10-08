@@ -39,6 +39,9 @@ def start(settings):
     if status(settings):
         return
     with socket.socket() as probe:
+        # PostgreSQL reuses its listening address too. Closed connections in
+        # TIME_WAIT must not prevent an immediate restart on the same port.
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             probe.bind(('127.0.0.1', settings.port))
         except OSError:

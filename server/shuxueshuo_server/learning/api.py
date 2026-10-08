@@ -12,6 +12,7 @@ from ..auth.api import require_origin, require_user, service
 from ..auth.service import AuthService
 from ..product import models as m
 from ..product.db import transaction
+from .identity import canonical_id
 
 
 class StatusBody(BaseModel):
@@ -39,7 +40,7 @@ router = APIRouter(prefix='/api/learning', dependencies=[Depends(learning_user)]
 
 
 def problem_ids():
-    # Reuse the global lesson IDs: q01 and quadratic-always-q01 are different.
+    # Reuse the global lesson IDs: basic-inequality-q01 and quadratic-always-q01 are different.
     return {p.stem for p in (Path(__file__).parents[1] / 'tutor_demo/lessons').glob('*.json')}
 
 
@@ -71,6 +72,7 @@ def list_marks(user: User, auth: Auth):
 
 @router.get('/marks/{problem_id}')
 def read_mark(problem_id: str, user: User, auth: Auth):
+    problem_id = canonical_id(problem_id)
     known(problem_id)
     with transaction(auth.db) as c:
         row = c.execute(select(m.student_learning_marks).where(key(user, problem_id))).mappings().first()
@@ -79,6 +81,7 @@ def read_mark(problem_id: str, user: User, auth: Auth):
 
 @router.post('/marks/{problem_id}/complete')
 def complete(problem_id: str, body: CompleteBody, user: User, auth: Auth):
+    problem_id = canonical_id(problem_id)
     known(problem_id)
     t = m.student_learning_marks
     with transaction(auth.db) as c:
@@ -91,6 +94,7 @@ def complete(problem_id: str, body: CompleteBody, user: User, auth: Auth):
 
 @router.put('/marks/{problem_id}/status')
 def set_status(problem_id: str, body: StatusBody, user: User, auth: Auth):
+    problem_id = canonical_id(problem_id)
     known(problem_id)
     t = m.student_learning_marks
     with transaction(auth.db) as c:

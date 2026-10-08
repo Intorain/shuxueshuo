@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -47,6 +47,8 @@ class Event(BaseModel):
     action: Action | None = None
     text: str = Field(default="", max_length=2000)
     lesson_version: int | None = None
+    practice_attempt_id: UUID | None = None
+    practice_step_id: str | None = Field(default=None, max_length=100)
     pending_operations: list[LocalOperation] = Field(
         default_factory=list, max_length=400
     )
@@ -57,6 +59,9 @@ class Conflict(Exception):
 
 
 def load_lesson(lesson_id):
+    from ..learning.identity import canonical_id
+
+    lesson_id = canonical_id(lesson_id)
     # Only installed lesson filenames are loadable; user paths are never interpolated.
     lessons = {p.stem: p for p in (Path(__file__).parent / "lessons").glob("*.json")}
     return json.loads(lessons[lesson_id].read_text())
@@ -400,6 +405,8 @@ class Session:
             self.evidence = evidence
             self.revision += 1
             response = self.view()
+            if event.kind != "ui":
+                response["learning_intent"] = proposal.intent
             self.responses[event.event_id] = (serialized, deepcopy(response))
             while len(self.responses) > 8:
                 del self.responses[next(iter(self.responses))]
@@ -411,19 +418,27 @@ class Sessions:
         self.items = {}
 
     def create(self, lesson_id, *, owner_user_id):
-        lesson = load_lesson(lesson_id)
+        return self.register(self.prepare(lesson_id, owner_user_id=owner_user_id))
+
+    def prepare(self, lesson_id, *, owner_user_id):
+        """Build a private session; failed restoration must not consume a slot."""
+        return Session(load_lesson(lesson_id), owner_user_id=owner_user_id)
+
+    def register(self, session):
         now = time.monotonic()
         for key, value in list(self.items.items()):
             if now - value.updated > 7200 and not value.lock.locked():
                 del self.items[key]
         # One account must not crowd others out of the global cap; drop its own oldest idle sessions.
-        owned = sorted((value.updated, key) for key, value in self.items.items()
-                       if value.owner_user_id == owner_user_id and not value.lock.locked())
-        for _, key in owned[:max(0, len(owned) - 7)]:
+        owned = sorted(
+            (value.updated, key)
+            for key, value in self.items.items()
+            if value.owner_user_id == session.owner_user_id and not value.lock.locked()
+        )
+        for _, key in owned[: max(0, len(owned) - 7)]:
             del self.items[key]
         if len(self.items) >= 200:
             raise InvalidAction("演示会话已满，请稍后再试。")
-        session = Session(lesson, owner_user_id=owner_user_id)
         self.items[session.id] = session
         return session
 

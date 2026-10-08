@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Builds one static detail page per graph node, site/knowledge/<node id>/index.html, from graph.json,
-   display.json, the topic files and the 刷题 files under data/knowledge/drills/.
+   display.json, the topic files and the private 刷题 files under server/shuxueshuo_server/learning/drills/.
    Usage: node tools/build-knowledge-pages.mjs [--check]   (--check reports stale pages and writes nothing) */
 import fs from "node:fs";
 import path from "node:path";
@@ -66,8 +66,9 @@ function checkDrill(name, drill) {
   }
   return drill;
 }
-const drills = new Map(jsonFiles("data/knowledge/drills").map((name) => {
-  const drill = checkDrill(name, readJson(`data/knowledge/drills/${name}`));
+const drillRoot = path.join(repoRoot, "server/shuxueshuo_server/learning/drills");
+const drills = new Map(fs.readdirSync(drillRoot).filter(name => name.endsWith(".json")).sort().map((name) => {
+  const drill = checkDrill(name, JSON.parse(fs.readFileSync(path.join(drillRoot, name), "utf8")));
   return [drill.node, drill];
 }));
 
@@ -93,8 +94,8 @@ function flows(node) {
   }));
 }
 
-const drillButton = (drill) => `<button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · ${drill.items.length} 题</button>`;
-const drillData = (node, drill) => JSON.stringify({ label: node.label, items: drill.items.map(({ source, ...item }) => item) }).replace(/</g, "\\u003c");
+const drillButton = (drill) => `<button type="button" class="kn-drill-open" data-drill-open hidden>刷题 · 5 题</button>`;
+const drillData = (node, drill) => JSON.stringify({ node: node.id, label: node.label }).replace(/</g, "\\u003c");
 
 function render(node) {
   const url = `https://shuxueshuo.com/knowledge/${node.id}/`;
@@ -138,7 +139,7 @@ function render(node) {
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js?v=12" defer></script>
   <script type="module" src="/assets/auth/site-auth.js?v=4"></script>
-  <script type="module" src="/knowledge/node.js?v=1"></script>
+  <script type="module" src="/knowledge/node.js?v=3"></script>
 </head>
 <body class="kn-page">
   <a class="skip-link" href="#main">跳到正文</a>

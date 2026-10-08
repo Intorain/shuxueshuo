@@ -2,7 +2,7 @@
    right) and gains depth by topic. Names are DOM buttons laid over the WebGL canvas, so they stay sharp,
    clickable and reachable with Tab. */
 import * as THREE from '/assets/vendor/three-0.186.1/three-graph.min.js';
-import {kindLabel} from '/knowledge/data.js?v=2';
+import {kindLabel} from '/knowledge/data.js?v=3';
 import {NODE_W, NODE_H, PROGRESS} from '/knowledge/graph-layout.js?v=1';
 
 const COLORS = {
@@ -493,6 +493,12 @@ export function mount({data, box, topicColor, container, select, preview}) {
 
   return {
     highlight, filter, progress, focus,
+    mastery(map) {
+      root.querySelectorAll('[data-node]').forEach(button=>{
+        button.querySelector('.kn-mastery')?.remove();const value=map?.get(button.dataset.node);if(!value)return;
+        const badge=document.createElement('small');badge.className=`kn-mastery ${value.status}`;badge.textContent={mastered:'已掌握',needs_review:'待巩固',unassessed:'未评估'}[value.status];button.append(badge);
+      });
+    },
     destroy() {
       cancelAnimationFrame(frame);
       observer.disconnect();

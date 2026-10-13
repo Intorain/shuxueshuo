@@ -65,6 +65,9 @@ def resource_owner(path):
     # separately; keep those files visible to the corresponding stage owners.
     if path.startswith('server/shuxueshuo_server/product/'):
         return None, False
+    # Site services (AI tutor dialogue, SMS login, learning marks) never feed the review pipeline.
+    if path.startswith(tuple(f'server/shuxueshuo_server/{name}/' for name in ('tutor_demo', 'auth', 'learning'))):
+        return None, False
     if path.startswith('server/shuxueshuo_server/problem_understanding/'):
         if Path(path).stem in {'runtime_binding', 'runtime_lowering', 'compact_planner_input'}:
             return 'projection', False
@@ -76,7 +79,7 @@ def resource_owner(path):
     if path.startswith('internal/llm-prompts/'):
         name = Path(path).name
         if name.startswith('visual-'): return 'visual', False
-        if name.startswith(('strategy-', 'functional-')): return 'solver', False
+        if name.startswith(('strategy-', 'functional-')) or name.endswith('-strategy.json'): return 'solver', False
         if name.startswith(('lesson-', 'scope-lesson', 'teaching-', 'explanation-')): return 'lesson', False
         if name.startswith(('problem-', 'extraction-', 'f3-')): return 'extraction', False
         return 'extraction', True

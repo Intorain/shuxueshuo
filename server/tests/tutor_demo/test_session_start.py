@@ -36,12 +36,14 @@ def test_failed_restore_preserves_all_slots(monkeypatch, session_api, status, ex
         sessions.create('q01', owner_user_id=owner)
     before = dict(sessions.items)
 
-    def restore(db, user, attempt, session):
+    def restore(db, user, attempt, session, content_version):
         assert session.id not in sessions.items
+        assert content_version == 'test-content-version'
         raise HTTPException(status, '练习不能恢复')
 
     monkeypatch.setattr(api.practice, 'restore_session', restore)
-    body = {'lesson_id': 'q01', 'practice_attempt_id': str(uuid4())}
+    body = {'lesson_id': 'q01', 'practice_attempt_id': str(uuid4()),
+            'content_version': 'test-content-version'}
     with TestClient(app) as client:
         for _ in range(12):
             response = client.post('/api/tutor-demo/sessions', json=body)
@@ -56,20 +58,29 @@ def test_failed_restore_preserves_all_slots(monkeypatch, session_api, status, ex
 def test_successful_restore_registers_restored_session(monkeypatch, session_api):
     app, sessions = session_api
 
-    def restore(db, user, attempt, session):
+    def restore(db, user, attempt, session, content_version):
         assert not sessions.items
+        assert content_version == 'test-content-version'
         session.revision = 3
+        session.learning_content_version = content_version
+        session.learning_practice_attempt_id = attempt
+        session.learning_confirmed_choices = {'technique': 'square'}
 
     monkeypatch.setattr(api.practice, 'restore_session', restore)
     with TestClient(app) as client:
         response = client.post('/api/tutor-demo/sessions', json={
             'lesson_id': 'q01', 'practice_attempt_id': str(uuid4()),
+            'content_version': 'test-content-version',
         })
         assert response.status_code == 201
         view = response.json()
         assert view['revision'] == 3
+        assert view['content_version'] == 'test-content-version'
+        assert view['confirmed_choices'] == {'technique': 'square'}
         assert list(sessions.items) == [view['session_id']]
-        assert client.get(f"/api/tutor-demo/sessions/{view['session_id']}").json() == view
+        assert client.get(f"/api/tutor-demo/sessions/{view['session_id']}").json() == {
+            key: value for key, value in view.items()
+            if key not in ('content_version', 'confirmed_choices')}
 
 
 def test_cancelled_restore_does_not_register(monkeypatch, session_api):
@@ -83,5 +94,16 @@ def test_cancelled_restore_does_not_register(monkeypatch, session_api):
     start = next(route.endpoint for route in app.routes
                  if route.path == '/api/tutor-demo/sessions')
     with pytest.raises(asyncio.CancelledError):
-        asyncio.run(start(api.Start(practice_attempt_id=uuid4()), {'id': USER}, None))
+        asyncio.run(start(api.Start(practice_attempt_id=uuid4(),
+                                  content_version='test-content-version'), {'id': USER}, None))
     assert sessions.items == {existing.id: existing}
+
+
+def test_bound_session_requires_version_before_preparing_a_session(session_api):
+    app, sessions = session_api
+    with TestClient(app) as client:
+        response = client.post('/api/tutor-demo/sessions', json={
+            'lesson_id': 'q01', 'practice_attempt_id': str(uuid4()),
+        })
+    assert response.status_code == 422
+    assert not sessions.items

@@ -21,7 +21,10 @@ const posted = [];
 let loginCalls = 0, finishLogin;
 const scope = {
   practiceKnowledgePreview: false,
-  recorderReady: Promise.resolve(null),
+  practiceKnowledgeNext: false,
+  practiceTutorEnabled: () => true,
+  practiceAccess: {enabled: true, contentVersion: 'test-version'},
+  recorderReady: Promise.resolve({dialogue: async () => ({}), routed() {}, reset() {}}),
   Date: {now: () => now}, AbortController,
   setTimeout: (callback, delay) => { timers.set(++timerId, {callback, delay}); return timerId; },
   clearTimeout: id => timers.delete(id),
@@ -155,7 +158,10 @@ const source = require('node:fs').readFileSync(process.argv[1], 'utf8');
 let onAuthChange, cleared = 0;
 const scope = {
   practiceKnowledgePreview: false,
-  recorderReady: Promise.resolve(null),
+  practiceKnowledgeNext: false,
+  practiceTutorEnabled: () => true,
+  practiceAccess: {enabled: true, contentVersion: 'test-version'},
+  recorderReady: Promise.resolve({dialogue: async () => ({}), routed() {}, reset() {}}),
   document: {getElementById: () => ({dataset: {}})},
   generation: 0, requestController: null, busy: false, dialoguePause: null, dialogueTimer: 9,
   remote: null, pendingOperations: [], retryRequest: null, retryButton: {}, networkStatus: {},

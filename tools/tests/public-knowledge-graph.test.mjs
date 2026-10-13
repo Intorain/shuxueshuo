@@ -226,9 +226,11 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.match(quantified,/<small>必修一·1章<\/small>/);
   assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-method"/g).length,4);
   assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-when"><strong>适合什么题：/g).length,4);
-  assert.match(outputs.get('section-2-2/index.html'),/http-equiv="refresh" content="0;url=\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"/);
-  assert.match(outputs.get('chapter-functions/index.html'),/url=\/knowledge-next\/chapters\/compulsory-1-ch3\/"/);
-  assert.match(outputs.get('textbook-pep-a-compulsory-1/index.html'),/url=\/knowledge-next\/"/);
+  assert.match(outputs.get('section-2-2/index.html'), /"redirectHref":"\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"/);
+  assert.doesNotMatch(outputs.get('section-2-2/index.html'), /http-equiv="refresh"/);
+  assert.match(outputs.get('section-2-2/index.html'), /src="\/knowledge-next\/assets\/[a-f0-9]+\/learning.mjs"/);
+  assert.match(outputs.get('chapter-functions/index.html'), /"redirectHref":"\/knowledge-next\/chapters\/compulsory-1-ch3\/"/);
+  assert.match(outputs.get('textbook-pep-a-compulsory-1/index.html'), /"redirectHref":"\/knowledge-next\/"/);
   for(const [file,html] of outputs)if(file.endsWith('.html'))assert.ok(!/href="\/knowledge-next\/(section-|chapter-|textbook-)/.test(html),file);
 });
 

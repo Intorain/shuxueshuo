@@ -65,7 +65,7 @@ for (const signedIn of [false, true])
       requests = [],
       imports = [],
       events = [];
-    document.currentScript = { src: 'http://localhost/assets/practice/runtime.js?v=36' };
+    document.currentScript = { src: 'http://localhost/assets/practice/runtime.js?v=39' };
     document.head = new Element();
     document.documentElement = new Element();
     document.createElement = () => new Element();

@@ -11,8 +11,10 @@ export function branches(tree, conditions = {}) {
 
 // `options` maps a choice field to all of its option values. Branches usually exist only for
 // accepted values, so listing candidates over a partly covered unanswered choice would reveal
-// which options are correct; such candidates are withheld.
-export function select(tree, choices = {}, options = {}) {
+// which options are correct; such candidates are withheld until that field's step has passed.
+// Passing without an observed choice unlocks candidates, never an actual association.
+export function select(tree, choices = {}, options = {}, passedFields = []) {
+  const passed = new Set(passedFields);
   const possible = branches(tree).filter((b) =>
     Object.entries(b.conditions).every(([field, value]) => choices[field] == null || choices[field] === value)
   );
@@ -21,7 +23,7 @@ export function select(tree, choices = {}, options = {}) {
   const covered = (field) =>
     (options[field] || []).every((value) => pending.some((b) => b.conditions[field] === value));
   const withheld = pending.some((b) =>
-    Object.keys(b.conditions).some((field) => choices[field] == null && !covered(field))
+    Object.keys(b.conditions).some((field) => choices[field] == null && !passed.has(field) && !covered(field))
   );
   return { actual, candidates: withheld ? [] : pending, withheld };
 }
@@ -37,17 +39,18 @@ export function confirmedChoices(steps = [], state) {
   return Object.fromEntries(Object.entries(state.choices || {}).filter(([field]) => !open.has(field)));
 }
 
-export function previewHref(path) {
+export function previewHref(path, learning = false) {
   const url = new URL(path, 'https://preview.invalid');
   url.searchParams.set('knowledge', 'next');
+  if (learning) url.searchParams.set('learning', '1');
   return url.pathname + url.search + url.hash;
 }
 
 export const libraryPath = (path) => path.replace(/[^/]+\/$/, '');
 
 // Links from a problem page back to its library or to another associated problem stay in the preview.
-export function previewTarget(url, { paths, library, topic }) {
-  if (library !== '/' && url.pathname === library) return topic;
-  if (paths.includes(url.pathname)) return previewHref(url.pathname + url.search + url.hash);
+export function previewTarget(url, { paths, library, topic, learning = false }) {
+  if (library !== '/' && url.pathname === library) return learning ? `${topic}?learning=1` : topic;
+  if (paths.includes(url.pathname)) return previewHref(url.pathname + url.search + url.hash, learning);
   return null;
 }

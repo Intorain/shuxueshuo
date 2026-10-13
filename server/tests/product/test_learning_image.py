@@ -11,6 +11,8 @@ from html.parser import HTMLParser
 from uuid import uuid4
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from shuxueshuo_server.learning.content import ROOT, load_content
 from shuxueshuo_server.product.config import Settings, write_private
@@ -104,16 +106,19 @@ def test_admin_image_publishes_learning_with_readonly_nonroot_runtime(tmp_path):
         run("up", "-d", "--wait", "postgres")
         # Same read-only/non-root profile as production. Install includes migrations
         # and initial import; repeated publish verifies the requested CLI explicitly.
-        assert admin("install")["ok"]
-        expected = {key: len(values) for key, values in load_content().items()}
+        head = ScriptDirectory.from_config(Config(str(ROOT / 'server/alembic.ini'))).get_current_head()
+        installed = admin("install")
+        assert installed["ok"] and installed["revision"] == head
+        expected = {key: len(values) for key, values in load_content().items() if key != '_meta'}
         assert admin("publish-learning") == expected
         assert admin("publish-learning") == expected
-        assert admin("doctor")["ok"]
+        checked = admin("doctor")
+        assert checked["ok"] and checked["revision"] == head
         runtime = run(
             "run", "--rm", "--no-deps", "--entrypoint", "node", "admin", "--version"
         ).strip()
         assert runtime.startswith("v18."), runtime
-        # Compare all exported explainer contents, not just import counts.
+        # Verify the actual Node runtime exports the same private structured input.
         exported = json.loads(
             run(
                 "run",
@@ -122,12 +127,12 @@ def test_admin_image_publishes_learning_with_readonly_nonroot_runtime(tmp_path):
                 "--entrypoint",
                 "node",
                 "admin",
-                "/app/tools/export-knowledge-text.mjs",
+                "/app/tools/export-public-knowledge.mjs",
             )
         )
         local = json.loads(
             subprocess.check_output(
-                ["node", str(ROOT / "tools/export-knowledge-text.mjs")], text=True
+                ["node", str(ROOT / "tools/export-public-knowledge.mjs")], text=True
             )
         )
         assert exported == local
@@ -142,6 +147,18 @@ def test_app_image_keeps_standalone_page_compiler_assets(tmp_path):
     image = os.getenv("PRODUCT_TEST_APP_IMAGE")
     if not image:
         pytest.skip("Set PRODUCT_TEST_APP_IMAGE to test the API/Worker image too")
+    head = ScriptDirectory.from_config(Config(str(ROOT / 'server/alembic.ini'))).get_current_head()
+    packaged = subprocess.run(
+        ['docker', 'run', '--rm', '--platform', 'linux/amd64', '--read-only',
+         '--entrypoint', '/opt/product/bin/python', image, '-c',
+         ('from alembic.config import Config; from alembic.script import ScriptDirectory; '
+         'from shuxueshuo_server.product import models; '
+         'assert "updated_at" in models.metadata.tables["knowledge_drill_attempts"].c; '
+         'print(ScriptDirectory.from_config(Config("/app/server/alembic.ini")).get_current_head())')],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert packaged.returncode == 0, packaged.stdout + packaged.stderr
+    assert packaged.stdout.strip() == head
     fixture = ROOT / "internal/lesson-specs/tj-2026-nankai-yimo-25"
     for name in ("geometry-spec.json", "step-decorations.json", "lesson-data.json"):
         shutil.copyfile(fixture / name, tmp_path / name)

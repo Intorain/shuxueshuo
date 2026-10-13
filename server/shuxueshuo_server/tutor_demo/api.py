@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 
 from ..auth.api import install_auth, require_origin, require_user, service
@@ -24,6 +24,13 @@ class Start(BaseModel):
     model_config = ConfigDict(extra="forbid")
     lesson_id: str = "basic-inequality-q01"
     practice_attempt_id: UUID | None = None
+    content_version: str | None = Field(default=None, min_length=1, max_length=100)
+
+    @model_validator(mode='after')
+    def bound_practice_requires_version(self):
+        if self.practice_attempt_id is not None and self.content_version is None:
+            raise ValueError('关联练习时必须提供内容版本。')
+        return self
 
 
 def require_tutor_user(
@@ -66,8 +73,12 @@ def create_router(tutor=None, budget=None, *, explanation_interpreter=None, enab
                     UUID(user['id']),
                     body.practice_attempt_id,
                     session,
+                    body.content_version,
                 )
             view = session.view()
+            if body.practice_attempt_id:
+                view.update(content_version=session.learning_content_version,
+                            confirmed_choices=session.learning_confirmed_choices)
             sessions.register(session)
             return view
         except KeyError:
@@ -86,6 +97,9 @@ def create_router(tutor=None, budget=None, *, explanation_interpreter=None, enab
     async def event(session_id: str, body: Event, user: TutorUser, request: Request, response: Response):
         try:
             session = sessions.get(session_id, owner_user_id=user['id'])
+            bound_attempt = getattr(session, 'learning_practice_attempt_id', None)
+            if bound_attempt is not None and body.kind != 'ui' and body.practice_attempt_id != bound_attempt:
+                raise HTTPException(409, '导师会话与练习编号不一致，请重新打开导师。')
             if body.kind != "ui" and session.lock.locked():
                 raise DialogueLimited("session_busy", "老师正在回复，请稍后再试。", 2)
             # Reuse the site's authenticated database pool; no second database URL.

@@ -1,16 +1,20 @@
 /* A separate recording channel. Transport, 401/429 and 5xx failures retain operations for retry. */
-export function createRecorder(lesson, onResume) {
+export function createRecorder(lesson, onResume, {contentVersion = null, onConfirmed = null} = {}) {
   let owner = window.SiteAuth?.user?.id, aid = null, route = null;
   let queue = [], running = null, epoch = 0, failed = false, restoring = false;
   let recovery = null, resume = null, resolving = false;
-  const key = () => `sss-practice:${owner}:${lesson.id}`;
+  const key = () => `sss-practice:${owner}:${lesson.id}${contentVersion ? ":next" : ""}`;
   const save = () => {
-    if (owner) try { sessionStorage.setItem(key(), JSON.stringify({aid, route, queue, recovery, resume})); } catch {}
+    if (owner) try { sessionStorage.setItem(key(), JSON.stringify({aid, route, queue, recovery, resume, contentVersion})); } catch {}
   };
   let saved = null;
   function loadSaved() {
     saved = null;
     try { saved = owner ? JSON.parse(sessionStorage.getItem(key()) || 'null') : null; } catch {}
+    if (saved && saved.contentVersion !== contentVersion && contentVersion) {
+      // Never replay an old page's pending operations using newly published associations.
+      saved = null;
+    }
     if (saved) {
       aid = saved.aid; route = saved.route; queue = saved.queue || [];
       recovery = saved.recovery || null; resume = saved.resume || null;
@@ -90,6 +94,7 @@ export function createRecorder(lesson, onResume) {
 
   async function applyHistory(history, force = false) {
     if (history.status === 'closed') throw Error('本次练习已结束，请重新选择路线。');
+    onConfirmed?.(history);
     if (onResume?.(history, {force}) === false) throw Error('已保存的进度与当前页面不同。');
   }
 
@@ -107,24 +112,34 @@ export function createRecorder(lesson, onResume) {
             if (!Object.hasOwn(op, 'previous')) { op.previous = aid; save(); }
             const data = await api('/practice', {
               id: op.id, problem_id: lesson.id, route_id: op.route, previous_attempt_id: op.previous,
+              ...(contentVersion ? {content_version: contentVersion} : {}),
             });
             if (ticket !== epoch) return;
             if (data.route_id !== op.route) throw Error('返回的练习路线与所选路线不同。');
-            aid = data.id; route = data.route_id;
+            aid = data.id; route = data.route_id; onConfirmed?.(data);
             // Commit the start before reading history or calling the UI. A slow
             // start may already have locally queued answers; drain them first.
             resume = op.resume || data.steps.length || restoring ? {id: aid, force: Boolean(op.resume)} : null;
           } else if (op.kind === 'answer' || op.kind === 'reference') {
             if (!aid) throw Error('请先选择解题路线。');
             if (op.route && route !== op.route) throw Error('操作对应的路线与本次练习不同。');
-            if (op.kind === 'answer') await api(`/practice/${aid}/answers`, {id: op.id, step_id: op.step, answer: op.answer});
-            else await api(`/practice/${aid}/references`, {id: op.id, step_id: op.step, node_id: op.node});
+            if (op.kind === 'answer') {
+              const history = await api(`/practice/${aid}/answers`, {id: op.id, step_id: op.step, answer: op.answer});
+              if (ticket !== epoch) return;
+              onConfirmed?.(history);
+            }
+            else await api(`/practice/${aid}/references`, {id: op.id, step_id: op.step, node_id: op.node.split('#')[0], ref: op.node, ...(op.resource ? {resource_id: op.resource} : {})});
           } else if (op.kind === 'display') {
             await api(`/practice/${op.attempt}/displayed/${op.id}`, {});
           }
         } catch (error) {
           if (ticket !== epoch) return;
           if (error.retryable) throw error;
+          if (op.kind === 'reference' && error.status >= 400 && error.status < 500) {
+            queue.shift(); save();
+            say('这条提示展示记录未保存；后续作答仍会正常保存。');
+            continue;
+          }
           reject(error, op); return;
         }
         if (ticket !== epoch) return;
@@ -253,12 +268,23 @@ export function createRecorder(lesson, onResume) {
     }
   }
   let restored = restoreSaved();
-  function reference(view, stage, node) {
+  function reference(view, stage, node, resource) {
     if (!view.state.method || recovery) return;
     ensureRoute(view.state.method);
-    queue.push({kind: 'reference', id: crypto.randomUUID(), route: view.state.method, step: lesson.routes[view.state.method][stage].id, node});
+    queue.push({kind: 'reference', id: crypto.randomUUID(), route: view.state.method, step: lesson.routes[view.state.method][stage].id, node, resource});
     save(); flush().catch(() => {});
   }
-  function routed(view) { if (view.state.method) ensureRoute(view.state.method); }
+  async function routed(view) {
+    if (!view.state.method) return;
+    ensureRoute(view.state.method);
+    if (!onConfirmed || !owner) return;
+    const ticket = epoch;
+    try {
+      await flush();
+      if (!aid || recovery) return;
+      const history = await api(`/practice/${aid}`);
+      if (ticket === epoch) onConfirmed(history);
+    } catch (error) { if (ticket === epoch) say(error.message, Boolean(error.retryable)); }
+  }
   return {action, dialogue, displayed, reset, start, flush, reference, routed};
 }

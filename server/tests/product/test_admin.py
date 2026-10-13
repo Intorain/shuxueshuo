@@ -68,6 +68,10 @@ def release_repository(tmp_path):
     shutil.copytree(REPO / 'deploy/product', repo / 'deploy/product')
     (repo / 'server').mkdir()
     (repo / 'server/content.txt').write_text('committed source')
+    versions = repo / 'server/alembic/versions'
+    versions.mkdir(parents=True)
+    (versions / '0001.py').write_text("revision = 'fixture_base'\ndown_revision = None\n")
+    (versions / '0002.py').write_text("revision = 'fixture_head'\ndown_revision = 'fixture_base'\n")
     (repo / '.gitignore').write_text('server/ignored.txt\n')
     for args in (['init', '-q'], ['add', '.'], ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture']):
         subprocess.run(['git', '-C', str(repo), *args], check=True, capture_output=True)
@@ -124,4 +128,5 @@ elif a[0]=='save':
                     '--platform', 'linux/arm64', '--output', str(output)], check=True, capture_output=True,
                    env={**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'], 'TEST_SOURCE_REPO': str(repo)})
     assert f'PRODUCT_SOURCE_REVISION={revision}\n' in (output / 'release.env').read_text()
+    assert 'PRODUCT_ALEMBIC_REVISION=fixture_head\n' in (output / 'release.env').read_text()
     assert (output / 'scripts/README.md').read_bytes() == readme

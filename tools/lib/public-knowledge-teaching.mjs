@@ -233,7 +233,7 @@ export async function loadDrills(root, nodes) {
         item.origin.node && item.origin.item && item.id === `${item.origin.node}--${item.origin.item}`,
         `迁移小题来源身份不符：${item.id}`
       );
-    if (node) checkRef(node + (item.entry ? `#${item.entry}` : ''), nodes);
+    if (node) checkRef(node + (item.entry ? `#${item.entry}` : ''), nodes, ['knowledge', 'skill', 'method', 'problem_type']);
     insist(['choice', 'multi'].includes(item.type) && item.question, `小题题干或类型不符：${item.id}`);
     const values = item.options.map((o) => o.value),
       answer = item.type === 'multi' ? item.answer : [item.answer];

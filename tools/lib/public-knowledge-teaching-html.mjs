@@ -35,7 +35,7 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
   const page = (title, body) =>
     shell(
       title,
-      `<main id="main" class="workspace teaching-page"><section class="hero"><p class="eyebrow">教学内容 · 关联预览</p><h1>${h(title)}</h1><p>关联预览，不保存练习记录。</p><nav><a href="/knowledge-next/">知识图谱</a> · <a href="/knowledge-next/topics/">专题与迁移审阅</a></nav></section>${body}</main>`,
+      `<main id="main" class="workspace teaching-page"><section class="hero"><p class="eyebrow" data-teaching-mode>教学内容 · 关联预览</p><h1>${h(title)}</h1><p data-preview-notice>关联预览，不保存练习记录。</p><nav><a href="/knowledge-next/">知识图谱</a> · <a href="/knowledge-next/topics/">专题与迁移审阅</a></nav></section>${body}</main>`,
       version,
       `<link rel="stylesheet" href="/knowledge-next/assets/${version}/teaching.css">`
     );

@@ -22,8 +22,11 @@ server/tests/**
 
 !site/
 !site/data/
-!site/data/knowledge/
-!site/data/knowledge/**
+!site/data/knowledge-next/
+!site/data/knowledge-next/**
+!site/assets/knowledge-next/
+!site/assets/knowledge-next/model.mjs
+!site/assets/knowledge-next/teaching-model.mjs
 !site/assets/
 !site/assets/explain/
 !site/assets/explain/**
@@ -32,4 +35,8 @@ server/tests/**
 !site/2/
 !site/2/**
 !tools/
-!tools/export-knowledge-text.mjs
+!tools/export-public-knowledge.mjs
+!tools/lib/
+!tools/lib/public-knowledge-sources.mjs
+!tools/lib/public-knowledge-export.mjs
+!tools/lib/public-knowledge-teaching.mjs

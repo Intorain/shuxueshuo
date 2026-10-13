@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 
 from ..product.db import lock, transaction
+from . import assessment, associations
 
 
 def one(c, sql, **values):
@@ -30,11 +31,11 @@ def owned(c, aid, user, *, locked=False):
 def view(c, a):
     items = []
     for row in c.execute(
-        text("""SELECT r.*,q.statement_md,q.question_type,q.options,q.answer_spec,q.explanation_md
-      FROM knowledge_drill_answers r JOIN knowledge_drill_items q ON q.node_id=:node AND q.item_id=r.item_id
+        text("""SELECT r.* FROM knowledge_drill_answers r
       WHERE r.attempt_id=:id ORDER BY r.position"""),
-        {"node": a["node_id"], "id": a["id"]},
+        {"id": a["id"]},
     ).mappings():
+        row = dict(row) | row['item_snapshot']
         item = {
             k: row[k]
             for k in (
@@ -45,6 +46,9 @@ def view(c, a):
                 "answered_at",
                 "statement_md",
                 "question_type",
+                "node_id",
+                "entry_id",
+                "content_hash",
             )
         }
         # Authored IDs such as "right" must not disclose the answer before submission.
@@ -78,18 +82,24 @@ def view(c, a):
     return dict(a, items=items)
 
 
-def start(db, user, node, aid, previous=None):
+def start(db, user, node, aid, previous=None, *, content_version=None):
     with transaction(db) as c:
+        lock(c, 'learning.publish', shared=True)
+        current_version = associations.content_metadata(c)['content_version']
+        associations.require_content(c, content_version if content_version is not None else current_version)
         lock(c, "drill", str(user), node)
         exists = one(c, "SELECT * FROM knowledge_drill_attempts WHERE id=:id", id=aid)
         if exists:
             if exists["user_id"] != UUID(str(user)) or exists["node_id"] != node:
                 raise HTTPException(409, "练习编号已用于其他请求。")
             return view(c, exists)
-        if not one(
+        target = one(
             c, "SELECT id FROM knowledge_nodes WHERE id=:n AND is_active", n=node
-        ):
+        )
+        if not target:
             raise HTTPException(404, "本节点已停用，不能开始新练习。")
+        if not one(c, "SELECT id FROM knowledge_nodes WHERE id=:n AND kind IN ('knowledge','skill','method','problem_type')", n=node):
+            raise HTTPException(422, '本类节点不单独评估掌握状态。')
         current = one(
             c,
             "SELECT * FROM knowledge_drill_attempts WHERE user_id=:user AND node_id=:node AND status='in_progress' FOR UPDATE",
@@ -105,33 +115,39 @@ def start(db, user, node, aid, previous=None):
         pool = list(
             c.execute(
                 text(
-                    "SELECT item_id FROM knowledge_drill_items WHERE node_id=:node AND is_active ORDER BY item_id"
+                    "SELECT * FROM knowledge_drill_items WHERE node_id=:node AND is_active ORDER BY item_id"
                 ),
                 {"node": node},
-            ).scalars()
+            ).mappings()
         )
         if len(pool) < 5:
             raise HTTPException(409, "本节点可用题目不足五道。")
         if current:
             c.execute(
                 text(
-                    "UPDATE knowledge_drill_attempts SET status='closed' WHERE id=:id"
+                    "UPDATE knowledge_drill_attempts SET status='closed',updated_at=clock_timestamp() WHERE id=:id"
                 ),
                 {"id": current["id"]},
             )
         a = one(
             c,
-            "INSERT INTO knowledge_drill_attempts(id,user_id,node_id) VALUES(:id,:user,:node) RETURNING *",
+            "INSERT INTO knowledge_drill_attempts(id,user_id,node_id,content_version,association_hash) VALUES(:id,:user,:node,:version,:hash) RETURNING *",
             id=aid,
             user=user,
             node=node,
+            version=current_version,
+            hash=pool_hash(pool),
         )
         for i, item in enumerate(secrets.SystemRandom().sample(pool, 5), 1):
             c.execute(
                 text(
-                    "INSERT INTO knowledge_drill_answers(attempt_id,position,item_id) VALUES(:id,:i,:item)"
+                    """INSERT INTO knowledge_drill_answers(attempt_id,position,item_id,node_id,entry_id,content_hash,item_snapshot)
+                    VALUES(:id,:i,:item,:node,:entry,:hash,CAST(:snapshot AS jsonb))"""
                 ),
-                {"id": aid, "i": i, "item": item},
+                {'id': aid, 'i': i, 'item': item['item_id'], 'node': item['node_id'],
+                 'entry': item['entry_id'], 'hash': item['content_hash'],
+                 'snapshot': json.dumps({k: item[k] for k in (
+                     'statement_md', 'question_type', 'options', 'answer_spec', 'explanation_md', 'origin')}, ensure_ascii=False)},
             )
         return view(c, a)
 
@@ -141,15 +157,14 @@ def answer(db, user, aid, position, selected):
         a = owned(c, aid, user, locked=True)
         row = one(
             c,
-            """SELECT r.*,q.options,q.question_type,q.answer_spec FROM knowledge_drill_answers r
-          JOIN knowledge_drill_items q ON q.node_id=:node AND q.item_id=r.item_id
+            """SELECT r.* FROM knowledge_drill_answers r
           WHERE attempt_id=:id AND position=:p""",
-            node=a["node_id"],
             id=aid,
             p=position,
         )
         if not row:
             raise HTTPException(404, "题目不属于本轮练习。")
+        row = dict(row) | row['item_snapshot']
         public_ids = {
             f"option-{i}": o["value"] for i, o in enumerate(row["options"], 1)
         }
@@ -185,32 +200,43 @@ def answer(db, user, aid, position, selected):
         if count == 5:
             a = one(
                 c,
-                "UPDATE knowledge_drill_attempts SET status='completed',completed_at=clock_timestamp() WHERE id=:id RETURNING *",
+                "UPDATE knowledge_drill_attempts SET status='completed',completed_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=:id RETURNING *",
                 id=aid,
             )
+            assessment.evaluate_node(c, user, a['node_id'])
+        else:
+            a = one(c, "UPDATE knowledge_drill_attempts SET updated_at=clock_timestamp() WHERE id=:id RETURNING *", id=aid)
         return view(c, a)
 
 
 def statuses(c, user):
     result = []
     for row in c.execute(
-        text("""SELECT n.id AS node_id,a.id AS attempt_id,a.completed_at,
-      (SELECT count(*) FROM knowledge_drill_answers r WHERE r.attempt_id=a.id AND r.is_correct) AS correct_count,
+        text("""SELECT n.id AS node_id,n.kind,n.label,s.status,s.probability,s.strategy_version,s.evaluated_at,
+      s.evidence_position,s.evidence_attempt_id AS attempt_id,a.completed_at,s.correct_count,
+      (SELECT count(*) FROM knowledge_drill_items q WHERE q.node_id=n.id AND q.is_active) AS item_count,
       EXISTS(SELECT 1 FROM knowledge_drill_attempts p WHERE p.user_id=:user AND p.node_id=n.id AND p.status='in_progress') AS in_progress
-      FROM knowledge_nodes n LEFT JOIN LATERAL
-      (SELECT * FROM knowledge_drill_attempts x WHERE x.user_id=:user AND x.node_id=n.id AND x.status='completed'
-      ORDER BY completed_at DESC,id DESC LIMIT 1) a ON true WHERE n.is_active ORDER BY n.id"""),
+      FROM knowledge_nodes n
+      LEFT JOIN student_node_assessments s ON s.node_id=n.id AND s.user_id=:user
+      LEFT JOIN knowledge_drill_attempts a ON a.id=s.evidence_attempt_id
+      WHERE n.is_active AND n.kind IN ('knowledge','skill','method','problem_type') ORDER BY n.id"""),
         {"user": user},
     ).mappings():
         result.append(
             dict(
                 row,
-                status="unassessed"
-                if row["attempt_id"] is None
-                else "mastered"
-                if row["correct_count"] == 5
-                else "needs_review",
+                status=row['status'] or 'unassessed',
                 source="drill_first_answers",
+                strategy_version=row['strategy_version'] or assessment.STRATEGY,
+                eligible=row['item_count'] >= 5,
+                drill_available=row['item_count'] >= 5,
+                drill_count=row['item_count'],
             )
         )
     return result
+
+
+def pool_hash(pool):
+    from ..product.db import digest
+    return digest([{'item_id': q['item_id'], 'node_id': q['node_id'],
+                    'entry_id': q['entry_id'], 'content_hash': q['content_hash']} for q in pool])

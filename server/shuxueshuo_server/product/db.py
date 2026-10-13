@@ -1,8 +1,8 @@
 """Short, caller-owned transactions and deterministic transaction locks."""
+import json
 from contextlib import contextmanager
 from contextvars import ContextVar
 from hashlib import sha256
-import json
 
 from sqlalchemy import create_engine, text
 
@@ -22,9 +22,16 @@ def engine(url):
                          hide_parameters=True, connect_args={'options': '-c timezone=UTC'})
 
 
-def lock(connection, *parts):
+def lock(connection, *parts, shared=False):
+    """Hold a transaction lock; readers may share it while publishers exclude them.
+
+    Content readers acquire the publication lock before user/attempt locks. They
+    must not upgrade it inside the transaction: publishers take it exclusively
+    from the outset using the default mode.
+    """
     key = int.from_bytes(sha256(canonical(parts).encode()).digest()[:8], 'big', signed=True)
-    connection.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': key})
+    function = 'pg_advisory_xact_lock_shared' if shared else 'pg_advisory_xact_lock'
+    connection.execute(text(f'SELECT {function}(:key)'), {'key': key})
 
 
 @contextmanager

@@ -1,452 +1,288 @@
-"""Validate authored files together, then atomically publish read-only public content."""
+"""Validate the authored next graph, then atomically publish current public content."""
 
-import hashlib
 import json
 import re
 import subprocess
-from html.parser import HTMLParser
+from contextlib import nullcontext
 from pathlib import Path
 
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import Connection
 
-from ..product.db import lock, transaction
-from .identity import ALIASES
+from ..product import models
+from ..product.db import canonical, digest, lock, transaction
 
 ROOT = Path(__file__).resolve().parents[3]
+CAPABILITY_KINDS = {'knowledge', 'skill', 'method', 'problem_type'}
+KINDS = CAPABILITY_KINDS | {'textbook', 'chapter', 'section', 'judgment_rule'}
+KEYS = {
+    'knowledge_nodes': ['id'],
+    'knowledge_entries': ['node_id', 'entry_id'],
+    'knowledge_edges': ['source_id', 'target_id', 'relation_type'],
+    'knowledge_resources': ['id'],
+    'practice_topics': ['id'],
+    'practice_problems': ['id'],
+    'practice_topic_problems': ['topic_id', 'problem_id'],
+    'practice_problem_types': ['problem_id', 'node_id'],
+    'practice_routes': ['problem_id', 'route_id'],
+    'practice_steps': ['problem_id', 'route_id', 'step_id'],
+    'practice_step_nodes': ['problem_id', 'route_id', 'step_id', 'node_id'],
+    'knowledge_drill_items': ['item_id'],
+}
+WRITE_KEYS = {**KEYS, 'learning_content_current': ['id']}
+TABLES = {name: models.metadata.tables[name] for name in WRITE_KEYS}
+REPLACE_RELATIONS = {'knowledge_edges', 'practice_topic_problems', 'practice_problem_types', 'practice_step_nodes'}
 
 
 def encoded(value):
-    return json.dumps(value, ensure_ascii=False, sort_keys=True)
-
-
-class Prose(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.parts = []
-        self.skip = 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag in ("svg", "style", "script"):
-            self.skip += 1
-        if not self.skip and tag in ("p", "li", "h2", "h3", "section", "div"):
-            self.parts.append("\n")
-
-    def handle_endtag(self, tag):
-        if tag in ("svg", "style", "script"):
-            self.skip -= 1
-        if not self.skip and tag in ("p", "li", "h2", "h3"):
-            self.parts.append("\n")
-
-    def handle_data(self, data):
-        if not self.skip:
-            self.parts.append(data)
-
-    @classmethod
-    def read(cls, html):
-        parser = cls()
-        parser.feed(html)
-        return "\n".join(
-            line.strip() for line in "".join(parser.parts).splitlines() if line.strip()
-        )
+    return canonical(value)
 
 
 def validate_graph(nodes, edges):
-    """Shared validation for authored files and direct publishing callers."""
-    node_types = {}
+    """Guard direct Python publishing callers as well as Node-validated exports."""
+    by_id = {}
     for node in nodes:
-        if node["id"] in node_types:
-            raise ValueError("duplicate nodes")
-        if (node["kind"], node.get("subtype")) not in {
-            ("knowledge", None), ("method", None), ("method", "technique"),
-        }:
-            raise ValueError("invalid node kind/subtype")
-        node_types[node["id"]] = node["kind"]
-    edge_types = {
-        "uses": ("method", "knowledge"),
-        "prerequisite": ("knowledge", "knowledge"),
-    }
-    adjacency = {node: [] for node in node_types}
-    seen_edges = set()
+        if node['id'] in by_id:
+            raise ValueError('duplicate nodes')
+        kind, subtype = node['kind'], node.get('subtype')
+        if kind not in KINDS or (kind == 'judgment_rule' and subtype not in {'method_selection', 'step_selection'}) or (kind != 'judgment_rule' and subtype is not None):
+            raise ValueError('invalid node kind/subtype')
+        by_id[node['id']] = node
+    seen, adjacency = set(), {node: [] for node in by_id}
     for edge in edges:
-        a, b, kind = edge["source_id"], edge["target_id"], edge["relation_type"]
-        if a not in node_types or b not in node_types or a == b:
-            raise ValueError("invalid edge endpoint")
-        if kind not in edge_types or (node_types[a], node_types[b]) != edge_types[kind]:
-            raise ValueError("invalid edge types")
-        if (a, b, kind) in seen_edges:
-            raise ValueError("duplicate edge")
-        seen_edges.add((a, b, kind))
-        if kind == "prerequisite":
+        a, b, relation = edge['source_id'], edge['target_id'], edge['relation_type']
+        if a not in by_id or b not in by_id or a == b:
+            raise ValueError('invalid edge endpoint')
+        ak, bk = by_id[a]['kind'], by_id[b]['kind']
+        valid = {
+            'contains': (ak == 'textbook' and bk == 'chapter') or (ak == 'chapter' and bk == 'section') or (ak == 'section' and bk in CAPABILITY_KINDS),
+            'extends': ak == 'section' and bk in CAPABILITY_KINDS,
+            'prerequisite': ak == bk == 'knowledge',
+            'involves': ak == 'problem_type' and bk == 'knowledge',
+            'candidate': ak == 'problem_type' and bk == 'method',
+            'method_rule': ak == 'problem_type' and bk == 'judgment_rule' and by_id[b].get('subtype') == 'method_selection',
+            'calls': ak == 'method' and bk in {'method', 'skill'},
+            'step_rule': ak == 'method' and bk == 'judgment_rule' and by_id[b].get('subtype') == 'step_selection',
+            'selects': ak == 'judgment_rule' and (bk == 'method' or (by_id[a].get('subtype') == 'step_selection' and bk == 'skill')),
+            'uses': ak == 'skill' and bk == 'knowledge',
+        }.get(relation, False)
+        if not valid:
+            raise ValueError('invalid edge types')
+        key = (a, b, relation)
+        if key in seen:
+            raise ValueError('duplicate edge')
+        seen.add(key)
+        if relation == 'prerequisite':
             adjacency[a].append(b)
-    visited, active = set(), set()
+    active, visited = set(), set()
 
     def visit(node):
         if node in active:
-            raise ValueError("prerequisite cycle")
+            raise ValueError('prerequisite cycle')
         if node in visited:
             return
         active.add(node)
-        for target in adjacency[node]:
-            visit(target)
+        for child in adjacency[node]:
+            visit(child)
         active.remove(node)
         visited.add(node)
 
-    for node in node_types:
+    for node in by_id:
         visit(node)
-    return node_types
+    return {key: node['kind'] for key, node in by_id.items()}
 
 
 def load_content(root=ROOT):
-
-    def read(path):
-        return json.loads((root / path).read_text())
-
-    base = "site/data/knowledge/"
-    (graph, display) = (read(base + "graph.json"), read(base + "display.json"))
-    if read(base + "problem-id-aliases.json") != ALIASES:
-        raise ValueError("alias copies differ")
-    edges = [
-        {"source_id": e["from"], "target_id": e["to"], "relation_type": e["type"]}
-        for e in graph["edges"]
-    ]
-    validate_graph(graph["nodes"], edges)
-    nodes = {n["id"]: n for n in graph["nodes"]}
-    rendered = json.loads(
-        subprocess.check_output(
-            ["node", str(root / "tools/export-knowledge-text.mjs")], text=True
+    """No generated HTML or legacy graph is involved; stdout stays private."""
+    root = Path(root)
+    try:
+        result = subprocess.run(
+            ['node', str(root / 'tools/export-public-knowledge.mjs')],
+            cwd=root, capture_output=True, text=True, check=True,
         )
-    )
-    rows = {
-        name: []
-        for name in (
-            "knowledge_nodes",
-            "knowledge_edges",
-            "practice_topics",
-            "practice_problems",
-            "practice_topic_problems",
-            "practice_problem_methods",
-            "practice_steps",
-            "practice_step_nodes",
-            "knowledge_drill_items",
-        )
-    }
-    for n in nodes.values():
-        explanation = Prose.read(rendered[n["id"]])
-        if not explanation:
-            raise ValueError("Invalid authored content")
-        rows["knowledge_nodes"].append(
-            dict(
-                n,
-                subtype=n.get("subtype"),
-                summary=display[n["id"]]["summary"],
-                sheet=display[n["id"]]["sheet"],
-                explanation_md=explanation,
-            )
-        )
-    rows["knowledge_edges"] = sorted(
-        edges, key=lambda e: (e["source_id"], e["target_id"], e["relation_type"])
-    )
-    registered = {}
-    for path in sorted((root / base / "topics").glob("*.json")):
-        topic = json.loads(path.read_text())
-        if set(topic["nodes"]) - nodes.keys():
-            raise ValueError("Invalid authored content")
-        rows["practice_topics"].append({k: topic[k] for k in ("id", "label", "path")})
-        methods = {m["route"]: m["node"] for m in topic["methods"]}
-        for pid, p in topic["problems"].items():
-            if pid in ALIASES:
-                raise ValueError("Invalid authored content")
-            page = (root / "site" / p["path"].strip("/") / "index.html").read_text()
-            config = json.loads(
-                re.search('id="practice-config">\\s*(.*?)</script>', page, re.DOTALL)[1]
-            )
-            lesson = read(f"server/shuxueshuo_server/tutor_demo/lessons/{pid}.json")
-            if (
-                config["id"] != pid or lesson["id"] != pid
-                or config["version"] != lesson["version"]
-            ):
-                raise ValueError(pid)
-            if (
-                set(p["routes"]) != set(config["routes"])
-                or set(p["routes"]) != set(lesson["routes"])
-            ):
-                raise ValueError(pid)
-            contract = {}
-            for route, mapping in p["routes"].items():
-                if nodes[methods[route]]["kind"] != "method":
-                    raise ValueError("Invalid authored content")
-                frontend = config["routes"][route]
-                backend = lesson["routes"][route]["nodes"]
-                if [n["id"] for n in frontend] != [n["id"] for n in backend]:
-                    raise ValueError("Invalid authored content")
-                if not (
-                    len(mapping) == len(frontend) == len({n["id"] for n in frontend})
-                    and set(mapping) == {n["id"] for n in frontend}
-                ):
-                    raise ValueError("Invalid authored content")
-                for f, b in zip(frontend, backend):
-                    for key in (
-                        "title",
-                        "question",
-                        "interaction",
-                        "expected_answer",
-                        "feedback",
-                    ):
-                        if f.get(key) != b.get(key):
-                            raise ValueError((pid, route, key))
-                    # Include every choice branch, not just the initial/default tip.
-                    pending = [f["tip"]] if f.get("tip") else []
-                    while pending:
-                        tip = pending.pop()
-                        if tip.get("field"):
-                            pending.extend(tip["options"].values())
-                        elif tip["id"] not in mapping[f["id"]]:
-                            raise ValueError(
-                                f"{pid}/{route}/{f['id']}: explainer {tip['id']} "
-                                "is missing from the step-node mapping"
-                            )
-                contract[route] = {
-                    "method": methods[route],
-                    "steps": [
-                        (
-                            n["id"],
-                            n["interaction"],
-                            n["expected_answer"],
-                            n["required_evidence"],
-                            n["criteria"],
-                            mapping[n["id"]],
-                        )
-                        for n in backend
-                    ],
-                }
-                rows["practice_problem_methods"].append(
-                    {
-                        "problem_id": pid,
-                        "route_id": route,
-                        "method_node_id": methods[route],
-                    }
-                )
-                for i, n in enumerate(frontend):
-                    rows["practice_steps"].append(
-                        {
-                            "problem_id": pid,
-                            "route_id": route,
-                            "step_id": n["id"],
-                            "title": n["title"],
-                            "position": i,
-                        }
-                    )
-                    for nid in mapping[n["id"]]:
-                        if nid not in nodes:
-                            raise ValueError("Invalid authored content")
-                        rows["practice_step_nodes"].append(
-                            {
-                                "problem_id": pid,
-                                "route_id": route,
-                                "step_id": n["id"],
-                                "node_id": nid,
-                            }
-                        )
-            problem_data = dict(
-                lesson["problem"],
-                contract_hash=hashlib.sha256(
-                    encoded({"routes": contract, "problem": lesson["problem"]}).encode()
-                ).hexdigest(),
-            )
-            row = {
-                "id": pid,
-                "label": p["label"],
-                "path": p["path"],
-                "lesson_file": f"{pid}.json",
-                "statement_md": lesson["problem"]["statement"],
-                "problem_data": problem_data,
-                "is_active": True,
-            }
-            if pid in registered and registered[pid] != row:
-                raise ValueError("cross-topic identity conflict")
-            registered[pid] = row
-            rows["practice_topic_problems"].append(
-                {"topic_id": topic["id"], "problem_id": pid}
-            )
-    rows["practice_problems"] = list(registered.values())
-    for path in sorted(
-        (root / "server/shuxueshuo_server/learning/drills").glob("*.json")
-    ):
-        drill = json.loads(path.read_text())
-        nid = drill["node"]
-        if nid not in nodes:
-            raise ValueError("Invalid authored content")
-        if not (
-            len(drill["items"]) >= 5
-            and len({i["id"] for i in drill["items"]}) == len(drill["items"])
-        ):
-            raise ValueError("Invalid authored content")
-        for item in drill["items"]:
-            if item["type"] not in ("choice", "multi"):
-                raise ValueError("authoring currently supports choice/multi only")
-            values = [o["value"] for o in item["options"]]
-            answer = (
-                item["answer"] if isinstance(item["answer"], list) else [item["answer"]]
-            )
-            if not (
-                len(set(values)) == len(values)
-                and len(values) >= 2
-                and answer
-                and (set(answer) <= set(values))
-            ):
-                raise ValueError("Invalid authored content")
-            if not (
-                len(set(answer)) == len(answer)
-                and (item["type"] == "multi" or len(answer) == 1)
-            ):
-                raise ValueError("Invalid authored content")
-            if not all(
-                o.get("feedback") for o in item["options"] if o["value"] not in answer
-            ):
-                raise ValueError("Invalid authored content")
-            rows["knowledge_drill_items"].append(
-                {
-                    "node_id": nid,
-                    "item_id": item["id"],
-                    "statement_md": "\n\n".join(
-                        filter(None, [item.get("given"), item["question"]])
-                    ),
-                    "question_type": item["type"],
-                    "options": item["options"],
-                    "answer_spec": {"selected": sorted(answer)},
-                    "explanation_md": item.get("explanation", ""),
-                    "is_active": True,
-                }
-            )
+        rows = json.loads(result.stdout)
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
+        detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) else str(error)
+        raise ValueError(f'Public learning content export failed: {detail}') from error
+    validate_content(rows)
     return rows
 
 
-KEYS = {
-    "knowledge_nodes": ["id"],
-    "knowledge_edges": ["source_id", "target_id", "relation_type"],
-    "practice_topics": ["id"],
-    "practice_problems": ["id"],
-    "practice_topic_problems": ["topic_id", "problem_id"],
-    "practice_problem_methods": ["problem_id", "route_id"],
-    "practice_steps": ["problem_id", "route_id", "step_id"],
-    "practice_step_nodes": ["problem_id", "route_id", "step_id", "node_id"],
-    "knowledge_drill_items": ["node_id", "item_id"],
-}
-JSON_FIELDS = {"problem_data", "options", "answer_spec"}
+def selector_leaves(tree, conditions=None):
+    conditions = conditions or {}
+    if isinstance(tree, dict) and 'field' in tree:
+        field, options = tree['field'], tree.get('options')
+        if not isinstance(field, str) or field in conditions or not isinstance(options, dict) or not options:
+            raise ValueError('invalid conditional association')
+        for option, child in options.items():
+            yield from selector_leaves(child, {**conditions, field: option})
+    else:
+        yield conditions, tree
+
+
+def validate_content(rows):
+    types = validate_graph(rows['knowledge_nodes'], rows['knowledge_edges'])
+    if set(rows) != set(KEYS) | {'_meta'}:
+        raise ValueError('incomplete public content export')
+    for name, keys in KEYS.items():
+        for row in rows[name]:
+            validate_row(name, row, keys)
+    entries = {(e['node_id'], e['entry_id']) for e in rows['knowledge_entries']}
+    resources = {r['id']: r['body'] for r in rows['knowledge_resources']}
+
+    def reference(ref, kinds=CAPABILITY_KINDS):
+        if not isinstance(ref, str) or not re.fullmatch(r'[a-z][a-z0-9-]*(?:#[a-z][a-z0-9-]*)?', ref):
+            raise ValueError(f'invalid reference: {ref}')
+        node, _, entry = ref.partition('#')
+        if types.get(node) not in kinds or (entry and (node, entry) not in entries):
+            raise ValueError(f'invalid reference: {ref}')
+
+    for name, keys in KEYS.items():
+        identities = [tuple(row[key] for key in keys) for row in rows[name]]
+        if len(identities) != len(set(identities)):
+            raise ValueError(f'duplicate identities: {name}')
+    for node, _ in entries:
+        if node not in types:
+            raise ValueError('entry references removed node')
+    for edge in rows['knowledge_edges']:
+        for occurrence in edge['occurrences']:
+            if occurrence.get('entry'):
+                reference(edge['target_id'] + '#' + occurrence['entry'])
+            for key in ('step', 'branch'):
+                if occurrence.get(key) and (edge['source_id'], occurrence[key]) not in entries:
+                    raise ValueError('edge occurrence references removed entry')
+    topics = {row['id'] for row in rows['practice_topics']}
+    problems = {row['id'] for row in rows['practice_problems']}
+    routes = {(row['problem_id'], row['route_id']) for row in rows['practice_routes']}
+    steps = {(row['problem_id'], row['route_id'], row['step_id']) for row in rows['practice_steps']}
+    for row in rows['practice_topic_problems']:
+        if row['topic_id'] not in topics or row['problem_id'] not in problems:
+            raise ValueError('topic membership references removed content')
+    for row in rows['practice_problem_types']:
+        if row['problem_id'] not in problems:
+            raise ValueError('problem type references removed problem')
+        reference(row['node_id'], {'problem_type'})
+    for route in rows['practice_routes']:
+        if route['problem_id'] not in problems:
+            raise ValueError('route references removed problem')
+        for _, refs in selector_leaves(route['methods']):
+            if not isinstance(refs, list) or not refs:
+                raise ValueError('route requires methods')
+            for ref in refs:
+                reference(ref, {'method'})
+                if '#' in ref:
+                    raise ValueError('route requires whole method')
+    for step in rows['practice_steps']:
+        if (step['problem_id'], step['route_id']) not in routes:
+            raise ValueError('step references removed route')
+        refs = list(selector_leaves(step['refs']))
+        for _, values in refs:
+            if not isinstance(values, list) or (not values and not step.get('reason')):
+                raise ValueError('invalid step references')
+            for ref in values:
+                reference(ref, {'knowledge', 'skill', 'method'})
+        if step['tip']:
+            for conditions, tip in selector_leaves(step['tip']):
+                reference(tip['ref'], {'knowledge', 'skill', 'method'})
+                compatible = [values for c, values in refs if all(k not in conditions or conditions[k] == v for k, v in c.items())]
+                if not compatible or any(tip['ref'] not in values for values in compatible):
+                    raise ValueError('tip missing from current step association')
+                if tip.get('resource'):
+                    resource = resources.get(tip['resource'])
+                    if resource is None or (tip.get('case') and tip['case'] not in resource.get('cases', [])):
+                        raise ValueError('invalid tip resource/case')
+    for row in rows['practice_step_nodes']:
+        if (row['problem_id'], row['route_id'], row['step_id']) not in steps:
+            raise ValueError('step reference has missing step')
+        reference(row['node_id'])
+    for item in rows['knowledge_drill_items']:
+        reference(item['node_id'] + ('#' + item['entry_id'] if item['entry_id'] else ''))
+        options = [o['value'] for o in item['options']]
+        selected = item['answer_spec']['selected']
+        if item['question_type'] not in {'choice', 'multi'} or len(set(options)) != len(options) or len(options) < 2 or not selected or len(set(selected)) != len(selected) or not set(selected) <= set(options) or (item['question_type'] == 'choice' and len(selected) != 1):
+            raise ValueError('invalid drill grading contract')
+        if any(not o.get('feedback') for o in item['options'] if o['value'] not in selected):
+            raise ValueError('drill distractor has no feedback')
+    meta = rows['_meta']
+    if meta['schema_version'] != 2 or meta['content_version'] != digest({name: rows[name] for name in KEYS}):
+        raise ValueError('content version does not match authored rows')
+    return types
+
+
+def validate_row(name, row, keys):
+    """Only authored content tables and their declared columns may be written."""
+    if name not in TABLES or keys != WRITE_KEYS[name]:
+        raise ValueError(f'invalid public content table or key: {name}')
+    table = TABLES[name]
+    if not isinstance(row, dict) or not set(keys) <= set(row) or not set(row) <= set(table.c.keys()):
+        raise ValueError(f'invalid public content fields: {name}')
+    return table
+
+
+def _write(c, name, row, keys):
+    table = validate_row(name, row, keys)
+    statement = insert(table).values(**row)
+    updates = {field: statement.excluded[field] for field in row if field not in keys}
+    statement = (statement.on_conflict_do_update(index_elements=keys, set_=updates) if updates
+                 else statement.on_conflict_do_nothing(index_elements=keys))
+    c.execute(statement)
 
 
 def publish(db, rows):
-    node_types = validate_graph(rows["knowledge_nodes"], rows["knowledge_edges"])
-    for name, field in (
-        ("practice_problem_methods", "method_node_id"),
-        ("practice_step_nodes", "node_id"),
-        ("knowledge_drill_items", "node_id"),
-    ):
-        for row in rows[name]:
-            if row[field] not in node_types:
-                raise ValueError(f"{name}: reference to a removed node")
-    topic_ids = {t["id"] for t in rows["practice_topics"]}
-    problem_ids = {p["id"] for p in rows["practice_problems"]}
-    if any(
-        r["topic_id"] not in topic_ids or r["problem_id"] not in problem_ids
-        for r in rows["practice_topic_problems"]
-    ):
-        raise ValueError("topic membership references removed content")
-    with transaction(db) as c:
-        lock(c, "learning.publish")
-        # Current catalog relations have no student-history references. Remove
-        # memberships before their topics; retain historical problem/step identities.
-        for name in ("knowledge_edges", "practice_topic_problems", "practice_topics"):
-            keys = KEYS[name]
-            keep = {tuple(r[k] for k in keys) for r in rows[name]}
-            for old in c.execute(text(f"SELECT * FROM {name}")).mappings():
-                if tuple(old[k] for k in keys) not in keep:
-                    c.execute(
-                        text(
-                            f"DELETE FROM {name} WHERE "
-                            + " AND ".join(f"{k}=:{k}" for k in keys)
-                        ),
-                        dict(old),
-                    )
+    """Use one publish lock and transaction, or join a caller-owned rebuild transaction."""
+    validate_content(rows)
+    context = nullcontext(db) if isinstance(db, Connection) else transaction(db)
+    with context as c:
+        lock(c, 'learning.publish')
+        old = {name: [dict(row) for row in c.execute(text(f'SELECT * FROM {name}')).mappings()] for name in KEYS}
         for name, items in rows.items():
+            if name not in KEYS:
+                continue
+            keys = KEYS[name]
+            previous = {tuple(row[key] for key in keys): row for row in old[name]}
             for row in items:
-                if name == "knowledge_nodes":
-                    row = {**row, "is_active": True}
-                keys = KEYS[name]
-                where = " AND ".join(f"{k}=:{k}" for k in keys)
-                old = (
-                    c.execute(text(f"SELECT * FROM {name} WHERE {where}"), row)
-                    .mappings()
-                    .first()
-                )
-                if (
-                    old
-                    and name == "practice_problems"
-                    and (
-                        old["problem_data"]["contract_hash"]
-                        != row["problem_data"]["contract_hash"]
-                    )
-                ):
-                    raise ValueError(
-                        f"{row['id']}: teaching contract changed; allocate a new ID"
-                    )
-                if (
-                    old
-                    and name == "knowledge_drill_items"
-                    and not all(
-                        old[k] == row[k]
-                        for k in (
-                            "statement_md",
-                            "question_type",
-                            "options",
-                            "answer_spec",
-                        )
-                    )
-                ):
-                    raise ValueError(
-                        f"{row['item_id']}: drill changed; allocate a new ID"
-                    )
-                if (
-                    old
-                    and name == "knowledge_nodes"
-                    and not (
-                        old["kind"] == row["kind"] and old["subtype"] == row["subtype"]
-                    )
-                ):
-                    raise ValueError("node identity changed")
-                fields = list(row)
-                updates = [k for k in fields if k not in keys]
-                values = ",".join(
-                    f"CAST(:{k} AS jsonb)" if k in JSON_FIELDS else f":{k}"
-                    for k in fields
-                )
-                action = (
-                    "DO UPDATE SET " + ",".join(f"{k}=excluded.{k}" for k in updates)
-                    if updates
-                    else "DO NOTHING"
-                )
-                c.execute(
-                    text(
-                        f"INSERT INTO {name} ({','.join(fields)}) VALUES ({values}) ON CONFLICT ({','.join(keys)}) {action}"
-                    ),
-                    {
-                        k: encoded(v) if k in JSON_FIELDS else v
-                        for (k, v) in row.items()
-                    },
-                )
-        for name, fields in [
-            ("knowledge_nodes", ["id"]),
-            ("practice_problems", ["id"]),
-            ("knowledge_drill_items", ["node_id", "item_id"]),
-        ]:
-            keep = {tuple(row[k] for k in fields) for row in rows[name]}
-            for old in c.execute(text(f"SELECT * FROM {name}")).mappings():
-                if tuple(old[k] for k in fields) not in keep:
-                    c.execute(
-                        text(
-                            f"UPDATE {name} SET is_active=false WHERE "
-                            + " AND ".join(f"{k}=:{k}" for k in fields)
-                        ),
-                        dict(old),
-                    )
-    return {name: len(items) for (name, items) in rows.items()}
+                existing = previous.get(tuple(row[key] for key in keys))
+                if not existing:
+                    continue
+                if name == 'practice_problems' and existing['contract_hash'] != row['contract_hash']:
+                    raise ValueError(f"{row['id']}: teaching contract changed; allocate a new ID")
+                if name == 'knowledge_nodes' and (existing['kind'], existing['subtype']) != (row['kind'], row['subtype']):
+                    raise ValueError(f"{row['id']}: node identity changed")
+        route_hashes = {(row['problem_id'], row['route_id']): row['association_hash'] for row in rows['practice_routes']}
+        for route in old['practice_routes']:
+            key = (route['problem_id'], route['route_id'])
+            if route_hashes.get(key) != route['association_hash']:
+                c.execute(text("UPDATE student_practice_attempts SET status='closed',updated_at=clock_timestamp() WHERE problem_id=:problem_id AND route_id=:route_id AND status='in_progress'"), route)
+        item_targets = {row['item_id']: (row['node_id'], row['entry_id'], row['content_hash']) for row in rows['knowledge_drill_items']}
+        old_targets = {row['item_id']: (row['node_id'], row['entry_id'], row['content_hash']) for row in old['knowledge_drill_items'] if row['is_active']}
+        changed_nodes = set()
+        for item in item_targets.keys() | old_targets.keys():
+            if item_targets.get(item) != old_targets.get(item):
+                for target in (item_targets.get(item), old_targets.get(item)):
+                    if target:
+                        changed_nodes.add(target[0])
+        for node in changed_nodes:
+            c.execute(text("UPDATE knowledge_drill_attempts SET status='closed',updated_at=clock_timestamp() WHERE node_id=:node AND status='in_progress'"), {'node': node})
+        # Relations are a current projection. Historical evidence uses attempt snapshots.
+        for name in REPLACE_RELATIONS:
+            keep = {tuple(row[key] for key in KEYS[name]) for row in rows[name]}
+            for row in old[name]:
+                if tuple(row[key] for key in KEYS[name]) not in keep:
+                    where = ' AND '.join(f'{key}=:{key}' for key in KEYS[name])
+                    c.execute(text(f'DELETE FROM {name} WHERE {where}'), row)
+        for name, keys in KEYS.items():
+            for row in rows[name]:
+                _write(c, name, row, keys)
+            if name not in REPLACE_RELATIONS:
+                keep = {tuple(row[key] for key in keys) for row in rows[name]}
+                for row in old[name]:
+                    if tuple(row[key] for key in keys) not in keep:
+                        where = ' AND '.join(f'{key}=:{key}' for key in keys)
+                        c.execute(text(f'UPDATE {name} SET is_active=false WHERE {where}'), row)
+        meta = rows['_meta']
+        # Repeating a publication must not rewrite its original published_at.
+        c.execute(text('INSERT INTO learning_content_releases(content_version,schema_version,counts) VALUES(:content_version,:schema_version,CAST(:counts AS jsonb)) ON CONFLICT DO NOTHING'),
+                  {**meta, 'counts': encoded(meta['counts'])})
+        _write(c, 'learning_content_current', {'id': 'public', 'content_version': meta['content_version']}, ['id'])
+    return {name: len(rows[name]) for name in KEYS}

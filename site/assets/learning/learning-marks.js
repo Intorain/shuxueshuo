@@ -7,7 +7,9 @@ await import('../auth/site-auth.js?v=4');
 await window.SiteAuth?.ready;
 const auth = window.SiteAuth;
 let aliases={};
-try {const response=await fetch('/data/knowledge/problem-id-aliases.json?v=1');if(response.ok)aliases=await response.json();}catch{}
+if (new URLSearchParams(location.search).get('knowledge') !== 'next') {
+  try {const response=await fetch('/data/knowledge/problem-id-aliases.json?v=1');if(response.ok)aliases=await response.json();}catch{}
+}
 const canonical=id=>aliases[id]||id;
 
 async function api(path, method, body, user) {
@@ -53,7 +55,13 @@ if (config) {
     </div>
     <a class="learning-return">返回题库，继续选题 →</a>`;
   document.getElementById('completion').after(panel);
-  panel.querySelector('.learning-return').href = new URL('../', location.href).href;
+  const nextLearning = new URLSearchParams(location.search).get('knowledge') === 'next';
+  const library = new URL('../', location.href);
+  if (nextLearning) {
+    library.pathname = '/knowledge-next/topics/' + (id.startsWith('quadratic-always-') ? 'quadratic-always' : 'basic-inequality') + '/';
+    library.searchParams.set('learning', '1');
+  }
+  panel.querySelector('.learning-return').href = library.href;
   let scrolledToMark = false;
   const state = new LearningMark(async (kind, status, user) => {
     const base = `/${encodeURIComponent(id)}`;

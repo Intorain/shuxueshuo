@@ -5,9 +5,11 @@ COPY deploy/product/requirements.lock /tmp/requirements.lock
 RUN /opt/product/bin/pip install --no-cache-dir --require-hashes -r /tmp/requirements.lock
 COPY server /app/server
 COPY internal/schemas /app/internal/schemas
-COPY tools/export-knowledge-text.mjs /app/tools/export-knowledge-text.mjs
-# Content publication reads graph data, explainer modules and authored practice pages.
-COPY site/data/knowledge /app/site/data/knowledge
+COPY tools/export-public-knowledge.mjs /app/tools/export-public-knowledge.mjs
+COPY tools/lib/public-knowledge-sources.mjs tools/lib/public-knowledge-export.mjs tools/lib/public-knowledge-teaching.mjs /app/tools/lib/
+# Import structured originals; neither generated pages nor legacy graph data are needed.
+COPY site/data/knowledge-next /app/site/data/knowledge-next
+COPY site/assets/knowledge-next/model.mjs site/assets/knowledge-next/teaching-model.mjs /app/site/assets/knowledge-next/
 COPY site/assets/explain /app/site/assets/explain
 COPY site/1 /app/site/1
 COPY site/2 /app/site/2
@@ -15,5 +17,5 @@ WORKDIR /app/server
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 # Exercise the actual image's Node/Python runtime and fail on missing publication inputs.
 RUN node --version && /opt/product/bin/python -c \
-    'from shuxueshuo_server.learning.content import load_content; print({k: len(v) for k, v in load_content().items()})'
+    'from shuxueshuo_server.learning.content import load_content; print(load_content()["_meta"])'
 ENTRYPOINT ["/opt/product/bin/python", "-m", "shuxueshuo_server.product.admin.cli"]

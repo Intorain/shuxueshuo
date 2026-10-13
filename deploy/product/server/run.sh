@@ -11,7 +11,7 @@ while [[ $# -gt 0 ]]; do
     --port) port=${2:?}; shift 2;;
     --backup) backup=${2:?}; shift 2;;
     --target) target=${2:?}; shift 2;;
-    install|deploy|resume|status|migrate|seed|doctor|backup|restore|bootstrap|services-install|services-start|services-stop|services-status|services-doctor) operation=$1; shift;;
+    install|deploy|resume|status|migrate|seed|doctor|backup|restore|bootstrap|publish-learning|check-learning|reassess-learning|services-install|services-start|services-stop|services-status|services-doctor) operation=$1; shift;;
     *) fail "未知参数：$1";;
   esac
 done

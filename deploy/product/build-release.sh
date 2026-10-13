@@ -21,6 +21,7 @@ trap 'rm -rf -- "$source_tree"' EXIT
 git -C "$PRODUCT_REPO" archive --format=tar "$source_revision" > "$source_tree/source.tar"
 mkdir "$source_tree/repo"
 tar -xf "$source_tree/source.tar" -C "$source_tree/repo"
+alembic_revision=$(python3 "$source_tree/repo/deploy/product/alembic-head.py" "$source_tree/repo/server/alembic/versions")
 mkdir -p "$output"
 postgres='postgres:17.10-bookworm@sha256:9b18b78397054fce88a9552e9d5a3ad5bb7fd258c5b3cc1c5028e46373d6ea8f'
 # Pin by tag at pull time; release.env records the loadable content digest from images.tar.
@@ -86,7 +87,7 @@ printf '%s\n' "PRODUCT_RELEASE_ID=$release" "PRODUCT_PLATFORM=$platform" "PRODUC
   "PRODUCT_APP_IMAGE=$app_id" \
   "PRODUCT_POSTGRES_IMAGE=$postgres_id" "PRODUCT_POSTGRES_MANIFEST=$postgres" \
   "PRODUCT_RABBITMQ_IMAGE=$rabbitmq_id" "PRODUCT_RABBITMQ_MANIFEST=$rabbitmq" \
-  "PRODUCT_ALEMBIC_REVISION=0002_product_runtime_indexes" "PRODUCT_SOURCE_REVISION=$source_revision" > "$output/release.env"
+  "PRODUCT_ALEMBIC_REVISION=$alembic_revision" "PRODUCT_SOURCE_REVISION=$source_revision" > "$output/release.env"
 checksum "$output/images.tar" > "$output/images.sha256"
 # Hash all delivered scripts/configuration; server checks these before running a release.
 python3 - "$output" <<'PY'

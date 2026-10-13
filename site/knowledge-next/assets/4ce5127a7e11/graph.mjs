@@ -55,7 +55,16 @@ function reveal(id){
   const left=transform.x+p.x*transform.k,top=transform.y+p.y*transform.k;
   if(left<16||left+p.w*transform.k>right||top<16||top+p.h*transform.k>box.height-16)center(id);
 }
-function updateURL(replace=false){const next=writeState(state,config.base);if(location.pathname+location.search!==next)history[replace?'replaceState':'pushState']({},'',next);}
+function updateURL(replace=false) {
+  const url=new URL(writeState(state,config.base),location.origin);
+  if(new URLSearchParams(location.search).get('learning')==='1') url.searchParams.set('learning','1');
+  const next=url.pathname+url.search;
+  if(location.pathname+location.search!==next) {
+    const previousScope=new URLSearchParams(location.search).get('scope');
+    history[replace?'replaceState':'pushState']({},'',next);
+    if(previousScope!==url.searchParams.get('scope')) window.dispatchEvent(new CustomEvent('knowledge-scope-change'));
+  }
+}
 function detailHref(id){const u=new URL(nodeHref(id),location.origin);u.searchParams.set('graph',writeState(state,config.base));return u.pathname+u.search;}
 
 // Frames already show membership, so the active node's other relations surface on demand.

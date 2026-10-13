@@ -39,7 +39,8 @@ def main(argv=None):
     p.add_argument('--port', type=int)
     p.add_argument('--pg-bin')
     p.add_argument('command', choices=['configure', 'install', 'deploy', 'resume', 'bootstrap', 'migrate', 'seed', 'doctor', 'status', 'db-start', 'db-stop', 'backup', 'restore',
-        'publish-learning', 'services-install', 'services-start', 'services-stop', 'services-status', 'services-doctor'])
+        'publish-learning', 'check-learning', 'rebuild-learning', 'reassess-learning',
+        'services-install', 'services-start', 'services-stop', 'services-status', 'services-doctor'])
     p.add_argument('--backup')
     p.add_argument('--target')
     args = p.parse_args(argv)
@@ -86,6 +87,12 @@ def execute(settings, args):
         return {**result, **saved}
     if operation == 'publish-learning':
         return publish_learning(settings)
+    if operation == 'check-learning':
+        from ...learning.content import load_content
+        return load_content()['_meta']
+    if operation in ('rebuild-learning', 'reassess-learning'):
+        from .learning import reassess, rebuild
+        return (rebuild if operation == 'rebuild-learning' else reassess)(settings)
     if operation == 'resume':
         result = database.doctor(settings, maintenance=True)
         with psycopg.connect(database.dsn(settings.url('bootstrap')), autocommit=True) as c:

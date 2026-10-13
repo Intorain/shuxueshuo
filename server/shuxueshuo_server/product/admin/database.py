@@ -17,7 +17,8 @@ from ..repositories import insert, row, UserContext
 from ..storage import LocalArtifactStorage
 
 MUTABLE = {
-    'knowledge_drill_attempts': 'status completed_at',
+    'student_node_assessments': 'status probability strategy_version evidence_attempt_id evidence_position correct_count evaluated_at',
+    'knowledge_drill_attempts': 'status completed_at updated_at',
     'knowledge_drill_answers': 'selected is_correct answered_at',
     'student_practice_attempts': 'status updated_at completed_at',
     'student_practice_events': 'displayed_at',
@@ -41,6 +42,14 @@ MUTABLE = {
     'extraction_runs': 'status workflow_binding result_json candidate_id finished_at error_code',
     'extraction_call_reservations': 'status response_artifact_id model_call_id details',
 }
+
+PUBLIC_CONTENT_TABLES = frozenset({
+    'knowledge_nodes', 'knowledge_entries', 'knowledge_edges', 'knowledge_resources',
+    'knowledge_drill_items', 'practice_topics', 'practice_topic_problems',
+    'practice_problems', 'practice_problem_types', 'practice_routes',
+    'practice_steps', 'practice_step_nodes', 'learning_content_releases',
+    'learning_content_current',
+})
 
 
 def dsn(url):
@@ -68,21 +77,27 @@ def bootstrap(settings):
             c.execute('SELECT 1')
 
 
-def migrate(settings):
+def migrate(settings, *, connection=None):
     config = Config(str(REPO / 'server/alembic.ini'))
     scripts = ScriptDirectory.from_config(config)
     if len(scripts.get_heads()) != 1:
         raise Conflict('migration.multiple_heads')
-    db = engine(settings.url('migration'))
-    try:
-        with db.begin() as c:
-            c.execute(text("SET LOCAL lock_timeout = '10s'"))
-            lock(c, 'product.alembic')
-            config.attributes['connection'] = c
-            command.upgrade(config, 'head')
-            grant(c)
-    finally:
-        db.dispose()
+    def upgrade(c):
+        c.execute(text("SET LOCAL lock_timeout = '10s'"))
+        lock(c, 'product.alembic')
+        config.attributes['connection'] = c
+        command.upgrade(config, 'head')
+        grant(c)
+
+    if connection is not None:
+        upgrade(connection)
+    else:
+        db = engine(settings.url('migration'))
+        try:
+            with db.begin() as c:
+                upgrade(c)
+        finally:
+            db.dispose()
 
 
 def grant(c):
@@ -94,7 +109,7 @@ def grant(c):
         columns = ','.join('"' + x.name + '"' for x in m.metadata.tables[table].c)
         c.exec_driver_sql(f'REVOKE UPDATE ({columns}) ON "{table}" FROM product_app')
         c.exec_driver_sql(f'GRANT SELECT ON "{table}" TO product_app')
-        if table not in ('users', 'workspaces', 'workspace_members', 'student_phone_identities') and not table.startswith(('knowledge_nodes', 'knowledge_edges', 'knowledge_drill_items', 'practice_')):
+        if table not in PUBLIC_CONTENT_TABLES and table not in ('users', 'workspaces', 'workspace_members', 'student_phone_identities') and not table.startswith('practice_'):
             c.exec_driver_sql(f'GRANT INSERT ON "{table}" TO product_app')
         if table in MUTABLE:
             columns = ','.join('"' + x + '"' for x in MUTABLE[table].split())
@@ -130,6 +145,8 @@ def doctor(settings, *, probe=True, maintenance=False):
             if c.scalar(text("SELECT has_schema_privilege(current_user,'public','CREATE')")):
                 raise IntegrityFailure('doctor.app_ddl')
             for table in m.metadata.tables:
+                if table in PUBLIC_CONTENT_TABLES and c.scalar(text("SELECT has_table_privilege(current_user,:t,'INSERT')"), {'t': table}):
+                    raise IntegrityFailure('doctor.app_public_content_write')
                 if c.scalar(text('SELECT has_table_privilege(current_user,:t,\'DELETE\')'), {'t': table}):
                     raise IntegrityFailure('doctor.app_delete')
                 allowed = set(MUTABLE.get(table, '').split())

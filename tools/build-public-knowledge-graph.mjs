@@ -9,20 +9,10 @@ import {buildCity, homeChapters, recorded} from '../site/assets/knowledge-next/c
 import {makeRenderer, textHtml} from './lib/public-knowledge-html.mjs';
 import {loadTeaching} from './lib/public-knowledge-teaching.mjs';
 import {teachingOutputs} from './lib/public-knowledge-teaching-html.mjs';
+import {exportRows} from './lib/public-knowledge-export.mjs';
 
-export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export async function loadSources(root = repoRoot) {
-  const dir = path.join(root,'site/data/knowledge-next');
-  const manifest = JSON.parse(await fs.readFile(path.join(dir,'catalog.json'),'utf8'));
-  const names = (await fs.readdir(path.join(dir,'nodes'))).filter(f=>f.endsWith('.json')).sort();
-  const nodes = await Promise.all(names.map(async name=>{
-    const node=JSON.parse(await fs.readFile(path.join(dir,'nodes',name),'utf8'));
-    if (`${node.id}.json`!==name) throw new Error(`文件名与 ID 不一致：${name}`);
-    return node;
-  }));
-  const outline = JSON.parse(await fs.readFile(path.join(dir,'outline.json'),'utf8'));
-  return {nodes,manifest,outline};
-}
+import {repoRoot, loadSources} from './lib/public-knowledge-sources.mjs';
+export {repoRoot, loadSources};
 
 const decode = text => text.replace(/&(lt|gt|amp|quot|#39);/g,(_s,k)=>({lt:'<',gt:'>',amp:'&',quot:'"','#39':"'"}[k]));
 export function renderResourceMath(html) {
@@ -70,6 +60,7 @@ export async function generate(root = repoRoot) {
   }
   // New drill ownership is not wired to the legacy learning API. Stage 3 enables it.
   manifest.drills=[];
+  const release=(await exportRows(root,{nodes,edges,manifest,teaching}))._meta;
   const assetDir=path.join(root,'site/assets/knowledge-next');
   const assetNames=(await fs.readdir(assetDir)).filter(n=>/\.(mjs|css)$/.test(n)).sort();
   const hash=createHash('sha256');
@@ -86,7 +77,11 @@ export async function generate(root = repoRoot) {
   for (const f of assetNames) outputs.set(`assets/${version}/${f}`,await fs.readFile(path.join(assetDir,f),'utf8'));
   for (const n of nodes) outputs.set(`${n.id}/index.html`,render.detail(n,resourceHtml));
   for (const [file,body] of teachingOutputs(teaching,nodes,manifest,resourceHtml,render,version)) outputs.set(file,body);
-  outputs.set('manifest.json',JSON.stringify({generator:'tools/build-public-knowledge-graph.mjs',schemaVersion:1,nodeCounts:manifest.expectedCounts,files:[...outputs.keys()].sort()},null,2)+'\n');
+  outputs.set('teaching/version.json',JSON.stringify(release,null,2)+'\n');
+  for (const [name,body] of outputs) if (/^teaching\/problems\/.+\.json$/.test(name)) {
+    outputs.set(name,JSON.stringify({...JSON.parse(body),content_version:release.content_version},null,2)+'\n');
+  }
+  outputs.set('manifest.json',JSON.stringify({contentVersion:release.content_version,generator:'tools/build-public-knowledge-graph.mjs',schemaVersion:1,nodeCounts:manifest.expectedCounts,files:[...outputs.keys()].sort()},null,2)+'\n');
   return {outputs,nodes,edges,manifest,teaching};
 }
 

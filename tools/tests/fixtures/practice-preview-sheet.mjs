@@ -35,6 +35,7 @@ class Element {
   }
   append(child) {
     this.lastChild = child;
+    (this.appended ||= []).push(child);
   }
   insertAdjacentHTML(_position, html) {
     this.html = html + this.innerHTML;
@@ -120,12 +121,14 @@ await module.link(
     )
 );
 await module.evaluate();
-const preview = await module.namespace.createPreview(lesson, new Element());
+const shown = [];
+const preview = await module.namespace.createPreview(lesson, new Element(), {onShown:(view, stage, tip) => shown.push({view, stage, tip})});
 const snapshot = (active) => ({ state: { method: 'direct', active, choices: {} } });
 await preview.openStep('direct', 0, snapshot(0));
 const body = document.body.lastChild.querySelector('.kxp-sheet-body');
 assert.equal(requests.filter((u) => u.includes('/nodes/')).length, 0);
 assert.equal(mounts.length, 0);
+assert.equal(shown.length, 0);
 assert.doesNotMatch(body.querySelector('.kxp-detail').innerHTML, /本题/);
 assert.match(body.querySelector('.kxp-load-status').textContent, /图解加载失败/);
 assert.deepEqual(
@@ -146,6 +149,9 @@ await body.querySelector('.kxp-retry').onclick();
 assert.equal(body.querySelector('.kxp-load-status').textContent, '');
 assert.equal(body.querySelector('.kxp-retry').hidden, true);
 assert.equal(mounts.at(-1).retry, true);
+assert.equal(shown.length, 1);
+assert.equal(shown[0].stage, 0);
+assert.equal(shown[0].tip.ref, tip.ref);
 assert.equal(
   requests.filter((u) => u.includes('/resources/')).length,
   2,
@@ -166,4 +172,42 @@ await preview.openStep('direct', 0, snapshot(1));
 assert.equal(mounts.length, before);
 assert.equal(body.querySelector('.kxp-load-status').textContent, '');
 assert.match(body.querySelector('.kxp-detail').innerHTML, /本题/);
+
+// Viewing a safe candidate is recorded as a display, not as adopting its branch.
+const candidateStage = lesson.routes.elimination.findIndex(step => step.id === 'quadratic');
+const candidateView = {state:{method:'elimination', active:candidateStage, choices:{}}};
+await preview.openStep('elimination', candidateStage, candidateView);
+const countBeforeCandidate = shown.length;
+await body.querySelector('.kxp-tip-options').lastChild.onclick();
+assert.equal(shown.length, countBeforeCandidate + 1);
+assert.equal(shown.at(-1).stage, candidateStage);
+assert.equal(shown.at(-1).view, candidateView);
+
+await assert.rejects(
+  module.namespace.createPreview(lesson, new Element(), {learning:true, expectedContentVersion:'stale'}),
+  error => error.code === 'content_version_mismatch'
+);
 console.log('sheet boundaries, independent failures, retry and text-only fallback: passed');
+
+// Restored standard answers are UI conclusions, not confirmed student selections.
+const q30Lesson = teaching.lessons.get('basic-inequality-q30');
+let confirmed = {};
+let passedFields = [];
+const learning = await module.namespace.createPreview(q30Lesson, new Element(), {
+  learning:true, getConfirmedChoices:() => confirmed, getPassedFields:() => passedFields});
+const q30Stage = q30Lesson.routes.symmetric.findIndex(step => step.id === 'inequality');
+const restored = {state:{method:'symmetric', active:q30Stage + 1, choices:{inequality_form:'p_le'}}};
+await learning.openStep('symmetric', q30Stage, restored);
+assert.match(document.body.lastChild.querySelector('.kxp-sheet-body').textContent, /作答后显示/);
+// A server-confirmed LLM completion unlocks the candidates, but does not turn
+// the restored p_le value into a real selected branch.
+passedFields = ['inequality_form'];
+await learning.openStep('symmetric', q30Stage, restored);
+const completedBody = document.body.lastChild.querySelector('.kxp-sheet-body');
+assert.match(completedBody.innerHTML, /本步已通过，但没有记录具体选择/);
+assert.equal(completedBody.querySelector('.kxp-tip-options').appended.length, 2);
+await completedBody.querySelector('.kxp-tip-options').lastChild.onclick();
+assert.ok(completedBody.querySelector('.kxp-tip-content').querySelector('.kxp-detail').innerHTML.includes('本题'));
+confirmed = {inequality_form:'p_le'};
+await learning.openStep('symmetric', q30Stage, restored);
+assert.ok(document.body.lastChild.querySelector('.kxp-sheet-body').innerHTML.includes('kx'));

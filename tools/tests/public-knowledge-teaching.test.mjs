@@ -126,6 +126,24 @@ test('unanswered choices never reveal which options are accepted', () => {
     }
 });
 
+test('passing a choice step without a recorded choice unlocks candidates only', () => {
+  const step = teaching.lessons.get('basic-inequality-q30').routes.symmetric.find(s => s.id === 'inequality');
+  const q30 = problem('basic-inequality-q30').routes.symmetric.steps.inequality;
+  const options = {inequality_form:step.interaction.options.map(o => o.value)};
+  for (const tree of [q30.tip, q30.refs]) {
+    const selection = select(tree, {}, options, ['inequality_form']);
+    assert.equal(selection.withheld, false);
+    assert.equal(selection.candidates.length, 2);
+    assert.deepEqual(selection.actual, []);
+  }
+  const nested = {field:'first',options:{a:{field:'second',options:{b:['node']}}}};
+  const nestedOptions = {first:['a','wrong'],second:['b','wrong']};
+  assert.equal(select(nested, {}, nestedOptions, ['first']).withheld, true);
+  assert.equal(select(nested, {}, nestedOptions, ['second']).withheld, true);
+  assert.equal(select(nested, {}, nestedOptions, ['first','second']).candidates.length, 1);
+  assert.deepEqual(select(nested, {}, nestedOptions, ['first','second']).actual, []);
+});
+
 test('selector validation rejects missing accepted branches, invented choices and broken anchors', () => {
   const values = ['square', 'vertex'];
   values.accepted = [...values];

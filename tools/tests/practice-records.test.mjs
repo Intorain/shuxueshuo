@@ -14,7 +14,7 @@ const response = (data, status = 200) => ({ok: status < 400, status, json: async
 const deferred = () => { let resolve; const promise = new Promise(r => resolve = r); return {resolve, promise}; };
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-function harness(handler, {store = new Map(), onResume = () => true, user = {id: 'user'}} = {}) {
+function harness(handler, {store = new Map(), onResume = () => true, user = {id: 'user'}, options = {}} = {}) {
   const elements = new Map(), listeners = {}, posted = [];
   const element = selector => {
     if (!elements.has(selector)) elements.set(selector, {hidden: false, disabled: false, textContent: '', onclick: null});
@@ -32,7 +32,7 @@ function harness(handler, {store = new Map(), onResume = () => true, user = {id:
     },
   };
   vm.createContext(scope); vm.runInContext(source, scope);
-  const recorder = scope.createRecorder(lesson, onResume);
+  const recorder = scope.createRecorder(lesson, onResume, options);
   return {recorder, posted, store, element, listeners, reloads: () => reloads,
     saved: () => JSON.parse(store.get('sss-practice:user:test-problem')),
     submit: (route = 'direct') => recorder.action(view(route), {event_id: 'answer-id', action: {kind: 'submit'}}, view(route, 1)),
@@ -217,12 +217,12 @@ test('missing attempt on refresh releases the old binding', async () => {
 test('actual runtime resume callback requires explicit choice for route/progress changes', () => {
   const runtime = fs.readFileSync(new URL('../../site/assets/practice/runtime.js', import.meta.url), 'utf8');
   const start = runtime.indexOf('(history, {force = false} = {}) => {');
-  const callback = runtime.slice(start, runtime.indexOf(')).catch(() => null);', start));
+  const callback = runtime.slice(start, runtime.indexOf(';\n  let recorder =', start));
   const contextSource = fs.readFileSync(new URL('../../site/assets/practice/context.js', import.meta.url), 'utf8');
   const scope = {window: {}, structuredClone, crypto: {randomUUID: () => 'local-attempt'}, lesson,
     state: {method: 'other', active: 1}, snapshot: {completed: [{node: 'other-first'}]},
     generation: 0, requestController: null, busy: false, remote: {}, pendingOperations: [{}], retryRequest: {},
-    retryButton: {}, networkStatus: {}, render() {},
+    retryButton: {}, networkStatus: {}, render() {}, confirmedProgress() {},
   };
   vm.createContext(scope); vm.runInContext(contextSource, scope);
   const resume = vm.runInContext(callback, scope);
@@ -254,14 +254,14 @@ for (const conflict of [false, true]) test(`delayed initial login reloads saved 
 for (const source of ['rule', 'llm', 'legacy']) test(`runtime restores ${source} conclusions without promoting the last wrong answer`, () => {
   const runtime = fs.readFileSync(new URL('../../site/assets/practice/runtime.js', import.meta.url), 'utf8');
   const start = runtime.indexOf('(history, {force = false} = {}) => {');
-  const callback = runtime.slice(start, runtime.indexOf(')).catch(() => null);', start));
+  const callback = runtime.slice(start, runtime.indexOf(';\n  let recorder =', start));
   const contextSource = fs.readFileSync(new URL('../../site/assets/practice/context.js', import.meta.url), 'utf8');
   const localLesson = structuredClone(lesson);
   localLesson.routes.direct[0].expected_answer = {one_of: ['right']};
   localLesson.routes.direct[1] = {id: 'second', interaction: {type: 'structure', terms: ['m', 'n']}, expected_answer: {terms: ['m', 'n'], fixed: 'sum'}};
   const scope = {window: {}, structuredClone, crypto: {randomUUID: () => 'local-attempt'}, lesson: localLesson,
     state: {method: null, active: 0}, snapshot: {completed: []}, generation: 0, requestController: null,
-    busy: false, remote: {}, pendingOperations: [], retryRequest: null, retryButton: {}, networkStatus: {}, render() {},
+    busy: false, remote: {}, pendingOperations: [], retryRequest: null, retryButton: {}, networkStatus: {}, render() {}, confirmedProgress() {},
   };
   vm.createContext(scope); vm.runInContext(contextSource, scope);
   const resume = vm.runInContext(callback, scope);
@@ -277,4 +277,44 @@ for (const source of ['rule', 'llm', 'legacy']) test(`runtime restores ${source}
   assert.deepEqual(Array.from(scope.state.pairs[1]), order);
   assert.equal(scope.state.swapped, false);
   assert.equal(scope.state.active, 2); assert.equal(scope.snapshot.completed.length, 2);
+});
+
+
+test('auxiliary reference rejection never discards subsequent formal submissions', async () => {
+  const hold = deferred();
+  const h = harness((url, body) => {
+    if (url.endsWith('/practice')) return hold.promise;
+    if (url.endsWith('/references')) return response({detail:'提示分支已改变'}, 422);
+    return response({...history(), confirmed_choices:{a:'yes'}});
+  });
+  h.recorder.start('direct', 'start');
+  h.recorder.reference(view(), 0, 'node#entry', 'diagram');
+  h.submit();
+  hold.resolve(response(history('direct', 'start')));
+  await h.recorder.flush();
+  assert.equal(h.posted.filter(op => op.url.endsWith('/answers')).length, 1);
+  assert.equal(h.saved().recovery, null);
+  assert.deepEqual(h.saved().queue, []);
+  assert.equal((await h.recorder.dialogue(view())).practice_attempt_id, 'start');
+  assert.deepEqual(h.posted.find(op => op.url.endsWith('/references')).body,
+    {id:'id-2', step_id:'first', node_id:'node', ref:'node#entry', resource_id:'diagram'});
+});
+
+test('new association version travels on starts; confirmation comes from the server', async () => {
+  const confirmed = [];
+  const h = harness((url, body) => response({...history('direct', body?.id || 'start'), confirmed_choices:{a:'yes'}}),
+    {options:{contentVersion:'version-2', onConfirmed:data => confirmed.push(data.confirmed_choices)}});
+  h.recorder.start('direct', 'start'); h.submit();
+  await h.recorder.flush();
+  assert.equal(h.posted[0].body.content_version, 'version-2');
+  assert.equal(confirmed.length, 2);
+  assert.deepEqual(confirmed[1], {a:'yes'});
+  assert.ok(h.store.has('sss-practice:user:test-problem:next'));
+});
+
+test('pending submissions from an old association version are never relabeled and replayed', async () => {
+  const store = new Map([['sss-practice:user:test-problem:next', JSON.stringify({contentVersion:'old', aid:'attempt', route:'direct', queue:[{kind:'answer', id:'old-answer'}]})]]);
+  const h = harness(() => {throw Error('Old operation must not be replayed');}, {store, options:{contentVersion:'new'}});
+  await tick();
+  assert.equal(h.posted.length, 0);
 });

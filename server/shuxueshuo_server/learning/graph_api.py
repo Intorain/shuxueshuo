@@ -2,15 +2,21 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 
 from ..product.db import transaction
-from . import drills, practice
-from .api import Auth, User, learning_user
+from . import associations, drills, practice
+from .api import Auth, User
 
-router = APIRouter(prefix="/api/learning", dependencies=[Depends(learning_user)])
+router = APIRouter(prefix="/api/learning")
+
+
+@router.get('/content')
+def content(auth: Auth):
+    with transaction(auth.db) as c:
+        return associations.content_metadata(c)
 
 
 class StartDrill(BaseModel):
@@ -18,6 +24,7 @@ class StartDrill(BaseModel):
     id: UUID
     node_id: str = Field(min_length=1, max_length=100)
     previous_attempt_id: UUID | None = None
+    content_version: str = Field(min_length=1, max_length=100)
 
 
 class AnswerDrill(BaseModel):
@@ -28,7 +35,8 @@ class AnswerDrill(BaseModel):
 @router.post("/drills")
 def start(body: StartDrill, user: User, auth: Auth):
     return drills.start(
-        auth.db, UUID(user["id"]), body.node_id, body.id, body.previous_attempt_id
+        auth.db, UUID(user["id"]), body.node_id, body.id, body.previous_attempt_id,
+        content_version=body.content_version,
     )
 
 
@@ -49,12 +57,19 @@ def nodes(user: User, auth: Auth):
         return {"nodes": drills.statuses(c, UUID(user["id"]))}
 
 
+@router.get('/progress')
+def progress(scope: str, user: User, auth: Auth):
+    with transaction(auth.db) as c:
+        return associations.directory_progress(c, scope, drills.statuses(c, UUID(user['id'])))
+
+
 class StartPractice(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: UUID
     problem_id: str = Field(max_length=100)
     route_id: str = Field(max_length=100)
     previous_attempt_id: UUID | None = None
+    content_version: str = Field(min_length=1, max_length=100)
 
 
 class SubmitPractice(BaseModel):
@@ -73,6 +88,7 @@ def start_practice(body: StartPractice, user: User, auth: Auth):
         body.route_id,
         body.id,
         body.previous_attempt_id,
+        content_version=body.content_version,
     )
 
 
@@ -109,26 +125,16 @@ def read_practice(attempt_id: UUID, user: User, auth: Auth):
             events.append(row)
         return practice.result(c, a) | {
             "problem_context": {
-                k: v for k, v in a["problem_context"].items() if k != "contract_hash"
+                k: v for k, v in a["problem_context"].items() if k not in ("contract_hash", "_lesson")
             },
             "events": events,
         }
 
 
 @router.get("/nodes/{node_id}/evidence")
-def evidence(node_id: str, user: User, auth: Auth):
+def evidence(node_id: str, user: User, auth: Auth, entry: str | None = None):
     with transaction(auth.db) as c:
-        rows = c.execute(
-            text("""SELECT a.id AS attempt_id,a.problem_id,a.route_id,a.status,p.label,p.path,s.step_id,s.title,
-            r.passed,r.submit_count,r.wrong_count,r.hint_used,r.last_submitted_at
-            FROM student_practice_attempts a JOIN practice_step_nodes sn ON sn.problem_id=a.problem_id AND sn.route_id=a.route_id
-            JOIN practice_steps s ON s.problem_id=sn.problem_id AND s.route_id=sn.route_id AND s.step_id=sn.step_id
-            JOIN student_step_results r ON r.attempt_id=a.id AND r.step_id=s.step_id
-            JOIN practice_problems p ON p.id=a.problem_id WHERE a.user_id=:u AND sn.node_id=:n
-            ORDER BY r.last_submitted_at DESC,a.id DESC LIMIT 50"""),
-            {"u": UUID(user["id"]), "n": node_id},
-        ).mappings()
-        return {"evidence": [dict(r) for r in rows]}
+        return practice.evidence(c, UUID(user['id']), node_id, entry)
 
 
 class ShownReference(BaseModel):
@@ -136,10 +142,13 @@ class ShownReference(BaseModel):
     id: UUID
     step_id: str = Field(max_length=100)
     node_id: str = Field(max_length=100)
+    ref: str | None = Field(default=None, max_length=200)
+    resource_id: str | None = Field(default=None, max_length=100)
 
 
 @router.post("/practice/{attempt_id}/references")
 def reference(attempt_id: UUID, body: ShownReference, user: User, auth: Auth):
     return practice.shown_reference(
-        auth.db, UUID(user["id"]), attempt_id, body.id, body.step_id, body.node_id
+        auth.db, UUID(user["id"]), attempt_id, body.id, body.step_id, body.node_id,
+        body.ref, body.resource_id,
     )

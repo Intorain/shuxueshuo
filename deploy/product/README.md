@@ -30,6 +30,35 @@ macOS 默认数据目录为 `$HOME/Library/Application Support/shuxueshuo/local`
 `postgres/` 是这个实例的 PGDATA，由 `pg_ctl` 管理；不会接管 Homebrew 默认集群。
 端口被占用、PGDATA 不完整或不是 PostgreSQL 17 时退出，不删除或重新初始化已有数据。
 
+## 新公共知识图谱与学习数据（阶段 3）
+
+当前学习结构为 `0012_drill_updated_at`。管理镜像从新图谱、专题关联和服务端小题原稿导入，
+不读取旧图谱或生成的 HTML；API 账号只能读取公共内容表。日常命令不会清理学习记录：
+
+```bash
+./deploy/product/manage.sh --mode local check-learning
+./deploy/product/manage.sh --mode local publish-learning
+./deploy/product/manage.sh --mode local reassess-learning
+```
+
+`check-learning` 只校验并报告版本与数量；`publish-learning` 事务发布，重复执行不会复制数据；
+`reassess-learning` 从已完成的五题轮次重建能力状态。发布会关闭关联或题池变化影响的未完成轮次，
+保留已答证据与已有状态。网页产物也应由同份原稿构建，内容版本不一致时客户端停止新建记录。
+
+已有 `0010` 学习内容的实例不能直接升级后继续写旧关联。仅本地提供一次性重建命令，执行前需停止网站进程：
+
+```bash
+./deploy/product/manage.sh --mode local rebuild-learning
+```
+
+命令先校验、报告清理范围、停写和备份，再在同一事务中清理旧学习记录、升级结构并发布新内容。
+用户、登录、其他产品数据及无关题目的学习标记保留；失败事务回滚，维护状态保留供诊断。
+此命令拒绝服务器和容器环境，也拒绝重复用于已升级的实例。服务器的首次切换安排在阶段 4。
+
+固定本地联调使用 `127.0.0.1:8779` 和默认数据目录、数据库端口 `5432`。题页参数
+`?knowledge=next` 为无记录预览，`?knowledge=next&learning=1` 为登录联调；节点详情页使用
+`?learning=1`。完整字段、验收及维护说明见 [阶段 3 文档](../../docs/public-knowledge-graph-stage3.md)。
+
 ## 服务器 Docker 发布
 
 服务器预装 Docker/Compose，不要求 uv/Python。构建机需要 Docker buildx、Python 3；更新依赖锁时使用 uv。
@@ -48,6 +77,7 @@ P2 发布包额外包含固定平台的 RabbitMQ 4.3.2 与 `Dockerfile.app` 构�
 ```
 
 发布包包含 `images.tar`、镜像哈希、版本清单及对应版本 `scripts/`。
+清单中的 Alembic revision 从同份打包源码解析，不使用固定版本号。
 将完整发布包传到服务器，通过包内脚本执行；清单与校验文件应随受信任交付渠道传输，校验和不替代发布来源认证。
 
 ```bash
@@ -260,8 +290,9 @@ RELEASE=$(cat /srv/shuxueshuo/config/release-path)
 `0008_practice_identity` 迁移题目别名，`0009_learning_graph` 增加公共内容和学生练习表。
 `install`、`deploy` 在迁移后自动执行内容校验与导入；手动 `migrate` 后需执行同一版本的
 `publish-learning`。导入器核对题页、教师 JSON 与专题映射，失败停止发布；应用账号不能编辑公共内容。
-管理镜像只包含导出脚本 `tools/export-knowledge-text.mjs`、`site/data/knowledge/`、
-`site/assets/explain/` 和 `site/1/`、`site/2/` 题页；构建时用镜像内的 Node.js/Python 执行完整内容校验。
+阶段 3 使用 `tools/export-public-knowledge.mjs` 及共享校验模块，读取 `site/data/knowledge-next/`、
+服务端 `drills-next/`、教师契约、`site/assets/explain/` 和 `site/1/`、`site/2/` 题页。
+管理镜像按需复制这些输入，构建时用镜像内的 Node.js/Python 执行完整内容校验，不依赖旧图谱或生成页面。
 新增专题目录时须同步增加管理 Dockerfile 及 dockerignore 的输入范围；漏项会使构建校验失败。
 API/Worker 镜像保留页面生成所需的 `site/assets/`，排除仅供主站展示的 `xiaohongshu/` 图片，
 不包含整套公共题页。主站仍由宿主机 Nginx 读取仓库的 `site/`。
@@ -276,8 +307,8 @@ API/Worker 镜像保留页面生成所需的 `site/assets/`，排除仅供主站
 | 题目、路线、步骤、教师 JSON 或后端逻辑 | 更新管理/API 镜像及相应静态文件，导入配套内容；表结构变化按 `deploy` 执行迁移 |
 | Worker 内嵌的题页生成 JS/CSS | 若要新生成的产物也使用新资源，须更新 API/Worker 镜像 |
 
-这不新增常驻数据库服务。首次切换必须清除旧公开小题 JSON，详见
-[个人知识图谱六阶段实现与验收](../../docs/student-knowledge-graph-implementation.md)。
+这不新增常驻数据库服务。`0010` 已有内容的本地首次替换使用上文的 `rebuild-learning`；
+服务器首次替换与正式入口切换留到阶段 4，参见 [阶段 3 交接](../../docs/public-knowledge-graph-stage3.md)。
 
 镜像验收（独立临时 PostgreSQL 容器，不使用宿主机数据库）：
 
@@ -293,6 +324,6 @@ PRODUCT_TEST_APP_IMAGE=shuxueshuo-product-app:learning-check \
 uv run pytest tests/product/test_learning_image.py -q
 ```
 
-验收会在只读、非 root 管理容器中执行 `install`、两次 `publish-learning`、`doctor`，比对图解导出内容，
+验收会在只读、非 root 管理容器中执行 `install`、两次 `publish-learning`、`doctor`，比对结构化导出内容，
 并用 API/Worker 镜像实际编译独立题页；结束后删除本轮专用容器与数据卷。这里允许未提交工作树用于本地验收，
 不生成正式发布包；正式交付仍使用要求干净提交的 `build-release.sh`。

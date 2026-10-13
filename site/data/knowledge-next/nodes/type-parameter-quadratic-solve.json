@@ -1,0 +1,65 @@
+{
+  "id": "type-parameter-quadratic-solve",
+  "kind": "problem_type",
+  "label": "含参数的一元二次不等式求解问题",
+  "summary": "二次不等式的系数里有参数，按参数的不同情况分别写出 x 的解集。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "sample": "解关于 $x$ 的不等式 $x^2-5ax-6a^2>0$，其中 $a\\ne0$。",
+  "features": [
+    {
+      "cue": "要解的是关于 $x$ 的二次不等式，但系数里还有另一个字母（参数）。",
+      "example": "$x^2-5ax-6a^2>0$ 里有参数 $a$。"
+    },
+    {
+      "cue": "要求的是 $x$ 的解集，答案按参数的不同取值分别写。",
+      "example": "$a>0$ 时解为 $x<-a$ 或 $x>6a$；$a<0$ 时解为 $x<6a$ 或 $x>-a$。"
+    },
+    {
+      "cue": "参数会影响二次项系数是不是 $0$、开口方向、有没有实根，或两根谁大谁小；两根大小始终确定时就不用分类。",
+      "example": "两根是 $6a$ 和 $-a$，$a$ 的正负决定哪个根大，所以要分 $a>0$、$a<0$ 两种情况。"
+    }
+  ],
+  "confuse": [
+    {
+      "text": "系数全是具体的数，没有参数",
+      "ref": "type-quadratic-solve"
+    },
+    {
+      "text": "不等式要对所有 $x$ 都成立，求的是参数的范围",
+      "ref": "type-quantified-quadratic"
+    },
+    {
+      "text": "已知解集，反过来求参数",
+      "ref": "type-solution-parameters"
+    }
+  ],
+  "knowledge": [
+    "quadratic-inequality",
+    "quadratic-equation",
+    "quadratic-function-properties"
+  ],
+  "methods": [
+    "method-parameter-quadratic-cases"
+  ],
+  "rules": [],
+  "examples": [
+    {
+      "title": "参数影响根的次序",
+      "prompt": "解 $x^2-5ax-6a^2>0$，其中 $a\\ne0$。",
+      "solution": [
+        "分解为 $(x-6a)(x+a)>0$，两根是 $6a,-a$。",
+        "$a>0$ 时 $-a<6a$，解为 $x<-a$ 或 $x>6a$。",
+        "$a<0$ 时 $6a<-a$，解为 $x<6a$ 或 $x>-a$。原题排除了 $a=0$。"
+      ],
+      "source": "补充练习第 1 页第 4(3) 题"
+    },
+    {
+      "title": "不必分类的情况",
+      "prompt": "解 $x^2-(2m+1)x+m^2+m<0$。",
+      "solution": [
+        "分解为 $(x-m)(x-m-1)<0$，两根始终满足 $m<m+1$，可统一写成 $m<x<m+1$。"
+      ],
+      "source": "补充练习第 2 页第 4(3) 题"
+    }
+  ]
+}

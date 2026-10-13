@@ -1,5 +1,33 @@
 /* Changing the main variable: the letter with the given range becomes the variable, usually linear. */
+const figure = tag => `<div class="method-figure">
+      <svg class="method-graph" viewBox="0 0 280 150" role="img" aria-label="${tag}，x 等于 0 时 f(m) 等于 m 减 6 在 m 属于 1 到 3 上两端都在横轴下方；x 等于 2 时 f(m) 等于 3m 减 6 右端在横轴上方">
+        <rect class="g-band" x="90" y="4" width="100" height="142" rx="3"/>
+        <line class="g-axis" x1="20" y1="60" x2="264" y2="60"/>
+        <line class="g-axis" x1="40" y1="4" x2="40" y2="146"/>
+        <text class="g-math" x="256" y="54">m</text>
+        <text class="g-text" x="90" y="54" text-anchor="middle">1</text>
+        <text class="g-text" x="190" y="54" text-anchor="middle">3</text>
+        <line class="g-faint" x1="65" y1="131.5" x2="210" y2="93.8"/>
+        <line class="g-curve" x1="90" y1="125" x2="190" y2="99"/>
+        <circle class="g-dot" cx="90" cy="125" r="4"/>
+        <circle class="g-dot" cx="190" cy="99" r="4"/>
+        <line class="g-alt" x1="65" y1="118.5" x2="210" y2="5.4"/>
+        <circle class="g-dot-alt" cx="90" cy="99" r="3.6"/>
+        <circle class="g-dot-bad" cx="190" cy="21" r="4.4"/>
+        <text class="g-text ok" x="196" y="128">x = 0 ✓</text>
+        <text class="g-text bad" x="200" y="30">x = 2 ✗</text>
+      </svg>
+      <p class="method-graph-caption">${tag}：<span class="nowrap"><var>x</var> = 0</span> 时 <span class="nowrap"><var>f</var>(<var>m</var>) = <var>m</var> − 6</span>，两端都在横轴下方；<span class="nowrap"><var>x</var> = 2</span> 时 <span class="nowrap"><var>f</var>(<var>m</var>) = 3<var>m</var> − 6</span>，右端跑到上方</p>
+      <ul class="method-cases">
+        <li><span class="method-case-tag">斜率恒正／恒负</span><span class="method-case-arrow" aria-hidden="true">→</span><span>最值在确定的一端</span></li>
+        <li><span class="method-case-tag">斜率符号不定</span><span class="method-case-arrow" aria-hidden="true">→</span><span>两端都要看</span></li>
+      </ul>
+      <p class="method-pill">一次函数在区间上恒 &lt; 0 ⇔ 两个端点值都 &lt; 0</p>
+    </div>`;
+
 export default {
+  figure: () => figure('例'),
+
   render: () => `
     <p class="method-core"><span class="method-tag">核心</span><span>对哪个字母恒成立，就把它当自变量（主元）；另一个字母当常数，常常变成一次函数，只看两端。</span></p>
     <section class="method-judge" aria-labelledby="method-variable-judge">
@@ -20,31 +48,7 @@ export default {
         <li><span class="method-else-tag">不满足</span><span>恒成立针对的就是 <var>x</var></span><span aria-hidden="true">→</span><button class="method-switch" type="button" data-explain-open="method-discriminant"></button><button class="method-switch" type="button" data-explain-open="method-interval-extremum"></button><button class="method-switch" type="button" data-explain-open="method-separation"></button></li>
       </ul>
     </section>
-    <div class="method-figure">
-      <svg class="method-graph" viewBox="0 0 280 150" role="img" aria-label="第 08 题，x 等于 0 时 f(m) 等于 m 减 6 在 m 属于 1 到 3 上两端都在横轴下方；x 等于 2 时 f(m) 等于 3m 减 6 右端在横轴上方">
-        <rect class="g-band" x="90" y="4" width="100" height="142" rx="3"/>
-        <line class="g-axis" x1="20" y1="60" x2="264" y2="60"/>
-        <line class="g-axis" x1="40" y1="4" x2="40" y2="146"/>
-        <text class="g-math" x="256" y="54">m</text>
-        <text class="g-text" x="90" y="54" text-anchor="middle">1</text>
-        <text class="g-text" x="190" y="54" text-anchor="middle">3</text>
-        <line class="g-faint" x1="65" y1="131.5" x2="210" y2="93.8"/>
-        <line class="g-curve" x1="90" y1="125" x2="190" y2="99"/>
-        <circle class="g-dot" cx="90" cy="125" r="4"/>
-        <circle class="g-dot" cx="190" cy="99" r="4"/>
-        <line class="g-alt" x1="65" y1="118.5" x2="210" y2="5.4"/>
-        <circle class="g-dot-alt" cx="90" cy="99" r="3.6"/>
-        <circle class="g-dot-bad" cx="190" cy="21" r="4.4"/>
-        <text class="g-text ok" x="196" y="128">x = 0 ✓</text>
-        <text class="g-text bad" x="200" y="30">x = 2 ✗</text>
-      </svg>
-      <p class="method-graph-caption">第 08 题：<span class="nowrap"><var>x</var> = 0</span> 时 <span class="nowrap"><var>f</var>(<var>m</var>) = <var>m</var> − 6</span>，两端都在横轴下方；<span class="nowrap"><var>x</var> = 2</span> 时 <span class="nowrap"><var>f</var>(<var>m</var>) = 3<var>m</var> − 6</span>，右端跑到上方</p>
-      <ul class="method-cases">
-        <li><span class="method-case-tag">斜率恒正／恒负</span><span class="method-case-arrow" aria-hidden="true">→</span><span>最值在确定的一端</span></li>
-        <li><span class="method-case-tag">斜率符号不定</span><span class="method-case-arrow" aria-hidden="true">→</span><span>两端都要看</span></li>
-      </ul>
-      <p class="method-pill">一次函数在区间上恒 &lt; 0 ⇔ 两个端点值都 &lt; 0</p>
-    </div>
+    ${figure('第 08 题')}
     <ol class="method-steps" aria-label="解题三步">
       <li><span class="method-step-no" aria-hidden="true">1</span><strong>定主元，整理</strong><span>写成 f(主元) = (…)·主元 + (…)</span></li>
       <li><span class="method-step-no" aria-hidden="true">2</span><strong>看斜率定端点</strong><span>恒正、恒负看一端，不定看两端</span></li>

@@ -56,13 +56,7 @@ function cell(row, column) {
   </figure>`;
 }
 
-export default {
-  stylesheet: new URL('quadratic-function-properties.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="qp-core" data-math-text>二次函数 $y=ax^2+bx+c\\ (a\\ne0)$：$a$ 的符号定开口，$\\Delta=b^2-4ac$ 定与横轴有几个公共点。两者合起来，就知道整条图像在横轴的哪一边。</p>
-    ${tip?.note ? `<p class="qp-problem"><span class="qp-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="qp-explorer">
+const explorer = () => `<div class="qp-explorer">
       <p class="qp-ask">选一个要求，看哪些图像满足：</p>
       <div class="qp-targets" role="group" aria-label="对任意实数 x 的要求">
         ${Object.entries(TARGETS).map(([key, {label}]) => `<button type="button" data-qp-target="${key}" aria-pressed="false"><span data-math-text>${label}</span></button>`).join('')}
@@ -73,7 +67,17 @@ export default {
       </div>
       ${Object.entries(TARGETS).map(([key, {condition}]) => `<p class="qp-condition" data-qp-condition="${key}" hidden><span class="qp-tag">条件</span><span data-math-text>${condition}</span></p>`).join('')}
       <p class="qp-small" data-math-text>$\\Delta&gt;0$ 的图像穿过横轴，有正有负，四种要求都不满足。</p>
-    </div>
+    </div>`;
+
+export default {
+  stylesheet: new URL('quadratic-function-properties.css?v=1', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="qp-core" data-math-text>二次函数 $y=ax^2+bx+c\\ (a\\ne0)$：$a$ 的符号定开口，$\\Delta=b^2-4ac$ 定与横轴有几个公共点。两者合起来，就知道整条图像在横轴的哪一边。</p>
+    ${tip?.note ? `<p class="qp-problem"><span class="qp-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="qp-notes">
       <section class="qp-note">
         <h3>开口：只看二次项系数的符号</h3>

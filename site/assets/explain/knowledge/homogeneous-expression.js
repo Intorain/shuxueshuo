@@ -2,10 +2,11 @@
 import {escapeHtml as escape, problemNote} from '../shared/html.js?v=1';
 
 const K = {min: 0.5, max: 3, step: 0.1, value: 1};
+const ONE_OVER_K = '<span class="he-frac"><span>1</span><span>k</span></span>';
 // Values at (x, y) = (2k, k); each row's degree decides how it reacts to k.
 const ROWS = [
   {expr: '$x+5y$', degree: '一次', value: k => 7 * k, scale: '变成 k 倍'},
-  {expr: '$\\frac5x+\\frac4y$', degree: '负一次', value: k => 6.5 / k, scale: '变成 1/k'},
+  {expr: '$\\frac5x+\\frac4y$', degree: '负一次', value: k => 6.5 / k, scale: `变成 ${ONE_OVER_K}`},
   {expr: '$\\frac{25y}x+\\frac{4x}y$', degree: '零次', value: () => 20.5, scale: '不变'},
 ];
 const MAX = 21;
@@ -21,13 +22,7 @@ function grid() {
   </table>`;
 }
 
-export default {
-  stylesheet: new URL('homogeneous-expression.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="he-core" data-math-text>一项的次数是各字母指数之和，数字系数不算。各项次数都相同的式子叫齐次式；相乘时次数相加，所以负一次式乘一次式得到零次式，零次齐次式的值只与 $x$、$y$ 的比值有关。</p>
-    ${tip?.note ? `<p class="he-problem"><span class="he-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <ul class="he-terms" aria-label="数次数的例子">
+const explorer = () => `<ul class="he-terms" aria-label="数次数的例子">
       ${TERMS.map(([term, degree]) => `<li><span data-math-text>${term}</span><span class="he-degree" data-math-text>${degree} 次</span></li>`).join('')}
     </ul>
     ${grid()}
@@ -43,8 +38,18 @@ export default {
           <span class="he-value" data-he-value="${i}"></span>
         </div>`).join('')}
       </div>
-      <p class="he-legend">x、y 同时放大 k 倍：一次式变成 k 倍，负一次式变成 1/k，零次式不变。</p>
-    </div>
+      <p class="he-legend">x、y 同时放大 k 倍：一次式变成 k 倍，负一次式变成 ${ONE_OVER_K}，零次式不变。</p>
+    </div>`;
+
+export default {
+  stylesheet: new URL('homogeneous-expression.css?v=2', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="he-core" data-math-text>一项的次数是各字母指数之和，数字系数不算。各项次数都相同的式子叫齐次式；相乘时次数相加，所以负一次式乘一次式得到零次式，零次齐次式的值只与 $x$、$y$ 的比值有关。</p>
+    ${tip?.note ? `<p class="he-problem"><span class="he-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="he-notes">
       <section class="he-note">
         <h3>各项次数不同：只给缺的那部分乘</h3>
@@ -71,7 +76,7 @@ export default {
       ROWS.forEach((row, i) => {
         const value = row.value(k);
         root.querySelector(`[data-he-bar="${i}"]`).style.width = `${Math.min(100, value / MAX * 100)}%`;
-        root.querySelector(`[data-he-value="${i}"]`).textContent = `${value.toFixed(2)}（${row.scale}）`;
+        root.querySelector(`[data-he-value="${i}"]`).innerHTML = `${value.toFixed(2)}（${row.scale}）`;
       });
     };
     slider.addEventListener('input', draw);

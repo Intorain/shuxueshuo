@@ -1,0 +1,56 @@
+{
+  "id": "type-solution-parameters",
+  "kind": "problem_type",
+  "label": "由一元二次不等式的解集求参数",
+  "summary": "已知二次不等式的解集，反过来求式子里的系数或参数。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "sample": "已知不等式 $x^2+ax+b<0$ 的解集是 $(1,2)$，求 $a,b$。",
+  "features": [
+    {
+      "cue": "题目直接给出了不等式的解集。",
+      "example": "「解集是 $(1,2)$」。"
+    },
+    {
+      "cue": "不等式里有待求的系数或参数，要求的就是它们。",
+      "example": "求 $x^2+ax+b<0$ 里的 $a,b$。"
+    },
+    {
+      "cue": "解集的端点就是对应方程的根；解集在两根之间还是之外，能看出开口方向。",
+      "example": "$1,2$ 是 $x^2+ax+b=0$ 的两根；$<0$ 的解集在两根之间，说明开口向上。"
+    },
+    {
+      "cue": "求出参数后，要代回去检查解集是不是完全一样。",
+      "example": "$a=-3$，$b=2$ 时不等式是 $(x-1)(x-2)<0$，解集正是 $(1,2)$。"
+    }
+  ],
+  "confuse": [
+    {
+      "text": "反过来：给出参数，求 $x$ 的解集",
+      "ref": "type-parameter-quadratic-solve"
+    },
+    {
+      "text": "给的是「恒成立」，不是具体的解集",
+      "ref": "type-quantified-quadratic"
+    }
+  ],
+  "knowledge": [
+    "quadratic-inequality",
+    "quadratic-equation",
+    "quadratic-function-properties"
+  ],
+  "methods": [
+    "method-solution-inverse"
+  ],
+  "rules": [],
+  "examples": [
+    {
+      "title": "反推后再验证",
+      "prompt": "$x^2+ax+b<0$ 的解集为 $(1,2)$，求 $a,b$。",
+      "solution": [
+        "根是 $1,2$，开口向上；根与系数关系给出 $a=-3,b=2$。",
+        "代回为 $(x-1)(x-2)<0$，解集恰为 $(1,2)$。"
+      ],
+      "source": "补充练习第 1 页第 1 题"
+    }
+  ]
+}

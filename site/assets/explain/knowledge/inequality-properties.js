@@ -1,5 +1,6 @@
 /* Properties of inequalities: what one operation on both sides does to the order of two numbers. Purely local. */
 import {escapeHtml as escape, problemNote} from '../shared/html.js?v=1';
+import {fracLabel} from '../shared/svg-frac.js?v=2';
 
 // Each operation maps two numbers on the upper line to the lower line; crossing connectors mean the order flipped.
 const OPS = [
@@ -9,7 +10,7 @@ const OPS = [
     example: '$1&lt;3$，两边乘 $2$', verdict: 'keep', rule: '$a&lt;b,\\ c&gt;0\\Rightarrow ac&lt;bc$', why: '从原点向外拉伸，顺序不变；除以正数也一样。'},
   {key: 'mulneg', label: '两边乘负数', domain: [-7, 4], before: [[1, 'a = 1'], [3, 'b = 3']], after: [[-2, '−2a = −2'], [-6, '−2b = −6']],
     example: '$1&lt;3$，两边乘 $-2$', verdict: 'flip', rule: '$a&lt;b,\\ c&lt;0\\Rightarrow ac&gt;bc$', why: '先翻到原点另一侧，顺序颠倒；除以负数也一样。'},
-  {key: 'recip', label: '两边取倒数', domain: [-0.5, 3.5], before: [[1, 'a = 1'], [3, 'b = 3']], after: [[1, '1/a = 1'], [1 / 3, '1/b = 1/3']],
+  {key: 'recip', label: '两边取倒数', domain: [-0.5, 3.5], before: [[1, 'a = 1'], [3, 'b = 3']], after: [[1, [['1', 'a'], ' = 1']], [1 / 3, [['1', 'b'], ' = ', ['1', '3']]]],
     example: '$1&lt;3$，两边取倒数', verdict: 'flip', rule: '$a,b$ 同号且 $a&lt;b\\Rightarrow \\frac1a&gt;\\frac1b$', why: '两边同号才变向；一正一负时不变，如 $-1&lt;2$，$-1&lt;\\frac12$。'},
   {key: 'square', label: '两边平方', domain: [-4, 10], before: [[-3, 'a = −3'], [1, 'b = 1']], after: [[9, 'a² = 9'], [1, 'b² = 1']],
     example: '$-3&lt;1$，两边平方', verdict: 'unsure', rule: '$0\\le a&lt;b\\Rightarrow a^2&lt;b^2$', why: '两边都非负才能直接平方；这里 $-3&lt;1$，平方后 $9&gt;1$。'},
@@ -28,11 +29,14 @@ function picture(op) {
     const order = [...points].sort((p, q) => p[0] - q[0]);
     return points.map(([x, text], i) => {
       const left = order[0][0] === x;
-      return `<circle cx="${at(x)}" cy="${y}" r="5.5" class="ip-dot p${i}"/><text x="${at(x) + (left ? -7 : 7)}" y="${y + dy}" text-anchor="${left ? 'end' : 'start'}" class="ip-label p${i}">${text}</text>`;
+      const label = Array.isArray(text)
+        ? fracLabel(at(x) + (left ? -7 : 7), y + dy, left ? 'end' : 'start', text, {cls: `ip-label p${i}`})
+        : `<text x="${at(x) + (left ? -7 : 7)}" y="${y + dy}" text-anchor="${left ? 'end' : 'start'}" class="ip-label p${i}">${text}</text>`;
+      return `<circle cx="${at(x)}" cy="${y}" r="5.5" class="ip-dot p${i}"/>${label}`;
     }).join('');
   };
   const links = op.before.map(([x], i) => `<path d="M${at(x)} ${LINES.top + 6}L${at(op.after[i][0])} ${LINES.bottom - 6}" class="ip-connector p${i}"/>`).join('');
-  return `<svg class="ip-graph" viewBox="0 0 340 132" role="img" aria-label="${op.label}：上面是原来的两个数，下面是运算后的两个数">
+  return `<svg class="ip-graph" viewBox="0 0 340 138" role="img" aria-label="${op.label}：上面是原来的两个数，下面是运算后的两个数">
     <text x="8" y="${LINES.top + 4}" class="ip-row">原来</text>
     <text x="8" y="${LINES.bottom + 4}" class="ip-row">之后</text>
     ${axis(LINES.top)}${axis(LINES.bottom)}
@@ -42,13 +46,7 @@ function picture(op) {
   </svg>`;
 }
 
-export default {
-  stylesheet: new URL('inequality-properties.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="ip-core">不等式两边做同一种运算，改变方向的只有两种：乘（除以）同一个负数，两边同号时取倒数。平方、相减、相除都不能直接做。</p>
-    ${tip?.note ? `<p class="ip-problem"><span class="ip-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="ip-explorer">
+const explorer = () => `<div class="ip-explorer">
       <p class="ip-ask">选一种运算，看两个数的先后顺序变不变：</p>
       <div class="ip-ops" role="group" aria-label="运算">
         ${OPS.map((op, i) => `<button type="button" data-ip-op="${op.key}" aria-pressed="${i === 0}">${op.label}</button>`).join('')}
@@ -59,7 +57,17 @@ export default {
         <p class="ip-rule"><span class="ip-tag">规则</span><span data-math-text>${op.rule}</span><small data-math-text>${op.why}</small></p>
       </section>`).join('')}
       <p class="ip-legend">连线交叉，说明两个数的先后颠倒了。</p>
-    </div>
+    </div>`;
+
+export default {
+  stylesheet: new URL('inequality-properties.css?v=1', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="ip-core">不等式两边做同一种运算，改变方向的只有两种：乘（除以）同一个负数，两边同号时取倒数。平方、相减、相除都不能直接做。</p>
+    ${tip?.note ? `<p class="ip-problem"><span class="ip-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="ip-notes">
       <section class="ip-note">
         <h3>除以含字母的式子：先看它的符号</h3>

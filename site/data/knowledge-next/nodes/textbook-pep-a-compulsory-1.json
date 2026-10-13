@@ -1,0 +1,21 @@
+{
+  "id": "textbook-pep-a-compulsory-1",
+  "kind": "textbook",
+  "label": "人教 A 版必修第一册",
+  "summary": "本批公共图谱完整覆盖第二章，并纳入两个专题和相关补充练习；第一、三章目前只登记被第二章引用的知识点。同一数学对象跨节、跨章共享。",
+  "source": "普通高中教科书数学 A 版必修第一册",
+  "members": [
+    {
+      "ref": "chapter-sets-logic",
+      "relation": "contains"
+    },
+    {
+      "ref": "chapter-quadratic-equations-inequalities",
+      "relation": "contains"
+    },
+    {
+      "ref": "chapter-functions",
+      "relation": "contains"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "chapter-sets-logic",
+  "kind": "chapter",
+  "label": "第一章 集合与常用逻辑用语",
+  "summary": "本章尚未完整录入；目前只登记 1.5 中被第二章引用的全称量词与存在量词。",
+  "source": "教材第一章",
+  "members": [
+    {
+      "ref": "section-1-5",
+      "relation": "contains"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "type-rational-inequality",
+  "kind": "problem_type",
+  "label": "一元分式不等式求解问题",
+  "summary": "解分母含 x 的不等式，写出全部解，别忘了分母不能为 0。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "sample": "解不等式 $\\frac{2-x}{3x+1}\\ge1$。",
+  "features": [
+    {
+      "cue": "不等式里有分式，分母里含 $x$。",
+      "example": "分母 $3x+1$ 含 $x$。"
+    },
+    {
+      "cue": "移项通分后，能变成一个分式和 $0$ 比较。",
+      "example": "$\\frac{2-x}{3x+1}-1=\\frac{1-4x}{3x+1}\\ge0$。"
+    },
+    {
+      "cue": "要求的是 $x$ 的全部解，最后要去掉使分母为 $0$ 的值。",
+      "example": "$x=-\\frac13$ 时分母为 $0$，所以答案是 $\\left(-\\frac13,\\frac14\\right]$，左端点不要。"
+    }
+  ],
+  "confuse": [
+    {
+      "text": "分母是常数、不含 $x$，其实是普通的二次不等式",
+      "ref": "type-quadratic-solve"
+    }
+  ],
+  "knowledge": [
+    "inequality-properties",
+    "quadratic-inequality"
+  ],
+  "methods": [
+    "method-rational-inequality"
+  ],
+  "rules": [],
+  "examples": [
+    {
+      "title": "一端包含、一端排除",
+      "prompt": "解 $\\frac{2-x}{3x+1}\\ge1$。",
+      "solution": [
+        "定义域要求 $x\\ne-\\frac{1}{3}$；移项通分为 $\\frac{1-4x}{3x+1}\\ge0$。",
+        "同乘分母平方得到 $(1-4x)(3x+1)\\ge0$，其解为 $\\left[-\\frac{1}{3},\\frac{1}{4}\\right]$。",
+        "排除原分母零点，最终为 $\\left(-\\frac{1}{3},\\frac{1}{4}\\right]$。"
+      ],
+      "source": "补充练习第 1 页第 4(2) 题"
+    }
+  ]
+}

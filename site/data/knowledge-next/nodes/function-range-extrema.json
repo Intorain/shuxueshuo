@@ -1,0 +1,68 @@
+{
+  "id": "function-range-extrema",
+  "kind": "knowledge",
+  "label": "函数的值域与最值",
+  "summary": "值域是所有实际函数值的集合；最大值、最小值必须属于这个集合。",
+  "source": "人教 A 版必修第一册 3.2；第二章区间最值与恒成立问题引用",
+  "entries": [
+    {
+      "id": "range",
+      "title": "值域",
+      "type": "定义",
+      "body": [
+        "$f(D)=\\{f(x)\\mid x\\in D\\}$，保留原定义域和所有限制。"
+      ],
+      "conditions": "$D\\ne\\varnothing$。"
+    },
+    {
+      "id": "extrema",
+      "title": "最大值与最小值",
+      "type": "性质",
+      "body": [
+        "若某个实际函数值 $M$ 不小于其余函数值，$M$ 是最大值；最小值类似。仅有上界或下界不能保证最值存在。"
+      ],
+      "conditions": "极值点的局部概念不等同于这里的全局最值。"
+    },
+    {
+      "id": "attainability",
+      "title": "边界可达性",
+      "type": "性质",
+      "body": [
+        "$f(x)=x$ 在 $(0,1)$ 上值域为 $(0,1)$，边界 $0,1$ 都取不到；在 $[0,1]$ 上则分别是最小值和最大值。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "quantified",
+      "title": "量词与值域条件",
+      "type": "性质",
+      "body": [
+        "$\\forall x\\in D,f(x)\\le c$ 等价于 $f(D)\\subseteq(-\\infty,c]$；$\\exists x\\in D,f(x)\\le c$ 等价于 $f(D)\\cap(-\\infty,c]\\ne\\varnothing$。其他不等号同理。"
+      ],
+      "conditions": "$D\\ne\\varnothing$，$c$ 与量词变量无关。"
+    },
+    {
+      "id": "extremum-conditions",
+      "title": "最值存在时的转换",
+      "type": "性质",
+      "body": [
+        "对应最值存在时：恒 $f\\le c$ 用 $\\max f\\le c$；存在 $f\\le c$ 用 $\\min f\\le c$；恒 $f\\ge c$ 用 $\\min f\\ge c$；存在 $f\\ge c$ 用 $\\max f\\ge c$。严格号同样转换，但不能把未取到的边界直接当作最值。"
+      ],
+      "conditions": "可行集合非空，且所用的对应全局最值存在。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "没有最大值也能求参",
+      "prompt": "$x\\in(0,1)$，使 $x<c$ 恒成立的 $c$ 是多少？",
+      "solution": [
+        "$c\\ge1$。$c=1$ 时每个 $x$ 仍严格小于 $c$；这里不能写成不存在的“最大值 $<c$”。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "resources": [
+    "quantified-horizontal-line",
+    "attainability-boundary"
+  ]
+}

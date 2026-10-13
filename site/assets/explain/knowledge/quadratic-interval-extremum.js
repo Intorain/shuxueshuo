@@ -76,13 +76,7 @@ function figure() {
   </svg>`;
 }
 
-export default {
-  stylesheet: new URL('quadratic-interval-extremum.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="qi-core">开口向上时，最小值看顶点在不在区间里：对称轴和两个端点比；最大值看哪个端点离对称轴更远：对称轴和区间中点比。开口向下时两者对调。</p>
-    ${tip?.note ? `<p class="qi-problem"><span class="qi-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="qi-explorer">
+const explorer = () => `<div class="qi-explorer">
       <div class="qi-switches">
         <div class="qi-switch" role="group" aria-label="开口方向">
           <button type="button" data-qi-up="1" aria-pressed="true">开口向上</button>
@@ -99,7 +93,17 @@ export default {
         <p class="qi-row low"><span class="qi-tag low" data-qi-title="low"></span><b data-qi-at="low"></b><small data-qi-why="low"></small></p>
         <p class="qi-row high"><span class="qi-tag high" data-qi-title="high"></span><b data-qi-at="high"></b><small data-qi-why="high"></small></p>
       </div>
-    </div>
+    </div>`;
+
+export default {
+  stylesheet: new URL('quadratic-interval-extremum.css?v=1', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="qi-core">开口向上时，最小值看顶点在不在区间里：对称轴和两个端点比；最大值看哪个端点离对称轴更远：对称轴和区间中点比。开口向下时两者对调。</p>
+    ${tip?.note ? `<p class="qi-problem"><span class="qi-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <table class="qi-table">
       <caption>和谁比较</caption>
       <thead><tr><th scope="col"><span class="qi-hidden">开口</span></th><th scope="col">找顶点那一侧</th><th scope="col">找离得远的端点</th></tr></thead>

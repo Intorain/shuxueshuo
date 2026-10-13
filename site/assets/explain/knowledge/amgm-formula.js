@@ -3,6 +3,7 @@ import {escapeHtml as escape, problemNote} from '../shared/html.js?v=1';
 
 // Diameter a + b = 8 drawn 280 px wide, so one unit is 35 px.
 const SUM = 8, UNIT = 35, LEFT = 30, BASE = 168;
+const MEAN = '<span class="ag-frac"><span>a+b</span><span>2</span></span>';
 const A = {min: 0.5, max: 7.5, step: 0.1, value: 2};
 
 // A finished step's tip.case opens the matching tab.
@@ -27,7 +28,7 @@ const TABS = [
     link: 'reciprocal-sum-function'},
 ];
 
-function figure() {
+function graph() {
   return `<svg class="ag-graph" viewBox="0 0 340 196" role="img" aria-labelledby="ag-graph-title">
     <title id="ag-graph-title">半圆：直径分成长 a 和 b 的两段，分点处向上的半弦长 √(ab)，半径长 (a+b)/2</title>
     <path d="M${LEFT} ${BASE}A${SUM / 2 * UNIT} ${SUM / 2 * UNIT} 0 0 1 ${LEFT + SUM * UNIT} ${BASE}" class="ag-arc"/>
@@ -38,9 +39,9 @@ function figure() {
 
 function layer(a) {
   const b = SUM - a, x = LEFT + a * UNIT, h = Math.sqrt(a * b) * UNIT, cx = LEFT + SUM / 2 * UNIT, r = SUM / 2 * UNIT;
-  const equal = Math.abs(a - b) < 0.05;
+  const equal = Math.abs(a - b) < 0.05, fx = cx + (x < cx ? 20 : -20);
   return `<path d="M${cx} ${BASE}V${BASE - r}" class="ag-radius"/>
-    <text x="${cx + (x < cx ? 6 : -6)}" y="${BASE - r / 2}" text-anchor="${x < cx ? 'start' : 'end'}" class="ag-radius-label">(a+b)/2</text>
+    <g class="ag-radius-label"><text x="${fx}" y="${BASE - r / 2 - 5}" text-anchor="middle">a+b</text><path d="M${fx - 13} ${BASE - r / 2}H${fx + 13}" class="ag-frac-bar"/><text x="${fx}" y="${BASE - r / 2 + 12}" text-anchor="middle">2</text></g>
     <path d="M${x} ${BASE}V${BASE - h}" class="ag-chord${equal ? ' equal' : ''}"/>
     <circle cx="${x}" cy="${BASE - h}" r="4.5" class="ag-top${equal ? ' equal' : ''}"/>
     <text x="${x + (x < cx ? -6 : 6)}" y="${BASE - h / 2}" text-anchor="${x < cx ? 'end' : 'start'}" class="ag-chord-label">√ab</text>
@@ -49,19 +50,24 @@ function layer(a) {
     <text x="${(x + LEFT + SUM * UNIT) / 2}" y="${BASE + 18}" text-anchor="middle" class="ag-part">b</text>`;
 }
 
+const explorer = () => `<div class="ag-explorer">
+      <p class="ag-ask">直径长 a + b = 8，拖动分点，比较半弦和半径：</p>
+      ${graph()}
+      <input class="ag-slider" type="range" data-ag-slider min="${A.min}" max="${A.max}" step="${A.step}" value="${A.value}" aria-label="a 的长度">
+      <p class="ag-readout" aria-live="polite" data-ag-readout></p>
+      <p class="ag-legend">半弦总不超过半径，分点在圆心（a = b）时两者相等。</p>
+    </div>`;
+
 export default {
   stylesheet: new URL('amgm-formula.css?v=1', import.meta.url).href,
+
+  // The semicircle alone, for pages that state the formula and conditions elsewhere; mount() works on either.
+  figure: explorer,
 
   render({tip}) {
     return `<p class="ag-core" data-math-text>$a,b&gt;0$ 时，$\\sqrt{ab}\\le\\frac{a+b}2$，即 $a+b\\ge2\\sqrt{ab}$，当且仅当 $a=b$ 时取等。用之前检查三件事：一正、二定、三相等。</p>
     ${tip?.note ? `<p class="ag-problem"><span class="ag-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="ag-explorer">
-      <p class="ag-ask">直径长 a + b = 8，拖动分点，比较半弦和半径：</p>
-      ${figure()}
-      <input class="ag-slider" type="range" data-ag-slider min="${A.min}" max="${A.max}" step="${A.step}" value="${A.value}" aria-label="a 的长度">
-      <p class="ag-readout" aria-live="polite" data-ag-readout></p>
-      <p class="ag-legend">半弦总不超过半径，分点在圆心（a = b）时两者相等。</p>
-    </div>
+    ${explorer()}
     <div class="ag-tabs" role="tablist" aria-label="使用条件">
       ${TABS.map(tab => `<button type="button" role="tab" data-ag-tab="${tab.key}" aria-selected="false">${tab.label}</button>`).join('')}
     </div>
@@ -91,9 +97,9 @@ export default {
     const draw = () => {
       const a = Number(slider.value), b = SUM - a;
       root.querySelector('[data-ag-layer]').innerHTML = layer(a);
-      root.querySelector('[data-ag-readout]').textContent = Math.abs(a - b) < 0.05
-        ? 'a = b = 4：√ab = (a+b)/2 = 4，取等'
-        : `a = ${a.toFixed(1)}，b = ${b.toFixed(1)}：√ab ≈ ${Math.sqrt(a * b).toFixed(2)} < (a+b)/2 = 4`;
+      root.querySelector('[data-ag-readout]').innerHTML = Math.abs(a - b) < 0.05
+        ? `a = b = 4：√ab = ${MEAN} = 4，取等`
+        : `a = ${a.toFixed(1)}，b = ${b.toFixed(1)}：√ab ≈ ${Math.sqrt(a * b).toFixed(2)} < ${MEAN} = 4`;
     };
     slider.addEventListener('input', draw);
     draw();

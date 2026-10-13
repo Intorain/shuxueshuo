@@ -1,0 +1,115 @@
+{
+  "id": "method-separation",
+  "kind": "method",
+  "label": "分离参数法",
+  "summary": "把参数单独移到不等号一边，另一边是不含参数的函数，再用这个函数的最大值或最小值求出参数范围。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "input": "含参数的不等式要在某个范围内恒成立（或有解），并且能把参数单独移到不等号一边，例如 $x\\in[1,2]$ 时 $x^2-mx+1\\le0$ 恒成立，求 $m$。",
+  "output": "参数的取值范围，例如上面的例子得到 $m\\ge\\frac{5}{2}$。",
+  "conditions": "两边同除以含 $x$ 的式子前，先确定它的正负：是负数要变号，正负不定或会等于 $0$ 就不能直接除；最值取不到时，要单独判断等号能不能取。",
+  "steps": [
+    {
+      "id": "separate",
+      "title": "把参数单独移到一边",
+      "body": [
+        "含 $m$ 的项留在一边，其余移到另一边，再除以 $m$ 前面的式子。例如 $x^2-mx+1\\le0$ 移项得 $mx\\ge x^2+1$；$x\\in[1,2]$ 时 $x>0$，两边同除以 $x$，不等号不变：$m\\ge x+\\frac{1}{x}$。",
+        "除之前先看除数的符号：正数直接除，负数要把不等号反向，正负不定就不能直接除（见下面的错题）。"
+      ],
+      "calls": [
+        {
+          "ref": "skill-inequality-transform"
+        },
+        {
+          "ref": "skill-equality-transform"
+        }
+      ]
+    },
+    {
+      "id": "quantifier",
+      "title": "看恒成立要用最大值还是最小值",
+      "body": [
+        "把不含 $m$ 的一边记作 $g(x)=x+\\frac{1}{x}$。$m\\ge g(x)$ 对每个 $x\\in[1,2]$ 都成立，就是 $m$ 不小于 $g(x)$ 在 $[1,2]$ 上的最大值。",
+        "记法：恒成立时，$m\\ge g(x)$ 看最大值，$m\\le g(x)$ 看最小值；有解（存在某个 $x$）时反过来，$m\\ge g(x)$ 看最小值，$m\\le g(x)$ 看最大值。"
+      ],
+      "calls": [
+        {
+          "ref": "skill-quantified-range"
+        }
+      ]
+    },
+    {
+      "id": "range",
+      "title": "求另一边函数在区间上的最值",
+      "body": [
+        "按 $g(x)$ 的样子选算法：二次函数看对称轴，一次函数看两端，$x+\\frac{k}{x}$ 看转折点 $x=\\sqrt{k}$。",
+        "本例 $g(x)=x+\\frac{1}{x}$ 的转折点是 $x=1$，在 $[1,2]$ 上递增，最大值是 $g(2)=\\frac{5}{2}$，在 $x=2$ 时取到。"
+      ],
+      "calls": [
+        {
+          "ref": "quadratic-interval-extremum",
+          "when": "另一边是二次函数时"
+        },
+        {
+          "ref": "skill-linear-range",
+          "when": "另一边是一次函数或常数时"
+        },
+        {
+          "ref": "skill-reciprocal-range",
+          "when": "另一边形如 $x+\\frac{k}{x}$（$k>0$）时"
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "title": "写出参数范围，检查等号",
+      "body": [
+        "由 $m\\ge g(x)$ 恒成立得 $m\\ge\\frac{5}{2}$。验证等号：$m=\\frac{5}{2}$、$x=2$ 时 $4-5+1=0\\le0$，成立，所以等号保留。",
+        "如果移到一边的不是 $m$ 本身，而是 $m^2$、$2m-1$ 这样的式子，得到它的范围后还要再解一次关于 $m$ 的不等式。"
+      ],
+      "calls": [
+        {
+          "ref": "skill-inequality-transform"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "title": "除数符号明确",
+      "prompt": "$x\\in[1,2]$，使 $x^2-mx+1\\le0$ 恒成立，求 $m$。",
+      "solution": [
+        "$x>0$，同除 $x$ 得 $m\\ge x+\\frac{1}{x}$。",
+        "$x+\\frac{1}{x}$ 在 $[1,2]$ 上递增，最大值 $\\frac{5}{2}$ 可达。",
+        "因此 $m\\ge\\frac{5}{2}$。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "pitfalls": [
+    {
+      "id": "pitfall-negative-divisor",
+      "title": "除以负数忘记变号",
+      "wrong": "「$\\forall x<0$，$x^2+ax+2\\ge0$」为真命题，移项得 $ax\\ge-x^2-2$，两边除以 $x$ 得 $a\\ge-x-\\frac2x$；右边在 $x\\to0$ 时无上界，于是误判 $a$ 不存在。",
+      "why": "$x<0$，两边除以负数，不等号要变向。",
+      "fix": [
+        "正确分离：$a\\le-x-\\frac2x$，记 $h(x)=-x-\\frac2x$（$x<0$）。",
+        "$-x>0$，$-\\frac2x>0$，由基本不等式 $h(x)\\ge2\\sqrt{(-x)\\cdot\\left(-\\frac2x\\right)}=2\\sqrt2$，$x=-\\sqrt2$ 时取等。",
+        "$a\\le h(x)$ 恒成立 $\\Leftrightarrow$ $a\\le2\\sqrt2$。"
+      ]
+    },
+    {
+      "id": "pitfall-unsigned-divisor",
+      "title": "除数符号不定也直接除",
+      "wrong": "$kx^2+2kx-(k+2)<0$ 对一切实数 $x$ 成立，整理成 $k(x^2+2x-1)<2$，直接除以 $x^2+2x-1$ 得 $k<\\frac2{x^2+2x-1}$。",
+      "why": "$x^2+2x-1=(x+1)^2-2$ 可正、可负、可为零，除数符号不定，不等号方向无法确定，零点处还不能除。",
+      "fix": [
+        "除数符号不定时不要直接分离。本题 $x$ 取全体实数、二次项系数含参，改用判别式法：先讨论 $k=0$，再要求 $k<0$ 且 $\\Delta<0$。",
+        "合并得 $-1<k\\le0$。"
+      ],
+      "see": "method-discriminant"
+    }
+  ],
+  "resources": [
+    "separation-horizontal-line"
+  ]
+}

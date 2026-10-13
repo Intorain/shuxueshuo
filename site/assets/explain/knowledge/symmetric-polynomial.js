@@ -17,13 +17,7 @@ const RULES = [
   ['$\\frac1x+\\frac1y$', '$\\frac sp$'],
 ];
 
-export default {
-  stylesheet: new URL('symmetric-polynomial.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="sp-core" data-math-text>交换 $x$、$y$ 后不变的二元多项式叫对称多项式，它都能写成 $s=x+y$、$p=xy$ 的多项式，例如 $x^2+y^2=s^2-2p$。先交换检验，再改写。</p>
-    ${tip?.note ? `<p class="sp-problem"><span class="sp-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="sp-explorer">
+const swapper = () => `<div class="sp-explorer">
       <p class="sp-ask">选一个式子，交换 x、y，看它变不变：</p>
       <div class="sp-picks" role="group" aria-label="式子">
         ${EXPRS.map(expr => `<button type="button" data-sp-pick="${expr.key}" aria-pressed="false"><span data-math-text>${expr.label}</span></button>`).join('')}
@@ -36,12 +30,26 @@ export default {
         <p class="sp-verdict ${expr.same ? 'same' : 'changed'}">${expr.same ? '不变：是对称式' : '改变：不是对称式，先换元构造对称'}</p>
         <p class="sp-result" data-math-text>${expr.sp}</p>
       </section>`).join('')}
-    </div>
+    </div>`;
+
+const explorer = () => `${swapper()}
     <table class="sp-table">
       <caption>常用的改写</caption>
       <thead><tr><th scope="col">对称式</th><th scope="col">用 s、p 表示</th></tr></thead>
       <tbody>${RULES.map(([expr, sp]) => `<tr><td data-math-text>${expr}</td><td data-math-text>${sp}</td></tr>`).join('')}</tbody>
-    </table>
+    </table>`;
+
+export default {
+  stylesheet: new URL('symmetric-polynomial.css?v=1', import.meta.url).href,
+
+  figure: explorer,
+
+  swap: swapper,
+
+  render({tip}) {
+    return `<p class="sp-core" data-math-text>交换 $x$、$y$ 后不变的二元多项式叫对称多项式，它都能写成 $s=x+y$、$p=xy$ 的多项式，例如 $x^2+y^2=s^2-2p$。先交换检验，再改写。</p>
+    ${tip?.note ? `<p class="sp-problem"><span class="sp-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="sp-notes">
       <section class="sp-note">
         <h3>为什么都能写成 s、p</h3>

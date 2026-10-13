@@ -1,0 +1,21 @@
+{
+  "id": "chapter-quadratic-equations-inequalities",
+  "kind": "chapter",
+  "label": "第二章 一元二次函数、方程和不等式",
+  "summary": "由 2.1、2.2、2.3 三节组织知识、技能、题型与方法；本章范围由所属节汇总。",
+  "source": "教材第二章，第 37–56 页",
+  "members": [
+    {
+      "ref": "section-2-1",
+      "relation": "contains"
+    },
+    {
+      "ref": "section-2-2",
+      "relation": "contains"
+    },
+    {
+      "ref": "section-2-3",
+      "relation": "contains"
+    }
+  ]
+}

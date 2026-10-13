@@ -1,5 +1,6 @@
 /* Merging the results of a case analysis, shown as stacked number lines revealed one case at a time. Purely local. */
 import {escapeHtml as escape, problemNote} from '../shared/html.js?v=1';
+import {fracLabel} from '../shared/svg-frac.js?v=2';
 
 // Worked example: x in [0,2], x^2 - 2mx + 1 > 0 for all x, cases by where the axis x = m sits.
 // A set is a list of intervals [from, to, fromClosed, toClosed]; ±Infinity means the ray goes on.
@@ -7,11 +8,13 @@ const ALL = [[-Infinity, Infinity, false, false]];
 const CASES = [
   {name: '情况①', where: '对称轴在区间左侧', premise: [[-Infinity, 0, false, true]], premiseText: 'm≤0', solved: ALL, solvedText: '全部满足', result: [[-Infinity, 0, false, true]], resultText: 'm≤0'},
   {name: '情况②', where: '对称轴在区间里', premise: [[0, 2, false, false]], premiseText: '0&lt;m&lt;2', solved: [[-1, 1, false, false]], solvedText: '−1&lt;m&lt;1', result: [[0, 1, false, false]], resultText: '0&lt;m&lt;1'},
-  {name: '情况③', where: '对称轴在区间右侧', premise: [[2, Infinity, true, false]], premiseText: 'm≥2', solved: [[-Infinity, 1.25, false, false]], solvedText: 'm&lt;5/4', result: [], resultText: '无解'},
+  {name: '情况③', where: '对称轴在区间右侧', premise: [[2, Infinity, true, false]], premiseText: 'm≥2', solved: [[-Infinity, 1.25, false, false]], solvedText: ['m&lt;  ', ['5', '4']], result: [], resultText: '无解'},
 ];
 const UNION = {set: [[-Infinity, 1, false, false]], text: 'm&lt;1'};
 // 1 and 5/4 are close: their labels lean apart so they cannot read as "15/4".
-const TICKS = [[-1, '−1'], [0, '0'], [1, '1', 'end'], [1.25, '5/4', 'start'], [2, '2']];
+const TICKS = [[-1, '−1'], [0, '0'], [1, '1', 'end'], [1.25, ['5', '4'], 'start'], [2, '2']];
+// The scale sits low enough that the stacked 5/4 label fits above it.
+const SCALE = 30;
 const tickX = (m, anchor) => px(m) + (anchor === 'end' ? 3 : anchor === 'start' ? -3 : 0);
 const STEPS = [
   '对称轴 $x=m$ 在区间左侧、区间里、区间右侧时，最小值在不同的地方取到，所以分三种情况。',
@@ -37,14 +40,16 @@ function bar(set, y, kind) {
 function row(y, label, text, set, kind) {
   const body = set.length ? bar(set, y, kind) : `<text x="${(AXIS.left + AXIS.right) / 2}" y="${y + 4}" text-anchor="middle" class="cm-empty">空集：没有公共部分</text>`;
   return `<path d="M${AXIS.left} ${y}H${AXIS.right}" class="cm-track"/>
-    <text x="8" y="${y + 4}" class="cm-label">${label}</text><text x="92" y="${y + 4}" text-anchor="end" class="cm-value ${kind}">${text}</text>${body}`;
+    <text x="8" y="${y + 4}" class="cm-label">${label}</text>${typeof text === 'string'
+      ? `<text x="92" y="${y + 4}" text-anchor="end" class="cm-value ${kind}">${text}</text>`
+      : fracLabel(92, y + 4, 'end', text, {size: 12, cls: `cm-value ${kind}`})}${body}`;
 }
 
 // Vertical layout: the scale, one block per case, then the union. The picture grows as steps are revealed.
-const TOP = 40;
+const TOP = SCALE + 20;
 const BLOCK = 112;
 const HEIGHT = TOP + CASES.length * BLOCK + 64;
-const visibleHeight = step => step === 0 ? 32 : step > CASES.length ? HEIGHT : TOP + step * BLOCK + 4;
+const visibleHeight = step => step === 0 ? SCALE + 12 : step > CASES.length ? HEIGHT : TOP + step * BLOCK + 4;
 
 function figure() {
   const [top, block, height] = [TOP, BLOCK, HEIGHT];
@@ -60,10 +65,12 @@ function figure() {
   const y = top + CASES.length * block;
   return `<svg class="cm-graph" viewBox="0 0 360 ${height}" role="img" aria-labelledby="cm-graph-title">
     <title id="cm-graph-title">三种情况各自的前提、解出的范围和交集，最后取并集</title>
-    ${TICKS.map(([m]) => `<path d="M${px(m)} 24V${height - 8}" class="cm-guide"/>`).join('')}
-    <path d="M${AXIS.left - 6} 20H${AXIS.right + 6}" class="cm-scale"/>
-    ${TICKS.map(([m, label, anchor = 'middle']) => `<path d="M${px(m)} 16V24" class="cm-scale"/><text x="${tickX(m, anchor)}" y="12" text-anchor="${anchor}" class="cm-tick">${label}</text>`).join('')}
-    <text x="${AXIS.right + 10}" y="24" class="cm-tick m">m</text>
+    ${TICKS.map(([m]) => `<path d="M${px(m)} ${SCALE + 4}V${height - 8}" class="cm-guide"/>`).join('')}
+    <path d="M${AXIS.left - 6} ${SCALE}H${AXIS.right + 6}" class="cm-scale"/>
+    ${TICKS.map(([m, label, anchor = 'middle']) => `<path d="M${px(m)} ${SCALE - 4}V${SCALE + 4}" class="cm-scale"/>${typeof label === 'string'
+      ? `<text x="${tickX(m, anchor)}" y="${SCALE - 8}" text-anchor="${anchor}" class="cm-tick">${label}</text>`
+      : fracLabel(tickX(m, anchor), SCALE - 12, anchor, [label], {size: 12, cls: 'cm-tick'})}`).join('')}
+    <text x="${AXIS.right + 10}" y="${SCALE + 4}" class="cm-tick m">m</text>
     ${cases}
     <g class="cm-step" data-cm-step="4">
       <text x="8" y="${y + 22}" class="cm-head union">合并：三种情况取并集</text>
@@ -72,13 +79,7 @@ function figure() {
   </svg>`;
 }
 
-export default {
-  stylesheet: new URL('case-merge.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="cm-core">分类讨论分两层：每种情况内部，解出的范围要和这种情况的前提同时成立，取交集；各种情况之间满足其一即可，取并集。</p>
-    ${tip?.note ? `<p class="cm-problem"><span class="cm-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="cm-explorer">
+const explorer = () => `<div class="cm-explorer">
       <p class="cm-example" data-math-text>例：当 $x\\in[0,2]$ 时，$f(x)=x^2-2mx+1&gt;0$ 恒成立，求 $m$ 的取值范围。</p>
       ${figure()}
       <ol class="cm-steps" aria-live="polite">${STEPS.map((text, i) => `<li data-cm-text="${i}" data-math-text>${text}</li>`).join('')}</ol>
@@ -87,7 +88,17 @@ export default {
         <button type="button" data-cm-move="1" class="cm-next">下一步</button>
         <button type="button" data-cm-all>全部显示</button>
       </div>
-    </div>
+    </div>`;
+
+export default {
+  stylesheet: new URL('case-merge.css?v=1', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="cm-core">分类讨论分两层：每种情况内部，解出的范围要和这种情况的前提同时成立，取交集；各种情况之间满足其一即可，取并集。</p>
+    ${tip?.note ? `<p class="cm-problem"><span class="cm-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="cm-notes">
       <section class="cm-note">
         <h3>读到什么，取什么</h3>

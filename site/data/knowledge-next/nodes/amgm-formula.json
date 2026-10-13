@@ -1,0 +1,145 @@
+{
+  "id": "amgm-formula",
+  "kind": "knowledge",
+  "label": "基本不等式",
+  "summary": "两个正数的算术平均数不小于几何平均数；用于最值时还需确认定值与取等可达。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "aliases": [
+    "均值不等式",
+    "AM-GM"
+  ],
+  "prerequisites": [
+    "square-nonnegative"
+  ],
+  "entries": [
+    {
+      "id": "formula",
+      "title": "公式与取等",
+      "type": "公式",
+      "body": [
+        "$\\frac{a+b}{2}\\ge\\sqrt{ab}$，等价地 $a+b\\ge2\\sqrt{ab}$，等号当且仅当 $a=b$。",
+        "为什么成立：$(\\sqrt a-\\sqrt b)^2\\ge0$ 展开得 $a-2\\sqrt{ab}+b\\ge0$，即 $a+b\\ge2\\sqrt{ab}$；等号当且仅当 $\\sqrt a=\\sqrt b$，即 $a=b$。"
+      ],
+      "conditions": "本节采用 $a,b>0$ 的表述；定和或定积不是公式成立的条件。"
+    },
+    {
+      "id": "means",
+      "title": "两种平均数",
+      "type": "定义",
+      "body": [
+        "$\\frac{a+b}{2}$ 是算术平均数，$\\sqrt{ab}$ 是几何平均数。"
+      ],
+      "conditions": "$a,b>0$。"
+    },
+    {
+      "id": "fixed-product",
+      "title": "定积求和",
+      "type": "性质",
+      "body": [
+        "若 $uv=P>0$，则 $u+v\\ge2\\sqrt P$。当允许 $u=v=\\sqrt P$ 时，最小值为 $2\\sqrt P$。"
+      ],
+      "conditions": "$u,v>0$，积固定，取等点满足全部约束。"
+    },
+    {
+      "id": "fixed-sum",
+      "title": "定和求积",
+      "type": "性质",
+      "body": [
+        "若 $u+v=S>0$，则 $uv\\le \\frac{S^2}{4}$。当允许 $u=v=\\frac{S}{2}$ 时，最大值为 $\\frac{S^2}{4}$。",
+        "$uv\\le\\left(\\frac{u+v}2\\right)^2$ 本身对任意实数都成立，它等价于 $(u-v)^2\\ge0$。"
+      ],
+      "conditions": "$u,v>0$，和固定，取等点满足全部约束。"
+    },
+    {
+      "id": "checklist",
+      "title": "求最值前检查：一正、二定、三相等",
+      "type": "使用要点",
+      "body": [
+        "一正：两项都是正数。二定：两项的和或积是定值。三相等：取等条件在题目的约束下能够成立。",
+        "三条都满足，求得的界才是最值；任何一条不满足，都要先变形或改用其他方法。"
+      ],
+      "conditions": "用于求最值；只证明 $a+b\\ge2\\sqrt{ab}$ 本身时只需要两项为正。"
+    },
+    {
+      "id": "attainability",
+      "title": "有界不等于取得最值",
+      "type": "性质",
+      "body": [
+        "求得一个下界还不等于求得最小值。例如 $x>2$ 时 $x+\\frac{1}{x}\\ge2$ 仍成立，但 $x=1$ 不可行，不能据此称最小值为 $2$。"
+      ],
+      "conditions": "变量均为实数。"
+    }
+  ],
+  "pitfalls": [
+    {
+      "id": "pitfall-positive",
+      "title": "一正：两项都要是正数",
+      "wrong": "$x<0$ 时写 $x+\\frac1x\\ge2$。",
+      "why": "$x=-1$ 时左边等于 $-2$。两项都是负数，不能直接套公式。",
+      "fix": [
+        "先提出负号，对两个正数 $-x$、$-\\frac1x$ 用公式：$x+\\frac1x=-\\left[(-x)+\\left(-\\frac1x\\right)\\right]\\le-2$。",
+        "和为正不代表两项都正：$2a+3b=1$ 时 $a$、$b$ 仍可能一正一负，要另外说明。"
+      ]
+    },
+    {
+      "id": "pitfall-fixed",
+      "title": "二定：和或积要是定值",
+      "wrong": "$x>1$ 时写 $x+\\frac1{x-1}\\ge2\\sqrt{\\frac x{x-1}}$，再求最小值。",
+      "why": "两项的积 $\\frac x{x-1}$ 不是定值，右边还在随 $x$ 变化，得不到最小值。",
+      "fix": [
+        "先凑成积为定值的两项：$x+\\frac1{x-1}=(x-1)+\\frac1{x-1}+1\\ge2+1=3$，$x=2$ 时取等，最小值为 $3$。"
+      ],
+      "see": "method-matching"
+    },
+    {
+      "id": "pitfall-equal",
+      "title": "三相等：取等的条件要能成立",
+      "wrong": "由 $\\sqrt{x^2+2}+\\frac1{\\sqrt{x^2+2}}\\ge2$，说最小值是 $2$。",
+      "why": "不等式本身没错，但取等要 $\\sqrt{x^2+2}=1$，这做不到，所以 $2$ 取不到。",
+      "fix": [
+        "令 $t=\\sqrt{x^2+2}\\ge\\sqrt2$，$t+\\frac1t$ 在 $[\\sqrt2,+\\infty)$ 上递增，最小值在 $t=\\sqrt2$ 处取到，是 $\\frac{3\\sqrt2}2$。"
+      ],
+      "see": "reciprocal-sum-function"
+    },
+    {
+      "id": "pitfall-twice",
+      "title": "用了两次：取等要同时成立",
+      "wrong": "一个式子里两次用基本不等式，把两个下界直接相加当作最小值。",
+      "why": "两次的取等条件不一定能同时满足；不能同时满足时，相加得到的下界取不到。",
+      "fix": [
+        "分别写出两次的取等条件并联立：有解，相加后的下界才能取到；无解，就要换一种变形，或改用函数的单调性。"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "title": "定积的两项",
+      "prompt": "$x>0$，求 $x+\\frac{1}{x}$ 的最小值。",
+      "solution": [
+        "两项的积为 $1$，故 $x+\\frac{1}{x}\\ge2$；$x=1$ 合法且取等，最小值为 $2$。"
+      ],
+      "source": "教材 2.2 例 1"
+    },
+    {
+      "title": "两项是完整的式子",
+      "prompt": "$x>1$，求 $2(x-1)+\\frac2{x-1}$ 的最小值。",
+      "solution": [
+        "两项 $2(x-1)$ 与 $\\frac2{x-1}$ 都为正，积为 $4$，故和 $\\ge2\\sqrt4=4$。",
+        "取等要 $2(x-1)=\\frac2{x-1}$，即 $(x-1)^2=1$；由 $x>1$ 得 $x=2$，最小值为 $4$。"
+      ],
+      "source": "本页说明例"
+    },
+    {
+      "title": "写出取等时的值",
+      "prompt": "$x,y>0$，$xy=4$，求 $x+2y$ 的最小值。",
+      "solution": [
+        "两项 $x$、$2y$ 的积为 $8$，故 $x+2y\\ge2\\sqrt8=4\\sqrt2$。",
+        "取等要 $x=2y$，与 $xy=4$ 联立得 $x=2\\sqrt2$，$y=\\sqrt2$，确实取得到，最小值为 $4\\sqrt2$。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "resources": [
+    "amgm-semicircle"
+  ]
+}

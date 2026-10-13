@@ -1,0 +1,153 @@
+{
+  "id": "section-2-3",
+  "kind": "section",
+  "label": "2.3 二次函数与一元二次方程、不等式",
+  "summary": "把二次函数的图像、方程的实根与不等式解集联系起来，并拓展含参、量词与分式任务。",
+  "source": "教材 2.3，第 50–55 页；一元二次不等式专题 Q01–Q09；补充练习（1）（2）",
+  "members": [
+    {
+      "ref": "quadratic-function-properties",
+      "relation": "contains"
+    },
+    {
+      "ref": "quadratic-equation",
+      "relation": "contains"
+    },
+    {
+      "ref": "quadratic-inequality",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-factor",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-solve-quadratic",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-quadratic-sign",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-simplify",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-equality-transform",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-inequality-transform",
+      "relation": "contains"
+    },
+    {
+      "ref": "quadratic-inequality-solve",
+      "relation": "contains"
+    },
+    {
+      "ref": "type-quadratic-solve",
+      "relation": "contains"
+    },
+    {
+      "ref": "quantifiers",
+      "relation": "extends"
+    },
+    {
+      "ref": "function-range-extrema",
+      "relation": "extends"
+    },
+    {
+      "ref": "function-monotonicity",
+      "relation": "extends"
+    },
+    {
+      "ref": "linear-interval-extremum",
+      "relation": "extends"
+    },
+    {
+      "ref": "reciprocal-sum-function",
+      "relation": "extends"
+    },
+    {
+      "ref": "quadratic-interval-extremum",
+      "relation": "extends"
+    },
+    {
+      "ref": "skill-linear-range",
+      "relation": "extends"
+    },
+    {
+      "ref": "skill-reciprocal-range",
+      "relation": "extends"
+    },
+    {
+      "ref": "skill-quantified-range",
+      "relation": "extends"
+    },
+    {
+      "ref": "skill-roots-from-solution",
+      "relation": "extends"
+    },
+    {
+      "ref": "skill-rational-to-polynomial",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-complete-square",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-discriminant",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-interval-extremum",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-separation",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-variable-swap",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-parameter-quadratic-cases",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-solution-inverse",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-rational-inequality",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-amgm-parameter",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-quantified-quadratic",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-parameter-quadratic-solve",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-solution-parameters",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-rational-inequality",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-amgm-quantified",
+      "relation": "extends"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "chapter-functions",
+  "kind": "chapter",
+  "label": "第三章 函数的概念与性质",
+  "summary": "本章尚未完整录入；目前只登记 3.2 中被第二章引用的函数单调性与最值。",
+  "source": "教材第三章",
+  "members": [
+    {
+      "ref": "section-3-2",
+      "relation": "contains"
+    }
+  ]
+}

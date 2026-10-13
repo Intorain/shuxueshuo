@@ -62,19 +62,23 @@ function panel(mode) {
   </div>`;
 }
 
-export default {
-  stylesheet: new URL('endpoint-attainability.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="ea-core">解出参数范围后，边界那一刻，起决定作用的值（最低点、最高点，或取值范围的端点）正好等于临界值。这个边界保不保留，看两件事：原题允不允许取等，这个值能不能取到。</p>
-    ${tip?.note ? `<p class="ea-problem"><span class="ea-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="ea-explorer">
+const explorer = () => `<div class="ea-explorer">
       <div class="ea-modes" role="group" aria-label="问法">
         ${Object.entries(MODES).map(([mode, {tag, question}]) => `<button type="button" data-ea-mode="${mode}" aria-pressed="false"><span>${tag}</span><small>${question}</small></button>`).join('')}
       </div>
       ${panel('forall')}${panel('exists')}
     </div>
-    <p class="ea-motto">拿不准时，把边界值代回原不等式。</p>
+    <p class="ea-motto">拿不准时，把边界值代回原不等式。</p>`;
+
+export default {
+  stylesheet: new URL('endpoint-attainability.css?v=1', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="ea-core">解出参数范围后，边界那一刻，起决定作用的值（最低点、最高点，或取值范围的端点）正好等于临界值。这个边界保不保留，看两件事：原题允不允许取等，这个值能不能取到。</p>
+    ${tip?.note ? `<p class="ea-problem"><span class="ea-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="ea-notes">
       <section class="ea-note">
         <h3>不能只看原题带不带等号</h3>

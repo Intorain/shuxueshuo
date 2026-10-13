@@ -1,0 +1,62 @@
+{
+  "id": "type-binary-quadratic-range",
+  "kind": "problem_type",
+  "label": "二元二次方程约束下的线性式取值范围",
+  "summary": "已知 x、y 满足一个二次方程，求 x+y 这类一次式能取到的全部值。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "sample": "实数 $x,y$ 满足 $x^2+y^2-xy=1$，求 $x+y$ 的取值范围。",
+  "features": [
+    {
+      "cue": "条件是一个关于 $x$、$y$ 的二次等式，里面有 $x^2$、$y^2$ 或 $xy$。",
+      "example": "$x^2+y^2-xy=1$，左边三项都是二次的。"
+    },
+    {
+      "cue": "要求的是 $x+y$、$\\frac x2+y$ 这类一次式的取值范围。",
+      "example": "求 $x+y$ 的取值范围。"
+    },
+    {
+      "cue": "要的是能取到的全部值，不只是最大值或最小值；$x,y$ 一般没说是正数。",
+      "example": "「实数 $x,y$」；答案是区间 $[-2,2]$，区间里每个值都要真的取得到。"
+    },
+    {
+      "cue": "条件和所求式子把 $x$、$y$ 互换都不变（或先换元后不变），就能用和积换元法。",
+      "example": "$x,y$ 互换后，$x^2+y^2-xy$ 和 $x+y$ 都不变。"
+    }
+  ],
+  "confuse": [
+    {
+      "text": "两个正数的积或和是定值，只求最小值或最大值",
+      "ref": "type-sum-product-extremum"
+    }
+  ],
+  "knowledge": [
+    "quadratic-equation",
+    "square-nonnegative"
+  ],
+  "methods": [
+    "method-sum-product-range"
+  ],
+  "rules": [],
+  "examples": [
+    {
+      "title": "从和积可行性求完整范围",
+      "prompt": "$x^2+y^2-xy=1$，求 $x+y$ 的范围。",
+      "solution": [
+        "令 $s=x+y,p=xy$，条件为 $s^2-3p=1$，故 $p=\\frac{s^2-1}{3}$。",
+        "实数可行性 $s^2-4p\\ge0$ 等价于 $\\frac{4-s^2}{3}\\ge0$，得到 $-2\\le s\\le2$。",
+        "反过来，对这个区间内任意 $s$，方程 $t^2-st+\\frac{s^2-1}{3}=0$ 有实根。取两根为 $x,y$ 即满足原式，故完整范围为 $[-2,2]$。"
+      ],
+      "source": "基本不等式专题 Q28",
+      "url": "/1/q28/"
+    },
+    {
+      "title": "缩放后的共同结构",
+      "prompt": "$x^2+4y^2-2xy=1$，求 $\\frac{x}{2}+y$ 的范围。",
+      "solution": [
+        "令 $u=x,v=2y$，约束成为 $u^2+v^2-uv=1$，目标是 $\\frac{u+v}{2}$。用和积换元法得范围 $[-1,1]$。"
+      ],
+      "source": "基本不等式专题 Q29",
+      "url": "/1/q29/"
+    }
+  ]
+}

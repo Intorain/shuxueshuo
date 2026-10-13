@@ -1,8 +1,5 @@
 /* Direct AM-GM: two whole positive terms in the square and circle slots. */
-export default {
-  render: () => `
-    <p class="method-core"><span class="method-tag">核心</span><span>比较的不是两个特定字母，而是两个完整的正项，整体放进方框、圆圈。</span></p>
-    <div class="method-figure">
+const figure = () => `<div class="method-figure">
       <ul class="method-kinds" aria-label="可以作为完整正项的量">
         <li><span class="method-kind-label">正变量</span><math><mi>x</mi><mo>&gt;</mo><mn>0</mn></math></li>
         <li><span class="method-kind-label">正常数</span><math><mn>3</mn><mo>&gt;</mo><mn>0</mn></math></li>
@@ -18,7 +15,14 @@ export default {
         <li><span class="method-case-tag">定和</span><span><span class="mini-slot square" aria-label="方框"></span> + <span class="mini-slot circle" aria-label="圆圈"></span> 为定值</span><span class="method-case-arrow" aria-hidden="true">→</span><span>积有最大值</span></li>
       </ul>
       <p class="method-pill">取等 <span aria-hidden="true">⇔</span><span class="visually-hidden">当且仅当</span> <span class="mini-slot square" aria-label="方框"></span> = <span class="mini-slot circle" aria-label="圆圈"></span></p>
-    </div>
+    </div>`;
+
+export default {
+  figure,
+
+  render: () => `
+    <p class="method-core"><span class="method-tag">核心</span><span>比较的不是两个特定字母，而是两个完整的正项，整体放进方框、圆圈。</span></p>
+    ${figure()}
     <ol class="method-steps" aria-label="解题三步">
       <li><span class="method-step-no" aria-hidden="true">1</span><strong>识别正项</strong><span>正变量、正常数、完整表达式或函数值，<span class="nowrap">整体 &gt; 0</span></span></li>
       <li><span class="method-step-no" aria-hidden="true">2</span><strong>代入基本不等式</strong><span><span class="mini-slot square" aria-label="方框"></span> 与 <span class="mini-slot circle" aria-label="圆圈"></span> 同步替换</span></li>

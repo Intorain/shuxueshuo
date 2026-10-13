@@ -1,0 +1,77 @@
+{
+  "id": "section-2-2",
+  "kind": "section",
+  "label": "2.2 基本不等式",
+  "summary": "以基本不等式的公式、定和定积应用为核心，通过专题拓展变形技能与和积换元法。",
+  "source": "教材 2.2，第 44–49 页；基本不等式专题 Q01–Q30；补充练习第 2 页第 2 题",
+  "members": [
+    {
+      "ref": "amgm-formula",
+      "relation": "contains"
+    },
+    {
+      "ref": "square-nonnegative",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-apply-amgm",
+      "relation": "contains"
+    },
+    {
+      "ref": "method-amgm-direct",
+      "relation": "contains"
+    },
+    {
+      "ref": "type-sum-product-extremum",
+      "relation": "contains"
+    },
+    {
+      "ref": "method-matching",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-homogeneous",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-substitution",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-sum-product",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-elimination",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-fraction-split",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-complete-square",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-square-extremum",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-sum-product-range",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-binary-quadratic-range",
+      "relation": "extends"
+    },
+    {
+      "ref": "type-amgm-quantified",
+      "relation": "extends"
+    },
+    {
+      "ref": "method-amgm-parameter",
+      "relation": "extends"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "id": "method-sum-product",
+  "kind": "skill",
+  "label": "用和与积表示对称式",
+  "summary": "两个字母互换位置式子不变时，设 s = u + v、p = uv，改用和与积来写，再补上 s² ≥ 4p 保证 u、v 是实数。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "input": "要求 $x+y$、$xy$ 这类式子的范围或最值，看到条件和所求式子里两个字母互换位置都不变，例如已知 $x^2+y^2-xy=1$，求 $x+y$ 的范围。",
+  "output": "只含 $s=u+v$、$p=uv$ 的关系，例如 $s^2-3p=1$，再加上 $s^2-4p\\ge0$（以及原来的正负限制）。几个式子联立，就能求出 $s$ 或 $p$ 的范围。",
+  "conditions": "一定要加上 $s^2-4p\\ge0$，否则会算出不存在的 $u,v$；原题要求 $u,v>0$ 时，还要加 $s>0$、$p>0$，光靠判别式不够。",
+  "basis": [
+    "square-nonnegative#sum-product",
+    "quadratic-equation#reconstruction"
+  ],
+  "operations": [
+    {
+      "id": "define",
+      "title": "先换位检查，再设和与积",
+      "body": [
+        "令 $s=u+v,p=uv$ 之前，先把条件和要求的式子里的两个字母互换：都不变，才适合只用 $s$、$p$ 表示。",
+        "例如 $x^2+y^2-xy=1$ 和 $x+y$ 互换 $x,y$ 后都不变，可以设 $s=x+y$，$p=xy$。"
+      ]
+    },
+    {
+      "id": "identities",
+      "title": "用和与积改写常见式子",
+      "body": [
+        "$u^2+v^2=s^2-2p$；$u^2+v^2-uv=s^2-3p$；$\\frac{1}{u}+\\frac{1}{v}=\\frac{s}{p}$，最后一个要求 $p\\ne0$。",
+        "例中条件 $x^2+y^2-xy=1$ 变成 $s^2-3p=1$，即 $p=\\frac{s^2-1}{3}$。"
+      ]
+    },
+    {
+      "id": "feasible",
+      "title": "补上 s² ≥ 4p",
+      "body": [
+        "$u,v$ 是方程 $t^2-st+p=0$ 的两个根，要有实根就得 $s^2-4p\\ge0$。例中代入 $p=\\frac{s^2-1}{3}$：$s^2-\\frac{4(s^2-1)}{3}=\\frac{4-s^2}{3}\\ge0$，所以 $-2\\le s\\le2$。",
+        "若题目要求 $u,v>0$，还要加上 $s>0$ 且 $p>0$。"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "title": "二元条件变成和积关系",
+      "prompt": "$x^2+y^2-xy=1$，令 $s=x+y,p=xy$。",
+      "solution": [
+        "条件变为 $s^2-3p=1$；$x,y$ 是实数要求 $s^2-4p\\ge0$。两式联立可求出 $s$ 的范围。"
+      ],
+      "source": "基本不等式专题 Q28",
+      "url": "/1/q28/"
+    }
+  ],
+  "resources": [
+    "sum-product-swap",
+    "sum-product-identities"
+  ]
+}

@@ -3,8 +3,16 @@ import {problemNote} from '../shared/html.js?v=1';
 
 const TABS = [['whole', '整体乘入'], ['local', '只乘一部分']];
 
+const whole = tag => `<div class="method-figure" data-mh-panel="whole">
+      <div class="method-template"><span class="method-node"><small>目标</small><b><var>m</var> 次</b></span><span class="op">×</span><span class="method-node"><small>条件式 = 1</small><b><var>n</var> 次</b></span><span class="method-arrow"><i aria-hidden="true">→</i></span><span class="method-node"><small>0 次式</small><b><var>m</var> + <var>n</var> = 0</b></span></div>
+      <p class="method-demo"><span class="method-demo-tag">${tag}</span><span class="method-demo-body"><span class="method-demo-group"><math><mo>(</mo><mfrac><mrow><mn>5</mn></mrow><mrow><mi>x</mi></mrow></mfrac><mo>+</mo><mfrac><mrow><mn>4</mn></mrow><mrow><mi>y</mi></mrow></mfrac><mo>)</mo><mo>(</mo><mi>x</mi><mo>+</mo><mn>5</mn><mi>y</mi><mo>)</mo></math></span><span class="method-demo-group"><span class="op">=</span><math><mn>25</mn></math><span class="op">+</span><span class="term square"><math><mfrac><mrow><mn>25</mn><mi>y</mi></mrow><mrow><mi>x</mi></mrow></mfrac></math></span><span class="op">+</span><span class="term circle"><math><mfrac><mrow><mn>4</mn><mi>x</mi></mrow><mrow><mi>y</mi></mrow></mfrac></math></span></span></span></p>
+      <p class="method-pill">只剩比值：<span class="nowrap"><span class="mini-slot square" aria-label="方框"></span> · <span class="mini-slot circle" aria-label="圆圈"></span> = 100</span> 为定值</p>
+    </div>`;
+
 export default {
   stylesheet: new URL('method-homogeneous.css?v=1', import.meta.url).href,
+
+  figure: () => whole('例'),
 
   render: ({tip}) => `
     <p class="method-core"><span class="method-tag">核心</span><span>把值为 1 的条件式乘给次数不对的部分，配成 0 次，只剩比值，比值的积为定值。</span></p>
@@ -12,11 +20,7 @@ export default {
     <div class="mh-tabs" role="tablist" aria-label="乘给哪一部分">
       ${TABS.map(([key, label]) => `<button type="button" role="tab" data-mh-tab="${key}" aria-selected="false">${label}</button>`).join('')}
     </div>
-    <div class="method-figure" data-mh-panel="whole">
-      <div class="method-template"><span class="method-node"><small>目标</small><b><var>m</var> 次</b></span><span class="op">×</span><span class="method-node"><small>条件式 = 1</small><b><var>n</var> 次</b></span><span class="method-arrow"><i aria-hidden="true">→</i></span><span class="method-node"><small>0 次式</small><b><var>m</var> + <var>n</var> = 0</b></span></div>
-      <p class="method-demo"><span class="method-demo-tag">第 10 题</span><span class="method-demo-body"><span class="method-demo-group"><math><mo>(</mo><mfrac><mrow><mn>5</mn></mrow><mrow><mi>x</mi></mrow></mfrac><mo>+</mo><mfrac><mrow><mn>4</mn></mrow><mrow><mi>y</mi></mrow></mfrac><mo>)</mo><mo>(</mo><mi>x</mi><mo>+</mo><mn>5</mn><mi>y</mi><mo>)</mo></math></span><span class="method-demo-group"><span class="op">=</span><math><mn>25</mn></math><span class="op">+</span><span class="term square"><math><mfrac><mrow><mn>25</mn><mi>y</mi></mrow><mrow><mi>x</mi></mrow></mfrac></math></span><span class="op">+</span><span class="term circle"><math><mfrac><mrow><mn>4</mn><mi>x</mi></mrow><mrow><mi>y</mi></mrow></mfrac></math></span></span></span></p>
-      <p class="method-pill">只剩比值：<span class="nowrap"><span class="mini-slot square" aria-label="方框"></span> · <span class="mini-slot circle" aria-label="圆圈"></span> = 100</span> 为定值</p>
-    </div>
+    ${whole('第 10 题')}
     <div class="mh-local" data-mh-panel="local" hidden>
       <p class="mh-ask" data-math-text>各项次数不同时，逐项数次数，只给缺次数的项乘。例：$x,y&gt;0$，$x+y=1$，求 $\\frac1x+\\frac xy$ 的最小值。</p>
       <div class="mh-rows">

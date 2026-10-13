@@ -1,0 +1,17 @@
+{
+  "id": "section-3-2",
+  "kind": "section",
+  "label": "3.2 函数的基本性质",
+  "summary": "用单调性描述函数的增减，用最大值与最小值描述函数的取值范围。",
+  "source": "教材 3.2",
+  "members": [
+    {
+      "ref": "function-monotonicity",
+      "relation": "contains"
+    },
+    {
+      "ref": "function-range-extrema",
+      "relation": "contains"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "id": "function-monotonicity",
+  "kind": "knowledge",
+  "label": "函数的单调性",
+  "summary": "在指定区间上用自变量与函数值的次序描述增减，必须同时说明适用区间。",
+  "source": "人教 A 版必修第一册 3.2；第二章区间最值问题引用",
+  "entries": [
+    {
+      "id": "definition",
+      "title": "单调递增与递减",
+      "type": "定义",
+      "body": [
+        "在区间 $I$ 中任取 $x_1<x_2$，若恒有 $f(x_1)<f(x_2)$，则严格递增；若恒有 $f(x_1)>f(x_2)$，则严格递减。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "interval",
+      "title": "区间不能任意合并",
+      "type": "性质",
+      "body": [
+        "$\\frac1x$ 在 $(-\\infty,0)$ 与 $(0,+\\infty)$ 上分别递减，但不能合称在整个定义域上递减：$-1<1$，而 $\\frac1{-1}<\\frac11$。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "combine",
+      "title": "由已知函数推出单调性",
+      "type": "性质",
+      "body": [
+        "$f$、$g$ 在区间上都递增 $\\Rightarrow$ $f+g$ 递增。",
+        "$f$ 递增 $\\Rightarrow$ $-f$ 递减；$c>0$ 时 $cf$ 递增。",
+        "$f$ 递增，且恒正或恒负 $\\Rightarrow$ $\\frac1f$ 递减：同号的两个数取倒数，大小顺序颠倒。",
+        "$u=g(x)$ 递增，$y=F(u)$ 递减 $\\Rightarrow$ $y=F(g(x))$ 递减（同增异减）。"
+      ],
+      "conditions": "各函数在所讨论的同一区间上有定义；复合时 $g(x)$ 的取值落在 $F$ 的单调区间内。"
+    },
+    {
+      "id": "endpoints",
+      "title": "用单调性比较端点",
+      "type": "性质",
+      "body": [
+        "严格递增函数在闭区间 $[p,q]$ 上最小值为 $f(p)$，最大值为 $f(q)$；递减时相反。要把两端之间所有值都纳入值域，还需有连续性等依据。"
+      ],
+      "conditions": "本章的一次式、二次式与不跨零的 $x+\\frac{k}{x}$ 在相应区间连续。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "开区间上的取值范围",
+      "prompt": "求 $x+\\frac4x$ 在 $(1,2)$ 上的取值范围。",
+      "solution": [
+        "在 $(1,2)$ 上 $x+\\frac4x$ 递减（对勾函数在 $(0,2]$ 上递减）。",
+        "$x\\to1$ 时趋于 $5$，$x\\to2$ 时趋于 $4$，两端都取不到，取值范围是 $(4,5)$。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "pitfalls": [
+    {
+      "id": "pitfall-open-interval",
+      "title": "开区间上把端点值当成最值",
+      "wrong": "$x+\\frac4x$ 在 $(1,2)$ 上递减，于是说最小值是 $2+\\frac42=4$。",
+      "why": "$x=2$ 不在区间内，$4$ 取不到。单调函数在开区间上没有最大值、最小值，只有取值范围的上下端。",
+      "fix": [
+        "写取值范围：$x+\\frac4x$ 在 $(1,2)$ 上的取值范围是 $(4,5)$，没有最大值和最小值。"
+      ],
+      "see": "function-range-extrema#attainability"
+    }
+  ],
+  "resources": [
+    "monotonic-chain"
+  ]
+}

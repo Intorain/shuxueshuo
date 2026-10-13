@@ -1,0 +1,344 @@
+{
+  "schemaVersion": 1,
+  "title": "第二章公共知识图谱",
+  "defaultScope": "section-2-1",
+  "expectedCounts": {
+    "textbook": 1,
+    "chapter": 3,
+    "section": 5,
+    "knowledge": 13,
+    "skill": 20,
+    "method": 13,
+    "problem_type": 9,
+    "judgment_rule": 2
+  },
+  "resources": {
+    "amgm-semicircle": {
+      "module": "/assets/explain/knowledge/amgm-formula.js",
+      "part": "figure",
+      "scope": "amgm-formula",
+      "title": "半圆图解：为什么几何平均不超过算术平均",
+      "note": "直径分成长 $a$、$b$ 的两段，分点处的半弦长 $\\sqrt{ab}$，半径长 $\\frac{a+b}2$；演示中固定 $a+b=8$。",
+      "after": "formula"
+    },
+    "monotonic-chain": {
+      "module": "/assets/explain/knowledge/function-monotonicity.js",
+      "part": "figure",
+      "scope": "function-monotonicity",
+      "title": "三条数轴：单调性沿复合一层层传递",
+      "note": "$x$ 在 $[2,3]$ 上移动，$u=x^2-x$ 跟着增大且恒正，$h=\\frac1u$ 跟着减小。",
+      "after": "combine"
+    },
+    "homogeneous-degree": {
+      "module": "/assets/explain/method/method-homogeneous.js",
+      "part": "figure",
+      "scope": "method-homogeneous",
+      "title": "配次数：乘入值为 1 的条件式",
+      "note": "例：$x,y>0$，$x+5y=1$，求 $\\frac5x+\\frac4y$ 的最小值。目标 $-1$ 次，乘入 $1$ 次的条件式后只剩比值。",
+      "after": "fill"
+    },
+    "order-flip-lines": {
+      "module": "/assets/explain/knowledge/inequality-properties.js",
+      "part": "figure",
+      "scope": "inequality-properties",
+      "title": "两条数轴：对两边做同一种运算，先后顺序变不变",
+      "note": "六种运算：加同一个数、乘正数、乘负数、取倒数、平方、两式相减。每种都用具体数代入（如 $1<3$），连线交叉就说明大小颠倒；只有乘负数、同号取倒数会变向，平方和相减不一定。",
+      "after": "multiplication"
+    },
+    "parabola-sign-grid": {
+      "module": "/assets/explain/knowledge/quadratic-function-properties.js",
+      "part": "figure",
+      "scope": "quadratic-function-properties",
+      "title": "六张抛物线：开口和判别式决定图像在横轴哪一侧",
+      "note": "对 $y=ax^2+bx+c\\ (a\\ne0)$，行按 $a>0$、$a<0$ 分，列按 $\\Delta<0$、$=0$、$>0$ 分；选一个对任意实数 $x$ 的要求（恒 $>0$、$\\ge0$、$<0$、$\\le0$），高亮满足的图像，并给出对应条件。",
+      "after": "side"
+    },
+    "quadratic-sign-reading": {
+      "module": "/assets/explain/knowledge/quadratic-inequality-solve.js",
+      "part": "figure",
+      "scope": "quadratic-inequality-solve",
+      "title": "看图读解集：切换不等号，解集落在两根之间还是之外",
+      "note": "前提是先把二次项系数化成正数（$a>0$），且 $\\Delta>0$、两根 $x_1<x_2$；点四个不等号按钮，看图像在 $x$ 轴上方还是下方，以及根是否算进去。",
+      "after": "solution"
+    },
+    "parabola-axis-drag": {
+      "module": "/assets/explain/knowledge/quadratic-interval-extremum.js",
+      "part": "figure",
+      "scope": "quadratic-interval-extremum",
+      "title": "拖动对称轴：区间上的最大值、最小值落在顶点还是端点",
+      "note": "固定区间 $[1,3]$（可切换为开区间 $(1,3)$，中点 $2$）；可切换开口方向，左右拖动对称轴，看最值在顶点、近端点还是远端点，以及开区间端点是否取得到。",
+      "after": "bounds"
+    },
+    "interval-arc-only": {
+      "module": "/assets/explain/method/method-interval-extremum.js",
+      "part": "figure",
+      "scope": "method-interval-extremum",
+      "title": "只看区间上的一段：区间外有正有负不要紧",
+      "note": "例：当 $1\\le x\\le2$ 时 $x^2+mx+4<0$ 恒成立，求 $m$；图中取 $m=-5.5$，区间内最高点 $f(1)=-0.5<0$。",
+      "after": "quantifier"
+    },
+    "amgm-direct-slots": {
+      "module": "/assets/explain/method/method-amgm-direct.js",
+      "part": "figure",
+      "scope": "method-amgm-direct",
+      "title": "方框圆圈：把两个完整正项代入基本不等式",
+      "note": "公式里的两项不必是单个字母：正变量、正常数、完整表达式、函数值（如 $2^a$），只要整体为正都可以放进方框、圆圈；积定则和有最小值，和定则积有最大值。",
+      "after": "bound"
+    },
+    "apply-amgm-slots": {
+      "module": "/assets/explain/method/method-amgm-direct.js",
+      "part": "figure",
+      "scope": "method-amgm-direct",
+      "title": "方框圆圈：两项整体放进公式",
+      "note": "方框、圆圈里放的是两个完整的正项，可以是正变量、正常数、表达式或函数值。例如 $x+2y$ 中，方框放 $x$，圆圈放 $2y$，系数 $2$ 跟着 $y$ 一起进去；等号在方框 $=$ 圆圈，也就是 $x=2y$ 时成立。",
+      "after": "apply"
+    },
+    "matching-constant": {
+      "module": "/assets/explain/method/method-matching.js",
+      "part": "figure",
+      "scope": "method-matching",
+      "title": "配凑：原式 = 方框 + 圆圈 + 常数",
+      "note": "例：$x>1$，求 $2x+\\frac2{x-1}$ 的最小值。按分母把 $2x$ 写成 $2(x-1)+2$，两项积为定值，补进的常数 $2$ 留在式外。",
+      "after": "compensate"
+    },
+    "substitution-denominator": {
+      "module": "/assets/explain/method/method-substitution.js",
+      "part": "figure",
+      "scope": "method-substitution",
+      "title": "把完整分母换成新元，条件变成定和",
+      "note": "例：正数 $m,n$ 满足 $2m+n=6$，求 $\\frac1{2m+1}+\\frac1{n+1}$ 的最小值。两个分母各设一个新元，条件化为 $u+v=8$。",
+      "after": "rewrite"
+    },
+    "sum-product-swap": {
+      "module": "/assets/explain/method/method-sum-product.js",
+      "part": "figure",
+      "scope": "method-sum-product",
+      "title": "交换检验后和积换元，用 s² ≥ 4p 消元",
+      "note": "例：实数 $x,y$ 满足 $x^2+y^2-xy=1$，求 $x+y$ 的范围。条件化为 $s^2-3p=1$，再与可行性条件 $s^2\\ge4p$ 联立。",
+      "after": "feasible"
+    },
+    "elimination-one-variable": {
+      "module": "/assets/explain/method/method-elimination.js",
+      "part": "figure",
+      "scope": "method-elimination",
+      "title": "消元：解出一个变量，代入目标变成一元式",
+      "note": "例：$x,y>0$，$x+2y+xy-7=0$，求 $x+y$ 的最小值。由条件解出 $y$，代入后分离成积为定值的两项。",
+      "after": "replace"
+    },
+    "fraction-split-degree": {
+      "module": "/assets/explain/method/method-fraction-split.js",
+      "part": "figure",
+      "scope": "method-fraction-split",
+      "title": "按分母拆项：分子次数高直接拆，次数低先取倒数",
+      "note": "两例分母都为正：$\\frac{x^2+3x+6}{x+1}$（$x>-1$）按 $x+1$ 拆项；$y=\\frac{2x}{x^2+4}$（$x>0$）分子次数低，先对 $\\frac1y$ 拆项。",
+      "after": "divide"
+    },
+    "complete-square-area": {
+      "module": "/assets/explain/method/method-complete-square.js",
+      "part": "figure",
+      "scope": "method-complete-square",
+      "title": "面积图：给 x² + 6x 补上缺角配成完全平方",
+      "note": "例：求 $x^2+6x+11$ 的最小值。把 $6x$ 拆成两块 $3x$ 贴在边长 $x$ 的正方形两边，补上缺角 $3^2=9$ 得 $(x+3)^2$，可逐步点击。",
+      "after": "compensate"
+    },
+    "discriminant-positions": {
+      "module": "/assets/explain/method/method-discriminant.js",
+      "part": "figure",
+      "scope": "method-discriminant",
+      "title": "抛物线与横轴的三种位置：开口方向加判别式",
+      "note": "二次式对全体实数 $x$ 恒成立、且二次项系数确定非零时使用。开口向上要 $f(x)\\ge0$，图像不能到横轴下方，即 $\\Delta\\le0$；不带等号时只取 $\\Delta<0$。",
+      "after": "conditions"
+    },
+    "separation-horizontal-line": {
+      "module": "/assets/explain/method/method-separation.js",
+      "part": "figure",
+      "scope": "method-separation",
+      "title": "水平线 y = a 与 h(x) 比高低",
+      "note": "例：$\\forall x<0$，$x^2+ax+2\\ge0$。除以负数 $x$ 后得 $a\\le h(x)=-x-\\frac2x$，$h$ 的最低点在 $x=-\\sqrt2$，最小值为 $2\\sqrt2$。",
+      "after": "quantifier"
+    },
+    "variable-swap-endpoints": {
+      "module": "/assets/explain/method/method-variable-swap.js",
+      "part": "figure",
+      "scope": "method-variable-swap",
+      "title": "换 m 为主元：一次函数只看两端",
+      "note": "例：对 $1\\le m\\le3$，$(x^2-x+1)m-6<0$ 恒成立，求 $x$。固定 $x$ 后它是 $m$ 的一次函数；图中对比 $x=0$（两端都在横轴下方）与 $x=2$（右端在上方）。",
+      "after": "range"
+    },
+    "square-area": {
+      "module": "/assets/explain/knowledge/square-nonnegative.js",
+      "scope": "square-nonnegative",
+      "title": "面积拼图：平方差与取等",
+      "note": "面积演示采用正边长；正文中的平方非负结论适用于任意实数。含 $\\frac{1}{x}$ 的示例均要求 $x\\ne0$。"
+    },
+    "linear-range": {
+      "module": "/assets/explain/knowledge/linear-interval-extremum.js",
+      "scope": "linear-interval-extremum",
+      "title": "斜率与区间端点",
+      "note": "图解同时展示一次函数与斜率为零的常函数情形。"
+    },
+    "reciprocal-range": {
+      "module": "/assets/explain/knowledge/reciprocal-sum-function.js",
+      "scope": "reciprocal-sum-function",
+      "title": "对勾函数：拖动区间看最值",
+      "note": "本图解取 $k>0$；$x=0$ 始终不在定义域内。"
+    },
+    "quantified-horizontal-line": {
+      "module": "/assets/explain/knowledge/extremum-transfer.js",
+      "part": "figure",
+      "scope": "extremum-transfer",
+      "title": "拖动水平线：恒成立看最不利的点，存在看最有利的点",
+      "note": "把不等式看成曲线 $y=f(x)$ 和水平线 $y=a$ 比高低。上下拖动水平线，切换 $f(x)>a$ 与 $f(x)<a$，看「恒成立」和「存在」各由最低点还是最高点决定。",
+      "after": "quantified"
+    },
+    "attainability-boundary": {
+      "module": "/assets/explain/knowledge/endpoint-attainability.js",
+      "part": "figure",
+      "scope": "endpoint-attainability",
+      "title": "边界值留不留：看允不允许取等、取不取得到",
+      "note": "解出参数范围后，在边界上起决定作用的值正好等于 $0$。切换恒成立和存在，对比 $f(x)>0$ 与 $f(x)\\ge0$、取得到（实心点）与取不到（空心点）四种情况。",
+      "after": "attainability"
+    },
+    "case-merge-union": {
+      "module": "/assets/explain/knowledge/case-merge.js",
+      "part": "figure",
+      "scope": "case-merge",
+      "title": "分情况讨论：每种情况先取交集，最后取并集",
+      "note": "例：$x\\in[0,2]$ 时 $x^2-2mx+1>0$ 恒成立，按对称轴 $x=m$ 在区间左侧、区间里、区间右侧分三种情况。点「下一步」逐个看：每种情况解出的范围先和这种情况的前提取交集，三个结果再取并集。",
+      "after": "conditions"
+    },
+    "homogeneous-degree-count": {
+      "module": "/assets/explain/knowledge/homogeneous-expression.js",
+      "part": "figure",
+      "scope": "homogeneous-expression",
+      "title": "数次数：x、y 同时放大，零次式的值不变",
+      "note": "分母里的字母算负次数。取 $x=2k$、$y=k$，拖动 $k$：一次式跟着变大，负一次式跟着变小，零次式 $\\frac{25y}x+\\frac{4x}y$ 始终不变，它只和比值 $\\frac yx$ 有关。",
+      "after": "degree"
+    },
+    "sum-product-identities": {
+      "module": "/assets/explain/knowledge/symmetric-polynomial.js",
+      "part": "figure",
+      "scope": "symmetric-polynomial",
+      "title": "交换 x、y 检验，再用和与积改写",
+      "note": "点一个式子，看交换 $x$、$y$ 后变不变：不变的都能写成 $s=x+y$、$p=xy$ 的式子；系数不对称的，先把带系数的整体换成新字母。下面的表是常用改写。",
+      "after": "identities"
+    },
+    "reciprocal-linked-lines": {
+      "module": "/assets/explain/method/method-reciprocal.js",
+      "part": "figure",
+      "scope": "method-reciprocal",
+      "title": "两条数轴：y 越大，它的倒数越小",
+      "note": "例：$x>0$，$y=\\frac{2x}{x^2+4}$。拖动 $x$，$y$ 和 $\\frac1y$ 总是反向移动，$\\frac1y$ 最小时 $y$ 最大。两个数同号时取倒数，大小顺序颠倒。",
+      "after": "reciprocal"
+    },
+    "quadratic-sign-chart": {
+      "module": "/assets/explain/resources/quadratic-sign-chart.js",
+      "part": "figure",
+      "scope": "quadratic-sign-chart",
+      "title": "切换开口和零点个数：数轴上哪段正、哪段负",
+      "note": "上面是 $y=ax^2+bx+c$ 的图像，下面的数轴按零点分段：图像在 $x$ 轴上方的那段标 $+$，下方的那段标 $-$，零点处标 $0$。",
+      "after": "signs"
+    },
+    "reciprocal-window-range": {
+      "module": "/assets/explain/knowledge/reciprocal-sum-function.js",
+      "part": "figure",
+      "scope": "reciprocal-sum-function",
+      "title": "拖动区间：最低点在不在区间里，最大值在哪一端",
+      "note": "默认是 $x+\\frac4x$ 在 $[1,3]$ 上。左右拖动区间、切换 $k$：最低点 $x=\\sqrt k$ 落在区间里时最小值是 $2\\sqrt k$，否则最小值在端点；最大值总在端点，看两端点之积比 $k$ 大还是小。$y$ 轴上的粗线就是值域。",
+      "after": "bounds"
+    },
+    "reciprocal-split-range": {
+      "module": "/assets/explain/resources/reciprocal-split-range.js",
+      "part": "figure",
+      "scope": "reciprocal-split-range",
+      "title": "区间跨过 0：两段分别求值域，再取并集",
+      "note": "函数取 $x+\\frac4x$。切换三个区间，看负半段、正半段各自的值域落在 $y$ 轴的哪一截；两截之间的虚线部分取不到。",
+      "after": "merge"
+    },
+    "symmetric-swap-check": {
+      "module": "/assets/explain/knowledge/symmetric-polynomial.js",
+      "part": "swap",
+      "scope": "symmetric-polynomial",
+      "title": "判断对称结构：交换 x、y，看式子变不变",
+      "note": "点一个式子，把 $x$、$y$ 互换：不变就能对 $x$、$y$ 设和与积；改变的（如 $x^2+4y^2-2xy$），看能不能先令 $b=2y$ 这样换元，变成关于新字母对称。",
+      "after": "choose"
+    }
+  },
+  "resourceLinks": {
+    "real-order": "real-order",
+    "equality-properties": "equality-properties",
+    "inequality-properties": "inequality-properties",
+    "square-nonnegative": "square-nonnegative",
+    "amgm-formula": "amgm-formula",
+    "quadratic-function-properties": "quadratic-function-properties",
+    "quadratic-equation": "quadratic-equation",
+    "quadratic-inequality": "quadratic-inequality",
+    "quantifiers": "quantifiers",
+    "function-range-extrema": "function-range-extrema",
+    "function-monotonicity": "function-monotonicity",
+    "linear-interval-extremum": "linear-interval-extremum",
+    "reciprocal-sum-function": "reciprocal-sum-function",
+    "skill-simplify": "skill-simplify",
+    "skill-equality-transform": "skill-equality-transform",
+    "skill-inequality-transform": "skill-inequality-transform",
+    "skill-apply-amgm": "skill-apply-amgm",
+    "method-matching": "method-matching",
+    "method-homogeneous": "method-homogeneous",
+    "method-substitution": "method-substitution",
+    "method-sum-product": "method-sum-product",
+    "method-elimination": "method-elimination",
+    "method-fraction-split": "method-fraction-split",
+    "method-complete-square": "method-complete-square",
+    "skill-factor": "skill-factor",
+    "skill-solve-quadratic": "skill-solve-quadratic",
+    "skill-quadratic-sign": "skill-quadratic-sign",
+    "quadratic-interval-extremum": "quadratic-interval-extremum",
+    "skill-linear-range": "skill-linear-range",
+    "skill-reciprocal-range": "skill-reciprocal-range",
+    "skill-quantified-range": "skill-quantified-range",
+    "skill-roots-from-solution": "skill-roots-from-solution",
+    "skill-rational-to-polynomial": "skill-rational-to-polynomial",
+    "method-difference-comparison": "method-difference-comparison",
+    "method-amgm-direct": "method-amgm-direct",
+    "method-square-extremum": "method-square-extremum",
+    "method-sum-product-range": "method-sum-product-range",
+    "method-discriminant": "method-discriminant",
+    "method-interval-extremum": "method-interval-extremum",
+    "method-separation": "method-separation",
+    "method-variable-swap": "method-variable-swap",
+    "quadratic-inequality-solve": "quadratic-inequality-solve",
+    "method-parameter-quadratic-cases": "method-parameter-quadratic-cases",
+    "method-solution-inverse": "method-solution-inverse",
+    "method-rational-inequality": "method-rational-inequality",
+    "method-amgm-parameter": "method-amgm-parameter",
+    "type-expression-comparison": "type-expression-comparison",
+    "type-sum-product-extremum": "type-sum-product-extremum",
+    "type-binary-quadratic-range": "type-binary-quadratic-range",
+    "type-quantified-quadratic": "type-quantified-quadratic",
+    "type-quadratic-solve": "type-quadratic-solve",
+    "type-parameter-quadratic-solve": "type-parameter-quadratic-solve",
+    "type-solution-parameters": "type-solution-parameters",
+    "type-rational-inequality": "type-rational-inequality",
+    "type-amgm-quantified": "type-amgm-quantified",
+    "rule-quadratic-method": "rule-quadratic-method",
+    "rule-interval-skill": "rule-interval-skill",
+    "textbook-pep-a-compulsory-1": "textbook-pep-a-compulsory-1",
+    "chapter-quadratic-equations-inequalities": "chapter-quadratic-equations-inequalities",
+    "section-2-1": "section-2-1",
+    "section-2-2": "section-2-2",
+    "section-2-3": "section-2-3",
+    "extremum-transfer": "function-range-extrema#quantified",
+    "endpoint-attainability": "function-range-extrema#attainability",
+    "case-merge": "method-parameter-quadratic-cases#merge",
+    "homogeneous-expression": "method-homogeneous#degree",
+    "symmetric-polynomial": "method-sum-product#identities",
+    "method-reciprocal": "skill-inequality-transform#reciprocal"
+  },
+  "legacyIdentityNotes": [
+    "同一操作沿用 method-* 身份，kind 改为 skill；类型始终读取 kind。",
+    "quadratic-inequality-solve 继续表示完整解法，kind 为 method；二次不等式知识对象使用独立 ID。",
+    "extremum-transfer 的知识含义归入 function-range-extrema#quantified；执行转换的技能另建 skill-quantified-range。",
+    "method-complete-square 保留配方操作；method-square-extremum 是独立的完整求最值方法。"
+  ],
+  "source": "/docs/public-knowledge-graph-ontology-design.md"
+}

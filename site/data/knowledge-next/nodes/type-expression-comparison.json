@@ -1,0 +1,53 @@
+{
+  "id": "type-expression-comparison",
+  "kind": "problem_type",
+  "label": "代数式比较大小问题",
+  "summary": "给两个代数式，判断哪个大，或者在什么条件下哪个大。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "sample": "比较 $(x+2)(x+3)$ 与 $(x+1)(x+4)$ 的大小。",
+  "features": [
+    {
+      "cue": "题目给出两个式子，问「比较大小」或「哪个大」。",
+      "example": "比较 $(x+2)(x+3)$ 与 $(x+1)(x+4)$。"
+    },
+    {
+      "cue": "两个式子都含字母，没法直接算出数值来比。",
+      "example": "两个式子都含 $x$，$x$ 可以取任意实数。"
+    },
+    {
+      "cue": "答案是一个大小关系：可能对所有取值都成立，也可能要按字母的范围分情况。",
+      "example": "两式相减等于 $2$，所以不管 $x$ 取什么，前一个式子都更大。"
+    }
+  ],
+  "confuse": [
+    {
+      "text": "要求出使不等式成立的 $x$ 的范围，是解不等式，不是比较",
+      "ref": "type-quadratic-solve"
+    },
+    {
+      "text": "要求一个式子的最大值或最小值",
+      "ref": "type-sum-product-extremum"
+    }
+  ],
+  "knowledge": [
+    "real-order",
+    "square-nonnegative",
+    "inequality-properties"
+  ],
+  "methods": [
+    "method-difference-comparison"
+  ],
+  "rules": [],
+  "examples": [
+    {
+      "title": "展开后得到常数差",
+      "prompt": "比较 $(x+2)(x+3)$ 与 $(x+1)(x+4)$。",
+      "solution": [
+        "按“前式减后式”构造差。",
+        "展开化简得 $D=2>0$。",
+        "因此对所有实数 $x$，前式恒大于后式。"
+      ],
+      "source": "教材 2.1 例 1"
+    }
+  ]
+}

@@ -56,6 +56,19 @@ function figure() {
   </svg>`;
 }
 
+const explorer = () => {
+  const keys = Object.keys(TARGETS);
+  return `<div class="qs-explorer">
+      <p class="qs-ask" data-math-text>$ax^2+bx+c$（$a&gt;0$，$\\Delta&gt;0$）要</p>
+      <div class="qs-targets" role="group" aria-label="不等号">
+        ${keys.map(key => `<button type="button" data-qs-target="${key}" aria-pressed="${key === 'gt'}" data-math-text>${TARGETS[key].label}</button>`).join('')}
+      </div>
+      ${figure()}
+      ${keys.map(key => `<p class="qs-answer" data-qs-answer="${key}"${key === 'gt' ? '' : ' hidden'}><span class="qs-tag">解集</span><span data-math-text>${TARGETS[key].answer}</span><small data-math-text>${TARGETS[key].tip}</small></p>`).join('')}
+      <p class="qs-motto">二次项系数为正时：大于取两边，小于取中间。</p>
+    </div>`;
+};
+
 const SPECIAL = [
   {title: '$\\Delta=0$', example: '例：$(x-1)^2$', cells: ['$x\\ne 1$', '$\\mathbb R$', '$\\varnothing$', '$x=1$']},
   {title: '$\\Delta&lt;0$', example: '例：$x^2+x+1$', cells: ['$\\mathbb R$', '$\\mathbb R$', '$\\varnothing$', '$\\varnothing$']},
@@ -64,19 +77,13 @@ const SPECIAL = [
 export default {
   stylesheet: new URL('quadratic-inequality-solve.css?v=1', import.meta.url).href,
 
+  figure: explorer,
+
   render({tip}) {
     const keys = Object.keys(TARGETS);
     return `<p class="qs-core" data-math-text>先把二次项系数化成正数，求出两根 $x_1&lt;x_2$，再看图像：大于零取两根之外，小于零取两根之间；带等号就把根也算进去。</p>
     ${tip?.note ? `<p class="qs-problem"><span class="qs-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="qs-explorer">
-      <p class="qs-ask" data-math-text>$ax^2+bx+c$（$a&gt;0$，$\\Delta&gt;0$）要</p>
-      <div class="qs-targets" role="group" aria-label="不等号">
-        ${keys.map(key => `<button type="button" data-qs-target="${key}" aria-pressed="${key === 'gt'}" data-math-text>${TARGETS[key].label}</button>`).join('')}
-      </div>
-      ${figure()}
-      ${keys.map(key => `<p class="qs-answer" data-qs-answer="${key}"${key === 'gt' ? '' : ' hidden'}><span class="qs-tag">解集</span><span data-math-text>${TARGETS[key].answer}</span><small data-math-text>${TARGETS[key].tip}</small></p>`).join('')}
-      <p class="qs-motto">二次项系数为正时：大于取两边，小于取中间。</p>
-    </div>
+    ${explorer()}
     <table class="qs-table">
       <caption data-math-text>没有两个不同的根时（$a&gt;0$）</caption>
       <thead><tr><th scope="col"><span class="qs-hidden">情况</span></th>${keys.map(key => `<th scope="col" data-math-text>${TARGETS[key].label}</th>`).join('')}</tr></thead>

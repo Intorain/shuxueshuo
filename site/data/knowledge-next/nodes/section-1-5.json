@@ -1,0 +1,13 @@
+{
+  "id": "section-1-5",
+  "kind": "section",
+  "label": "1.5 全称量词与存在量词",
+  "summary": "区分“对所有”与“存在”两类命题，为恒成立与存在成立问题提供逻辑依据。",
+  "source": "教材 1.5",
+  "members": [
+    {
+      "ref": "quantifiers",
+      "relation": "contains"
+    }
+  ]
+}

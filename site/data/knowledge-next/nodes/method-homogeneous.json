@@ -1,0 +1,74 @@
+{
+  "id": "method-homogeneous",
+  "kind": "skill",
+  "label": "配齐次式",
+  "summary": "借助像 x + y = 1 这样的条件，给某些项乘上「等于 1 的式子」，让各项次数一样，从而出现积为定值的比值项。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "input": "要求最值，看到条件是「一次式等于常数」，而所求式子各项的次数和它对不上，例如 $x,y>0$，$x+5y=1$，求 $\\frac5x+\\frac4y$ 的最小值。",
+  "output": "各项次数相同的新式子，例如 $25+\\frac{25y}{x}+\\frac{4x}{y}$，两个比值项的积是定值，可以接着用基本不等式。这个新式子只在原条件成立时才等于原式。",
+  "conditions": "只能乘「已知等于 $1$」的式子（乘了等于 $k$ 的式子要再除以 $k$）；各项次数不同时，只给缺次数的项乘，不要整体乘。",
+  "basis": [
+    "equality-properties#identity"
+  ],
+  "operations": [
+    {
+      "id": "degree",
+      "title": "数一数每项的次数",
+      "body": [
+        "每项的次数是各字母指数之和，分母里的字母算负次数：$x^2$、$xy$ 都是 $2$ 次，$\\frac5x$ 是 $-1$ 次，$\\frac{y}{x}$ 是 $0$ 次。",
+        "$\\frac5x+\\frac4y$ 两项都是 $-1$ 次，条件里的 $x+5y$ 是 $1$ 次，乘一次就都变成 $0$ 次。"
+      ]
+    },
+    {
+      "id": "fill",
+      "title": "乘上等于 1 的条件式",
+      "body": [
+        "因为 $x+5y=1$，乘上它式子的值不变：$\\left(\\frac5x+\\frac4y\\right)(x+5y)=5+\\frac{25y}{x}+\\frac{4x}{y}+20=25+\\frac{25y}{x}+\\frac{4x}{y}$。",
+        "也可以只给某一项补次数：$x+y=1$ 时 $y=y(x+y)$，于是 $x^2+y=x^2+xy+y^2$，每项都是 $2$ 次。"
+      ]
+    },
+    {
+      "id": "verify",
+      "title": "说清乘的为什么等于 1",
+      "body": [
+        "每乘一次，都要写明乘的式子为什么等于 $1$。新式子只在 $x+5y=1$ 时等于原式，所以后面求出取等时的 $x,y$，要代回这个条件检查。"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "title": "局部配齐",
+      "prompt": "$x+y=1$，将 $x^2+y$ 配成二次齐次式。",
+      "solution": [
+        "$x^2+y=x^2+y(x+y)=x^2+xy+y^2$；每项总次数为 $2$。"
+      ],
+      "source": "本页说明例"
+    },
+    {
+      "title": "整体乘入",
+      "prompt": "$x,y>0$，$x+5y=1$，求 $\\frac5x+\\frac4y$ 的最小值。",
+      "solution": [
+        "目标是 $-1$ 次，条件式 $x+5y=1$ 是 $1$ 次，整体乘入后为 $0$ 次：$\\left(\\frac5x+\\frac4y\\right)(x+5y)=25+\\frac{25y}x+\\frac{4x}y$。",
+        "两个比值项的积 $\\frac{25y}x\\cdot\\frac{4x}y=100$ 为定值，所以原式 $\\ge25+2\\sqrt{100}=45$。",
+        "取等要 $\\frac{25y}x=\\frac{4x}y$，即 $2x=5y$，与 $x+5y=1$ 联立得 $x=\\frac13$，$y=\\frac2{15}$，取得到。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "pitfalls": [
+    {
+      "id": "pitfall-multiply-all",
+      "title": "各项次数不同时整体乘入",
+      "wrong": "$x,y>0$，$x+y=1$，求 $\\frac1x+\\frac xy$ 的最小值时，整体乘 $(x+y)$：$\\left(\\frac1x+\\frac xy\\right)(x+y)=1+\\frac yx+\\frac{x^2}y+x$。",
+      "why": "$\\frac xy$ 本来已经是 $0$ 次，被乘成了一次，次数又不齐，得不到定积。",
+      "fix": [
+        "逐项数次数，只给缺次数的项乘：$\\frac1x$ 是 $-1$ 次，乘 $(x+y)$ 得 $1+\\frac yx$；$\\frac xy$ 不乘。",
+        "原式 $=1+\\frac yx+\\frac xy\\ge1+2=3$，$x=y=\\frac12$ 时取等。"
+      ]
+    }
+  ],
+  "resources": [
+    "homogeneous-degree",
+    "homogeneous-degree-count"
+  ]
+}

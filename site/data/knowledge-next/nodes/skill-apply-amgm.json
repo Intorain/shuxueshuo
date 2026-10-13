@@ -1,0 +1,51 @@
+{
+  "id": "skill-apply-amgm",
+  "kind": "skill",
+  "label": "应用基本不等式",
+  "summary": "两项都是正数时，写出 U + V ≥ 2√(UV)，并记下等号在 U = V 时成立。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "input": "要求最值时：两个正数相加求最小值，看到它们的积是定值；或者两个正数相乘求最大值，看到它们的和是定值。例如 $x,y>0$，$xy=4$，求 $x+2y$ 的最小值：$x$ 和 $2y$ 都是正数，积 $x\\cdot2y=8$ 是定值。",
+  "output": "不等式 $U+V\\ge2\\sqrt{UV}$（或 $UV\\le\\frac{(U+V)^2}{4}$），以及等号成立的条件 $U=V$。",
+  "conditions": "两项都必须是正数；写出不等式后还要检查等号 $U=V$ 能不能取到，取不到就得不出最值。",
+  "basis": [
+    "amgm-formula#formula"
+  ],
+  "operations": [
+    {
+      "id": "bind",
+      "title": "写清两项，确认都是正数",
+      "body": [
+        "系数要算进项里。例如 $x+2y$ 取 $U=x$，$V=2y$；由 $x,y>0$ 知两项都为正。"
+      ]
+    },
+    {
+      "id": "apply",
+      "title": "写出不等式",
+      "body": [
+        "$U+V\\ge2\\sqrt{UV}$：$x+2y\\ge2\\sqrt{x\\cdot2y}=2\\sqrt{2xy}$。若已知 $xy=4$，就得 $x+2y\\ge2\\sqrt8=4\\sqrt2$。",
+        "题目给的是和、要求积时，用另一种写法 $UV\\le\\frac{(U+V)^2}{4}$。"
+      ]
+    },
+    {
+      "id": "equality",
+      "title": "写出等号成立的条件",
+      "body": [
+        "等号在 $U=V$ 时成立，这里是 $x=2y$。把它和原条件放在一起检查能否取到：与 $xy=4$ 联立得 $2y^2=4$，$y=\\sqrt2$，$x=2\\sqrt2$，都是正数，所以 $4\\sqrt2$ 取得到。"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "title": "系数属于两项",
+      "prompt": "$x,y>0,xy=4$，对 $x+2y$ 应用公式。",
+      "solution": [
+        "取 $U=x,V=2y$，得 $x+2y\\ge2\\sqrt{2xy}=4\\sqrt2$，取等关系是 $x=2y$。"
+      ],
+      "source": "基本不等式专题 Q03",
+      "url": "/1/q03/"
+    }
+  ],
+  "resources": [
+    "apply-amgm-slots"
+  ]
+}

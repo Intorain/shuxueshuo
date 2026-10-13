@@ -1,0 +1,45 @@
+{
+  "id": "section-2-1",
+  "kind": "section",
+  "label": "2.1 等式性质与不等式性质",
+  "summary": "从实数大小关系出发，学习等式与不等式的合法运算，并用作差比较代数式。",
+  "source": "教材 2.1，第 37–43 页",
+  "members": [
+    {
+      "ref": "real-order",
+      "relation": "contains"
+    },
+    {
+      "ref": "equality-properties",
+      "relation": "contains"
+    },
+    {
+      "ref": "inequality-properties",
+      "relation": "contains"
+    },
+    {
+      "ref": "square-nonnegative",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-simplify",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-equality-transform",
+      "relation": "contains"
+    },
+    {
+      "ref": "skill-inequality-transform",
+      "relation": "contains"
+    },
+    {
+      "ref": "type-expression-comparison",
+      "relation": "contains"
+    },
+    {
+      "ref": "method-difference-comparison",
+      "relation": "contains"
+    }
+  ]
+}

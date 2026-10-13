@@ -2,8 +2,8 @@
 import {escapeHtml as escape, problemNote} from '../shared/html.js?v=1';
 
 const KS = {1: {root: '1', low: '2'}, 2: {root: '√2', low: '2√2'}, 4: {root: '2', low: '4'}};
-const WIDTH = 1.5;
-const WINDOW = {min: 0.5, max: 4, step: 0.5, value: 0.5};
+const WIDTH = 2;
+const WINDOW = {min: 0.5, max: 3.5, step: 0.5, value: 1};
 const BOUNDS = [-4.5, 6, -8, 9];
 const plot = {left: 24, right: 344, top: 12, bottom: 212};
 const sx = x => plot.left + (x - BOUNDS[0]) / (BOUNDS[1] - BOUNDS[0]) * (plot.right - plot.left);
@@ -14,7 +14,7 @@ const f = (k, x) => x + k / x;
 const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
 const frac = (num, den) => {
   const g = gcd(num, den);
-  return den / g === 1 ? String(num / g) : `${num / g}/${den / g}`;
+  return den / g === 1 ? String(num / g) : `<span class="rs-frac"><span>${num / g}</span><span>${den / g}</span></span>`;
 };
 // Window ends are multiples of 1/2, so x = n/2 gives f(x) = (n² + 4k) / (2n) exactly.
 const half = n => frac(n, 2);
@@ -52,6 +52,10 @@ function layer({k, p}) {
   const result = analyse(k, p);
   const marks = (side, kind) => side.xs.map(x => `<circle cx="${sx(x)}" cy="${sy(f(k, x))}" r="6" class="rs-point ${kind}"/>`).join('');
   const label = (x, y, text, anchor) => `<text x="${sx(x)}" y="${y}" text-anchor="${anchor}" class="rs-label">${text}</text>`;
+  const [lowY, highY] = [result.low, result.high].map(side => sy(f(k, side.xs[0])));
+  const guides = [result.low, result.high].flatMap(side => side.xs.map(x => `<path d="M${sx(0)} ${sy(f(k, x))}H${sx(x)}" class="rs-guide"/>`)).join('');
+  const range = `${guides}<path d="M${sx(0)} ${highY}V${lowY}" class="rs-range"/>
+    <text x="${sx(0) - 8}" y="${(lowY + highY) / 2 + 4}" text-anchor="end" class="rs-range-label">值域</text>`;
   return `<rect x="${sx(p)}" y="${plot.top}" width="${sx(q) - sx(p)}" height="${plot.bottom - plot.top}" class="rs-band"/>
     <rect x="${sx(p) + (sx(q) - sx(p)) / 2 - 30}" y="${plot.bottom - 22}" width="60" height="18" rx="9" class="rs-handle"/>
     <text x="${sx(p) + (sx(q) - sx(p)) / 2}" y="${plot.bottom - 9}" text-anchor="middle" class="rs-handle-text">区间 ⇆</text>
@@ -64,7 +68,7 @@ function layer({k, p}) {
     ${label(root, sy(2 * root) + 20, `(${KS[k].root}, ${KS[k].low})`, 'middle')}
     <circle cx="${sx(-root)}" cy="${sy(-2 * root)}" r="3.6" class="rs-vertex"/>
     ${label(-root, sy(-2 * root) - 12, `(−${KS[k].root}, −${KS[k].low})`, 'middle')}
-    ${marks(result.low, 'low')}${marks(result.high, 'high')}`;
+    ${range}${marks(result.low, 'low')}${marks(result.high, 'high')}`;
 }
 
 function figure() {
@@ -81,14 +85,7 @@ function figure() {
   </svg>`;
 }
 
-export default {
-  stylesheet: new URL('reciprocal-sum-function.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="rs-core" data-math-text>$k&gt;0$ 时，$y=x+\\frac kx$ 在 $x&gt;0$ 上先减后增，最低点在 $x=\\sqrt k$，最小值是 $2\\sqrt k$；$x&lt;0$ 的部分和它关于原点对称，最高点是 $(-\\sqrt k,-2\\sqrt k)$。</p>
-    ${tip?.note ? `<p class="rs-problem"><span class="rs-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <p class="rs-why" data-math-text>为什么在 $x=\\sqrt k$：$x&gt;0$ 时，$x+\\frac kx\\ge2\\sqrt{x\\cdot\\frac kx}=2\\sqrt k$，两项相等即 $x=\\frac kx$ 时取等。</p>
-    <div class="rs-explorer">
+const explorer = () => `<div class="rs-explorer">
       <div class="rs-switch" role="group" aria-label="k 的值">
         ${Object.keys(KS).map(k => `<button type="button" data-rs-k="${k}" aria-pressed="${k === '4'}">k = ${k}</button>`).join('')}
       </div>
@@ -98,8 +95,20 @@ export default {
         <p class="rs-row"><span class="rs-tag interval">区间</span><b data-rs-interval></b></p>
         <p class="rs-row"><span class="rs-tag low">最小值</span><b data-rs-at="low"></b><small data-rs-why="low"></small></p>
         <p class="rs-row"><span class="rs-tag high">最大值</span><b data-rs-at="high"></b><small data-rs-why="high"></small></p>
+        <p class="rs-row"><span class="rs-tag range">值域</span><b data-rs-range></b><small>最小值到最大值之间的数都取得到，所以值域是闭区间。</small></p>
       </div>
-    </div>
+    </div>`;
+
+export default {
+  stylesheet: new URL('reciprocal-sum-function.css?v=2', import.meta.url).href,
+
+  figure: explorer,
+
+  render({tip}) {
+    return `<p class="rs-core" data-math-text>$k&gt;0$ 时，$y=x+\\frac kx$ 在 $x&gt;0$ 上先减后增，最低点在 $x=\\sqrt k$，最小值是 $2\\sqrt k$；$x&lt;0$ 的部分和它关于原点对称，最高点是 $(-\\sqrt k,-2\\sqrt k)$。</p>
+    ${tip?.note ? `<p class="rs-problem"><span class="rs-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    <p class="rs-why" data-math-text>为什么在 $x=\\sqrt k$：$x&gt;0$ 时，$x+\\frac kx\\ge2\\sqrt{x\\cdot\\frac kx}=2\\sqrt k$，两项相等即 $x=\\frac kx$ 时取等。</p>
+    ${explorer()}
     <div class="rs-notes">
       <section class="rs-note">
         <h3>两端谁更高：看两端点之积和 k</h3>
@@ -126,11 +135,12 @@ export default {
       slider.value = state.p;
       for (const button of root.querySelectorAll('[data-rs-k]')) button.setAttribute('aria-pressed', String(Number(button.dataset.rsK) === state.k));
       const n = Math.round(state.p * 2), result = analyse(state.k, state.p);
-      root.querySelector('[data-rs-interval]').textContent = `[${half(n)}, ${half(n + WIDTH * 2)}]，k = ${state.k}，最低点 x = ${KS[state.k].root}`;
+      root.querySelector('[data-rs-interval]').innerHTML = `[${half(n)}, ${half(n + WIDTH * 2)}]，k = ${state.k}，最低点 x = ${KS[state.k].root}`;
       for (const kind of ['low', 'high']) {
-        root.querySelector(`[data-rs-at="${kind}"]`).textContent = `${result[kind].value}，在${result[kind].at}`;
-        root.querySelector(`[data-rs-why="${kind}"]`).textContent = result[kind].why;
+        root.querySelector(`[data-rs-at="${kind}"]`).innerHTML = `${result[kind].value}，在${result[kind].at}`;
+        root.querySelector(`[data-rs-why="${kind}"]`).innerHTML = result[kind].why;
       }
+      root.querySelector('[data-rs-range]').innerHTML = `[${result.low.value}, ${result.high.value}]`;
     };
     const move = value => {
       state.p = Math.min(WINDOW.max, Math.max(WINDOW.min, Math.round(value / WINDOW.step) * WINDOW.step));

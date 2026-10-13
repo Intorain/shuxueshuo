@@ -1,0 +1,64 @@
+{
+  "id": "reciprocal-sum-function",
+  "kind": "knowledge",
+  "label": "对勾函数",
+  "summary": "k 取正数时，对勾函数在 y 轴两侧各有一个转折点；研究区间时先去掉 x=0。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "aliases": [
+    "倒勾函数"
+  ],
+  "entries": [
+    {
+      "id": "definition",
+      "title": "表达式与范围",
+      "type": "定义",
+      "body": [
+        "$f(x)=x+\\frac{k}{x}$，当前讨论 $k>0$、$x\\ne0$。函数为奇函数。"
+      ],
+      "conditions": "其他 $k$ 的性质不直接沿用本页结论。"
+    },
+    {
+      "id": "monotonicity",
+      "title": "四个单调区间",
+      "type": "性质",
+      "body": [
+        "在 $(-\\infty,-\\sqrt{k}]$、$[\\sqrt{k},+\\infty)$ 上递增；在 $[-\\sqrt{k},0)$、$(0,\\sqrt{k}]$ 上递减。"
+      ],
+      "conditions": "本页性质以 $k>0,x\\ne0$ 为前提。"
+    },
+    {
+      "id": "range",
+      "title": "最值与值域",
+      "type": "性质",
+      "body": [
+        "正半轴最小值为 $2\\sqrt{k}$，在 $x=\\sqrt{k}$ 取得；负半轴最大值为 $-2\\sqrt{k}$，在 $x=-\\sqrt{k}$ 取得。全定义域值域为 $(-\\infty,-2\\sqrt{k}]\\cup[2\\sqrt{k},+\\infty)$，没有全局最大值或最小值。"
+      ],
+      "conditions": "本页性质以 $k>0,x\\ne0$ 为前提。"
+    },
+    {
+      "id": "difference",
+      "title": "用作差说明单调区间",
+      "type": "性质",
+      "body": [
+        "上面四个单调区间可以这样得到：在同一个区间里任取两个数 $u<v$，看 $f(v)-f(u)$ 是正是负。",
+        "先化简：$f(v)-f(u)=(v-u)+\\left(\\frac{k}{v}-\\frac{k}{u}\\right)=(v-u)-\\frac{k(v-u)}{uv}=(v-u)\\left(1-\\frac{k}{uv}\\right)$。",
+        "因为 $u<v$，$v-u>0$，所以正负只看 $1-\\frac{k}{uv}$。当 $u,v$ 在 $0$ 的同一侧时 $uv>0$：$uv>k$ 则差为正，$f(v)>f(u)$，函数递增；$uv<k$ 则差为负，函数递减。",
+        "在 $[\\sqrt{k},+\\infty)$ 上，$u\\ge\\sqrt{k}$ 且 $v>\\sqrt{k}$，所以 $uv>k$，递增；在 $(0,\\sqrt{k}]$ 上，$u<v\\le\\sqrt{k}$，所以 $uv<k$，递减。负半轴同理：两数都不超过 $-\\sqrt{k}$ 时 $uv>k$，递增；两数都在 $-\\sqrt{k}$ 与 $0$ 之间时 $uv<k$，递减。"
+      ],
+      "conditions": "$k>0$；$u,v$ 取在 $0$ 的同一侧。一正一负时 $uv<0$，上面的判断不能用。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "开区间上的边界",
+      "prompt": "求 $x+\\frac{4}{x}$ 在 $(1,2)$ 上的值域。",
+      "solution": [
+        "在该区间递减且连续，靠近左端时趋近 $5$，靠近右端时趋近 $4$，两者均不取到，值域为 $(4,5)$。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "resources": [
+    "reciprocal-range"
+  ]
+}

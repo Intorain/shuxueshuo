@@ -1,0 +1,94 @@
+{
+  "id": "inequality-properties",
+  "kind": "knowledge",
+  "label": "不等式的性质",
+  "summary": "不等式的方向随运算条件变化，同乘或同除负数必须改变方向。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "prerequisites": [
+    "real-order"
+  ],
+  "entries": [
+    {
+      "id": "order",
+      "title": "交换两端与传递",
+      "type": "性质",
+      "body": [
+        "$a>b\\iff b<a$；$a>b,b>c\\Rightarrow a>c$。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "addition",
+      "title": "同加减与同向相加",
+      "type": "性质",
+      "body": [
+        "$a>b\\iff a+c>b+c$。若 $a>b,c>d$，则 $a+c>b+d$；同向不等式不能直接相减。",
+        "需要相减时，先把 $c>d$ 化为 $-d>-c$，再与 $a>b$ 同向相加，得 $a-d>b-c$。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "multiplication",
+      "title": "乘除与方向",
+      "type": "性质",
+      "body": [
+        "$a>b,c>0\\Rightarrow ac>bc$；$a>b,c<0\\Rightarrow ac<bc$。同除也按除数符号判断，除数不能为零。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "positive-products",
+      "title": "正数的同向乘法与乘方",
+      "type": "性质",
+      "body": [
+        "$a>b>0,c>d>0\\Rightarrow ac>bd$。$a>b>0\\Rightarrow a^n>b^n$，其中 $n\\in\\mathbb N,n\\ge2$。"
+      ],
+      "conditions": "正性是本条乘法、乘方结论的前提。"
+    },
+    {
+      "id": "reciprocal",
+      "title": "同号两数取倒数",
+      "type": "性质",
+      "body": [
+        "$a>b$ 且 $ab>0$ 时，$\\frac1a<\\frac1b$，因为 $\\frac1b-\\frac1a=\\frac{a-b}{ab}>0$。异号时不能套用这一变向规则。"
+      ],
+      "conditions": "$a,b$ 同号且均不为零。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "负数乘法",
+      "prompt": "已知 $a>b>0,c<0$，比较 $\\frac{c}{a}$ 与 $\\frac{c}{b}$。",
+      "solution": [
+        "先由同号取倒数得 $\\frac{1}{a}<\\frac{1}{b}$，再同乘负数 $c$，得 $\\frac{c}{a}>\\frac{c}{b}$。"
+      ],
+      "source": "教材 2.1 例 2"
+    }
+  ],
+  "pitfalls": [
+    {
+      "id": "pitfall-divide-by-letter",
+      "title": "除以含字母的式子不看符号",
+      "wrong": "$mx<-x^2-4$ 两边除以 $x$，直接得 $m<-x-\\frac4x$。",
+      "why": "$x$ 的符号不确定：$x<0$ 时两边除以负数，不等号要变向。",
+      "fix": [
+        "$x>0$ 时得 $m<-x-\\frac4x$；$x<0$ 时变向，得 $m>-x-\\frac4x$。",
+        "$x=0$ 不能作除数，单独代回原式检验；$x$ 的符号不确定时分类讨论。"
+      ],
+      "see": "method-separation"
+    },
+    {
+      "id": "pitfall-divide-inequalities",
+      "title": "两个同向不等式直接相除",
+      "wrong": "由 $2<4$，$1<4$ 相除得 $\\frac21<\\frac44$。",
+      "why": "同向不等式不能相除：实际上 $\\frac21=2>1=\\frac44$。",
+      "fix": [
+        "先取倒数再相乘：$0<a<b$，$0<c<d$ 时 $\\frac1d<\\frac1c$，与 $a<b$ 同向相乘得 $\\frac ad<\\frac bc$。"
+      ],
+      "see": "inequality-properties#reciprocal"
+    }
+  ],
+  "resources": [
+    "order-flip-lines"
+  ]
+}

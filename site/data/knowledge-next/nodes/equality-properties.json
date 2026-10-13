@@ -1,0 +1,57 @@
+{
+  "id": "equality-properties",
+  "kind": "knowledge",
+  "label": "等式的性质",
+  "summary": "等式可经合法运算推导新等式；逆向使用时要检查非零、定义域等条件。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "entries": [
+    {
+      "id": "relation",
+      "title": "对称与传递",
+      "type": "性质",
+      "body": [
+        "$a=b\\Rightarrow b=a$；$a=b,b=c\\Rightarrow a=c$。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "addition",
+      "title": "同加同减",
+      "type": "性质",
+      "body": [
+        "$a=b\\iff a+c=b+c$，同减一个数也保持等价。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "multiplication",
+      "title": "同乘与非零同除",
+      "type": "性质",
+      "body": [
+        "$a=b\\Rightarrow ac=bc$；只有 $c\\ne0$ 时才能反推，也才能同除以 $c$。"
+      ],
+      "conditions": "同除的数 $c\\ne0$。"
+    },
+    {
+      "id": "identity",
+      "title": "等值替换与定义域",
+      "type": "性质",
+      "body": [
+        "等量代换：已知 $A=B$，就可以在式子里把 $A$ 换成 $B$。例如由 $x+y=1$ 得 $y=1-x$，于是 $xy=x(1-x)$。",
+        "化简时保留原式的取值范围：$\\frac{x^2-1}{x-1}$ 约分得 $x+1$，但原式要求 $x\\ne1$，化简后仍要写上 $x\\ne1$。",
+        "两边平方后不再等价：$a=b$ 能推出 $a^2=b^2$，但 $a^2=b^2$ 只能推出 $a=\\pm b$。所以解 $\\sqrt{x+2}=x$ 时，平方得 $x=2$ 或 $x=-1$，代回原方程检验，$x=-1$ 不成立，只有 $x=2$。"
+      ],
+      "conditions": "变量均为实数；代换时 $A=B$ 要在所讨论的范围内成立。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "不能除以零",
+      "prompt": "从 $ax=ay$ 能否推出 $x=y$？",
+      "solution": [
+        "$a\\ne0$ 时可以；$a=0$ 时原等式恒成立，对 $x,y$ 没有限制。"
+      ],
+      "source": "本页说明例"
+    }
+  ]
+}

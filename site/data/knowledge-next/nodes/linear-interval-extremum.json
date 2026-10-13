@@ -1,0 +1,52 @@
+{
+  "id": "linear-interval-extremum",
+  "kind": "knowledge",
+  "label": "一次函数",
+  "summary": "一次函数由斜率控制增减；斜率为零时按常函数处理。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "aliases": [
+    "一次函数的图像与性质"
+  ],
+  "entries": [
+    {
+      "id": "definition",
+      "title": "定义与图像",
+      "type": "定义",
+      "body": [
+        "$f(x)=ax+b$，$a\\ne0$，图像为直线，斜率是 $a$，纵截距是 $b$。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "monotonicity",
+      "title": "斜率与单调性",
+      "type": "性质",
+      "body": [
+        "$a>0$ 时递增；$a<0$ 时递减。$a=0$ 时为常函数 $f(x)=b$，不再是一次函数。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "interval",
+      "title": "区间取值",
+      "type": "性质",
+      "body": [
+        "非零斜率的一次函数把区间端点对应到值域边界，端点包含情况随对应点保留；常函数在任意非空定义域上值域为 $\\{b\\}$。"
+      ],
+      "conditions": "变量均为实数。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "常函数在开区间也有最值",
+      "prompt": "$f(x)=3$，$x\\in(0,1)$，是否有最大值？",
+      "solution": [
+        "有，最大值和最小值均为 $3$，每个定义域内的点都取到。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "resources": [
+    "linear-range"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "square-nonnegative",
+  "kind": "knowledge",
+  "label": "平方的非负性",
+  "summary": "任何实数的平方非负，等于零恰好要求原数为零；由此可以比较二次表达式。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "entries": [
+    {
+      "id": "nonnegative",
+      "title": "平方非负",
+      "type": "性质",
+      "body": [
+        "$u^2\\ge0$，等号当且仅当 $u=0$。"
+      ],
+      "conditions": "变量均为实数。"
+    },
+    {
+      "id": "two-squares",
+      "title": "两平方和与两倍积",
+      "type": "性质",
+      "body": [
+        "$u^2+v^2-2uv=(u-v)^2\\ge0$，所以 $u^2+v^2\\ge2uv$，等号当且仅当 $u=v$。"
+      ],
+      "conditions": "$u,v\\in\\mathbb R$，不要求为正。"
+    },
+    {
+      "id": "sum-product",
+      "title": "和与积的可行性",
+      "type": "性质",
+      "body": [
+        "$(u+v)^2-4uv=(u-v)^2\\ge0$。若记 $s=u+v,p=uv$，则 $s^2\\ge4p$。"
+      ],
+      "conditions": "变量均为实数。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "负数也适用",
+      "prompt": "取 $u=-2,v=-3$，检验 $u^2+v^2\\ge2uv$。",
+      "solution": [
+        "$13\\ge12$，两边之差为 $(-2+3)^2=1$。"
+      ],
+      "source": "本页说明例"
+    },
+    {
+      "title": "分式平方",
+      "prompt": "说明 $x^2+\\frac{1}{x^2}\\ge2$ 的条件。",
+      "solution": [
+        "$x\\ne0$ 时，原式 $=\\left(x-\\frac{1}{x}\\right)^2+2\\ge2$，等号在 $x=\\pm1$ 成立。"
+      ],
+      "source": "本页说明例"
+    }
+  ],
+  "resources": [
+    "square-area"
+  ]
+}

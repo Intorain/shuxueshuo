@@ -94,15 +94,7 @@ function cell(key, problemCase) {
   return `<td data-kt-col="${key.slice(-2)}" data-kt-cell="${key}"${mine ? ' class="kt-problem-cell"' : ''}>${mine ? '<span class="kt-badge">本题</span>' : ''}<span data-math-text>$${formula}$</span><small>${hint}</small></td>`;
 }
 
-export default {
-  stylesheet: new URL('extremum-transfer.css?v=1', import.meta.url).href,
-
-  // An active step passes no tip, so the sheet teaches the rule without pointing at the answer still being chosen.
-  render({tip}) {
-    const problemCase = tip?.case;
-    return `<p class="kt-core">把不等式看成曲线 <i>y</i> = <i>f</i>(<i>x</i>) 和水平线 <i>y</i> = <i>a</i> 比高低。上下拖动水平线，看两个问题的答案在哪里改变。</p>
-    ${tip?.note ? `<p class="kt-problem"><span class="kt-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="kt-explorer">
+const explorer = problemCase => `<div class="kt-explorer">
       <div class="kt-relation" role="group" aria-label="比较的方向">
         <button type="button" data-kt-relation="gt" aria-pressed="true"><span><i>f</i>(<i>x</i>) &gt; <i>a</i></span><small>曲线在线上方</small></button>
         <button type="button" data-kt-relation="lt" aria-pressed="false"><span><i>f</i>(<i>x</i>) &lt; <i>a</i></span><small>曲线在线下方</small></button>
@@ -123,7 +115,19 @@ export default {
       </tbody>
     </table>
     <p class="kt-motto">恒成立看最不利的点，存在看最有利的点。</p>
-    <p class="kt-small" data-math-text>带等号的 $\\ge$、$\\le$：最值能取到时，表中的不等号同样带上等号。</p>
+    <p class="kt-small" data-math-text>带等号的 $\\ge$、$\\le$：最值能取到时，表中的不等号同样带上等号。</p>`;
+
+export default {
+  stylesheet: new URL('extremum-transfer.css?v=1', import.meta.url).href,
+
+  figure: () => explorer(),
+
+  // An active step passes no tip, so the sheet teaches the rule without pointing at the answer still being chosen.
+  render({tip}) {
+    const problemCase = tip?.case;
+    return `<p class="kt-core">把不等式看成曲线 <i>y</i> = <i>f</i>(<i>x</i>) 和水平线 <i>y</i> = <i>a</i> 比高低。上下拖动水平线，看两个问题的答案在哪里改变。</p>
+    ${tip?.note ? `<p class="kt-problem"><span class="kt-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer(problemCase)}
     <div class="kt-notes">
       <section class="kt-note">
         <h3>参数在另一边，也一样</h3>

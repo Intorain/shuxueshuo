@@ -23,6 +23,8 @@
 .explain-homogeneous-expression .he-bar i { display:block; height:100%; border-radius:999px; background:#087f79; transition:width .12s; }
 .explain-homogeneous-expression .he-row:last-child .he-bar i { background:#c2410c; }
 .explain-homogeneous-expression .he-value { color:#33504a; font-size:13px; font-weight:650; font-variant-numeric:tabular-nums; text-align:right; }
+.explain-homogeneous-expression .he-frac { display:inline-flex; flex-direction:column; margin:0 .1em; font-size:.8em; line-height:1.1; text-align:center; vertical-align:middle; }
+.explain-homogeneous-expression .he-frac > span + span { border-top:1px solid currentColor; }
 .explain-homogeneous-expression .he-legend { margin:0; color:var(--muted); font-size:12.5px; text-align:center; }
 .explain-homogeneous-expression .he-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 0; }
 .explain-homogeneous-expression .he-note { padding:12px 14px; border:1px solid #e0ebe8; border-radius:14px; background:#fbfdfc; font-size:13.5px; line-height:1.7; }

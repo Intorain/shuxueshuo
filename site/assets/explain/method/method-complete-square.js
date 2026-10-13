@@ -25,13 +25,7 @@ function picture(step) {
     + side(x0 + SIDE / 2, y0 - 8, 'x') + side(x1 + HALF / 2, y0 - 8, '3') + side(x0 - 10, y0 + SIDE / 2 + 5, 'x', 'end') + side(x0 - 10, y1 + HALF / 2 + 5, '3', 'end');
 }
 
-export default {
-  stylesheet: new URL('method-complete-square.css?v=1', import.meta.url).href,
-
-  render({tip}) {
-    return `<p class="method-core"><span class="method-tag">核心</span><span data-math-text>把二次式配成“平方 + 常数”，由平方 $\\ge0$ 读出它的界，以及取等时的 $x$。</span></p>
-    ${tip?.note ? `<p class="sq-problem"><span class="sq-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
-    <div class="sq-explorer">
+const explorer = () => `<div class="sq-explorer">
       <p class="sq-ask" data-math-text>例：求 $x^2+6x+11$ 的最小值。</p>
       <div class="sq-stage">
         <svg class="sq-graph" viewBox="0 0 230 214" role="img" aria-label="面积图：边长为 x 的正方形加上 6x 的长方形，补上一角成为边长 x+3 的正方形"><g data-sq-layer></g></svg>
@@ -42,7 +36,17 @@ export default {
         <button type="button" data-sq-move="1" class="sq-next">下一步</button>
         <button type="button" data-sq-all>全部显示</button>
       </div>
-    </div>
+    </div>`;
+
+export default {
+  stylesheet: new URL('method-complete-square.css?v=1', import.meta.url).href,
+
+  figure: () => explorer(),
+
+  render({tip}) {
+    return `<p class="method-core"><span class="method-tag">核心</span><span data-math-text>把二次式配成“平方 + 常数”，由平方 $\\ge0$ 读出它的界，以及取等时的 $x$。</span></p>
+    ${tip?.note ? `<p class="sq-problem"><span class="sq-badge">本题</span><span data-math-text>${problemNote(tip.note)}</span></p>` : ''}
+    ${explorer()}
     <div class="sq-lead">
       <h3>二次项系数不是 1：先提出来</h3>
       <p class="sq-chain" data-math-text>$-x^2+2x+3=-(x^2-2x)+3=-\\left[(x-1)^2-1\\right]+3=4-(x-1)^2\\le4$</p>

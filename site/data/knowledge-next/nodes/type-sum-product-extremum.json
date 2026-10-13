@@ -1,0 +1,78 @@
+{
+  "id": "type-sum-product-extremum",
+  "kind": "problem_type",
+  "label": "和积最值问题",
+  "summary": "两个正数积是定值求和的最小值，或和是定值求积的最大值，以及能变形成这样的最值题。",
+  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "sample": "已知 $x,y>0$，$xy=4$，求 $x+2y$ 的最小值。",
+  "features": [
+    {
+      "cue": "要求的是最大值或最小值，而且有正数条件。",
+      "example": "「$x,y>0$」，求 $x+2y$ 的最小值。"
+    },
+    {
+      "cue": "能找到两个正数：积是定值时求和的最小值，和是定值时求积的最大值。这两个数可以是式子。",
+      "example": "$x$ 和 $2y$ 都是正数，积 $x\\cdot2y=8$ 是定值，要求它们的和 $x+2y$ 的最小值。"
+    },
+    {
+      "cue": "看不出定和或定积时，先配凑或换元把它凑出来。",
+      "example": "本例直接可见；像 $x>1$ 时求 $x+\\frac1{x-1}$，要先写成 $(x-1)+\\frac1{x-1}+1$。"
+    },
+    {
+      "cue": "最后要检查等号能不能取到，取到了才是最值。",
+      "example": "等号要求 $x=2y$，和 $xy=4$ 联立得 $x=2\\sqrt2$，$y=\\sqrt2$，取得到，所以最小值是 $4\\sqrt2$。"
+    }
+  ],
+  "confuse": [
+    {
+      "text": "有「恒成立」，要求参数的范围",
+      "ref": "type-amgm-quantified"
+    },
+    {
+      "text": "条件是二次等式，要求一次式的全部取值范围，不只是最值",
+      "ref": "type-binary-quadratic-range"
+    }
+  ],
+  "knowledge": [
+    "amgm-formula",
+    "square-nonnegative"
+  ],
+  "methods": [
+    "method-amgm-direct",
+    "method-square-extremum",
+    "method-sum-product-range"
+  ],
+  "rules": [],
+  "examples": [
+    {
+      "title": "配凑后再求界",
+      "prompt": "$x>1$，求 $x+\\frac{1}{x-1}$ 的最小值。",
+      "solution": [
+        "配凑为 $(x-1)+\\frac{1}{x-1}+1$，两项为正、积为 $1$。",
+        "应用基本不等式得原式 $\\ge3$。",
+        "取等要求 $x-1=\\frac{1}{x-1}$，由 $x>1$ 得 $x=2$ 合法，最小值为 $3$。"
+      ],
+      "source": "本页说明例"
+    },
+    {
+      "title": "直接应用路线",
+      "prompt": "$x,y>0,xy=4$，求 $x+2y$ 的最小值。",
+      "solution": [
+        "两项 $x,2y$ 的积为 $8$，下界为 $4\\sqrt2$；$x=2y$ 与 $xy=4$ 给出 $x=2\\sqrt2,y=\\sqrt2$，下界可达。"
+      ],
+      "source": "基本不等式专题 Q03",
+      "url": "/1/q03/"
+    },
+    {
+      "title": "定和求积的配方路线",
+      "prompt": "$m,n>0,m+n=2$，求 $mn$ 的最大值。",
+      "solution": [
+        "消去 $n$ 得 $mn=m(2-m)$，且 $0<m<2$。",
+        "配方得 $mn=1-(m-1)^2\\le1$。",
+        "$m=n=1$ 在原范围内，故最大值为 $1$。"
+      ],
+      "source": "基本不等式专题 Q01",
+      "url": "/1/q01/"
+    }
+  ]
+}

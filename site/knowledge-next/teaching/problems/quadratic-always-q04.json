@@ -1,0 +1,200 @@
+{
+  "topic": "quadratic-always",
+  "id": "quadratic-always-q04",
+  "label": "Q04",
+  "path": "/2/q04/",
+  "types": [
+    "type-quantified-quadratic"
+  ],
+  "routes": {
+    "interval": {
+      "methods": [
+        "method-interval-extremum"
+      ],
+      "steps": {
+        "i_basis": {
+          "refs": [
+            "method-interval-extremum"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "i_condition": {
+          "refs": [
+            "skill-quantified-range",
+            "function-range-extrema#quantified",
+            "quantifiers"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#quantified",
+            "resource": "quantified-horizontal-line",
+            "case": "forall-lt",
+            "note": "本题 $f(x)<0$ 对所有 $x\\in[1,2]$ 成立：恒成立、小于，看区间上的最高点。"
+          },
+          "title": "转化为最值条件",
+          "position": 2
+        },
+        "i_extremum": {
+          "refs": [
+            "quadratic-interval-extremum"
+          ],
+          "tip": {
+            "ref": "quadratic-interval-extremum",
+            "resource": "parabola-axis-drag",
+            "note": "本题开口向上，在 $[1,2]$ 上求最大值：对称轴 $x=-\\frac m2$ 和区间中点 $\\frac32$ 比，$m\\ge-3$ 时是 $f(2)$，$m<-3$ 时是 $f(1)$。"
+          },
+          "title": "分类讨论最值",
+          "position": 3
+        },
+        "i_range": {
+          "refs": [
+            "method-interval-extremum#conditions",
+            "skill-inequality-transform"
+          ],
+          "tip": {
+            "ref": "method-interval-extremum#conditions",
+            "resource": "case-merge-union",
+            "note": "本题情况① $m\\ge-3$ 且 $2m+8<0$，交集为空；情况② $m<-3$ 且 $m+5<0$，得 $m<-5$；取并集得 $m<-5$。"
+          },
+          "title": "求参数范围",
+          "position": 4
+        },
+        "i_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $m=-5$ 时 $f(1)=0$：最大值取得到且等于 $0$，不满足“$<0$”，排除。"
+          },
+          "title": "检查边界",
+          "position": 5
+        }
+      },
+      "label": "区间最值法"
+    },
+    "extremum": {
+      "methods": [
+        "method-separation"
+      ],
+      "steps": {
+        "e_basis": {
+          "refs": [
+            "method-separation"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "e_separate": {
+          "refs": [
+            "method-separation#separate",
+            "skill-inequality-transform",
+            "inequality-properties#multiplication"
+          ],
+          "tip": {
+            "ref": "inequality-properties#multiplication",
+            "resource": "order-flip-lines",
+            "note": "本题 $x\\in[1,2]$，$x>0$，两边除以 $x$ 不变向：$m<-\\left(x+\\frac4x\\right)$。"
+          },
+          "title": "分离参数",
+          "position": 2
+        },
+        "e_condition": {
+          "refs": [
+            "skill-quantified-range",
+            "function-range-extrema#quantified",
+            "quantifiers"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#quantified",
+            "resource": "quantified-horizontal-line",
+            "case": "forall-gt",
+            "note": "本题 $m<-h(x)$ 就是 $-h(x)>m$：恒成立、大于，看 $-h(x)$ 的最低点，也就是 $h(x)$ 的最高点。"
+          },
+          "title": "转化为最值条件",
+          "position": 3
+        },
+        "e_graph": {
+          "refs": [
+            "reciprocal-sum-function"
+          ],
+          "tip": {
+            "ref": "reciprocal-sum-function",
+            "resource": "reciprocal-window-range",
+            "note": "本题 $h(x)=x+\\frac4x$，$k=4$：最低点在 $x=\\sqrt4=2$，最小值 $2\\sqrt4=4$。"
+          },
+          "title": "画函数图像",
+          "position": 4
+        },
+        "e_extremum": {
+          "refs": [
+            "skill-reciprocal-range"
+          ],
+          "tip": {
+            "ref": "skill-reciprocal-range",
+            "resource": "reciprocal-window-range",
+            "note": "本题区间 $[1,2]$ 在最低点 $x=2$ 左侧，函数递减，最大值是左端 $h(1)=5$。"
+          },
+          "title": "求最值",
+          "position": 5
+        },
+        "e_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $m=-5$ 时，$x=1$ 处 $-h(1)=-5=m$：最大值取得到，$m<-h(x)$ 不成立，排除。"
+          },
+          "title": "检查边界",
+          "position": 6
+        }
+      },
+      "label": "分离参数法"
+    }
+  },
+  "statement": "当 $1\\le x\\le2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ]
+}

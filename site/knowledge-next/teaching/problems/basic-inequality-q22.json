@@ -1,0 +1,141 @@
+{
+  "topic": "basic-inequality",
+  "id": "basic-inequality-q22",
+  "label": "Q22",
+  "path": "/1/q22/",
+  "types": [
+    "type-sum-product-extremum"
+  ],
+  "routes": {
+    "substitution": {
+      "methods": [
+        "method-amgm-direct"
+      ],
+      "steps": {
+        "substitution": {
+          "refs": [
+            "method-substitution"
+          ],
+          "title": "双换元",
+          "position": 1
+        },
+        "express": {
+          "refs": [
+            "method-substitution"
+          ],
+          "title": "用新元表示条件",
+          "position": 2
+        },
+        "homogeneity": {
+          "refs": [
+            "method-homogeneous#degree"
+          ],
+          "tip": {
+            "ref": "method-homogeneous#degree",
+            "resource": "homogeneous-degree-count",
+            "note": "本题令 $a=2x-y$，$b=x+2y$，条件化成 $a+2b=1$；$\\frac1a+\\frac2b$ 是负一次，$a+2b$ 是一次，相乘得零次式。"
+          },
+          "title": "识别齐次结构",
+          "position": 3
+        },
+        "rewrite": {
+          "refs": [
+            "method-homogeneous"
+          ],
+          "tip": {
+            "ref": "method-homogeneous",
+            "resource": "homogeneous-degree",
+            "note": "本题 $a+2b=1$，整体乘入：原式 $=\\left(\\frac1a+\\frac2b\\right)(a+2b)$。"
+          },
+          "title": "配齐次式",
+          "position": 4
+        },
+        "structure": {
+          "refs": [
+            "method-amgm-direct#check",
+            "amgm-formula#checklist"
+          ],
+          "tip": {
+            "ref": "amgm-formula#checklist",
+            "resource": "amgm-semicircle",
+            "case": "fixed",
+            "note": "本题展开得 $5+\\frac{2b}a+\\frac{2a}b$，两项积为 $4$：定积求和。"
+          },
+          "title": "观察和积结构",
+          "position": 5
+        },
+        "amgm": {
+          "refs": [
+            "skill-apply-amgm",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "apply",
+            "note": "本题 $\\frac{2b}a+\\frac{2a}b\\ge4$，原式 $\\ge9$。"
+          },
+          "title": "应用基本不等式",
+          "position": 6
+        },
+        "equality": {
+          "refs": [
+            "method-amgm-direct#attain",
+            "amgm-formula#attainability"
+          ],
+          "tip": {
+            "ref": "amgm-formula#attainability",
+            "resource": "amgm-semicircle",
+            "case": "equal",
+            "note": "本题取等要 $a=b=\\frac13$，即 $x=\\frac15$，$y=\\frac1{15}$，满足 $x>y>0$，取得到。"
+          },
+          "title": "验证取等",
+          "position": 7
+        }
+      },
+      "label": "换元法"
+    }
+  },
+  "statement": "已知 $x>y>0$，且 $4x+3y=1$，求 $\\frac1{2x-y}+\\frac2{x+2y}$ 的最小值。",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ]
+}

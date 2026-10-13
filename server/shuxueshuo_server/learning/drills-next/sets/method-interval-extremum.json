@@ -1,0 +1,193 @@
+{
+  "node": "method-interval-extremum",
+  "items": [
+    {
+      "id": "case-merge--premise-empty",
+      "given": "按对称轴的位置分类讨论。情况③的前提是 $m\\ge2$，在这种情况下解得 $m<\\frac54$。",
+      "question": "情况③的结果是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "solved",
+          "label": "$m<\\frac54$",
+          "feedback": "解出的范围要与这种情况的前提 $m\\ge2$ 取交集。"
+        },
+        {
+          "value": "empty",
+          "label": "无解"
+        },
+        {
+          "value": "premise",
+          "label": "$m\\ge2$",
+          "feedback": "前提只说明讨论的是哪些 $m$，还要满足解出的条件。"
+        }
+      ],
+      "answer": "empty",
+      "origin": {
+        "node": "case-merge",
+        "item": "premise-empty"
+      },
+      "entry": "conditions"
+    },
+    {
+      "id": "case-merge--whole-premise",
+      "given": "情况①（$a\\le0$）：下端是 $2$，这种情况下所有 $a$ 都满足；情况②（$a>0$）：解得 $0<a\\le4$。",
+      "question": "$a$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "second",
+          "label": "$0<a\\le4$",
+          "feedback": "情况①所有 $a$ 都满足，结果是它的整个前提 $a\\le0$，也要并进来。"
+        },
+        {
+          "value": "symmetric",
+          "label": "$-4\\le a\\le4$",
+          "feedback": "情况①的前提是 $a\\le0$，其中每个 $a$ 都满足，并不限于 $a\\ge-4$。"
+        },
+        {
+          "value": "union",
+          "label": "$a\\le4$"
+        }
+      ],
+      "answer": "union",
+      "origin": {
+        "node": "case-merge",
+        "item": "whole-premise"
+      },
+      "entry": "conditions"
+    },
+    {
+      "id": "case-merge--degenerate-case",
+      "given": "按二次项系数分三种情况：$m<0$ 时得 $m<0$；$m=0$ 时原不等式为 $-1<0$，成立；$m>0$ 时得 $0<m<\\frac14$。",
+      "question": "$m$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "union",
+          "label": "$m<\\frac14$"
+        },
+        {
+          "value": "hole",
+          "label": "$m<0$ 或 $0<m<\\frac14$",
+          "feedback": "$m=0$ 这种情况也成立，要并进来，合并后是一整段。"
+        },
+        {
+          "value": "positive",
+          "label": "$0<m<\\frac14$",
+          "feedback": "三种情况满足其一即可，每种情况的结果都要并进来。"
+        }
+      ],
+      "answer": "union",
+      "origin": {
+        "node": "case-merge",
+        "item": "degenerate-case"
+      },
+      "entry": "conditions"
+    },
+    {
+      "id": "method-interval-extremum--closed-interval",
+      "question": "当 $-1\\le x\\le1$ 时，不等式 $x^2-ax-2<0$ 恒成立。能用区间最值法吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "discriminant",
+          "label": "不能，应该用判别式法：$x^2$ 的系数确定非零",
+          "feedback": "判别式管的是整条抛物线；这里只要求 $-1\\le x\\le1$ 时成立，区间外的部分不用管。"
+        },
+        {
+          "value": "yes",
+          "label": "能：$x$ 只在区间 $[-1,1]$ 上取值，看区间上的最高点"
+        },
+        {
+          "value": "opening",
+          "label": "不能：开口向上，没有最大值",
+          "feedback": "闭区间上的一段抛物线一定有最高点和最低点。开口方向不是前提，它只决定最值在顶点还是端点取到。"
+        }
+      ],
+      "answer": "yes",
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "closed-interval"
+      }
+    },
+    {
+      "id": "method-interval-extremum--infinite-interval",
+      "question": "当 $x>0$ 时，不等式 $x^2-mx+1\\ge0$ 恒成立。$x$ 的取值范围算“某个区间”吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "yes",
+          "label": "算：$(0,+\\infty)$ 也是区间，可以用区间最值法"
+        },
+        {
+          "value": "ends",
+          "label": "不算：区间必须有两个端点",
+          "feedback": "无穷区间也是区间，只是那一端没有端点值，看图像往那一端怎样变化即可。"
+        },
+        {
+          "value": "condition",
+          "label": "不算：$x>0$ 是题目条件，不是取值范围",
+          "feedback": "“当 $x>0$ 时恒成立”说的正是 $x$ 只在 $(0,+\\infty)$ 上取值。"
+        }
+      ],
+      "answer": "yes",
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "infinite-interval"
+      }
+    },
+    {
+      "id": "method-interval-extremum--opening-down",
+      "question": "当 $1<x<3$ 时，不等式 $-x^2+2x+a>0$ 恒成立。下面说法正确的是哪个？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "opening",
+          "label": "开口向下，所以不能用区间最值法",
+          "feedback": "开口方向不是前提。开口向下只是让最高点可能在顶点、最低处在端点一侧。"
+        },
+        {
+          "value": "discriminant",
+          "label": "应该用判别式法，因为 $x^2$ 的系数确定非零",
+          "feedback": "$x$ 只在 $(1,3)$ 上取值，判别式管的是整条图像，这里用不上。"
+        },
+        {
+          "value": "yes",
+          "label": "能用区间最值法：看区间上的最低处，端点取不到时看取值范围的下端"
+        }
+      ],
+      "answer": "yes",
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "opening-down"
+      }
+    },
+    {
+      "id": "method-interval-extremum--exists",
+      "question": "当 $0\\le x\\le2$ 时，关于 $x$ 的不等式 $x^2-ax+1<0$ 有解。能用区间最值法吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "forall-only",
+          "label": "不能：区间最值法只用于恒成立",
+          "feedback": "有解（存在）同样只看区间上的一段图像，只是比的点换成最有利的那一个。"
+        },
+        {
+          "value": "yes",
+          "label": "能：同样只看区间上的一段，比的是最低点"
+        },
+        {
+          "value": "sign",
+          "label": "不能：要先确定 $a$ 的正负",
+          "feedback": "$a$ 的正负不影响能否用这种方法；它影响对称轴的位置，后面再分情况。"
+        }
+      ],
+      "answer": "yes",
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "exists"
+      }
+    }
+  ]
+}

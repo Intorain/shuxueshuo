@@ -1,0 +1,277 @@
+{
+  "node": "method-discriminant",
+  "items": [
+    {
+      "id": "case-merge--opening-and-delta",
+      "given": "判别式法：要求开口向下 $a<0$，并且由 $\\Delta<0$ 解得 $a<-1$ 或 $a>3$。",
+      "question": "$a$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "union",
+          "label": "$a<0$ 或 $a>3$",
+          "feedback": "开口向下和 $\\Delta<0$ 要同时成立，取交集，不是并集。"
+        },
+        {
+          "value": "delta",
+          "label": "$a<-1$ 或 $a>3$",
+          "feedback": "还要开口向下 $a<0$，$a>3$ 不满足。"
+        },
+        {
+          "value": "both",
+          "label": "$a<-1$"
+        }
+      ],
+      "answer": "both",
+      "origin": {
+        "node": "case-merge",
+        "item": "opening-and-delta"
+      },
+      "entry": "solve"
+    },
+    {
+      "id": "endpoint-attainability--degenerate-boundary",
+      "given": "不等式 $mx^2-mx-1<0$ 对任意实数 $x$ 恒成立；$m\\ne0$ 时由 $m<0$ 且 $\\Delta<0$ 得 $-4<m<0$。",
+      "question": "两个边界 $m=-4$、$m=0$ 分别怎样？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "both-out",
+          "label": "都排除：原题不带等号",
+          "feedback": "$m=0$ 时原不等式变为 $-1<0$，对所有 $x$ 成立，要保留；不能只看原题带不带等号。"
+        },
+        {
+          "value": "both-in",
+          "label": "都保留",
+          "feedback": "$m=-4$ 时为 $-(2x-1)^2<0$，$x=\\frac12$ 时左边等于 $0$，不成立。"
+        },
+        {
+          "value": "split",
+          "label": "$m=-4$ 排除，$m=0$ 保留"
+        }
+      ],
+      "answer": "split",
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "degenerate-boundary"
+      },
+      "entry": "degree"
+    },
+    {
+      "id": "method-discriminant--fixed-coefficient",
+      "question": "不等式 $2x^2-ax+1>0$ 对任意实数 $x$ 恒成立。能直接用判别式法吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "discuss",
+          "label": "要先讨论 $x^2$ 的系数为 $0$ 的情形",
+          "feedback": "$x^2$ 的系数是 $2$，不含参数，不会为 $0$；参数 $a$ 在一次项里，不影响能否用判别式。"
+        },
+        {
+          "value": "yes",
+          "label": "能：$x$ 取全体实数，$x^2$ 的系数 $2$ 确定非零"
+        },
+        {
+          "value": "no",
+          "label": "不能：含参数的不等式不能用判别式",
+          "feedback": "参数在哪一项都可以。判别式法只看两件事：$x$ 是否取全体实数，$x^2$ 的系数是否确定非零。"
+        }
+      ],
+      "answer": "yes",
+      "origin": {
+        "node": "method-discriminant",
+        "item": "fixed-coefficient"
+      }
+    },
+    {
+      "id": "method-discriminant--coefficient-maybe-zero",
+      "question": "不等式 $(m-1)x^2+mx+m>0$ 对任意实数 $x$ 恒成立。怎样用判别式法？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "direct",
+          "label": "直接用开口方向和 $\\Delta$ 列条件",
+          "feedback": "$x^2$ 的系数 $m-1$ 可能为 $0$，那时不再是二次式，开口和 $\\Delta$ 都无从谈起。"
+        },
+        {
+          "value": "no",
+          "label": "不能用判别式法",
+          "feedback": "$x$ 取全体实数；把系数为 $0$ 的情形单独讨论后，其余情形仍可用判别式。"
+        },
+        {
+          "value": "discuss",
+          "label": "先讨论 $m-1=0$，再对 $m\\ne1$ 用开口方向和 $\\Delta$"
+        }
+      ],
+      "answer": "discuss",
+      "origin": {
+        "node": "method-discriminant",
+        "item": "coefficient-maybe-zero"
+      }
+    },
+    {
+      "id": "method-discriminant--interval-not-enough",
+      "question": "当 $0\\le x\\le2$ 时，不等式 $x^2-2ax+3>0$ 恒成立。能用“$\\Delta<0$”作为条件吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "no",
+          "label": "不能：$x$ 只在区间上取值，只看判别式不够"
+        },
+        {
+          "value": "yes",
+          "label": "能：$x^2$ 的系数是 $1$，确定非零",
+          "feedback": "系数没问题，但 $x$ 只在 $[0,2]$ 上取值。$\\Delta$ 管的是整条抛物线，区间外的部分在横轴下方也不要紧，用 $\\Delta<0$ 会漏掉一些符合要求的 $a$。"
+        },
+        {
+          "value": "le",
+          "label": "能，但要改成 $\\Delta\\le0$",
+          "feedback": "问题不在等号：$x$ 只在 $[0,2]$ 上取值，而判别式管的是整条图像。"
+        }
+      ],
+      "answer": "no",
+      "origin": {
+        "node": "method-discriminant",
+        "item": "interval-not-enough"
+      }
+    },
+    {
+      "id": "method-discriminant--tangent-allowed",
+      "question": "不等式 $x^2+ax+1\\ge0$ 对任意实数 $x$ 恒成立。用判别式法应列出哪个条件？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "lt",
+          "label": "$\\Delta=a^2-4<0$",
+          "feedback": "原不等式带等号，图像可以与横轴相切，$\\Delta=0$ 也满足。"
+        },
+        {
+          "value": "ge",
+          "label": "$\\Delta=a^2-4\\ge0$",
+          "feedback": "$\\Delta>0$ 时抛物线与横轴有两个交点，两点之间的一段在横轴下方，不满足 $\\ge0$。"
+        },
+        {
+          "value": "le",
+          "label": "$\\Delta=a^2-4\\le0$"
+        }
+      ],
+      "answer": "le",
+      "origin": {
+        "node": "method-discriminant",
+        "item": "tangent-allowed"
+      }
+    },
+    {
+      "id": "method-discriminant--opening-matters",
+      "given": "已知 $a\\ne0$。",
+      "question": "不等式 $ax^2+2x+1<0$ 对任意实数 $x$ 恒成立，应满足哪个条件？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "up",
+          "label": "$a>0$ 且 $\\Delta<0$",
+          "feedback": "开口向上时，抛物线往两边无限升高，不可能整条在横轴下方。"
+        },
+        {
+          "value": "down",
+          "label": "$a<0$ 且 $\\Delta<0$"
+        },
+        {
+          "value": "delta",
+          "label": "只要 $\\Delta=4-4a<0$",
+          "feedback": "$\\Delta<0$ 只说明图像与横轴没有交点；开口向上时整条图像在横轴上方，不满足 $<0$，所以还要 $a<0$。"
+        }
+      ],
+      "answer": "down",
+      "origin": {
+        "node": "method-discriminant",
+        "item": "opening-matters"
+      }
+    },
+    {
+      "id": "method-interval-extremum--all-real-numbers",
+      "question": "不等式 $x^2+ax+4>0$ 对任意实数 $x$ 恒成立。哪种方法最直接？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "interval",
+          "label": "区间最值法：求 $f(x)$ 在实数范围内的最小值",
+          "feedback": "也能做，最小值在顶点取到；但 $x$ 取全体实数时，直接看整条抛物线与横轴的位置、列 $\\Delta$ 更快。"
+        },
+        {
+          "value": "swap",
+          "label": "更换主元法：把 $a$ 当主元",
+          "feedback": "更换主元法用于恒成立针对的是另一个给出范围的字母；这里恒成立针对的就是 $x$。"
+        },
+        {
+          "value": "discriminant",
+          "label": "判别式法：看整条图像与横轴的位置"
+        }
+      ],
+      "answer": "discriminant",
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "all-real-numbers"
+      }
+    },
+    {
+      "id": "quadratic-function-properties--degenerate",
+      "question": "$kx^2+2x-1<0$ 对一切实数 $x$ 成立，$k$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "with-zero",
+          "label": "$k<-1$ 或 $k=0$",
+          "feedback": "$k=0$ 时不等式是 $2x-1<0$，$x=1$ 时就不成立。"
+        },
+        {
+          "value": "with-tangent",
+          "label": "$k\\le-1$",
+          "feedback": "$k=-1$ 时左边是 $-(x-1)^2$，在 $x=1$ 处等于 $0$，不满足“$<0$”。"
+        },
+        {
+          "value": "right",
+          "label": "$k<-1$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "degenerate"
+      }
+    },
+    {
+      "id": "quadratic-function-properties--which-guarantee",
+      "question": "下面哪些条件能保证 $ax^2+bx+c>0$ 对一切实数 $x$ 成立？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "pos",
+          "label": "$a>0$ 且 $\\Delta<0$"
+        },
+        {
+          "value": "tangent",
+          "label": "$a>0$ 且 $\\Delta\\le0$",
+          "feedback": "$\\Delta=0$ 时顶点处的函数值是 $0$，不满足“$>0$”。"
+        },
+        {
+          "value": "const",
+          "label": "$a=0$，$b=0$，$c>0$"
+        },
+        {
+          "value": "c",
+          "label": "$a>0$ 且 $c>0$",
+          "feedback": "例如 $x^2-3x+1$，$a>0$、$c>0$，但 $x=1$ 时函数值是 $-1$。"
+        }
+      ],
+      "answer": [
+        "pos",
+        "const"
+      ],
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "which-guarantee"
+      }
+    }
+  ]
+}

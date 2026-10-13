@@ -8,7 +8,7 @@
     "section": 5,
     "knowledge": 13,
     "skill": 20,
-    "method": 13,
+    "method": 14,
     "problem_type": 9,
     "judgment_rule": 2
   },
@@ -19,7 +19,13 @@
       "scope": "amgm-formula",
       "title": "半圆图解：为什么几何平均不超过算术平均",
       "note": "直径分成长 $a$、$b$ 的两段，分点处的半弦长 $\\sqrt{ab}$，半径长 $\\frac{a+b}2$；演示中固定 $a+b=8$。",
-      "after": "formula"
+      "after": "formula",
+      "cases": [
+        "positive",
+        "fixed",
+        "apply",
+        "equal"
+      ]
     },
     "monotonic-chain": {
       "module": "/assets/explain/knowledge/function-monotonicity.js",
@@ -35,7 +41,10 @@
       "scope": "method-homogeneous",
       "title": "配次数：乘入值为 1 的条件式",
       "note": "例：$x,y>0$，$x+5y=1$，求 $\\frac5x+\\frac4y$ 的最小值。目标 $-1$ 次，乘入 $1$ 次的条件式后只剩比值。",
-      "after": "fill"
+      "after": "fill",
+      "cases": [
+        "local"
+      ]
     },
     "order-flip-lines": {
       "module": "/assets/explain/knowledge/inequality-properties.js",
@@ -188,8 +197,15 @@
       "part": "figure",
       "scope": "extremum-transfer",
       "title": "拖动水平线：恒成立看最不利的点，存在看最有利的点",
+      "conditions": "本图的区间包含端点，最大值和最小值都能取到。若题目使用开区间，须另外检查边界是否可达，不能直接把值域边界写成最值。",
       "note": "把不等式看成曲线 $y=f(x)$ 和水平线 $y=a$ 比高低。上下拖动水平线，切换 $f(x)>a$ 与 $f(x)<a$，看「恒成立」和「存在」各由最低点还是最高点决定。",
-      "after": "quantified"
+      "after": "quantified",
+      "cases": [
+        "forall-lt",
+        "forall-gt",
+        "exists-lt",
+        "exists-gt"
+      ]
     },
     "attainability-boundary": {
       "module": "/assets/explain/knowledge/endpoint-attainability.js",
@@ -221,7 +237,10 @@
       "scope": "symmetric-polynomial",
       "title": "交换 x、y 检验，再用和与积改写",
       "note": "点一个式子，看交换 $x$、$y$ 后变不变：不变的都能写成 $s=x+y$、$p=xy$ 的式子；系数不对称的，先把带系数的整体换成新字母。下面的表是常用改写。",
-      "after": "identities"
+      "after": "identities",
+      "cases": [
+        "construct"
+      ]
     },
     "reciprocal-linked-lines": {
       "module": "/assets/explain/method/method-reciprocal.js",

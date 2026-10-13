@@ -1,0 +1,65 @@
+{
+  "node": "linear-interval-extremum",
+  "items": [
+    {
+      "id": "linear-interval-extremum--sign-at-ends",
+      "question": "$f(t)=t-2$ 在 $[1,4]$ 上，下面哪一句是对的？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "pos",
+          "label": "恒大于 $0$",
+          "feedback": "$f(1)=-1<0$。"
+        },
+        {
+          "value": "neg",
+          "label": "恒小于 $0$",
+          "feedback": "$f(4)=2>0$。"
+        },
+        {
+          "value": "right",
+          "label": "有正有负"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "sign-at-ends"
+      }
+    },
+    {
+      "id": "linear-interval-extremum--statements",
+      "given": "一次函数 $f(t)=kt+b$（$k$ 可能为 $0$），在闭区间 $[p,q]$ 上。",
+      "question": "下面哪些说法是对的？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "max",
+          "label": "最大值一定在某个端点取到"
+        },
+        {
+          "value": "min",
+          "label": "$k>0$ 时最小值是 $f(q)$",
+          "feedback": "$k>0$ 时函数递增，最小值是左端点的值 $f(p)$。"
+        },
+        {
+          "value": "neg",
+          "label": "$f(p)<0$ 且 $f(q)<0$ 时，$f(t)$ 在 $[p,q]$ 上恒小于 $0$"
+        },
+        {
+          "value": "or",
+          "label": "$f(p)>0$ 或 $f(q)>0$ 就能保证恒大于 $0$",
+          "feedback": "要两端都大于 $0$，例如 $f(t)=t$ 在 $[-1,1]$ 上，$f(1)>0$，但 $f(-1)<0$。"
+        }
+      ],
+      "answer": [
+        "max",
+        "neg"
+      ],
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "statements"
+      }
+    }
+  ]
+}

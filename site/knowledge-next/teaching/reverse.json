@@ -1,0 +1,3741 @@
+{
+  "type-sum-product-extremum": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30"
+    }
+  ],
+  "method-amgm-direct": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "conditions": {}
+    }
+  ],
+  "method-amgm-direct#check": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    }
+  ],
+  "amgm-formula#checklist": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "structure",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "structure",
+      "conditions": {}
+    }
+  ],
+  "skill-apply-amgm": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {
+        "inequality_form": "s_ge"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    }
+  ],
+  "amgm-formula#formula": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "sign",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "positive",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "amgm",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {
+        "inequality_form": "s_ge"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "amgm",
+      "conditions": {}
+    }
+  ],
+  "method-amgm-direct#attain": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    }
+  ],
+  "amgm-formula#attainability": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q03",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q05",
+      "route": "direct",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "equality",
+      "conditions": {}
+    }
+  ],
+  "method-square-extremum": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "square",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    }
+  ],
+  "method-quadratic-extremum": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "conditions": {
+        "technique": "vertex"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "vertex"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "conditions": {
+        "technique": "vertex"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "vertex"
+      }
+    }
+  ],
+  "method-elimination": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "eliminate",
+      "conditions": {}
+    }
+  ],
+  "method-complete-square": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "square",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    }
+  ],
+  "quadratic-function-properties#forms": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "square"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "square"
+      }
+    }
+  ],
+  "quadratic-interval-extremum": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "vertex"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "vertex"
+      }
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_extremum",
+      "conditions": {}
+    }
+  ],
+  "quadratic-function-properties#vertex": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "vertex"
+      }
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "quadratic",
+      "conditions": {
+        "technique": "vertex"
+      }
+    }
+  ],
+  "function-range-extrema#attainability": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q01",
+      "route": "elimination",
+      "step": "feasibility",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "square",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "feasibility",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_boundary",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_boundary",
+      "conditions": {}
+    }
+  ],
+  "square-nonnegative#nonnegative": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "square",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    }
+  ],
+  "square-nonnegative": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q02",
+      "route": "square",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "equality",
+      "conditions": {}
+    }
+  ],
+  "amgm-formula": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "rewrite",
+      "conditions": {}
+    }
+  ],
+  "inequality-properties": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "rewrite",
+      "conditions": {}
+    }
+  ],
+  "skill-inequality-transform": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "bound",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "bound",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "sign",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "positive",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "transform",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "transform",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "back",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    }
+  ],
+  "inequality-properties#multiplication": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q04",
+      "route": "direct",
+      "step": "bound",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "bound",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    }
+  ],
+  "method-matching": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q06",
+      "route": "matching",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q07",
+      "route": "matching",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "matching",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "factor",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "rewrite",
+      "conditions": {}
+    }
+  ],
+  "method-sum-product-range": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "conditions": {}
+    }
+  ],
+  "method-sum-product#identities": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "symmetry",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "symmetry",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "condition",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "symmetry",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "construct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "condition",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "symmetry",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "construct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "condition",
+      "conditions": {}
+    }
+  ],
+  "method-sum-product": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q08",
+      "route": "symmetric",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "substitution",
+      "conditions": {}
+    }
+  ],
+  "skill-equality-transform": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "condition",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "condition",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "condition",
+      "conditions": {}
+    }
+  ],
+  "skill-simplify": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "matching",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q09",
+      "route": "elimination",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "homogeneous",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_rewrite",
+      "conditions": {}
+    }
+  ],
+  "method-homogeneous#degree": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "homogeneity",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "homogeneity",
+      "conditions": {}
+    }
+  ],
+  "method-homogeneous": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q10",
+      "route": "homogeneous",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q13",
+      "route": "homogeneous",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q15",
+      "route": "homogeneous",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "rewrite",
+      "conditions": {}
+    }
+  ],
+  "method-substitution": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q11",
+      "route": "substitution",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q12",
+      "route": "substitution",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q14",
+      "route": "substitution",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q21",
+      "route": "substitution",
+      "step": "express",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q22",
+      "route": "substitution",
+      "step": "express",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "substitution",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "construct",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "construct",
+      "conditions": {}
+    }
+  ],
+  "method-fraction-split": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q16",
+      "route": "elimination",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q17",
+      "route": "elimination",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q19",
+      "route": "elimination",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q20",
+      "route": "elimination",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q23",
+      "route": "split",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q24",
+      "route": "split",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q25",
+      "route": "split",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "split",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "elimination",
+      "step": "split",
+      "conditions": {}
+    }
+  ],
+  "skill-factor": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q18",
+      "route": "elimination",
+      "step": "factor",
+      "conditions": {}
+    }
+  ],
+  "inequality-properties#reciprocal": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q26",
+      "route": "reciprocal",
+      "step": "transform",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "transform",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q27",
+      "route": "reciprocal",
+      "step": "back",
+      "conditions": {}
+    }
+  ],
+  "type-binary-quadratic-range": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28"
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29"
+    }
+  ],
+  "quadratic-inequality-solve": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q28",
+      "route": "symmetric",
+      "step": "range",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q29",
+      "route": "symmetric",
+      "step": "range",
+      "conditions": {}
+    },
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "solve",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_range",
+      "conditions": {}
+    }
+  ],
+  "square-nonnegative#sum-product": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {
+        "inequality_form": "p_le"
+      }
+    }
+  ],
+  "method-sum-product#feasible": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {
+        "inequality_form": "p_le"
+      }
+    }
+  ],
+  "method-amgm-direct#bound": [
+    {
+      "topic": "basic-inequality",
+      "problem": "basic-inequality-q30",
+      "route": "symmetric",
+      "step": "inequality",
+      "conditions": {
+        "inequality_form": "s_ge"
+      }
+    }
+  ],
+  "type-quantified-quadratic": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08"
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09"
+    }
+  ],
+  "method-discriminant": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_basis",
+      "conditions": {}
+    }
+  ],
+  "quadratic-function-properties": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_position",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_position",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_position",
+      "conditions": {}
+    }
+  ],
+  "quadratic-function-properties#zeros": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_position",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_position",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_position",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    }
+  ],
+  "quadratic-equation#discriminant": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    }
+  ],
+  "method-discriminant#conditions": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_delta",
+      "conditions": {}
+    }
+  ],
+  "method-separation": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_basis",
+      "conditions": {}
+    }
+  ],
+  "skill-quantified-range": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_condition",
+      "conditions": {}
+    }
+  ],
+  "function-range-extrema#quantified": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_condition",
+      "conditions": {}
+    }
+  ],
+  "quantifiers": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q01",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_condition",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_condition",
+      "conditions": {}
+    }
+  ],
+  "method-discriminant#degree": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_degenerate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_degenerate",
+      "conditions": {}
+    }
+  ],
+  "linear-interval-extremum": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_degenerate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_degenerate",
+      "conditions": {}
+    }
+  ],
+  "quadratic-function-properties#definition": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_degenerate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_degenerate",
+      "conditions": {}
+    }
+  ],
+  "method-discriminant#merge": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q02",
+      "route": "discriminant",
+      "step": "d_merge",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q03",
+      "route": "discriminant",
+      "step": "d_merge",
+      "conditions": {}
+    }
+  ],
+  "method-interval-extremum": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_basis",
+      "conditions": {}
+    }
+  ],
+  "method-interval-extremum#conditions": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_range",
+      "conditions": {}
+    }
+  ],
+  "method-separation#separate": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_separate",
+      "conditions": {}
+    }
+  ],
+  "reciprocal-sum-function": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_graph",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_graph",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_graph",
+      "conditions": {}
+    }
+  ],
+  "skill-reciprocal-range": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q04",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q05",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q06",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    }
+  ],
+  "function-monotonicity": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    }
+  ],
+  "skill-inequality-transform#reciprocal": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "extremum",
+      "step": "e_extremum",
+      "conditions": {}
+    }
+  ],
+  "skill-linear-range#constant": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q07",
+      "route": "interval",
+      "step": "i_extremum",
+      "conditions": {}
+    }
+  ],
+  "method-variable-swap": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_rewrite",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_basis",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_rewrite",
+      "conditions": {}
+    }
+  ],
+  "skill-linear-range": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_extremum",
+      "conditions": {}
+    }
+  ],
+  "linear-interval-extremum#interval": [
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q08",
+      "route": "variable",
+      "step": "v_extremum",
+      "conditions": {}
+    },
+    {
+      "topic": "quadratic-always",
+      "problem": "quadratic-always-q09",
+      "route": "variable",
+      "step": "v_extremum",
+      "conditions": {}
+    }
+  ]
+}

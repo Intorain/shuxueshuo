@@ -1,0 +1,138 @@
+{
+  "node": "method-variable-swap",
+  "items": [
+    {
+      "id": "case-merge--and-intersect",
+      "given": "两个端点值都要满足：由 $g(-1)>0$ 得 $x<3$，由 $g(2)>0$ 得 $x>-1$。",
+      "question": "$x$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "and",
+          "label": "$-1<x<3$"
+        },
+        {
+          "value": "or",
+          "label": "$x<3$ 或 $x>-1$，即全体实数",
+          "feedback": "两个条件要同时成立，取交集；取并集会把只满足一个条件的数也算进来。"
+        },
+        {
+          "value": "one",
+          "label": "$x>-1$",
+          "feedback": "$x>-1$ 里有 $x=5$ 这样不满足 $x<3$ 的数。"
+        }
+      ],
+      "answer": "and",
+      "origin": {
+        "node": "case-merge",
+        "item": "and-intersect"
+      },
+      "entry": "solve"
+    },
+    {
+      "id": "method-variable-swap--choose-variable",
+      "question": "对任意 $a\\in[-1,2]$，不等式 $x^2+ax-3<0$ 恒成立，求 $x$ 的取值范围。应把哪个字母当主元？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "x",
+          "label": "$x$：不等式是关于 $x$ 的二次式",
+          "feedback": "要求的是 $x$ 的范围，恒成立针对的是给出范围的 $a$；把 $a$ 当自变量、$x$ 当常数。"
+        },
+        {
+          "value": "a",
+          "label": "$a$：恒成立针对的是给出范围的 $a$"
+        },
+        {
+          "value": "either",
+          "label": "哪个都行",
+          "feedback": "主元必须是恒成立针对的那个字母，也就是给出范围的 $a$。"
+        }
+      ],
+      "answer": "a",
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "choose-variable"
+      }
+    },
+    {
+      "id": "method-variable-swap--linear-form",
+      "given": "对任意 $a\\in[-1,2]$，不等式 $x^2+ax-3<0$ 恒成立。",
+      "question": "固定 $x$ 后，$x^2+ax-3$ 关于 $a$ 是什么形式？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "quadratic",
+          "label": "二次式",
+          "feedback": "关于 $a$ 只数 $a$ 的次数，$x^2$ 是常数项。"
+        },
+        {
+          "value": "positive",
+          "label": "一次函数，斜率一定为正",
+          "feedback": "斜率是 $x$，正负取决于 $x$；$x=0$ 时还会退化为常数。"
+        },
+        {
+          "value": "linear",
+          "label": "一次形式 $x\\cdot a+(x^2-3)$，$x=0$ 时退化为常数"
+        }
+      ],
+      "answer": "linear",
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "linear-form"
+      }
+    },
+    {
+      "id": "method-variable-swap--no-swap-needed",
+      "question": "对任意实数 $x$，不等式 $x^2+ax+1>0$ 恒成立，求 $a$ 的取值范围。需要更换主元吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "swap",
+          "label": "需要：把 $a$ 当主元，变成一次函数",
+          "feedback": "主元是恒成立针对的字母 $x$；$a$ 是要求范围的字母，不能当主元。"
+        },
+        {
+          "value": "no",
+          "label": "不需要：恒成立针对的 $x$ 本来就是自变量，用判别式法"
+        },
+        {
+          "value": "either",
+          "label": "两种都行：$x$ 和 $a$ 都可以当主元",
+          "feedback": "主元必须是恒成立针对的字母，这里就是 $x$，不用换。"
+        }
+      ],
+      "answer": "no",
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "no-swap-needed"
+      }
+    },
+    {
+      "id": "method-variable-swap--quadratic-in-variable",
+      "question": "对任意 $m\\in[0,2]$，不等式 $m^2-2xm+1>0$ 恒成立，求 $x$ 的取值范围。把 $m$ 当主元后，能只看 $m=0$ 和 $m=2$ 两端吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "ends",
+          "label": "能：主元在闭区间上，最值在端点取到",
+          "feedback": "关于 $m$ 是开口向上的二次式，最小值可能在顶点 $m=x$ 取到。比如 $x=1$：两端的值都是 $1>0$，但 $m=1$ 时式子等于 $0$，不满足。"
+        },
+        {
+          "value": "constant",
+          "label": "不能：$x$ 是要求范围的字母，不能当常数",
+          "feedback": "固定 $x$ 当常数正是更换主元的做法；问题在于关于 $m$ 不是一次形式。"
+        },
+        {
+          "value": "no",
+          "label": "不能只看两端：关于 $m$ 开口向上，对称轴 $m=x$ 可能落在区间里，最小值在顶点"
+        }
+      ],
+      "answer": "no",
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "quadratic-in-variable"
+      }
+    }
+  ]
+}

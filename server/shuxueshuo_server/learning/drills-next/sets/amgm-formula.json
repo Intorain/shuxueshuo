@@ -1,0 +1,39 @@
+{
+  "node": "amgm-formula",
+  "items": [
+    {
+      "id": "amgm-formula--statements",
+      "question": "下面哪些说法是对的？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "amgm",
+          "label": "$a,b>0$ 时，$a+b\\ge2\\sqrt{ab}$"
+        },
+        {
+          "value": "square",
+          "label": "$a^2+b^2\\ge2ab$ 也要求 $a,b>0$",
+          "feedback": "$a^2+b^2-2ab=(a-b)^2\\ge0$，对任意实数都成立。"
+        },
+        {
+          "value": "product",
+          "label": "$a,b>0$ 时，$ab\\le\\left(\\frac{a+b}2\\right)^2$"
+        },
+        {
+          "value": "recip",
+          "label": "$a\\ne0$ 时，$a+\\frac1a\\ge2$",
+          "feedback": "$a<0$ 时 $a+\\frac1a\\le-2$。要 $a>0$ 才有 $a+\\frac1a\\ge2$。"
+        }
+      ],
+      "answer": [
+        "amgm",
+        "product"
+      ],
+      "origin": {
+        "node": "amgm-formula",
+        "item": "statements"
+      },
+      "entry": "formula"
+    }
+  ]
+}

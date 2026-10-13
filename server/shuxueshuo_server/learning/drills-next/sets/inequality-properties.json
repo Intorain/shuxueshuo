@@ -1,0 +1,39 @@
+{
+  "node": "inequality-properties",
+  "items": [
+    {
+      "id": "inequality-properties--statements",
+      "given": "$a>b$，$c$ 是任意实数。",
+      "question": "下面哪些一定成立？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "add",
+          "label": "$a+c>b+c$"
+        },
+        {
+          "value": "mul",
+          "label": "$ac>bc$",
+          "feedback": "$c\\le0$ 时不成立：$c<0$ 要变向，$c=0$ 时两边相等。"
+        },
+        {
+          "value": "sub",
+          "label": "$a-c>b-c$"
+        },
+        {
+          "value": "recip",
+          "label": "$\\frac1a<\\frac1b$",
+          "feedback": "要 $a$、$b$ 同号才成立，例如 $a=1$，$b=-1$ 时 $\\frac1a>\\frac1b$。"
+        }
+      ],
+      "answer": [
+        "add",
+        "sub"
+      ],
+      "origin": {
+        "node": "inequality-properties",
+        "item": "statements"
+      }
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "topic": "quadratic-always",
+  "id": "quadratic-always-q07",
+  "label": "Q07",
+  "path": "/2/q07/",
+  "types": [
+    "type-quantified-quadratic"
+  ],
+  "routes": {
+    "extremum": {
+      "methods": [
+        "method-separation"
+      ],
+      "steps": {
+        "e_basis": {
+          "refs": [
+            "method-separation"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "e_separate": {
+          "refs": [
+            "method-separation#separate",
+            "skill-inequality-transform",
+            "inequality-properties#multiplication"
+          ],
+          "tip": {
+            "ref": "inequality-properties#multiplication",
+            "resource": "order-flip-lines",
+            "note": "本题 $x\\in[2,3]$ 时 $x^2-x=x(x-1)>0$，除以正数不变向：$m<\\frac1{x^2-x}$。"
+          },
+          "title": "分离参数",
+          "position": 2
+        },
+        "e_condition": {
+          "refs": [
+            "skill-quantified-range",
+            "function-range-extrema#quantified",
+            "quantifiers"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#quantified",
+            "resource": "quantified-horizontal-line",
+            "case": "forall-gt",
+            "note": "本题 $m<h(x)$ 就是 $h(x)>m$：恒成立、大于，看 $h(x)$ 的最低点。"
+          },
+          "title": "转化为最值条件",
+          "position": 3
+        },
+        "e_extremum": {
+          "refs": [
+            "quadratic-interval-extremum",
+            "function-monotonicity",
+            "skill-inequality-transform#reciprocal"
+          ],
+          "tip": {
+            "ref": "function-monotonicity",
+            "resource": "monotonic-chain",
+            "note": "本题分母 $x^2-x$ 在 $[2,3]$ 上从 $2$ 增大到 $6$，都是正数，取倒数后递减：最小值 $h(3)=\\frac16$。"
+          },
+          "title": "求最值",
+          "position": 4
+        },
+        "e_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $m=\\frac16$ 时，$x=3$ 处左边等于 $0$，不满足“$<0$”，排除。"
+          },
+          "title": "检查边界",
+          "position": 5
+        }
+      },
+      "label": "分离参数法"
+    },
+    "interval": {
+      "methods": [
+        "method-interval-extremum"
+      ],
+      "steps": {
+        "i_basis": {
+          "refs": [
+            "method-interval-extremum"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "i_condition": {
+          "refs": [
+            "skill-quantified-range",
+            "function-range-extrema#quantified",
+            "quantifiers"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#quantified",
+            "resource": "quantified-horizontal-line",
+            "case": "forall-lt",
+            "note": "本题 $f(x)<0$ 对所有 $x\\in[2,3]$ 成立：恒成立、小于，看区间上的最高点。"
+          },
+          "title": "转化为最值条件",
+          "position": 2
+        },
+        "i_extremum": {
+          "refs": [
+            "quadratic-interval-extremum",
+            "skill-linear-range#constant"
+          ],
+          "tip": {
+            "ref": "quadratic-interval-extremum",
+            "resource": "parabola-axis-drag",
+            "note": "本题二次项系数 $m$ 含参数，按 $m=0$、$m>0$、$m<0$ 分类；对称轴 $x=\\frac12$ 在 $[2,3]$ 左侧，$m>0$ 时最大值 $f(3)$，$m<0$ 时最大值 $f(2)$。"
+          },
+          "title": "分类讨论最值",
+          "position": 3
+        },
+        "i_range": {
+          "refs": [
+            "method-interval-extremum#conditions",
+            "skill-inequality-transform"
+          ],
+          "tip": {
+            "ref": "method-interval-extremum#conditions",
+            "resource": "case-merge-union",
+            "note": "本题三种情况分别得 $m=0$、$0<m<\\frac16$、$m<0$，取并集得 $m<\\frac16$。"
+          },
+          "title": "求参数范围",
+          "position": 4
+        },
+        "i_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $m=\\frac16$ 时 $f(3)=0$：最大值取得到且等于 $0$，排除。"
+          },
+          "title": "检查边界",
+          "position": 5
+        }
+      },
+      "label": "区间最值法"
+    }
+  },
+  "statement": "$\\forall x\\in\\{x\\mid2\\le x\\le3\\}$，不等式 $mx^2-mx-1<0$ 恒成立，求实数 $m$ 的取值范围。",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ]
+}

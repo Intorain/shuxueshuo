@@ -1,0 +1,32 @@
+{
+  "node": "quadratic-inequality",
+  "items": [
+    {
+      "id": "quadratic-function-properties--le-condition",
+      "question": "$a\\ne0$ 时，$ax^2+bx+c\\le 0$ 对一切实数 $x$ 成立的条件是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "strict",
+          "label": "$a<0$ 且 $\\Delta<0$",
+          "feedback": "$\\Delta=0$ 时图像只在顶点碰到 $x$ 轴，函数值仍然 $\\le0$，也符合要求，不能漏掉。"
+        },
+        {
+          "value": "up",
+          "label": "$a>0$ 且 $\\Delta\\le0$",
+          "feedback": "开口向上时，$x$ 足够大函数值就是正的，不可能处处 $\\le0$。"
+        },
+        {
+          "value": "right",
+          "label": "$a<0$ 且 $\\Delta\\le0$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "le-condition"
+      },
+      "entry": "all-real"
+    }
+  ]
+}

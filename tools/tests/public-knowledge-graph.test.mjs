@@ -13,10 +13,10 @@ const sources=await loadSources(),{nodes,manifest}=sources,edges=validateGraph(n
 const clone=()=>structuredClone(nodes);
 const byId=id=>nodes.find(n=>n.id===id);
 
-test('66 substantive originals; every mathematical node is in a section or is a referenced rule',()=>{
-  assert.equal(nodes.length,66);assert.equal(Object.keys(KINDS).length,8);
+test('67 substantive originals; every mathematical node is in a section or is a referenced rule',()=>{
+  assert.equal(nodes.length,67);assert.equal(Object.keys(KINDS).length,8);
   const whole=scopeMembers(graph,'chapter-quadratic-equations-inequalities');
-  assert.equal(whole.size,62);
+  assert.equal(whole.size,63);
   for(const id of ['quantifiers','function-monotonicity','function-range-extrema'])assert.ok(whole.has(id),`${id} 仍由 2.3 拓展引用`);
   assert.equal(byId('method-complete-square').kind,'skill');
   assert.equal(byId('method-square-extremum').kind,'method');
@@ -27,6 +27,7 @@ test('66 substantive originals; every mathematical node is in a section or is a 
 
 test('validation rejects dangling references, wrong roles, invalid rule subtypes and knowledge cycles',()=>{
   for(const [mutate,pattern] of [
+    [ns=>{delete ns.find(n=>n.id==='amgm-formula').source;},/amgm-formula: 缺少 source/],
     [ns=>ns.find(n=>n.kind==='chapter').members.push({ref:'amgm-formula',relation:'contains'}),/类型不符/],
     [ns=>ns.find(n=>n.kind==='skill').basis.push('amgm-formula#missing'),/失效条目/],
     [ns=>ns.find(n=>n.kind==='skill').basis.push('nonexistent'),/失效引用/],
@@ -133,14 +134,14 @@ test('views lay out as lanes or section frames; shared nodes appear once',()=>{
   assert.deepEqual(structure.sections.map(s=>s.id),['section-2-1','section-2-2','section-2-3']);
   const chapter=projectGraph(graph,{...state,scope:'chapter-quadratic-equations-inequalities',view:'curriculum'});
   const frames=layoutGraph(chapter.nodes,chapter.edges,{view:'curriculum',structure});
-  assert.equal(frames.positions.size,62);assert.equal(frames.frames.length,3);
+  assert.equal(frames.positions.size,63);assert.equal(frames.frames.length,3);
   assert.ok(frames.notes.flatMap(n=>n.items).some(i=>i.id==='square-nonnegative'));
 });
 
 test('3D tower: floors stack by kind, solo nodes stay in their section sector, shared nodes sit nearer the axis',()=>{
   const sub=chapterGraph(graph,homeChapters(sources.outline,graph),'compulsory-1-ch2');
   const t=towerLayout(sub),y=id=>t.positions.get(id).y;
-  assert.equal(t.positions.size,58);
+  assert.equal(t.positions.size,59);
   assert.deepEqual(t.sectors.map(s=>s.id),['section-2-1','section-2-2','section-2-3']);
   assert.ok(y('square-nonnegative')<y('skill-simplify')&&y('skill-simplify')<y('method-interval-extremum')&&y('method-interval-extremum')<y('type-quantified-quadratic')&&y('type-quantified-quadratic')<y('section-2-3')&&y('section-2-3')<y('chapter-quadratic-equations-inequalities'));
   const inside=(a,s)=>{const d=Math.atan2(Math.sin(a-s.mid),Math.cos(a-s.mid));return Math.abs(d)<=(s.end-s.start)/2+1e-9;};
@@ -208,8 +209,8 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.match(outputs.get('skill-quadratic-sign/index.html'),/<li id="signs">.*?id="resource-quadratic-sign-chart".*?<li id="zeros">/s);
   assert.match(outputs.get('function-range-extrema/index.html'),/id="attainability".*?id="resource-attainability-boundary".*?id="quantified".*?id="resource-quantified-horizontal-line"/s);
   assert.match(outputs.get('function-monotonicity/index.html'),/id="pitfall-open-interval".*?相关<\/span><a class="node-chip"[^>]*href="\/knowledge-next\/function-range-extrema\/#attainability"><i aria-hidden="true"><\/i>函数的值域与最值 · /s);
-  assert.match(amgm,/<button type="button" class="drill-open" data-drill-open hidden>刷题 · 5 题<\/button>/);
-  assert.match(amgm,/"drill":true/);
+  assert.ok(!amgm.includes('data-drill-open'));
+  assert.match(amgm,/"drill":false/);
   assert.ok(!outputs.get('type-sum-product-extremum/index.html').includes('data-drill-open'));
   assert.equal(outputs.get('equality-properties/index.html').match(/<div class="region" data-kind="skill">.*?<\/div><\/div>/s)[0].match(/class="node-chip"/g).length,9);
   assert.match(outputs.get('square-nonnegative/index.html'),/前置知识<\/p><span class="region-empty">无，可以直接学习<\/span>/);
@@ -223,8 +224,8 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   const quantified=outputs.get('type-quantified-quadratic/index.html');
   assert.match(quantified,/<section id="choose">.*rule-quadratic-method.*class="branch-list".*method-discriminant/s);
   assert.match(quantified,/<small>必修一·1章<\/small>/);
-  assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-method"/g).length,3);
-  assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-when"><strong>适合什么题：/g).length,3);
+  assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-method"/g).length,4);
+  assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-when"><strong>适合什么题：/g).length,4);
   assert.match(outputs.get('section-2-2/index.html'),/http-equiv="refresh" content="0;url=\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"/);
   assert.match(outputs.get('chapter-functions/index.html'),/url=\/knowledge-next\/chapters\/compulsory-1-ch3\/"/);
   assert.match(outputs.get('textbook-pep-a-compulsory-1/index.html'),/url=\/knowledge-next\/"/);
@@ -276,7 +277,7 @@ test('knowledge city: whole-curriculum outline, chapter 2 built, towers inside t
   const built=city.chapters.filter(c=>c.built);
   assert.deepEqual(built.map(c=>c.id),['compulsory-1-ch2']);
   assert.deepEqual(city.chapters.filter(c=>c.partial).map(c=>c.id),['compulsory-1-ch1','compulsory-1-ch3']);
-  assert.deepEqual(built[0].counts,{knowledge:10,skill:20,method:13,problem_type:9,judgment_rule:2});
+  assert.deepEqual(built[0].counts,{knowledge:10,skill:20,method:14,problem_type:9,judgment_rule:2});
   assert.deepEqual(built[0].sections.map(s=>s.node),['section-2-1','section-2-2','section-2-3']);
   const homes=homeChapters(outline,graph);
   assert.equal(homes.get('quantifiers'),'compulsory-1-ch1');
@@ -334,6 +335,7 @@ test('--check catches missing, stale and removed pages without writing; build on
   try {
     await fs.mkdir(path.join(root,'site'));
     for(const part of ['data','assets','1','2'])await fs.symlink(path.join(repoRoot,'site',part),path.join(root,'site',part),'dir');
+    await fs.symlink(path.join(repoRoot,'server'),path.join(root,'server'),'dir');
     await fs.mkdir(path.join(root,'site/knowledge'));await fs.writeFile(path.join(root,'site/knowledge/index.html'),'untouched');
     await publish({root});assert.equal((await publish({root,check:true})).changed,0);
     const target=path.join(root,'site/knowledge-next/amgm-formula/index.html');

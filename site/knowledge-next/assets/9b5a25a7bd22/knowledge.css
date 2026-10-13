@@ -708,3 +708,9 @@ a.kx-chapter-link:hover { border-color: var(--teal); color: var(--teal-dark); }
   .node-body, .kx-drawer, .graph-node.path-current .node-body, .layer-surfaced .edge { animation: none; }
   .edge.lit .edge-line, .edge.path-on .edge-line { animation: none; }
 }
+@media (max-width: 560px) {
+  .kx-page .brand { white-space: nowrap; flex-shrink: 0; }
+  .kx-page .topbar-links { gap: 12px; white-space: nowrap; }
+  .kx-page .topbar-links .home-link,
+  .kx-page .topbar-links a[href="/knowledge-next/3d/"] { display: none; }
+}

@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "note": "辅助对照；实际关联以各专题逐步原稿为准。旧 method- 前缀不表示新节点类型。",
+  "legacyRefs": {
+    "homogeneous-expression": "method-homogeneous#degree",
+    "symmetric-polynomial": "method-sum-product#identities",
+    "extremum-transfer": "function-range-extrema#quantified",
+    "endpoint-attainability": "function-range-extrema#attainability",
+    "method-reciprocal": "skill-inequality-transform#reciprocal"
+  },
+  "decisions": [
+    {
+      "scope": "basic-inequality-q01/elimination, basic-inequality-q09/elimination",
+      "reason": "按 technique 分别关联配方求最值法和二次函数最值法。"
+    },
+    {
+      "scope": "basic-inequality-q14/homogeneous/rewrite",
+      "reason": "原题乘 1 形成定积结构，但原式不是通常意义的同次数齐次式；步骤主要关联配凑定和或定积结构。"
+    },
+    {
+      "scope": "quadratic-always-*/d_merge, i_range",
+      "reason": "按正在使用的方法引用合并分支步骤，不把所有集合运算归入含参不等式求解方法。"
+    }
+  ],
+  "nodes": [
+    {
+      "legacy": "square-nonnegative",
+      "action": "reuse",
+      "targets": [
+        "square-nonnegative"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "amgm-formula",
+      "action": "reuse",
+      "targets": [
+        "amgm-formula"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "homogeneous-expression",
+      "action": "entry",
+      "targets": [
+        "method-homogeneous#degree"
+      ],
+      "reason": "齐次次数是配齐次式技能的操作条目；具体求最值步骤关联基本不等式法。"
+    },
+    {
+      "legacy": "symmetric-polynomial",
+      "action": "entry",
+      "targets": [
+        "method-sum-product#identities"
+      ],
+      "reason": "和积表示作为和积换元技能内部条目，完整求解路径使用和积换元法。"
+    },
+    {
+      "legacy": "inequality-properties",
+      "action": "reuse",
+      "targets": [
+        "inequality-properties"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "quadratic-function-properties",
+      "action": "reuse",
+      "targets": [
+        "quadratic-function-properties"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "quadratic-inequality-solve",
+      "action": "retype",
+      "targets": [
+        "quadratic-inequality-solve"
+      ],
+      "reason": "复用身份，类型由 knowledge 改为 method；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "extremum-transfer",
+      "action": "split",
+      "targets": [
+        "function-range-extrema#quantified",
+        "skill-quantified-range"
+      ],
+      "reason": "数学关系归入值域与最值内部条目；把量词转成取值条件的操作归入技能。"
+    },
+    {
+      "legacy": "quadratic-interval-extremum",
+      "action": "retype",
+      "targets": [
+        "quadratic-interval-extremum"
+      ],
+      "reason": "复用身份，类型由 knowledge 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "linear-interval-extremum",
+      "action": "reuse",
+      "targets": [
+        "linear-interval-extremum"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "reciprocal-sum-function",
+      "action": "reuse",
+      "targets": [
+        "reciprocal-sum-function"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "function-monotonicity",
+      "action": "reuse",
+      "targets": [
+        "function-monotonicity"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "case-merge",
+      "action": "split",
+      "targets": [
+        "method-discriminant#merge",
+        "method-interval-extremum#conditions",
+        "method-variable-swap#solve"
+      ],
+      "reason": "不设通用分类讨论节点；分别归到判别式法合并分支、区间最值条件、更换主元后的条件求解。"
+    },
+    {
+      "legacy": "endpoint-attainability",
+      "action": "split",
+      "targets": [
+        "function-range-extrema#attainability",
+        "skill-quantified-range"
+      ],
+      "reason": "保留边界可达性知识条目；具体恒成立和存在成立题目按量词转化技能归属。"
+    },
+    {
+      "legacy": "method-amgm-direct",
+      "action": "reuse",
+      "targets": [
+        "method-amgm-direct"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "method-matching",
+      "action": "retype",
+      "targets": [
+        "method-matching"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-homogeneous",
+      "action": "retype",
+      "targets": [
+        "method-homogeneous"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-substitution",
+      "action": "retype",
+      "targets": [
+        "method-substitution"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-elimination",
+      "action": "retype",
+      "targets": [
+        "method-elimination"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-fraction-split",
+      "action": "retype",
+      "targets": [
+        "method-fraction-split"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-sum-product",
+      "action": "retype",
+      "targets": [
+        "method-sum-product"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-complete-square",
+      "action": "retype",
+      "targets": [
+        "method-complete-square"
+      ],
+      "reason": "复用身份，类型由 method 改为 skill；根据本步任务关联技能或完整方法。"
+    },
+    {
+      "legacy": "method-reciprocal",
+      "action": "split",
+      "targets": [
+        "skill-inequality-transform#reciprocal",
+        "inequality-properties#reciprocal"
+      ],
+      "reason": "取倒数归入不等式变形与推导技能，数学依据是同号倒数的顺序关系。"
+    },
+    {
+      "legacy": "method-discriminant",
+      "action": "reuse",
+      "targets": [
+        "method-discriminant"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "method-interval-extremum",
+      "action": "reuse",
+      "targets": [
+        "method-interval-extremum"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "method-separation",
+      "action": "reuse",
+      "targets": [
+        "method-separation"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    },
+    {
+      "legacy": "method-variable-swap",
+      "action": "reuse",
+      "targets": [
+        "method-variable-swap"
+      ],
+      "reason": "保留公共身份；题目与小题仍按实际任务逐项复核。"
+    }
+  ]
+}

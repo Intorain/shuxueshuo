@@ -2,6 +2,8 @@
 
 日期：2026-10-12。状态：公共内容、页面和阶段 1 验收完成，等待内容审阅。
 
+后续交付：阶段 2 已加入教学关联预览，当前共 67 个节点；最新数量、入口及隔离约定见[阶段 2 说明](public-knowledge-graph-stage2.md)。下面的验收数量保留阶段 1 口径。
+
 预览入口：<http://127.0.0.1:8779/knowledge-next/>。节点目录：<http://127.0.0.1:8779/knowledge-next/nodes/>。
 
 依据：[本体设计](public-knowledge-graph-ontology-design.md)、[替换计划](public-knowledge-graph-replacement-plan.md)。预览仍使用固定本地服务 8779；数据库未清理、未迁移，旧图谱及题页入口未切换。
@@ -15,7 +17,7 @@
 | 题型／判断规则 | 9／2 |
 | 合计 | **62** |
 
-每个知识点、技能、方法、题型和判断规则都有独立详情页、正文、出处、关联入口；标题下方按「关系 + 对方类型」分区列出全部关联（如知识点的前置知识、后续知识、应用它的技能、考查它的题型），每个区用对方类型的颜色单独成行；知识点的每个条目卡片再列出用到这一条的技能。图解资源可在 `catalog.json` 里用 `after` 指定放在哪个条目之后；知识点、技能、方法可维护 `pitfalls`（错误做法、为什么错、正确做法、相关节点），渲染为「易错」区；服务端已有刷题集的节点显示「刷题 · 5 题」，复用旧版刷题弹窗。教材、章、节的详情地址只做跳转，分别转到总览页、章图谱页和带 `scope` 的章图谱页。数学对象都有说明或题例；知识条目、操作、方法步骤、规则分支均有稳定锚点。现有题页作为例题链接，补充练习直接保留题目与出处。
+每个知识点、技能、方法、题型和判断规则都有独立详情页、正文、出处、关联入口；标题下方按「关系 + 对方类型」分区列出全部关联（如知识点的前置知识、后续知识、应用它的技能、考查它的题型），每个区用对方类型的颜色单独成行；知识点的每个条目卡片再列出用到这一条的技能。图解资源可在 `catalog.json` 里用 `after` 指定放在哪个条目之后；知识点、技能、方法可维护 `pitfalls`（错误做法、为什么错、正确做法、相关节点），渲染为「易错」区。新图谱暂不按同名旧节点开放刷题；新小题原稿在阶段 3 接入。教材、章、节的详情地址只做跳转，分别转到总览页、章图谱页和带 `scope` 的章图谱页。数学对象都有说明或题例；知识条目、操作、方法步骤、规则分支均有稳定锚点。现有题页作为例题链接并启用关联预览，补充练习直接保留题目与出处。
 
 图谱提供章节、知识关系、解题关系三个视图。知识关系视图也显示“题型 → 涉及 → 知识点”。支持别名搜索、类型和关系筛选、缩放平移、键盘选择、跨节展开、手机端折叠面板以及 URL 恢复。跨节展开的对象标记为“相关内容”，不改变所属节。
 
@@ -70,7 +72,7 @@ node --test tools/tests/public-knowledge-graph.test.mjs
 
 含义相同的 21 个旧节点沿用 ID，类型按新本体登记。例如 `method-complete-square` 为“配方”技能，`method-square-extremum` 为独立的“配方求最值法”；`quadratic-inequality-solve` 保留完整解法身份，新的知识点使用 `quadratic-inequality`。`quadratic-interval-extremum` 登记为求值技能。
 
-以下仅为内容引用的对应关系，本阶段不迁移题目映射或学习记录：
+以下为阶段 1 的内容对应示例；逐题、逐步骤的迁移以阶段 2 的 `migration.json` 及专题原稿为准，不迁移学习成绩：
 
 | 原对象 | 新内容位置 |
 | --- | --- |
@@ -78,7 +80,7 @@ node --test tools/tests/public-knowledge-graph.test.mjs
 | `symmetric-polynomial` | `method-sum-product#identities` |
 | `extremum-transfer` | `function-range-extrema#quantified`；执行转换另用技能 `skill-quantified-range` |
 | `endpoint-attainability` | `function-range-extrema#attainability` |
-| `case-merge` | `method-parameter-quadratic-cases#merge` |
+| `case-merge` | 按当前方法关联合并或条件步骤，不能统一替换成一个节点 |
 | `method-reciprocal` | `skill-inequality-transform#reciprocal` |
 
 图解资源身份与节点身份分开。旧图解按「拆开合并」迁入：旧模块新增 `figure()` 导出，只渲染新页没有的图（滑块演示、数轴、抛物线、方框圆圈模板）；资源登记 `"part": "figure"` 后只嵌入这一部分，并用 `after` 放在最相关的知识条目、技能操作或方法步骤之下。旧模块的核心句、「解题三步」与新页条目重复，不再嵌入；易错对比、补充规则和例子改写进节点 JSON 的 `pitfalls`、`entries`／`operations` 和 `examples`。旧页面仍调用 `render()`，输出保持不变。

@@ -1,0 +1,39 @@
+{
+  "node": "function-range-extrema",
+  "items": [
+    {
+      "id": "endpoint-attainability--statements",
+      "question": "关于检查边界，下面哪些说法正确？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "equal-keep",
+          "label": "原题带等号，边界一定保留",
+          "feedback": "存在问题中，等号那一点取不到时，带等号也要排除。"
+        },
+        {
+          "value": "substitute",
+          "label": "拿不准时，把边界值代回原不等式检验"
+        },
+        {
+          "value": "strict-drop",
+          "label": "原题不带等号，边界一定排除",
+          "feedback": "恒成立中，下端取不到时，不带等号的边界也能保留。"
+        },
+        {
+          "value": "point",
+          "label": "要看边界时等号那一点在不在取值范围里"
+        }
+      ],
+      "answer": [
+        "substitute",
+        "point"
+      ],
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "statements"
+      },
+      "entry": "attainability"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "node": "method-square-extremum",
+  "items": [
+    {
+      "id": "method-complete-square--min",
+      "question": "$x^2+2x+5$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "c",
+          "label": "$5$",
+          "feedback": "$5$ 是 $x=0$ 时的值。配方得 $(x+1)^2+4$。"
+        },
+        {
+          "value": "right",
+          "label": "$4$"
+        },
+        {
+          "value": "where",
+          "label": "$-1$",
+          "feedback": "$-1$ 是取最小值时 $x$ 的值。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-complete-square",
+        "item": "min"
+      }
+    },
+    {
+      "id": "square-nonnegative--recip-square",
+      "question": "$x\\ne0$ 时，$x^2+\\frac1{x^2}$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "zero",
+          "label": "$0$",
+          "feedback": "$x^2+\\frac1{x^2}=\\left(x-\\frac1x\\right)^2+2$，平方项最小是 $0$，原式最小是 $2$。"
+        },
+        {
+          "value": "right",
+          "label": "$2$"
+        },
+        {
+          "value": "none",
+          "label": "没有最小值",
+          "feedback": "$x=\\pm1$ 时 $x-\\frac1x=0$，取到 $2$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "recip-square"
+      }
+    }
+  ]
+}

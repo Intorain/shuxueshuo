@@ -40,7 +40,8 @@
   "methods": [
     "method-amgm-direct",
     "method-square-extremum",
-    "method-sum-product-range"
+    "method-sum-product-range",
+    "method-quadratic-extremum"
   ],
   "rules": [],
   "examples": [

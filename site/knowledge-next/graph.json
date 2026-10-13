@@ -542,6 +542,42 @@
       ]
     },
     {
+      "id": "method-quadratic-extremum",
+      "kind": "method",
+      "label": "二次函数最值法",
+      "summary": "把目标整理成一个变量的二次函数，确定变量范围，再根据顶点和区间的位置求最值，最后回代检查。",
+      "aliases": [],
+      "home": "compulsory-1-ch2",
+      "steps": [
+        {
+          "id": "prepare",
+          "title": "按需整理、消元或换元",
+          "calls": [
+            "method-elimination",
+            "method-substitution",
+            "skill-simplify"
+          ]
+        },
+        {
+          "id": "domain",
+          "title": "确定函数和变量范围",
+          "calls": []
+        },
+        {
+          "id": "extremum",
+          "title": "比较顶点与区间求最值",
+          "calls": [
+            "quadratic-interval-extremum"
+          ]
+        },
+        {
+          "id": "verify",
+          "title": "回代验证原条件",
+          "calls": []
+        }
+      ]
+    },
+    {
       "id": "method-rational-inequality",
       "kind": "method",
       "label": "分式不等式转化法",
@@ -704,7 +740,7 @@
       "id": "method-sum-product-range",
       "kind": "method",
       "label": "和积换元法",
-      "summary": "把两个字母的和设为 s、积设为 p，用条件消去一个，再用「能还原成两个实数」这一要求求出范围或最值。",
+      "summary": "选取两个量，用它们的和与积改写条件和目标；根据所得关系，求界或解不等式，再检查能否还原为原变量。",
       "aliases": [],
       "home": "compulsory-1-ch2",
       "steps": [
@@ -724,17 +760,19 @@
         },
         {
           "id": "reduce",
-          "title": "消去 p，只留下 s",
+          "title": "联合条件与和积可行性关系",
           "calls": [
             "method-elimination",
-            "skill-inequality-transform"
+            "skill-inequality-transform",
+            "skill-apply-amgm"
           ]
         },
         {
           "id": "solve",
-          "title": "解出 s 的范围",
+          "title": "求范围或最值",
           "calls": [
-            "quadratic-inequality-solve"
+            "quadratic-inequality-solve",
+            "method-amgm-direct"
           ]
         },
         {
@@ -1575,6 +1613,54 @@
       ]
     },
     {
+      "id": "method-quadratic-extremum|calls|method-elimination",
+      "from": "method-quadratic-extremum",
+      "to": "method-elimination",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "prepare",
+          "when": "需要利用等式消去一个变量时"
+        }
+      ]
+    },
+    {
+      "id": "method-quadratic-extremum|calls|method-substitution",
+      "from": "method-quadratic-extremum",
+      "to": "method-substitution",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "prepare",
+          "when": "需要把反复出现的整体设为新变量时"
+        }
+      ]
+    },
+    {
+      "id": "method-quadratic-extremum|calls|quadratic-interval-extremum",
+      "from": "method-quadratic-extremum",
+      "to": "quadratic-interval-extremum",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "extremum",
+          "when": ""
+        }
+      ]
+    },
+    {
+      "id": "method-quadratic-extremum|calls|skill-simplify",
+      "from": "method-quadratic-extremum",
+      "to": "skill-simplify",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "prepare",
+          "when": "需要展开和合并同类项时"
+        }
+      ]
+    },
+    {
       "id": "method-rational-inequality|calls|quadratic-inequality-solve",
       "from": "method-rational-inequality",
       "to": "quadratic-inequality-solve",
@@ -1794,6 +1880,18 @@
       ]
     },
     {
+      "id": "method-sum-product-range|calls|method-amgm-direct",
+      "from": "method-sum-product-range",
+      "to": "method-amgm-direct",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "solve",
+          "when": "转化后的目标满足基本不等式求最值条件时"
+        }
+      ]
+    },
+    {
       "id": "method-sum-product-range|calls|method-elimination",
       "from": "method-sum-product-range",
       "to": "method-elimination",
@@ -1838,6 +1936,18 @@
         {
           "step": "solve",
           "when": "得到一元二次不等式时"
+        }
+      ]
+    },
+    {
+      "id": "method-sum-product-range|calls|skill-apply-amgm",
+      "from": "method-sum-product-range",
+      "to": "skill-apply-amgm",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "reduce",
+          "when": "选择正数和积不等关系建立可行性条件时，例如 Q30 的 s≥2√p 分支"
         }
       ]
     },
@@ -2321,6 +2431,15 @@
       ]
     },
     {
+      "id": "section-2-2|extends|method-quadratic-extremum",
+      "from": "section-2-2",
+      "to": "method-quadratic-extremum",
+      "type": "extends",
+      "occurrences": [
+        {}
+      ]
+    },
+    {
       "id": "section-2-2|extends|method-square-extremum",
       "from": "section-2-2",
       "to": "method-square-extremum",
@@ -2540,6 +2659,15 @@
       "id": "section-2-3|extends|method-parameter-quadratic-cases",
       "from": "section-2-3",
       "to": "method-parameter-quadratic-cases",
+      "type": "extends",
+      "occurrences": [
+        {}
+      ]
+    },
+    {
+      "id": "section-2-3|extends|method-quadratic-extremum",
+      "from": "section-2-3",
+      "to": "method-quadratic-extremum",
       "type": "extends",
       "occurrences": [
         {}
@@ -3291,6 +3419,15 @@
       "id": "type-sum-product-extremum|candidate|method-amgm-direct",
       "from": "type-sum-product-extremum",
       "to": "method-amgm-direct",
+      "type": "candidate",
+      "occurrences": [
+        {}
+      ]
+    },
+    {
+      "id": "type-sum-product-extremum|candidate|method-quadratic-extremum",
+      "from": "type-sum-product-extremum",
+      "to": "method-quadratic-extremum",
       "type": "candidate",
       "occurrences": [
         {}

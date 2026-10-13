@@ -1,0 +1,31 @@
+{
+  "node": "method-matching",
+  "items": [
+    {
+      "id": "method-matching--rewrite",
+      "question": "$x>1$ 时，$\\frac{x^2}{x-1}$ 应凑成什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "missing",
+          "label": "$x+\\frac1{x-1}$",
+          "feedback": "$x^2=(x-1)(x+1)+1$，所以 $\\frac{x^2}{x-1}=x+1+\\frac1{x-1}$，少了 $1$。"
+        },
+        {
+          "value": "right",
+          "label": "$(x-1)+\\frac1{x-1}+2$"
+        },
+        {
+          "value": "direct",
+          "label": "不用凑，$x^2\\cdot\\frac1{x-1}$ 直接用",
+          "feedback": "这是一项，不是两项相加；要先拆成两项积为定值的形式。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-matching",
+        "item": "rewrite"
+      }
+    }
+  ]
+}

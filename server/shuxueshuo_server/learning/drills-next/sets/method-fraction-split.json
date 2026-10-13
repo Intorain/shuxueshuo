@@ -1,0 +1,57 @@
+{
+  "node": "method-fraction-split",
+  "items": [
+    {
+      "id": "method-fraction-split--split",
+      "question": "$x>0$，把 $\\frac{x^2+2x+4}x$ 逐项拆开，结果是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "numer",
+          "label": "$x+2+4$",
+          "feedback": "每一项都要除以 $x$：$\\frac4x$ 不是 $4$。"
+        },
+        {
+          "value": "right",
+          "label": "$x+2+\\frac4x$"
+        },
+        {
+          "value": "square",
+          "label": "$x^2+2+\\frac4x$",
+          "feedback": "$\\frac{x^2}x=x$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "split"
+      }
+    },
+    {
+      "id": "method-fraction-split--first",
+      "question": "分子次数比分母高时，第一步做什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "direct",
+          "label": "对分子、分母直接用基本不等式",
+          "feedback": "基本不等式用在两项之和上，要先把分式拆成几项相加。"
+        },
+        {
+          "value": "right",
+          "label": "把分子按分母改写，再逐项拆开"
+        },
+        {
+          "value": "common",
+          "label": "先通分",
+          "feedback": "式子本来就是一个分式，要做的是拆开，不是通分。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "first"
+      }
+    }
+  ]
+}

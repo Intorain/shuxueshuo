@@ -10,7 +10,7 @@ export const splitRef = ref => { const [id, entry] = ref.split('#'); return {id,
 export const nodeHref = ref => { const {id, entry} = splitRef(ref); return `/knowledge-next/${id}/${entry ? `#${entry}` : ''}`; };
 export const chapterPath = id => `/knowledge-next/chapters/${id}/`;
 export const chapterTag = c => `${c.book} · 第 ${c.number} 章`;
-export const RESERVED_PATHS = ['3d', 'assets', 'chapters', 'nodes'];
+export const RESERVED_PATHS = ['3d', 'assets', 'chapters', 'nodes', 'topics', 'teaching'];
 export const anchors = node => [...(node.entries || []), ...(node.steps || []), ...(node.operations || []), ...(node.branches || [])];
 
 export function deriveEdges(nodes) {

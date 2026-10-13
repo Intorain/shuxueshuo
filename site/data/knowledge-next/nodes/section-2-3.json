@@ -148,6 +148,10 @@
     {
       "ref": "type-amgm-quantified",
       "relation": "extends"
+    },
+    {
+      "ref": "method-quadratic-extremum",
+      "relation": "extends"
     }
   ]
 }

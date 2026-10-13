@@ -1,0 +1,66 @@
+{
+  "node": "reciprocal-sum-function",
+  "items": [
+    {
+      "id": "reciprocal-sum-function--where",
+      "question": "$y=x+\\frac2x$（$x>0$）在哪里取最小值？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "two",
+          "label": "$x=2$",
+          "feedback": "$x=2$ 时 $y=3$，比 $2\\sqrt2\\approx2.83$ 大。最低点在 $x=\\frac2x$，即 $x=\\sqrt2$。"
+        },
+        {
+          "value": "right",
+          "label": "$x=\\sqrt2$"
+        },
+        {
+          "value": "one",
+          "label": "$x=1$",
+          "feedback": "$x=1$ 时两项是 $1$ 和 $2$，不相等；两项相等时才取最小值。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "where"
+      },
+      "entry": "range"
+    },
+    {
+      "id": "reciprocal-sum-function--statements",
+      "given": "$y=x+\\frac4x$。",
+      "question": "下面哪些说法是对的？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "min",
+          "label": "在 $(0,+\\infty)$ 上的最小值是 $4$"
+        },
+        {
+          "value": "global",
+          "label": "在整个定义域上的最小值是 $4$",
+          "feedback": "$x<0$ 时函数值是负数，比 $4$ 小；整个定义域上没有最小值。"
+        },
+        {
+          "value": "mono",
+          "label": "在 $(0,2]$ 上递减，在 $[2,+\\infty)$ 上递增"
+        },
+        {
+          "value": "distance",
+          "label": "在 $[1,3]$ 上的最大值在离 $x=2$ 更远的端点",
+          "feedback": "两端离 $x=2$ 一样远，但 $f(1)=5>f(3)$。图像不对称，要比较两端点之积和 $4$。"
+        }
+      ],
+      "answer": [
+        "min",
+        "mono"
+      ],
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "statements"
+      }
+    }
+  ]
+}

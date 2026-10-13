@@ -1,0 +1,135 @@
+{
+  "node": "method-complete-square",
+  "items": [
+    {
+      "id": "method-complete-square--basic",
+      "question": "把 $x^2-4x+7$ 配方，结果是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$(x-2)^2+3$"
+        },
+        {
+          "value": "whole",
+          "label": "$(x-4)^2-9$",
+          "feedback": "括号里是一次项系数的一半：$-4$ 的一半是 $-2$。"
+        },
+        {
+          "value": "sign",
+          "label": "$(x+2)^2+3$",
+          "feedback": "$(x+2)^2$ 展开是 $x^2+4x+4$，一次项符号不对。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-complete-square",
+        "item": "basic"
+      }
+    },
+    {
+      "id": "method-complete-square--leading-neg",
+      "question": "把 $-x^2+4x+1$ 配方，结果是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "forgot",
+          "label": "$-(x-2)^2-3$",
+          "feedback": "$-(x^2-4x)+1=-[(x-2)^2-4]+1$，括号外的负号乘进去，$-4$ 变成 $+4$。"
+        },
+        {
+          "value": "sign",
+          "label": "$-(x+2)^2+5$",
+          "feedback": "$x^2-4x$ 配成的是 $(x-2)^2$。"
+        },
+        {
+          "value": "right",
+          "label": "$-(x-2)^2+5$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-complete-square",
+        "item": "leading-neg"
+      }
+    },
+    {
+      "id": "method-complete-square--leading-two",
+      "question": "把 $2x^2-4x+5$ 配方，结果是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$2(x-1)^2+3$"
+        },
+        {
+          "value": "forgot",
+          "label": "$2(x-1)^2+4$",
+          "feedback": "$2(x^2-2x)+5=2[(x-1)^2-1]+5$，减去的 $1$ 也要乘 $2$。"
+        },
+        {
+          "value": "inside",
+          "label": "$(2x-1)^2+4$",
+          "feedback": "$(2x-1)^2=4x^2-4x+1$，二次项系数是 $4$，不对。先把系数 $2$ 提出来。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-complete-square",
+        "item": "leading-two"
+      }
+    },
+    {
+      "id": "method-complete-square--positive",
+      "question": "要说明 $x^2+x+1>0$ 对一切实数成立，把它配方成什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$\\left(x+\\frac12\\right)^2+\\frac34$"
+        },
+        {
+          "value": "wrong-c",
+          "label": "$\\left(x+\\frac12\\right)^2+\\frac54$",
+          "feedback": "加上 $\\frac14$ 配成平方，还要再减去 $\\frac14$：$1-\\frac14=\\frac34$。"
+        },
+        {
+          "value": "whole",
+          "label": "$(x+1)^2$",
+          "feedback": "$(x+1)^2=x^2+2x+1$，一次项不对。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-complete-square",
+        "item": "positive"
+      }
+    },
+    {
+      "id": "square-nonnegative--two-squares",
+      "question": "要说明 $x^2+y^2-2x+4y+5\\ge0$，把它写成什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$(x-1)^2+(y+2)^2$"
+        },
+        {
+          "value": "sign",
+          "label": "$(x+1)^2+(y-2)^2$",
+          "feedback": "$(x+1)^2$ 展开是 $x^2+2x+1$，一次项符号不对。"
+        },
+        {
+          "value": "positive",
+          "label": "要先假设 $x,y>0$",
+          "feedback": "平方和对任意实数都不小于 $0$，不需要正数条件。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "two-squares"
+      }
+    }
+  ]
+}

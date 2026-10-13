@@ -1,0 +1,146 @@
+{
+  "node": "square-nonnegative",
+  "items": [
+    {
+      "id": "method-complete-square--equality",
+      "question": "$(x-3)^2-2\\ge-2$，什么时候取等号？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "sign",
+          "label": "$x=-3$",
+          "feedback": "平方项为 $0$ 时取等：$x-3=0$。"
+        },
+        {
+          "value": "right",
+          "label": "$x=3$"
+        },
+        {
+          "value": "const",
+          "label": "$x=-2$",
+          "feedback": "$-2$ 是最小值，不是取等时 $x$ 的值。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-complete-square",
+        "item": "equality"
+      },
+      "entry": "nonnegative"
+    },
+    {
+      "id": "square-nonnegative--equality",
+      "question": "$(a-2b)^2\\ge0$ 什么时候取等号？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "zero",
+          "label": "只有 $a=b=0$",
+          "feedback": "只要 $a-2b=0$ 就行，例如 $a=2$，$b=1$。"
+        },
+        {
+          "value": "right",
+          "label": "$a=2b$"
+        },
+        {
+          "value": "neg",
+          "label": "$a=-2b$",
+          "feedback": "$a=-2b$ 时 $a-2b=-4b$，不一定为 $0$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "equality"
+      },
+      "entry": "nonnegative"
+    },
+    {
+      "id": "square-nonnegative--not-always",
+      "given": "$a$、$b$ 是任意实数。",
+      "question": "下面哪个不一定成立？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "sq",
+          "label": "$a^2+b^2\\ge2ab$",
+          "feedback": "移项就是 $(a-b)^2\\ge0$，对任意实数都成立。"
+        },
+        {
+          "value": "prod",
+          "label": "$ab\\le\\left(\\frac{a+b}2\\right)^2$",
+          "feedback": "$\\left(\\frac{a+b}2\\right)^2-ab=\\left(\\frac{a-b}2\\right)^2\\ge0$，对任意实数都成立。"
+        },
+        {
+          "value": "right",
+          "label": "$a+b\\ge2\\sqrt{ab}$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "not-always"
+      }
+    },
+    {
+      "id": "square-nonnegative--four-ab",
+      "question": "$(a+b)^2$ 和 $4ab$ 的大小关系是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "positive",
+          "label": "只有 $a,b>0$ 时 $(a+b)^2\\ge4ab$",
+          "feedback": "$(a+b)^2-4ab=(a-b)^2\\ge0$，对任意实数都成立。"
+        },
+        {
+          "value": "right",
+          "label": "对任意实数 $(a+b)^2\\ge4ab$"
+        },
+        {
+          "value": "le",
+          "label": "$(a+b)^2\\le4ab$",
+          "feedback": "$a=1$，$b=0$ 时 $1>0$，方向反了。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "four-ab"
+      },
+      "entry": "sum-product"
+    },
+    {
+      "id": "square-nonnegative--statements",
+      "question": "下面哪些式子对一切实数 $x$ 都不小于 $0$？",
+      "type": "multi",
+      "options": [
+        {
+          "value": "sq",
+          "label": "$x^2-4x+4$"
+        },
+        {
+          "value": "minus",
+          "label": "$x^2-4x+3$",
+          "feedback": "$x=2$ 时值为 $-1$。配方得 $(x-2)^2-1$。"
+        },
+        {
+          "value": "plus",
+          "label": "$x^2+x+1$"
+        },
+        {
+          "value": "neg",
+          "label": "$-(x-1)^2$",
+          "feedback": "平方前面是负号，$x\\ne1$ 时为负。"
+        }
+      ],
+      "answer": [
+        "sq",
+        "plus"
+      ],
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "statements"
+      }
+    }
+  ]
+}

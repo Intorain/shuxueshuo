@@ -1,0 +1,297 @@
+{
+  "node": "skill-inequality-transform",
+  "items": [
+    {
+      "id": "inequality-properties--mul-neg",
+      "given": "$a<b$。",
+      "question": "下面哪个一定成立？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "keep",
+          "label": "$-2a<-2b$",
+          "feedback": "两边乘负数，不等号要反向。"
+        },
+        {
+          "value": "right",
+          "label": "$-2a>-2b$"
+        },
+        {
+          "value": "square",
+          "label": "$a^2<b^2$",
+          "feedback": "$a=-3$，$b=1$ 时 $a^2>b^2$。两边都非负才能直接平方。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "mul-neg"
+      }
+    },
+    {
+      "id": "inequality-properties--divide-x",
+      "question": "$x<0$ 时，$mx>x^2+1$ 两边除以 $x$，得到哪个不等式？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "keep",
+          "label": "$m>x+\\frac1x$",
+          "feedback": "$x<0$，除以负数不等号要反向。"
+        },
+        {
+          "value": "right",
+          "label": "$m<x+\\frac1x$"
+        },
+        {
+          "value": "partial",
+          "label": "$m<x+1$",
+          "feedback": "右边每一项都要除以 $x$：$\\frac{x^2+1}x=x+\\frac1x$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "divide-x"
+      }
+    },
+    {
+      "id": "inequality-properties--unknown-sign",
+      "question": "$x\\in(-1,2)$ 时，由 $mx\\le3$ 求 $m$，能不能直接两边除以 $x$？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "keep",
+          "label": "能，得到 $m\\le\\frac3x$",
+          "feedback": "$x$ 在 $(-1,2)$ 里可正、可负、可为 $0$，除以负数要变向，$x=0$ 时不能除。"
+        },
+        {
+          "value": "flip",
+          "label": "能，得到 $m\\ge\\frac3x$",
+          "feedback": "只有 $x<0$ 时才变向；$x$ 的符号不确定。"
+        },
+        {
+          "value": "right",
+          "label": "不能，要按 $x>0$、$x=0$、$x<0$ 分类"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "unknown-sign"
+      }
+    },
+    {
+      "id": "inequality-properties--reciprocal",
+      "question": "$2<a<5$，$\\frac1a$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$\\frac15<\\frac1a<\\frac12$"
+        },
+        {
+          "value": "keep",
+          "label": "$\\frac12<\\frac1a<\\frac15$",
+          "feedback": "$\\frac12>\\frac15$，这个范围是空的。同正取倒数，大小顺序颠倒。"
+        },
+        {
+          "value": "half",
+          "label": "$\\frac1a>\\frac12$",
+          "feedback": "$a=4$ 时 $\\frac1a=\\frac14<\\frac12$。$a$ 越大，$\\frac1a$ 越小。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "reciprocal"
+      },
+      "entry": "reciprocal"
+    },
+    {
+      "id": "inequality-properties--reciprocal-mixed",
+      "question": "$-2<a<3$ 且 $a\\ne0$，$\\frac1a$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "direct",
+          "label": "$-\\frac12<\\frac1a<\\frac13$",
+          "feedback": "两端异号，不能直接取倒数。$a=1$ 时 $\\frac1a=1$，不在这个范围里。"
+        },
+        {
+          "value": "right",
+          "label": "$\\frac1a<-\\frac12$ 或 $\\frac1a>\\frac13$"
+        },
+        {
+          "value": "lower",
+          "label": "$\\frac1a>-\\frac12$",
+          "feedback": "$a=-1$ 时 $\\frac1a=-1<-\\frac12$。要把 $a<0$ 和 $a>0$ 分开取倒数。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "reciprocal-mixed"
+      },
+      "entry": "reciprocal"
+    },
+    {
+      "id": "inequality-properties--add",
+      "question": "$1<a<3$，$2<b<4$，$a+b$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "sub",
+          "label": "$-1<a+b<-1$",
+          "feedback": "这是把两个不等式相减得到的，而且范围是空的。同向不等式可以直接相加。"
+        },
+        {
+          "value": "mixed",
+          "label": "$5<a+b<5$",
+          "feedback": "下端加下端、上端加上端：$1+2<a+b<3+4$。"
+        },
+        {
+          "value": "right",
+          "label": "$3<a+b<7$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "add"
+      }
+    },
+    {
+      "id": "inequality-properties--subtract",
+      "question": "$1<a<3$，$2<b<4$，$a-b$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$-3<a-b<1$"
+        },
+        {
+          "value": "direct",
+          "label": "$-1<a-b<-1$",
+          "feedback": "不能把两个不等式直接相减。先由 $2<b<4$ 得 $-4<-b<-2$，再与 $1<a<3$ 相加。"
+        },
+        {
+          "value": "half",
+          "label": "$-1<a-b<1$",
+          "feedback": "下端应是 $1+(-4)=-3$：$a$ 取小、$b$ 取大时 $a-b$ 最小。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "inequality-properties",
+        "item": "subtract"
+      }
+    },
+    {
+      "id": "method-reciprocal--check",
+      "question": "对 $y$ 取倒数之前，要先确认什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$y$ 恒为正（或恒为负），不等于 $0$"
+        },
+        {
+          "value": "max",
+          "label": "$y$ 有最大值",
+          "feedback": "有没有最值要算了才知道；取倒数前要保证 $y$ 同号且不为 $0$。"
+        },
+        {
+          "value": "bigger",
+          "label": "分母比分子大",
+          "feedback": "和分子分母的大小无关，要看 $y$ 的符号。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "check"
+      },
+      "entry": "reciprocal"
+    },
+    {
+      "id": "method-reciprocal--convert",
+      "question": "$y>0$，求 $y$ 的最大值，取倒数后转化为什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "max",
+          "label": "求 $\\frac1y$ 的最大值",
+          "feedback": "$y>0$ 时 $y$ 越大，$\\frac1y$ 越小，要求 $\\frac1y$ 的最小值。"
+        },
+        {
+          "value": "square",
+          "label": "求 $y^2$ 的最小值",
+          "feedback": "取倒数后看的是 $\\frac1y$，不是 $y^2$。"
+        },
+        {
+          "value": "right",
+          "label": "求 $\\frac1y$ 的最小值"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "convert"
+      },
+      "entry": "reciprocal"
+    },
+    {
+      "id": "method-reciprocal--sign",
+      "question": "$x\\in\\mathbb R$，求 $y=\\frac x{x^2+1}$ 的最值，能直接写 $\\frac1y=x+\\frac1x\\ge2$ 吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "yes",
+          "label": "能，所以 $y\\le\\frac12$",
+          "feedback": "$x=0$ 时 $y=0$ 不能取倒数；$x<0$ 时 $y<0$，$x+\\frac1x\\le-2$。"
+        },
+        {
+          "value": "right",
+          "label": "不能，要分 $x>0$、$x=0$、$x<0$ 讨论"
+        },
+        {
+          "value": "never",
+          "label": "不能，这题不能用取倒数",
+          "feedback": "在 $x>0$ 和 $x<0$ 两段分别取倒数：$x>0$ 时 $0<y\\le\\frac12$，$x<0$ 时 $-\\frac12\\le y<0$；$x=0$ 时直接代入得 $y=0$，单独处理。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "sign"
+      },
+      "entry": "reciprocal"
+    },
+    {
+      "id": "method-separation--divide-negative",
+      "question": "当 $x\\in[-2,-1]$ 时，不等式 $ax-x^2+3<0$ 恒成立。把 $a$ 分离出来，得到的是哪个？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "lt",
+          "label": "$a<\\dfrac{x^2-3}{x}$",
+          "feedback": "$x\\in[-2,-1]$ 时 $x<0$，除以负数不等号要变向。"
+        },
+        {
+          "value": "gt",
+          "label": "$a>\\dfrac{x^2-3}{x}$"
+        },
+        {
+          "value": "unknown",
+          "label": "$x$ 的符号不定，要分类讨论",
+          "feedback": "$x$ 在 $[-2,-1]$ 上恒为负，符号确定，不用分类。"
+        }
+      ],
+      "answer": "gt",
+      "origin": {
+        "node": "method-separation",
+        "item": "divide-negative"
+      }
+    }
+  ]
+}

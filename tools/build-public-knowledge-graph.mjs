@@ -7,6 +7,8 @@ import {validateGraph, RESERVED_PATHS} from '../site/assets/knowledge-next/model
 import {rewriteResourceLinks} from '../site/assets/knowledge-next/resource-links.mjs';
 import {buildCity, homeChapters, recorded} from '../site/assets/knowledge-next/city.mjs';
 import {makeRenderer, textHtml} from './lib/public-knowledge-html.mjs';
+import {loadTeaching} from './lib/public-knowledge-teaching.mjs';
+import {teachingOutputs} from './lib/public-knowledge-teaching-html.mjs';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export async function loadSources(root = repoRoot) {
@@ -36,6 +38,7 @@ async function fileUnderSite(root, url) {
 
 export async function generate(root = repoRoot) {
   const {nodes,manifest,outline}=await loadSources(root), edges=validateGraph(nodes,manifest);
+  const teaching=await loadTeaching(root,nodes,manifest);
   for (const n of nodes) if (RESERVED_PATHS.includes(n.id)) throw new Error(`节点 ID 与页面路径冲突：${n.id}`);
   const city=buildCity(outline,{nodes,edges,defaultScope:manifest.defaultScope}), homes=homeChapters(outline,{nodes,edges});
   const bookShort=new Map(city.books.map(b=>[b.id,b.short]));
@@ -65,9 +68,8 @@ export async function generate(root = repoRoot) {
     if(resource.stylesheet) resourceHash.update(await fs.readFile(path.join(root,'site',resource.stylesheet)));
     resource.version=resourceHash.digest('hex').slice(0,12);
   }
-  // The learning API serves drill sets by node id; only ids shared with this graph get a 刷题 button.
-  const drillFiles=await fs.readdir(path.join(root,'server/shuxueshuo_server/learning/drills')).catch(e=>{if(e.code==='ENOENT') return []; throw e;});
-  manifest.drills=drillFiles.filter(f=>f.endsWith('.json')).map(f=>f.slice(0,-5)).filter(id=>nodes.some(n=>n.id===id));
+  // New drill ownership is not wired to the legacy learning API. Stage 3 enables it.
+  manifest.drills=[];
   const assetDir=path.join(root,'site/assets/knowledge-next');
   const assetNames=(await fs.readdir(assetDir)).filter(n=>/\.(mjs|css)$/.test(n)).sort();
   const hash=createHash('sha256');
@@ -83,8 +85,9 @@ export async function generate(root = repoRoot) {
   // A versioned directory also versions all relative ES module imports.
   for (const f of assetNames) outputs.set(`assets/${version}/${f}`,await fs.readFile(path.join(assetDir,f),'utf8'));
   for (const n of nodes) outputs.set(`${n.id}/index.html`,render.detail(n,resourceHtml));
+  for (const [file,body] of teachingOutputs(teaching,nodes,manifest,resourceHtml,render,version)) outputs.set(file,body);
   outputs.set('manifest.json',JSON.stringify({generator:'tools/build-public-knowledge-graph.mjs',schemaVersion:1,nodeCounts:manifest.expectedCounts,files:[...outputs.keys()].sort()},null,2)+'\n');
-  return {outputs,nodes,edges,manifest};
+  return {outputs,nodes,edges,manifest,teaching};
 }
 
 async function filesBelow(dir, prefix='') {

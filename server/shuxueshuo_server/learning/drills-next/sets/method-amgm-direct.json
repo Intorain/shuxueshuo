@@ -1,0 +1,762 @@
+{
+  "node": "method-amgm-direct",
+  "items": [
+    {
+      "id": "amgm-formula--apply",
+      "question": "$x>0$ 时，$x+\\frac9x$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "nine",
+          "label": "$9$",
+          "feedback": "$x+\\frac9x\\ge2\\sqrt{x\\cdot\\frac9x}=2\\sqrt9$，不要漏掉开方。"
+        },
+        {
+          "value": "right",
+          "label": "$6$"
+        },
+        {
+          "value": "ten",
+          "label": "$10$",
+          "feedback": "$10$ 是 $x=1$ 时的值。取等要 $x=\\frac9x$，即 $x=3$，值为 $6$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "amgm-formula",
+        "item": "apply"
+      }
+    },
+    {
+      "id": "amgm-formula--positive",
+      "question": "$x<0$ 时，$x+\\frac1x$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "ge2",
+          "label": "$x+\\frac1x\\ge2$",
+          "feedback": "两项都是负数，不满足一正。先看 $-x>0$：$-x+\\frac1{-x}\\ge2$。"
+        },
+        {
+          "value": "geneg",
+          "label": "$x+\\frac1x\\ge-2$",
+          "feedback": "$x=-4$ 时 $x+\\frac1x=-\\frac{17}4<-2$。由 $-x+\\frac1{-x}\\ge2$ 两边乘 $-1$，要变向。"
+        },
+        {
+          "value": "right",
+          "label": "$x+\\frac1x\\le-2$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "amgm-formula",
+        "item": "positive"
+      }
+    },
+    {
+      "id": "amgm-formula--fixed",
+      "question": "$0<x<\\frac12$ 时，$x(1-2x)$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$\\frac18$"
+        },
+        {
+          "value": "quarter",
+          "label": "$\\frac14$",
+          "feedback": "$2x(1-2x)\\le\\left(\\frac{2x+1-2x}2\\right)^2=\\frac14$，原式是它的一半。"
+        },
+        {
+          "value": "none",
+          "label": "取不到最大值",
+          "feedback": "取等要 $2x=1-2x$，即 $x=\\frac14$，在 $\\left(0,\\frac12\\right)$ 里，取得到。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "amgm-formula",
+        "item": "fixed"
+      }
+    },
+    {
+      "id": "amgm-formula--sum-fixed",
+      "question": "$a>0$，$b>0$，$a+b=6$，$ab$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "square",
+          "label": "$36$",
+          "feedback": "$(a+b)^2=36$，但 $ab\\le\\left(\\frac{a+b}2\\right)^2$，要先除以 $2$ 再平方。"
+        },
+        {
+          "value": "three",
+          "label": "$3$",
+          "feedback": "$3$ 是取等时 $a$、$b$ 的值，最大值是 $3\\times3$。"
+        },
+        {
+          "value": "right",
+          "label": "$9$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "amgm-formula",
+        "item": "sum-fixed"
+      }
+    },
+    {
+      "id": "amgm-formula--shift",
+      "question": "$x>1$ 时，$x+\\frac4{x-1}$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$(x-1)+\\frac4{x-1}\\ge4$，原式还要再加 $1$。"
+        },
+        {
+          "value": "right",
+          "label": "$5$"
+        },
+        {
+          "value": "six",
+          "label": "$6$",
+          "feedback": "$6$ 是 $x=2$ 时的值。取等要 $x-1=\\frac4{x-1}$，即 $x=3$，值为 $5$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "amgm-formula",
+        "item": "shift"
+      }
+    },
+    {
+      "id": "amgm-formula--twice",
+      "given": "$a>0$，$b>0$。有人写：$\\left(a+\\frac1b\\right)\\left(b+\\frac4a\\right)\\ge2\\sqrt{\\frac ab}\\cdot2\\sqrt{\\frac{4b}a}=8$。",
+      "question": "能说最小值是 $8$ 吗？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "不能，展开得 $ab+\\frac4{ab}+5\\ge9$，最小值是 $9$"
+        },
+        {
+          "value": "yes",
+          "label": "能，最小值是 $8$",
+          "feedback": "第一次取等要 $ab=1$，第二次要 $ab=4$，两个等号不能同时成立，$8$ 取不到。"
+        },
+        {
+          "value": "four",
+          "label": "不能，最小值是 $4$",
+          "feedback": "展开后 $ab+\\frac4{ab}\\ge4$，还有常数 $5$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "amgm-formula",
+        "item": "twice"
+      }
+    },
+    {
+      "id": "homogeneous-expression--compute",
+      "question": "$a,b>0$，$a+b=1$，$\\frac1a+\\frac4b$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$9$"
+        },
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$(a+b)\\left(\\frac1a+\\frac4b\\right)=5+\\frac ba+\\frac{4a}b\\ge5+4$，别漏常数 $5$。"
+        },
+        {
+          "value": "five",
+          "label": "$5$",
+          "feedback": "$5$ 只是常数部分，$\\frac ba+\\frac{4a}b$ 还至少是 $4$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "compute"
+      }
+    },
+    {
+      "id": "method-amgm-direct--when",
+      "question": "什么时候可以直接用基本不等式求最值？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "positive",
+          "label": "只要两项都是正数",
+          "feedback": "还要积或和是定值，并且等号取得到。"
+        },
+        {
+          "value": "right",
+          "label": "两项都正、积或和是定值、等号取得到"
+        },
+        {
+          "value": "fixed",
+          "label": "只要两项的积是定值",
+          "feedback": "两项还必须都是正数，等号也要取得到。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "when"
+      }
+    },
+    {
+      "id": "method-amgm-direct--product-fixed",
+      "question": "$x>0$，$y>0$，$xy=9$，$x+y$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$6$"
+        },
+        {
+          "value": "double",
+          "label": "$18$",
+          "feedback": "$x+y\\ge2\\sqrt{xy}=2\\times3$，不要漏开方。"
+        },
+        {
+          "value": "nine",
+          "label": "$9$",
+          "feedback": "$x=y=3$ 时取等，此时 $x+y=6$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "product-fixed"
+      }
+    },
+    {
+      "id": "method-amgm-direct--sum-fixed",
+      "question": "$a>0$，$b>0$，$a+b=4$，$ab$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "sixteen",
+          "label": "$16$",
+          "feedback": "$ab\\le\\left(\\frac{a+b}2\\right)^2=2^2$。"
+        },
+        {
+          "value": "two",
+          "label": "$2$",
+          "feedback": "$2$ 是取等时 $a$、$b$ 的值，$ab=2\\times2$。"
+        },
+        {
+          "value": "right",
+          "label": "$4$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "sum-fixed"
+      }
+    },
+    {
+      "id": "method-amgm-direct--coefficient",
+      "question": "$x>0$ 时，$4x+\\frac1x$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "five",
+          "label": "$5$",
+          "feedback": "$5$ 是 $x=1$ 时的值。取等要 $4x=\\frac1x$，即 $x=\\frac12$。"
+        },
+        {
+          "value": "right",
+          "label": "$4$"
+        },
+        {
+          "value": "two",
+          "label": "$2$",
+          "feedback": "$4x\\cdot\\frac1x=4$，$2\\sqrt4=4$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "coefficient"
+      }
+    },
+    {
+      "id": "method-amgm-direct--exponent",
+      "question": "$a+b=2$，$2^a+2^b$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$4$"
+        },
+        {
+          "value": "two",
+          "label": "$2$",
+          "feedback": "$2^a\\cdot2^b=2^{a+b}=4$，$2\\sqrt4=4$。"
+        },
+        {
+          "value": "root",
+          "label": "$2\\sqrt2$",
+          "feedback": "积是 $2^{a+b}=2^2=4$，不是 $2$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "exponent"
+      }
+    },
+    {
+      "id": "method-elimination--after",
+      "given": "$x>0$，$y>0$，$x(y+1)=9$。",
+      "question": "$x+y$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "six",
+          "label": "$6$",
+          "feedback": "$x+y=\\frac9{y+1}+(y+1)-1\\ge6-1$，别漏 $-1$。"
+        },
+        {
+          "value": "cannot",
+          "label": "$\\frac9{y+1}+y$ 积不是定值，不能用",
+          "feedback": "把 $y$ 写成 $(y+1)-1$，就能凑出积为定值的两项。"
+        },
+        {
+          "value": "right",
+          "label": "$5$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-elimination",
+        "item": "after"
+      }
+    },
+    {
+      "id": "method-elimination--compute",
+      "question": "$a>1$，$(a-1)(b-2)=4$，$a+b$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$b=2+\\frac4{a-1}$，$a+b=(a-1)+\\frac4{a-1}+3\\ge4+3$。"
+        },
+        {
+          "value": "right",
+          "label": "$7$"
+        },
+        {
+          "value": "three",
+          "label": "$3$",
+          "feedback": "$3$ 只是常数部分，$(a-1)+\\frac4{a-1}\\ge4$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-elimination",
+        "item": "compute"
+      }
+    },
+    {
+      "id": "method-fraction-split--min",
+      "question": "$x>0$ 时，$\\frac{x^2+2x+4}x$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$x+\\frac4x\\ge4$，原式还有常数 $2$。"
+        },
+        {
+          "value": "seven",
+          "label": "$7$",
+          "feedback": "$7$ 是 $x=1$ 时的值。取等要 $x=\\frac4x$，即 $x=2$。"
+        },
+        {
+          "value": "right",
+          "label": "$6$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "min"
+      }
+    },
+    {
+      "id": "method-fraction-split--shift",
+      "question": "$x>1$ 时，$\\frac{x^2+1}{x-1}$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$2+2\\sqrt2$"
+        },
+        {
+          "value": "missing",
+          "label": "$2\\sqrt2$",
+          "feedback": "令 $t=x-1$，原式 $=t+\\frac2t+2$，别漏常数 $2$。"
+        },
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$t\\cdot\\frac2t=2$，$t+\\frac2t\\ge2\\sqrt2$，不是 $2$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "shift"
+      }
+    },
+    {
+      "id": "method-fraction-split--coefficient",
+      "question": "$x>0$ 时，$\\frac{2x^2+3}x$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "five",
+          "label": "$5$",
+          "feedback": "$5$ 是 $x=1$ 时的值。$2x+\\frac3x\\ge2\\sqrt6$，在 $x=\\frac{\\sqrt6}2$ 取等。"
+        },
+        {
+          "value": "right",
+          "label": "$2\\sqrt6$"
+        },
+        {
+          "value": "half",
+          "label": "$\\sqrt6$",
+          "feedback": "$2\\sqrt{2x\\cdot\\frac3x}=2\\sqrt6$，不要漏系数 $2$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "coefficient"
+      }
+    },
+    {
+      "id": "method-homogeneous--basic",
+      "question": "$a,b>0$，$a+2b=1$，$\\frac1a+\\frac1b$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "twice",
+          "label": "$4\\sqrt2$",
+          "feedback": "这是 $\\frac1a+\\frac1b\\ge\\frac2{\\sqrt{ab}}$ 和 $a+2b\\ge2\\sqrt{2ab}$ 相乘得来的；前者 $a=b$ 取等，后者 $a=2b$ 取等，不能同时成立。"
+        },
+        {
+          "value": "right",
+          "label": "$3+2\\sqrt2$"
+        },
+        {
+          "value": "missing",
+          "label": "$2\\sqrt2$",
+          "feedback": "$(a+2b)\\left(\\frac1a+\\frac1b\\right)=3+\\frac{2b}a+\\frac ab$，别漏常数 $3$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "basic"
+      }
+    },
+    {
+      "id": "method-homogeneous--not-one",
+      "question": "$x,y>0$，$x+y=2$，$\\frac1x+\\frac9y$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "sixteen",
+          "label": "$16$",
+          "feedback": "$x+y=2$，乘的应是 $\\frac{x+y}2$，结果还要除以 $2$。"
+        },
+        {
+          "value": "ten",
+          "label": "$10$",
+          "feedback": "$(x+y)\\left(\\frac1x+\\frac9y\\right)=10+\\frac yx+\\frac{9x}y\\ge16$，再除以 $2$。"
+        },
+        {
+          "value": "right",
+          "label": "$8$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "not-one"
+      }
+    },
+    {
+      "id": "method-homogeneous--fill",
+      "question": "$a,b>0$，$a+b=1$，$\\frac1a+\\frac ab$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "two",
+          "label": "$2$",
+          "feedback": "$\\frac1a=\\frac{a+b}a=1+\\frac ba$，原式 $=1+\\frac ba+\\frac ab$，还有常数 $1$。"
+        },
+        {
+          "value": "right",
+          "label": "$3$"
+        },
+        {
+          "value": "cannot",
+          "label": "两项次数不同，不能这样做",
+          "feedback": "把 $\\frac1a$ 里的 $1$ 换成 $a+b$，两项就都是零次了。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "fill"
+      }
+    },
+    {
+      "id": "method-homogeneous--reverse",
+      "question": "$x,y>0$，$\\frac1x+\\frac4y=1$，$x+y$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$(x+y)\\left(\\frac1x+\\frac4y\\right)=5+\\frac yx+\\frac{4x}y\\ge5+4$。"
+        },
+        {
+          "value": "five",
+          "label": "$5$",
+          "feedback": "$5$ 只是常数部分，$\\frac yx+\\frac{4x}y\\ge4$。"
+        },
+        {
+          "value": "right",
+          "label": "$9$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "reverse"
+      }
+    },
+    {
+      "id": "method-matching--shift",
+      "question": "$x>2$ 时，$x+\\frac1{x-2}$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "two",
+          "label": "$2$",
+          "feedback": "$(x-2)+\\frac1{x-2}\\ge2$，原式还要加回 $2$。"
+        },
+        {
+          "value": "right",
+          "label": "$4$"
+        },
+        {
+          "value": "direct",
+          "label": "$2\\sqrt{\\frac x{x-2}}$",
+          "feedback": "$x\\cdot\\frac1{x-2}$ 不是定值，结果里不能含 $x$。先凑成 $(x-2)+\\frac1{x-2}+2$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-matching",
+        "item": "shift"
+      }
+    },
+    {
+      "id": "method-matching--sum",
+      "question": "$0<x<3$ 时，$x(3-x)$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$\\frac94$"
+        },
+        {
+          "value": "nine",
+          "label": "$9$",
+          "feedback": "$x+(3-x)=3$，$x(3-x)\\le\\left(\\frac32\\right)^2$。"
+        },
+        {
+          "value": "half",
+          "label": "$\\frac32$",
+          "feedback": "$\\frac32$ 是取等时 $x$ 的值。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-matching",
+        "item": "sum"
+      }
+    },
+    {
+      "id": "method-matching--coefficient",
+      "question": "$0<x<\\frac13$ 时，$x(1-3x)$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "quarter",
+          "label": "$\\frac14$",
+          "feedback": "$3x(1-3x)\\le\\frac14$，原式是它的 $\\frac13$。"
+        },
+        {
+          "value": "none",
+          "label": "和不是定值，不能用基本不等式",
+          "feedback": "写成 $\\frac13\\cdot3x(1-3x)$，$3x+(1-3x)=1$ 就是定值。"
+        },
+        {
+          "value": "right",
+          "label": "$\\frac1{12}$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-matching",
+        "item": "coefficient"
+      }
+    },
+    {
+      "id": "method-matching--negative",
+      "question": "$x<1$ 时，$x+\\frac1{x-1}$ 有什么最值？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "min3",
+          "label": "最小值 $3$",
+          "feedback": "$x-1<0$，不满足一正。$(x-1)+\\frac1{x-1}\\le-2$。"
+        },
+        {
+          "value": "right",
+          "label": "最大值 $-1$"
+        },
+        {
+          "value": "max-neg2",
+          "label": "最大值 $-2$",
+          "feedback": "$(x-1)+\\frac1{x-1}\\le-2$，原式还要加 $1$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-matching",
+        "item": "negative"
+      }
+    },
+    {
+      "id": "method-reciprocal--basic",
+      "question": "$x>0$ 时，$\\frac x{x^2+4}$ 的最大值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "$4$ 是 $\\frac1y=x+\\frac4x$ 的最小值，还要取倒数换回 $y$。"
+        },
+        {
+          "value": "right",
+          "label": "$\\frac14$"
+        },
+        {
+          "value": "half",
+          "label": "$\\frac12$",
+          "feedback": "$x+\\frac4x\\ge2\\sqrt4=4$，所以 $y\\le\\frac14$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "basic"
+      }
+    },
+    {
+      "id": "method-reciprocal--range",
+      "question": "$x>0$ 时，$y=\\frac x{x^2+x+1}$ 的取值范围是什么？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "inverse",
+          "label": "$[3,+\\infty)$",
+          "feedback": "这是 $\\frac1y=x+\\frac1x+1$ 的范围，还要取倒数。"
+        },
+        {
+          "value": "right",
+          "label": "$\\left(0,\\frac13\\right]$"
+        },
+        {
+          "value": "three",
+          "label": "$(0,3]$",
+          "feedback": "$\\frac1y\\ge3$，所以 $0<y\\le\\frac13$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "range"
+      }
+    },
+    {
+      "id": "method-substitution--min",
+      "given": "$x>1$。",
+      "question": "$\\frac{x^2-x+1}{x-1}$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "two",
+          "label": "$2$",
+          "feedback": "$t+\\frac1t\\ge2$，原式还要加 $1$。"
+        },
+        {
+          "value": "one",
+          "label": "$1$",
+          "feedback": "$t=1$ 是取等时的值，此时 $x=2$，原式为 $3$。"
+        },
+        {
+          "value": "right",
+          "label": "$3$"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-substitution",
+        "item": "min"
+      }
+    },
+    {
+      "id": "method-substitution--compute",
+      "question": "$x>-1$ 时，$\\frac{x^2+3}{x+1}$ 的最小值是多少？",
+      "type": "choice",
+      "options": [
+        {
+          "value": "right",
+          "label": "$2$"
+        },
+        {
+          "value": "four",
+          "label": "$4$",
+          "feedback": "令 $t=x+1$，原式 $=t+\\frac4t-2\\ge4-2$，别漏 $-2$。"
+        },
+        {
+          "value": "three",
+          "label": "$3$",
+          "feedback": "$3$ 是 $x=0$ 时的值。取等要 $t=2$，即 $x=1$，值为 $2$。"
+        }
+      ],
+      "answer": "right",
+      "origin": {
+        "node": "method-substitution",
+        "item": "compute"
+      }
+    }
+  ]
+}

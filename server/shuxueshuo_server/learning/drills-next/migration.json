@@ -1,0 +1,1803 @@
+{
+  "schemaVersion": 1,
+  "sourceCount": 180,
+  "records": [
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "apply"
+      },
+      "id": "amgm-formula--apply",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "positive"
+      },
+      "id": "amgm-formula--positive",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "fixed"
+      },
+      "id": "amgm-formula--fixed",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "equal"
+      },
+      "id": "amgm-formula--equal",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "sum-fixed"
+      },
+      "id": "amgm-formula--sum-fixed",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "shift"
+      },
+      "id": "amgm-formula--shift",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "twice"
+      },
+      "id": "amgm-formula--twice",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "amgm-formula",
+        "item": "statements"
+      },
+      "id": "amgm-formula--statements",
+      "action": "keep",
+      "target": "amgm-formula#formula",
+      "reason": "原题实际考查 amgm-formula#formula，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "and-intersect"
+      },
+      "id": "case-merge--and-intersect",
+      "action": "reassign",
+      "target": "method-variable-swap#solve",
+      "reason": "原题实际考查 method-variable-swap#solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "premise-empty"
+      },
+      "id": "case-merge--premise-empty",
+      "action": "reassign",
+      "target": "method-interval-extremum#conditions",
+      "reason": "原题实际考查 method-interval-extremum#conditions，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "intersect-endpoint"
+      },
+      "id": "case-merge--intersect-endpoint",
+      "action": "retire",
+      "reason": "主要考查一般集合交并运算；本轮不新增初中或集合知识节点，保留原题供后续归属。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "union-endpoint"
+      },
+      "id": "case-merge--union-endpoint",
+      "action": "retire",
+      "reason": "主要考查一般集合交并运算；本轮不新增初中或集合知识节点，保留原题供后续归属。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "whole-premise"
+      },
+      "id": "case-merge--whole-premise",
+      "action": "reassign",
+      "target": "method-interval-extremum#conditions",
+      "reason": "原题实际考查 method-interval-extremum#conditions，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "degenerate-case"
+      },
+      "id": "case-merge--degenerate-case",
+      "action": "reassign",
+      "target": "method-interval-extremum#conditions",
+      "reason": "原题实际考查 method-interval-extremum#conditions，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "opening-and-delta"
+      },
+      "id": "case-merge--opening-and-delta",
+      "action": "reassign",
+      "target": "method-discriminant#solve",
+      "reason": "原题实际考查 method-discriminant#solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "case-merge",
+        "item": "which-union"
+      },
+      "id": "case-merge--which-union",
+      "action": "retire",
+      "reason": "主要考查一般集合交并运算；本轮不新增初中或集合知识节点，保留原题供后续归属。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "forall-gt-reached"
+      },
+      "id": "endpoint-attainability--forall-gt-reached",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "forall-gt-missed"
+      },
+      "id": "endpoint-attainability--forall-gt-missed",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "forall-ge-tangent"
+      },
+      "id": "endpoint-attainability--forall-ge-tangent",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "exists-gt-missed"
+      },
+      "id": "endpoint-attainability--exists-gt-missed",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "exists-le-reached"
+      },
+      "id": "endpoint-attainability--exists-le-reached",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "exists-ge-missed"
+      },
+      "id": "endpoint-attainability--exists-ge-missed",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "degenerate-boundary"
+      },
+      "id": "endpoint-attainability--degenerate-boundary",
+      "action": "reassign",
+      "target": "method-discriminant#degree",
+      "reason": "原题实际考查 method-discriminant#degree，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "endpoint-attainability",
+        "item": "statements"
+      },
+      "id": "endpoint-attainability--statements",
+      "action": "reassign",
+      "target": "function-range-extrema#attainability",
+      "reason": "原题实际考查 function-range-extrema#attainability，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "forall-gt-closed"
+      },
+      "id": "extremum-transfer--forall-gt-closed",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "forall-le-parameter"
+      },
+      "id": "extremum-transfer--forall-le-parameter",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "exists-lt-closed"
+      },
+      "id": "extremum-transfer--exists-lt-closed",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "exists-gt-open"
+      },
+      "id": "extremum-transfer--exists-gt-open",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "exists-ge-parameter"
+      },
+      "id": "extremum-transfer--exists-ge-parameter",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "forall-negative"
+      },
+      "id": "extremum-transfer--forall-negative",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "forall-ge-unattained"
+      },
+      "id": "extremum-transfer--forall-ge-unattained",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "extremum-transfer",
+        "item": "forall-equivalent"
+      },
+      "id": "extremum-transfer--forall-equivalent",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "definition"
+      },
+      "id": "function-monotonicity--definition",
+      "action": "keep",
+      "target": "function-monotonicity#definition",
+      "reason": "原题实际考查 function-monotonicity#definition，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "range-closed"
+      },
+      "id": "function-monotonicity--range-closed",
+      "action": "keep",
+      "target": "function-monotonicity#endpoints",
+      "reason": "原题实际考查 function-monotonicity#endpoints，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "sum"
+      },
+      "id": "function-monotonicity--sum",
+      "action": "keep",
+      "target": "function-monotonicity#combine",
+      "reason": "原题实际考查 function-monotonicity#combine，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "reciprocal"
+      },
+      "id": "function-monotonicity--reciprocal",
+      "action": "keep",
+      "target": "function-monotonicity#combine",
+      "reason": "原题实际考查 function-monotonicity#combine，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "negative"
+      },
+      "id": "function-monotonicity--negative",
+      "action": "keep",
+      "target": "function-monotonicity#combine",
+      "reason": "原题实际考查 function-monotonicity#combine，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "composite"
+      },
+      "id": "function-monotonicity--composite",
+      "action": "keep",
+      "target": "function-monotonicity#combine",
+      "reason": "原题实际考查 function-monotonicity#combine，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "domain-trap"
+      },
+      "id": "function-monotonicity--domain-trap",
+      "action": "keep",
+      "target": "function-monotonicity#interval",
+      "reason": "原题实际考查 function-monotonicity#interval，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "function-monotonicity",
+        "item": "statements"
+      },
+      "id": "function-monotonicity--statements",
+      "action": "keep",
+      "target": "function-monotonicity",
+      "reason": "原题实际考查 function-monotonicity，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "degree"
+      },
+      "id": "homogeneous-expression--degree",
+      "action": "reassign",
+      "target": "method-homogeneous#degree",
+      "reason": "原题实际考查 method-homogeneous#degree，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "zero-degree"
+      },
+      "id": "homogeneous-expression--zero-degree",
+      "action": "reassign",
+      "target": "method-homogeneous#degree",
+      "reason": "原题实际考查 method-homogeneous#degree，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "multiply"
+      },
+      "id": "homogeneous-expression--multiply",
+      "action": "reassign",
+      "target": "method-homogeneous#fill",
+      "reason": "原题实际考查 method-homogeneous#fill，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "not-one"
+      },
+      "id": "homogeneous-expression--not-one",
+      "action": "reassign",
+      "target": "method-homogeneous#fill",
+      "reason": "原题实际考查 method-homogeneous#fill，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "ratio"
+      },
+      "id": "homogeneous-expression--ratio",
+      "action": "reassign",
+      "target": "method-homogeneous#degree",
+      "reason": "原题实际考查 method-homogeneous#degree，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "compute"
+      },
+      "id": "homogeneous-expression--compute",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "substitute"
+      },
+      "id": "homogeneous-expression--substitute",
+      "action": "reassign",
+      "target": "method-substitution",
+      "reason": "原题实际考查 method-substitution，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "homogeneous-expression",
+        "item": "statements"
+      },
+      "id": "homogeneous-expression--statements",
+      "action": "reassign",
+      "target": "method-homogeneous#degree",
+      "reason": "原题实际考查 method-homogeneous#degree，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "mul-neg"
+      },
+      "id": "inequality-properties--mul-neg",
+      "action": "reassign",
+      "target": "skill-inequality-transform",
+      "reason": "原题实际考查 skill-inequality-transform，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "divide-x"
+      },
+      "id": "inequality-properties--divide-x",
+      "action": "reassign",
+      "target": "skill-inequality-transform",
+      "reason": "原题实际考查 skill-inequality-transform，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "unknown-sign"
+      },
+      "id": "inequality-properties--unknown-sign",
+      "action": "reassign",
+      "target": "skill-inequality-transform",
+      "reason": "原题实际考查 skill-inequality-transform，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "reciprocal"
+      },
+      "id": "inequality-properties--reciprocal",
+      "action": "reassign",
+      "target": "skill-inequality-transform#reciprocal",
+      "reason": "原题实际考查 skill-inequality-transform#reciprocal，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "reciprocal-mixed"
+      },
+      "id": "inequality-properties--reciprocal-mixed",
+      "action": "reassign",
+      "target": "skill-inequality-transform#reciprocal",
+      "reason": "原题实际考查 skill-inequality-transform#reciprocal，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "add"
+      },
+      "id": "inequality-properties--add",
+      "action": "reassign",
+      "target": "skill-inequality-transform",
+      "reason": "原题实际考查 skill-inequality-transform，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "subtract"
+      },
+      "id": "inequality-properties--subtract",
+      "action": "reassign",
+      "target": "skill-inequality-transform",
+      "reason": "原题实际考查 skill-inequality-transform，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "inequality-properties",
+        "item": "statements"
+      },
+      "id": "inequality-properties--statements",
+      "action": "keep",
+      "target": "inequality-properties",
+      "reason": "原题实际考查 inequality-properties，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "increasing"
+      },
+      "id": "linear-interval-extremum--increasing",
+      "action": "reassign",
+      "target": "skill-linear-range",
+      "reason": "原题实际考查 skill-linear-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "decreasing"
+      },
+      "id": "linear-interval-extremum--decreasing",
+      "action": "reassign",
+      "target": "skill-linear-range",
+      "reason": "原题实际考查 skill-linear-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "constant"
+      },
+      "id": "linear-interval-extremum--constant",
+      "action": "reassign",
+      "target": "skill-linear-range#constant",
+      "reason": "原题实际考查 skill-linear-range#constant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "both-ends"
+      },
+      "id": "linear-interval-extremum--both-ends",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "slope-positive"
+      },
+      "id": "linear-interval-extremum--slope-positive",
+      "action": "reassign",
+      "target": "skill-linear-range",
+      "reason": "原题实际考查 skill-linear-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "open-interval"
+      },
+      "id": "linear-interval-extremum--open-interval",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "sign-at-ends"
+      },
+      "id": "linear-interval-extremum--sign-at-ends",
+      "action": "keep",
+      "target": "linear-interval-extremum",
+      "reason": "原题实际考查 linear-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "linear-interval-extremum",
+        "item": "statements"
+      },
+      "id": "linear-interval-extremum--statements",
+      "action": "keep",
+      "target": "linear-interval-extremum",
+      "reason": "原题实际考查 linear-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "when"
+      },
+      "id": "method-amgm-direct--when",
+      "action": "keep",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "product-fixed"
+      },
+      "id": "method-amgm-direct--product-fixed",
+      "action": "keep",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "sum-fixed"
+      },
+      "id": "method-amgm-direct--sum-fixed",
+      "action": "keep",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "coefficient"
+      },
+      "id": "method-amgm-direct--coefficient",
+      "action": "keep",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-amgm-direct",
+        "item": "exponent"
+      },
+      "id": "method-amgm-direct--exponent",
+      "action": "keep",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "basic"
+      },
+      "id": "method-complete-square--basic",
+      "action": "keep",
+      "target": "method-complete-square",
+      "reason": "原题实际考查 method-complete-square，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "min"
+      },
+      "id": "method-complete-square--min",
+      "action": "reassign",
+      "target": "method-square-extremum",
+      "reason": "原题实际考查 method-square-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "leading-neg"
+      },
+      "id": "method-complete-square--leading-neg",
+      "action": "keep",
+      "target": "method-complete-square",
+      "reason": "原题实际考查 method-complete-square，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "leading-two"
+      },
+      "id": "method-complete-square--leading-two",
+      "action": "keep",
+      "target": "method-complete-square",
+      "reason": "原题实际考查 method-complete-square，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "equality"
+      },
+      "id": "method-complete-square--equality",
+      "action": "reassign",
+      "target": "square-nonnegative#nonnegative",
+      "reason": "原题实际考查 square-nonnegative#nonnegative，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "restricted"
+      },
+      "id": "method-complete-square--restricted",
+      "action": "reassign",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "positive"
+      },
+      "id": "method-complete-square--positive",
+      "action": "keep",
+      "target": "method-complete-square",
+      "reason": "原题实际考查 method-complete-square，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-complete-square",
+        "item": "statements"
+      },
+      "id": "method-complete-square--statements",
+      "action": "reassign",
+      "target": "quadratic-function-properties#vertex",
+      "reason": "原题实际考查 quadratic-function-properties#vertex，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-discriminant",
+        "item": "fixed-coefficient"
+      },
+      "id": "method-discriminant--fixed-coefficient",
+      "action": "keep",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-discriminant",
+        "item": "coefficient-maybe-zero"
+      },
+      "id": "method-discriminant--coefficient-maybe-zero",
+      "action": "keep",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-discriminant",
+        "item": "interval-not-enough"
+      },
+      "id": "method-discriminant--interval-not-enough",
+      "action": "keep",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-discriminant",
+        "item": "tangent-allowed"
+      },
+      "id": "method-discriminant--tangent-allowed",
+      "action": "keep",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-discriminant",
+        "item": "opening-matters"
+      },
+      "id": "method-discriminant--opening-matters",
+      "action": "keep",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-elimination",
+        "item": "solve"
+      },
+      "id": "method-elimination--solve",
+      "action": "keep",
+      "target": "method-elimination",
+      "reason": "原题实际考查 method-elimination，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-elimination",
+        "item": "after"
+      },
+      "id": "method-elimination--after",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-elimination",
+        "item": "range"
+      },
+      "id": "method-elimination--range",
+      "action": "keep",
+      "target": "method-elimination#feasible",
+      "reason": "原题实际考查 method-elimination#feasible，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-elimination",
+        "item": "compute"
+      },
+      "id": "method-elimination--compute",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-elimination",
+        "item": "when"
+      },
+      "id": "method-elimination--when",
+      "action": "keep",
+      "target": "method-elimination",
+      "reason": "原题实际考查 method-elimination，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "split"
+      },
+      "id": "method-fraction-split--split",
+      "action": "keep",
+      "target": "method-fraction-split",
+      "reason": "原题实际考查 method-fraction-split，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "min"
+      },
+      "id": "method-fraction-split--min",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "shift"
+      },
+      "id": "method-fraction-split--shift",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "first"
+      },
+      "id": "method-fraction-split--first",
+      "action": "keep",
+      "target": "method-fraction-split",
+      "reason": "原题实际考查 method-fraction-split，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-fraction-split",
+        "item": "coefficient"
+      },
+      "id": "method-fraction-split--coefficient",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "basic"
+      },
+      "id": "method-homogeneous--basic",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "not-one"
+      },
+      "id": "method-homogeneous--not-one",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "first-step"
+      },
+      "id": "method-homogeneous--first-step",
+      "action": "keep",
+      "target": "method-homogeneous",
+      "reason": "原题实际考查 method-homogeneous，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "fill"
+      },
+      "id": "method-homogeneous--fill",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-homogeneous",
+        "item": "reverse"
+      },
+      "id": "method-homogeneous--reverse",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "closed-interval"
+      },
+      "id": "method-interval-extremum--closed-interval",
+      "action": "keep",
+      "target": "method-interval-extremum",
+      "reason": "原题实际考查 method-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "all-real-numbers"
+      },
+      "id": "method-interval-extremum--all-real-numbers",
+      "action": "reassign",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "infinite-interval"
+      },
+      "id": "method-interval-extremum--infinite-interval",
+      "action": "keep",
+      "target": "method-interval-extremum",
+      "reason": "原题实际考查 method-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "opening-down"
+      },
+      "id": "method-interval-extremum--opening-down",
+      "action": "keep",
+      "target": "method-interval-extremum",
+      "reason": "原题实际考查 method-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-interval-extremum",
+        "item": "exists"
+      },
+      "id": "method-interval-extremum--exists",
+      "action": "keep",
+      "target": "method-interval-extremum",
+      "reason": "原题实际考查 method-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-matching",
+        "item": "shift"
+      },
+      "id": "method-matching--shift",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-matching",
+        "item": "sum"
+      },
+      "id": "method-matching--sum",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-matching",
+        "item": "coefficient"
+      },
+      "id": "method-matching--coefficient",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-matching",
+        "item": "rewrite"
+      },
+      "id": "method-matching--rewrite",
+      "action": "keep",
+      "target": "method-matching",
+      "reason": "原题实际考查 method-matching，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-matching",
+        "item": "negative"
+      },
+      "id": "method-matching--negative",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "basic"
+      },
+      "id": "method-reciprocal--basic",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "check"
+      },
+      "id": "method-reciprocal--check",
+      "action": "reassign",
+      "target": "skill-inequality-transform#reciprocal",
+      "reason": "原题实际考查 skill-inequality-transform#reciprocal，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "convert"
+      },
+      "id": "method-reciprocal--convert",
+      "action": "reassign",
+      "target": "skill-inequality-transform#reciprocal",
+      "reason": "原题实际考查 skill-inequality-transform#reciprocal，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "range"
+      },
+      "id": "method-reciprocal--range",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-reciprocal",
+        "item": "sign"
+      },
+      "id": "method-reciprocal--sign",
+      "action": "reassign",
+      "target": "skill-inequality-transform#reciprocal",
+      "reason": "原题实际考查 skill-inequality-transform#reciprocal，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-separation",
+        "item": "divide-positive"
+      },
+      "id": "method-separation--divide-positive",
+      "action": "keep",
+      "target": "method-separation",
+      "reason": "原题实际考查 method-separation，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-separation",
+        "item": "divide-negative"
+      },
+      "id": "method-separation--divide-negative",
+      "action": "reassign",
+      "target": "skill-inequality-transform",
+      "reason": "原题实际考查 skill-inequality-transform，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-separation",
+        "item": "unknown-sign"
+      },
+      "id": "method-separation--unknown-sign",
+      "action": "keep",
+      "target": "method-separation",
+      "reason": "原题实际考查 method-separation，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-separation",
+        "item": "already-separated"
+      },
+      "id": "method-separation--already-separated",
+      "action": "keep",
+      "target": "method-separation",
+      "reason": "原题实际考查 method-separation，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-separation",
+        "item": "cannot-separate"
+      },
+      "id": "method-separation--cannot-separate",
+      "action": "keep",
+      "target": "method-separation",
+      "reason": "原题实际考查 method-separation，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-substitution",
+        "item": "rewrite"
+      },
+      "id": "method-substitution--rewrite",
+      "action": "keep",
+      "target": "method-substitution",
+      "reason": "原题实际考查 method-substitution，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-substitution",
+        "item": "min"
+      },
+      "id": "method-substitution--min",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-substitution",
+        "item": "range"
+      },
+      "id": "method-substitution--range",
+      "action": "keep",
+      "target": "method-substitution#range",
+      "reason": "原题实际考查 method-substitution#range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-substitution",
+        "item": "compute"
+      },
+      "id": "method-substitution--compute",
+      "action": "reassign",
+      "target": "method-amgm-direct",
+      "reason": "原题实际考查 method-amgm-direct，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-substitution",
+        "item": "when"
+      },
+      "id": "method-substitution--when",
+      "action": "keep",
+      "target": "method-substitution",
+      "reason": "原题实际考查 method-substitution，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-sum-product",
+        "item": "square-sum"
+      },
+      "id": "method-sum-product--square-sum",
+      "action": "keep",
+      "target": "method-sum-product",
+      "reason": "原题实际考查 method-sum-product，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-sum-product",
+        "item": "range"
+      },
+      "id": "method-sum-product--range",
+      "action": "reassign",
+      "target": "method-sum-product-range",
+      "reason": "原题实际考查 method-sum-product-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-sum-product",
+        "item": "why"
+      },
+      "id": "method-sum-product--why",
+      "action": "keep",
+      "target": "method-sum-product#feasible",
+      "reason": "原题实际考查 method-sum-product#feasible，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-sum-product",
+        "item": "positive"
+      },
+      "id": "method-sum-product--positive",
+      "action": "reassign",
+      "target": "method-sum-product-range",
+      "reason": "原题实际考查 method-sum-product-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-sum-product",
+        "item": "product-range"
+      },
+      "id": "method-sum-product--product-range",
+      "action": "reassign",
+      "target": "method-sum-product-range",
+      "reason": "原题实际考查 method-sum-product-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "choose-variable"
+      },
+      "id": "method-variable-swap--choose-variable",
+      "action": "keep",
+      "target": "method-variable-swap",
+      "reason": "原题实际考查 method-variable-swap，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "linear-form"
+      },
+      "id": "method-variable-swap--linear-form",
+      "action": "keep",
+      "target": "method-variable-swap",
+      "reason": "原题实际考查 method-variable-swap，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "check-both-ends"
+      },
+      "id": "method-variable-swap--check-both-ends",
+      "action": "reassign",
+      "target": "skill-quantified-range",
+      "reason": "原题实际考查 skill-quantified-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "no-swap-needed"
+      },
+      "id": "method-variable-swap--no-swap-needed",
+      "action": "keep",
+      "target": "method-variable-swap",
+      "reason": "原题实际考查 method-variable-swap，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "method-variable-swap",
+        "item": "quadratic-in-variable"
+      },
+      "id": "method-variable-swap--quadratic-in-variable",
+      "action": "keep",
+      "target": "method-variable-swap",
+      "reason": "原题实际考查 method-variable-swap，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "up-no-root"
+      },
+      "id": "quadratic-function-properties--up-no-root",
+      "action": "keep",
+      "target": "quadratic-function-properties#side",
+      "reason": "原题实际考查 quadratic-function-properties#side，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "le-condition"
+      },
+      "id": "quadratic-function-properties--le-condition",
+      "action": "reassign",
+      "target": "quadratic-inequality#all-real",
+      "reason": "原题实际考查 quadratic-inequality#all-real，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "param-opening"
+      },
+      "id": "quadratic-function-properties--param-opening",
+      "action": "keep",
+      "target": "quadratic-function-properties#definition",
+      "reason": "原题实际考查 quadratic-function-properties#definition，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "degenerate"
+      },
+      "id": "quadratic-function-properties--degenerate",
+      "action": "reassign",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "vertex"
+      },
+      "id": "quadratic-function-properties--vertex",
+      "action": "reassign",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "tangent-meaning"
+      },
+      "id": "quadratic-function-properties--tangent-meaning",
+      "action": "keep",
+      "target": "quadratic-function-properties#zeros",
+      "reason": "原题实际考查 quadratic-function-properties#zeros，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "monotone-interval"
+      },
+      "id": "quadratic-function-properties--monotone-interval",
+      "action": "reassign",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-function-properties",
+        "item": "which-guarantee"
+      },
+      "id": "quadratic-function-properties--which-guarantee",
+      "action": "reassign",
+      "target": "method-discriminant",
+      "reason": "原题实际考查 method-discriminant，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "between"
+      },
+      "id": "quadratic-inequality-solve--between",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "outside-equal"
+      },
+      "id": "quadratic-inequality-solve--outside-equal",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "opening-down"
+      },
+      "id": "quadratic-inequality-solve--opening-down",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "square-gt"
+      },
+      "id": "quadratic-inequality-solve--square-gt",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "square-le"
+      },
+      "id": "quadratic-inequality-solve--square-le",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "no-root"
+      },
+      "id": "quadratic-inequality-solve--no-root",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "parameter"
+      },
+      "id": "quadratic-inequality-solve--parameter",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-inequality-solve",
+        "item": "statements"
+      },
+      "id": "quadratic-inequality-solve--statements",
+      "action": "keep",
+      "target": "quadratic-inequality-solve",
+      "reason": "原题实际考查 quadratic-inequality-solve，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "min-axis-right"
+      },
+      "id": "quadratic-interval-extremum--min-axis-right",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "max-midpoint"
+      },
+      "id": "quadratic-interval-extremum--max-midpoint",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "min-compare"
+      },
+      "id": "quadratic-interval-extremum--min-compare",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "max-compare"
+      },
+      "id": "quadratic-interval-extremum--max-compare",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "open-interval"
+      },
+      "id": "quadratic-interval-extremum--open-interval",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "opening-down"
+      },
+      "id": "quadratic-interval-extremum--opening-down",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "half-infinite"
+      },
+      "id": "quadratic-interval-extremum--half-infinite",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "quadratic-interval-extremum",
+        "item": "statements"
+      },
+      "id": "quadratic-interval-extremum--statements",
+      "action": "keep",
+      "target": "quadratic-interval-extremum",
+      "reason": "原题实际考查 quadratic-interval-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "min-basic"
+      },
+      "id": "reciprocal-sum-function--min-basic",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "where"
+      },
+      "id": "reciprocal-sum-function--where",
+      "action": "keep",
+      "target": "reciprocal-sum-function#range",
+      "reason": "原题实际考查 reciprocal-sum-function#range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "interval-left"
+      },
+      "id": "reciprocal-sum-function--interval-left",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "interval-max"
+      },
+      "id": "reciprocal-sum-function--interval-max",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "open-range"
+      },
+      "id": "reciprocal-sum-function--open-range",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "negative"
+      },
+      "id": "reciprocal-sum-function--negative",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "transform"
+      },
+      "id": "reciprocal-sum-function--transform",
+      "action": "reassign",
+      "target": "skill-reciprocal-range",
+      "reason": "原题实际考查 skill-reciprocal-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "reciprocal-sum-function",
+        "item": "statements"
+      },
+      "id": "reciprocal-sum-function--statements",
+      "action": "keep",
+      "target": "reciprocal-sum-function",
+      "reason": "原题实际考查 reciprocal-sum-function，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "two-squares"
+      },
+      "id": "square-nonnegative--two-squares",
+      "action": "reassign",
+      "target": "method-complete-square",
+      "reason": "原题实际考查 method-complete-square，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "equality"
+      },
+      "id": "square-nonnegative--equality",
+      "action": "keep",
+      "target": "square-nonnegative#nonnegative",
+      "reason": "原题实际考查 square-nonnegative#nonnegative，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "not-always"
+      },
+      "id": "square-nonnegative--not-always",
+      "action": "keep",
+      "target": "square-nonnegative",
+      "reason": "原题实际考查 square-nonnegative，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "sum-product"
+      },
+      "id": "square-nonnegative--sum-product",
+      "action": "reassign",
+      "target": "method-sum-product-range",
+      "reason": "原题实际考查 method-sum-product-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "both-sides"
+      },
+      "id": "square-nonnegative--both-sides",
+      "action": "reassign",
+      "target": "method-sum-product-range",
+      "reason": "原题实际考查 method-sum-product-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "recip-square"
+      },
+      "id": "square-nonnegative--recip-square",
+      "action": "reassign",
+      "target": "method-square-extremum",
+      "reason": "原题实际考查 method-square-extremum，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "four-ab"
+      },
+      "id": "square-nonnegative--four-ab",
+      "action": "keep",
+      "target": "square-nonnegative#sum-product",
+      "reason": "原题实际考查 square-nonnegative#sum-product，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "square-nonnegative",
+        "item": "statements"
+      },
+      "id": "square-nonnegative--statements",
+      "action": "keep",
+      "target": "square-nonnegative",
+      "reason": "原题实际考查 square-nonnegative，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "which"
+      },
+      "id": "symmetric-polynomial--which",
+      "action": "reassign",
+      "target": "method-sum-product",
+      "reason": "原题实际考查 method-sum-product，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "square-sum"
+      },
+      "id": "symmetric-polynomial--square-sum",
+      "action": "reassign",
+      "target": "method-sum-product#identities",
+      "reason": "原题实际考查 method-sum-product#identities，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "cube"
+      },
+      "id": "symmetric-polynomial--cube",
+      "action": "reassign",
+      "target": "method-sum-product#identities",
+      "reason": "原题实际考查 method-sum-product#identities，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "reciprocal"
+      },
+      "id": "symmetric-polynomial--reciprocal",
+      "action": "reassign",
+      "target": "method-sum-product#identities",
+      "reason": "原题实际考查 method-sum-product#identities，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "real"
+      },
+      "id": "symmetric-polynomial--real",
+      "action": "reassign",
+      "target": "method-sum-product#feasible",
+      "reason": "原题实际考查 method-sum-product#feasible，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "range"
+      },
+      "id": "symmetric-polynomial--range",
+      "action": "reassign",
+      "target": "method-sum-product-range",
+      "reason": "原题实际考查 method-sum-product-range，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "construct"
+      },
+      "id": "symmetric-polynomial--construct",
+      "action": "reassign",
+      "target": "method-substitution",
+      "reason": "原题实际考查 method-substitution，保留题目、选项、答案及干扰项反馈。"
+    },
+    {
+      "origin": {
+        "node": "symmetric-polynomial",
+        "item": "statements"
+      },
+      "id": "symmetric-polynomial--statements",
+      "action": "reassign",
+      "target": "method-sum-product#identities",
+      "reason": "原题实际考查 method-sum-product#identities，保留题目、选项、答案及干扰项反馈。"
+    }
+  ]
+}

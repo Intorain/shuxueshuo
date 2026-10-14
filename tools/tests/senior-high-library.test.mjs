@@ -1308,18 +1308,15 @@ test("learning page keeps compact exercise anchors and the shared back-to-top co
   assert.match(page, /assets\/js\/home\.js/);
 });
 
-test("mistake book is a top-level destination focused on this week's set study", () => {
-  const seniorPage = fs.readFileSync(
-    path.join(repoRoot, "site/senior-high/index.html"),
-    "utf8",
-  );
+test("mistake book is linked from home and focused on this week's set study", () => {
+  const homePage = fs.readFileSync(path.join(repoRoot, "site/index.html"), "utf8");
   const mistakePage = fs.readFileSync(
     path.join(repoRoot, "site/mistake-book/index.html"),
     "utf8",
   );
 
-  assert.match(seniorPage, /href="\.\.\/mistake-book\/index\.html">错题本<\/a>/);
-  assert.match(mistakePage, /aria-current="page">错题本<\/a>/);
+  assert.match(homePage, /href="\.\/mistake-book\/index\.html">错题本 /);
+  assert.match(mistakePage, /<nav class="site-nav" aria-label="站内导航">(?:<a href="[^"]+">[^<]+<\/a>){4}<\/nav>/);
   assert.doesNotMatch(mistakePage, /这一周，我们在集合里错了什么/);
   assert.match(mistakePage, /senior-high\/index\.html\?chapter=sets/);
   assert.match(mistakePage, /class="mistake-book-subsection-head"/);

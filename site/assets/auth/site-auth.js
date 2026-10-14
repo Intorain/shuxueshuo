@@ -176,7 +176,7 @@
         <p class="sss-account-who"><small>已登录</small><b class="sss-account-phone"></b><span class="sss-account-note"></span></p>
         <button type="button" class="sss-account-logout" role="menuitem">退出登录</button>
       </div>`;
-    const anchor = document.querySelector('[data-site-auth], .home-v2-nav, .topbar-inner, .lesson-topbar, .site-nav');
+    const anchor = document.querySelector('[data-site-auth]') || document.querySelector('.topbar-inner, .lesson-topbar');
     if (anchor) anchor.append(host);
     else { host.classList.add('sss-account-floating'); document.body.append(host); }
     trigger = host.querySelector('.sss-account-trigger');

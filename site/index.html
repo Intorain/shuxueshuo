@@ -15,56 +15,46 @@
     />
     <meta property="og:image" content="./assets/images/share-default.png" />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="./assets/css/site.css?v=20261005" />
+    <link rel="stylesheet" href="./assets/css/site.css?v=20261014" />
     <script type="module" src="assets/auth/site-auth.js?v=4"></script>
+    <link rel="stylesheet" href="/assets/css/site-header.css?v=1">
   </head>
   <body class="site-shell home-v2">
     <a class="skip-link" href="#main">跳到正文</a>
     <div class="site-backdrop"></div>
 
+    <!-- site-header:begin --><header class="site-header"><div class="site-header-inner"><a class="site-brand" href="/" aria-label="数学说首页"><span class="site-brand-mark" aria-hidden="true">数</span><span class="site-brand-name">数学说</span></a><nav class="site-nav" aria-label="站内导航"><a href="/" aria-current="page">首页</a><a href="/nav/">初中题库</a><a href="/topics/">高中专题</a><a href="/knowledge/">知识图谱</a></nav><div class="site-header-account" data-site-auth></div></div></header><!-- site-header:end -->
+
     <header class="home-v2-hero">
-      <nav class="home-v2-nav" aria-label="站内导航">
-        <a class="home-v2-brand" href="./index.html" aria-label="数学说首页">
-          <span class="home-v2-brand-mark" aria-hidden="true">数</span>
-          <span>数学说</span>
-        </a>
-        <div class="home-v2-nav-links">
-          <a href="./index.html" aria-current="page">首页</a>
-          <a href="./nav/index.html">初中题库</a>
-          <a href="./topics/">高中题库</a>
-          <a href="./mistake-book/index.html">错题本</a>
-          <a href="#about">关于我们</a>
-        </div>
-      </nav>
 
       <section class="home-v2-hero-grid">
         <div class="home-v2-copy">
           <p class="home-v2-eyebrow">初中 · 高中数学交互题库</p>
           <h1><span class="home-v2-title-accent">理解</span>每一道题，<br>而不只是记住答案</h1>
           <p class="home-v2-lead">
-            通过动态交互、图形与数值联动、步骤同步，在几何与函数题中真正看懂思路，建立自己的解题方法。
+            通过动态图形、步骤同步和交互练习，在几何、函数与不等式题中真正看懂思路，建立自己的解题方法。
           </p>
 
           <div class="home-v2-points" aria-label="核心能力">
             <div class="home-v2-point">
               <span class="home-v2-point-icon">⌁</span>
               <div>
-                <strong>动态交互</strong>
-                <p>拖拽、旋转、折叠、改变参数，观察变化如何发生。</p>
+                <strong>看得见</strong>
+                <p>拖动图形、改变参数，图形变化与解题步骤同步出现。</p>
               </div>
             </div>
             <div class="home-v2-point">
               <span class="home-v2-point-icon">≋</span>
               <div>
-                <strong>步骤同步</strong>
-                <p>图形变化与解题步骤对应，知道每一步为什么这样做。</p>
+                <strong>自己做</strong>
+                <p>关键步骤自己点选，答错不放行，卡住时随时问老师。</p>
               </div>
             </div>
             <div class="home-v2-point">
               <span class="home-v2-point-icon">◌</span>
               <div>
-                <strong>可视化理解</strong>
-                <p>把抽象关系变直观，把复杂题拆成可以观察的过程。</p>
+                <strong>连成网</strong>
+                <p>每道题都关联到知识点、方法和题型，知道这类题怎么迁移。</p>
               </div>
             </div>
           </div>
@@ -75,10 +65,7 @@
               <span aria-hidden="true">→</span>
             </a>
             <a class="home-v2-button home-v2-button-secondary" href="./topics/">
-              进入高中题库
-            </a>
-            <a class="home-v2-button home-v2-button-secondary" href="./problems/tj/24/tj-2026-24-ranking.html">
-              天津24题榜
+              进入高中专题
             </a>
           </div>
         </div>
@@ -175,6 +162,73 @@
     </header>
 
     <main id="main" class="home-v2-main">
+      <section class="home-v2-band" aria-labelledby="home-entries-title">
+        <div class="home-v2-section-head">
+          <h2 id="home-entries-title">从这里开始</h2>
+          <p>初中真题解析、高中专题练习和知识图谱，三部分内容互相关联。</p>
+        </div>
+        <div class="home-v2-topic-grid">
+          <a href="./nav/index.html" class="home-v2-topic">
+            <div class="topic-visual">
+              <svg viewBox="0 0 220 116" role="img" aria-label="动态几何示意图">
+                <path d="M28 84 H196 M62 20 V98" class="topic-axis" />
+                <path d="M30 96 C58 30 94 18 124 44 C150 67 168 88 196 96" class="topic-line" />
+                <path d="M62 84 L126 44 L170 84" class="topic-line topic-fill-soft" />
+                <path d="M126 44 V84" class="topic-line topic-line-thin" stroke-dasharray="5 5" />
+                <circle cx="126" cy="44" r="4.5" class="topic-dot" />
+                <circle cx="170" cy="84" r="4" class="topic-dot-amber" />
+              </svg>
+            </div>
+            <span class="home-v2-entry-meta">中考真题与模拟题</span>
+            <h3>初中题库</h3>
+            <p>几何与函数压轴题的动态解析：拖动图形、改变参数，步骤与图形同步。</p>
+            <span class="home-v2-entry-go">进入初中题库 <span aria-hidden="true">→</span></span>
+          </a>
+          <a href="./topics/" class="home-v2-topic">
+            <div class="topic-visual">
+              <svg viewBox="0 0 220 116" role="img" aria-label="交互练习示意图">
+                <rect x="34" y="22" width="152" height="22" rx="6" class="topic-line topic-line-thin topic-fill-soft" />
+                <circle cx="48" cy="33" r="4.5" class="topic-dot" />
+                <path d="M60 33 H140" class="topic-line" />
+                <rect x="34" y="52" width="152" height="22" rx="6" class="topic-line topic-line-thin topic-line-soft" />
+                <circle cx="48" cy="63" r="4.5" class="topic-dot-quiet" />
+                <path d="M60 63 H120" class="topic-line topic-line-soft" />
+                <rect x="34" y="82" width="104" height="18" rx="9" class="topic-line topic-line-thin topic-line-soft" />
+                <path d="M46 91 H110" class="topic-line topic-line-thin topic-line-soft" />
+                <rect x="146" y="82" width="40" height="18" rx="9" class="topic-line topic-line-thin topic-line-amber" />
+                <path d="M160 91 h12" class="topic-line topic-line-amber" />
+              </svg>
+            </div>
+            <span class="home-v2-entry-meta">基本不等式 · 恒成立问题</span>
+            <h3>高中专题</h3>
+            <p>按方法分组的交互练习：关键步骤自己点选，答错不放行，卡住随时问老师。</p>
+            <span class="home-v2-entry-go">进入高中专题 <span aria-hidden="true">→</span></span>
+          </a>
+          <a href="./knowledge/" class="home-v2-topic">
+            <div class="topic-visual">
+              <svg viewBox="0 0 220 116" role="img" aria-label="知识图谱示意图">
+                <path d="M110 58 L58 32 M110 58 L52 86 M110 58 L162 30 M110 58 L170 84 M58 32 L52 86 M162 30 L170 84" class="topic-line topic-line-thin topic-line-soft" />
+                <circle cx="110" cy="58" r="8" class="topic-dot-ring" />
+                <circle cx="58" cy="32" r="4.5" class="topic-dot" />
+                <circle cx="52" cy="86" r="4.5" class="topic-dot-quiet" />
+                <circle cx="162" cy="30" r="4.5" class="topic-dot-amber" />
+                <circle cx="170" cy="84" r="4.5" class="topic-dot" />
+              </svg>
+            </div>
+            <span class="home-v2-entry-meta">知识点 · 技能 · 方法 · 题型</span>
+            <h3>知识图谱</h3>
+            <p>把知识点、方法和题型连成一张图，看清每道题用到什么、还能迁移到哪里。</p>
+            <span class="home-v2-entry-go">打开知识图谱 <span aria-hidden="true">→</span></span>
+          </a>
+        </div>
+        <nav class="home-v2-picks" aria-label="精选">
+          <span>精选</span>
+          <a class="home-v2-pick" href="./problems/tj/24/tj-2026-24-ranking.html">天津 24 题难度榜 <small>2026 一模二模</small></a>
+          <a class="home-v2-pick" href="./problems/tj/25/tj-2026-25-ranking.html">天津 25 题难度榜 <small>2026 一模二模</small></a>
+          <a class="home-v2-pick" href="./mistake-book/index.html">错题本 <small>每周真实错题</small></a>
+        </nav>
+      </section>
+
       <section class="home-v2-band">
         <div class="home-v2-section-head">
           <h2>三步学会用数学说</h2>
@@ -234,100 +288,11 @@
         </div>
       </section>
 
-      <section class="home-v2-band">
-        <div class="home-v2-section-head">
-          <h2>覆盖中考核心题型与知识模块</h2>
-          <p>几何、函数、坐标与图形问题，都会转化为可探索、可观察、可复盘的题目页面。</p>
-        </div>
-        <div class="home-v2-topic-grid">
-          <a href="./nav/index.html" class="home-v2-topic">
-            <div class="topic-visual">
-              <svg viewBox="0 0 220 116" role="img" aria-label="动态几何示意图">
-                <rect x="1" y="1" width="218" height="114" rx="7" class="topic-bg" />
-                <path d="M38 86 C54 26 130 18 166 60 C178 74 184 88 186 100" class="topic-line topic-line-soft" />
-                <circle cx="72" cy="76" r="32" class="topic-line topic-fill-none" />
-                <path d="M52 88 L116 32 L166 86 Z" class="topic-line topic-fill-soft" />
-                <path d="M72 76 L116 32 L138 86" class="topic-line topic-line-thin" />
-                <circle cx="52" cy="88" r="4" class="topic-dot" />
-                <circle cx="116" cy="32" r="4" class="topic-dot" />
-                <circle cx="166" cy="86" r="4" class="topic-dot" />
-              </svg>
-            </div>
-            <h3>动态几何</h3>
-            <p>三角形、圆、相似、全等、角度、面积等。</p>
-          </a>
-          <a href="./nav/index.html" class="home-v2-topic">
-            <div class="topic-visual">
-              <svg viewBox="0 0 220 116" role="img" aria-label="函数与方程示意图">
-                <rect x="1" y="1" width="218" height="114" rx="7" class="topic-bg" />
-                <path d="M28 84 H196 M62 20 V98" class="topic-axis" />
-                <path d="M30 96 C58 30 94 18 124 44 C150 67 168 88 196 96" class="topic-line" />
-                <path d="M62 84 L126 44 L170 84" class="topic-line topic-fill-soft" />
-                <path d="M126 44 V84" class="topic-line topic-line-thin" stroke-dasharray="5 5" />
-                <circle cx="126" cy="44" r="4.5" class="topic-dot" />
-                <circle cx="170" cy="84" r="4" class="topic-dot-amber" />
-              </svg>
-            </div>
-            <h3>函数与方程</h3>
-            <p>一次函数、二次函数、反比例函数、综合问题。</p>
-          </a>
-          <a href="./nav/index.html" class="home-v2-topic">
-            <div class="topic-visual">
-              <svg viewBox="0 0 220 116" role="img" aria-label="坐标与图形示意图">
-                <rect x="1" y="1" width="218" height="114" rx="7" class="topic-bg" />
-                <path d="M26 78 H194 M80 18 V100" class="topic-axis" />
-                <path d="M80 78 L138 34 L174 78 Z" class="topic-line topic-fill-soft" />
-                <path d="M138 34 V78 M80 78 H174" class="topic-line topic-line-thin" stroke-dasharray="5 5" />
-                <circle cx="80" cy="78" r="4" class="topic-dot" />
-                <circle cx="138" cy="34" r="4.5" class="topic-dot" />
-                <circle cx="174" cy="78" r="4" class="topic-dot-amber" />
-                <text x="142" y="29" class="topic-text">A</text>
-                <text x="178" y="92" class="topic-text">B</text>
-              </svg>
-            </div>
-            <h3>坐标与图形</h3>
-            <p>平面直角坐标系、点的坐标、图形变换。</p>
-          </a>
-          <a href="./nav/index.html" class="home-v2-topic">
-            <div class="topic-visual">
-              <svg viewBox="0 0 220 116" role="img" aria-label="动态变化问题示意图">
-                <rect x="1" y="1" width="218" height="114" rx="7" class="topic-bg" />
-                <path d="M30 58 H190" class="topic-axis" />
-                <path d="M42 58 C72 34 112 34 142 58 C158 70 174 70 190 58" class="topic-line topic-line-soft" />
-                <circle cx="54" cy="58" r="4" class="topic-dot-quiet" />
-                <circle cx="94" cy="58" r="4" class="topic-dot-quiet" />
-                <circle cx="134" cy="58" r="8" class="topic-dot-ring" />
-                <circle cx="174" cy="58" r="4" class="topic-dot-quiet" />
-                <path d="M42 86 H184 M42 86 H128" class="topic-line topic-line-thick" />
-                <circle cx="128" cy="86" r="4.5" class="topic-dot" />
-              </svg>
-            </div>
-            <h3>动态变化问题</h3>
-            <p>动点、动线、最值、取值范围、分类讨论。</p>
-          </a>
-          <a href="./nav/index.html" class="home-v2-topic">
-            <div class="topic-visual">
-              <svg viewBox="0 0 220 116" role="img" aria-label="综合与应用示意图">
-                <rect x="1" y="1" width="218" height="114" rx="7" class="topic-bg" />
-                <path d="M30 88 C62 26 108 24 132 88" class="topic-line topic-line-soft" />
-                <path d="M58 88 C88 42 128 42 162 88" class="topic-line" />
-                <path d="M88 88 C118 56 154 56 190 88" class="topic-line topic-line-amber" />
-                <path d="M38 88 H196" class="topic-axis" />
-                <circle cx="112" cy="58" r="4.5" class="topic-dot" />
-                <path d="M112 58 L176 88" class="topic-line topic-line-thin" />
-              </svg>
-            </div>
-            <h3>综合与应用</h3>
-            <p>跨知识点综合、实际应用题、压轴题训练。</p>
-          </a>
-        </div>
-      </section>
-
       <section class="home-v2-band home-v2-final" id="about">
         <div>
           <h2>我们是孩子的爸爸妈妈</h2>
           <p>我们希望用 AI 帮孩子真正理解每一道题，而不是只背答案和套路。</p>
-          <p>我们将持续整理初中真题与模拟题，并按知识章节建设高中题库，把几何、函数和导数题做成交互式页面，让图形变化与解题步骤同步出现。</p>
+          <p>我们持续整理初中真题与模拟题，按教材章节建设高中专题和知识图谱，把几何、函数和不等式题做成可以动手的页面，让图形变化与解题步骤同步出现。</p>
         </div>
         <div class="home-v2-actions">
           <a class="home-v2-button home-v2-button-primary" href="./nav/index.html">
@@ -335,7 +300,7 @@
             <span aria-hidden="true">→</span>
           </a>
           <a class="home-v2-button home-v2-button-secondary" href="./topics/">
-            高中题库
+            高中专题
           </a>
         </div>
       </section>

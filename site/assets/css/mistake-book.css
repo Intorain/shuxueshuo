@@ -13,11 +13,6 @@
   color: var(--mistake-ink);
 }
 
-/* Tighten space under the shared library nav on this page only. */
-.mistake-book-page .home-v2-nav {
-  padding: 18px 0 10px;
-}
-
 .mistake-book-shell {
   width: min(1120px, calc(100% - 56px));
   margin: 0 auto;

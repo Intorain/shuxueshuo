@@ -1,6 +1,6 @@
 /* Public knowledge graph preview. Site tokens, header, hero and footer come from /1/chapter.css. */
 .kx-page { --content: 1180px; }
-.kx-graph { --content: 1320px; }
+.kx-graph { --content: 1320px; --site-subbar-width: calc(var(--content) + 48px); }
 [hidden] { display: none !important; }
 button { font: inherit; }
 
@@ -16,10 +16,6 @@ button { font: inherit; }
 [data-family=solve] { --ec: #f5b54a; }
 [data-family=rule] { --ec: #c4a1ff; }
 
-.topbar-links { display: flex; align-items: center; gap: 22px; margin-left: auto; color: var(--muted); font-size: 14px; }
-.topbar-links a { transition: color .15s; }
-.topbar-links a:hover { color: var(--teal); }
-.topbar-links .home-link { padding-left: 0; }
 .preview-tag { margin-left: 2px; padding: 0 8px; border: 1px solid #cfe3de; border-radius: 999px; background: #fff; color: var(--teal-dark); font-size: 11px; letter-spacing: .04em; }
 
 /* Hero */
@@ -385,8 +381,6 @@ button { font: inherit; }
   .detail-body { padding: 24px; }
 }
 @media (max-width: 760px) {
-  .topbar-links { gap: 14px; font-size: 13px; }
-  .topbar-links a:first-child { display: none; }
   .kx-controls { flex-direction: column; align-items: stretch; }
   .scope-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
   .scope-tabs button { flex: none; }
@@ -428,7 +422,7 @@ button { font: inherit; }
 .kx-tower { background: #050c16; }
 .tower-stage {
   --sky-ink: #e3eef5; --sky-muted: #8ea5b5; --sky-line: rgba(130, 200, 190, .2);
-  position: relative; height: max(600px, calc(100svh - 61px)); overflow: hidden; color: var(--sky-ink);
+  position: relative; height: max(600px, calc(100svh - var(--site-header-h, 61px) - var(--site-subbar-h, 0px))); overflow: hidden; color: var(--sky-ink);
   background: radial-gradient(60% 50% at 50% 42%, rgba(31, 181, 168, .16), transparent 70%), radial-gradient(50% 45% at 85% 80%, rgba(109, 91, 214, .18), transparent 70%), radial-gradient(45% 40% at 10% 90%, rgba(194, 84, 122, .1), transparent 70%), #050c16;
 }
 .tower-canvas { position: absolute; z-index: 0; inset: 0; }
@@ -580,9 +574,7 @@ button { font: inherit; }
   .tower-drawer { width: 310px; }
 }
 @media (max-width: 760px) {
-  .kx-tower .topbar-links { gap: 12px; white-space: nowrap; }
-  .kx-tower .topbar-links a[href="/knowledge/nodes/"] { display: none; }
-  .tower-stage { height: calc(100svh - 57px); min-height: 520px; }
+  .tower-stage { height: calc(100svh - var(--site-header-h, 57px) - var(--site-subbar-h, 0px)); min-height: 520px; }
   .tower-head { top: 14px; left: 16px; right: 16px; }
   .tower-head h1 { font-size: 24px; }
   .tower-lead, .tower-head .eyebrow { display: none; }
@@ -713,10 +705,4 @@ a.kx-chapter-link:hover { border-color: var(--teal); color: var(--teal-dark); }
   .kx-drawer.tower-drawer { animation: none; }
   .node-body, .kx-drawer, .graph-node.path-current .node-body, .layer-surfaced .edge { animation: none; }
   .edge.lit .edge-line, .edge.path-on .edge-line { animation: none; }
-}
-@media (max-width: 560px) {
-  .kx-page .brand { white-space: nowrap; flex-shrink: 0; }
-  .kx-page .topbar-links { gap: 12px; white-space: nowrap; }
-  .kx-page .topbar-links .home-link,
-  .kx-page .topbar-links a[href="/knowledge/3d/"] { display: none; }
 }

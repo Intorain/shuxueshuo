@@ -31,13 +31,6 @@ var { font-family: var(--math); font-style: italic; font-size: 1.1em; }
 .skip-link { position: absolute; top: -80px; left: 20px; z-index: 2; padding: 12px; background: white; }
 .skip-link:focus { top: 12px; }
 
-.topbar { background: rgba(255, 255, 255, .86); border-bottom: 1px solid var(--line); backdrop-filter: saturate(1.4) blur(8px); }
-.topbar-inner { max-width: calc(var(--content) + 56px); min-height: 60px; padding: 0 28px; margin: auto; display: flex; justify-content: space-between; align-items: center; }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 750; letter-spacing: .04em; }
-.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; background: var(--teal); color: white; border-radius: 9px; font-size: 18px; }
-.home-link { color: var(--muted); font-size: 14px; padding: 10px 0 10px 16px; transition: color .15s; }
-.home-link:hover { color: var(--teal); }
-.home-link span { margin-left: 4px; }
 
 .workspace { max-width: calc(var(--content) + 56px); margin: auto; padding: 0 28px; }
 
@@ -117,7 +110,6 @@ html { scroll-behavior: smooth; }
 .chapter-footer a:hover { color: var(--teal); }
 
 @media (max-width: 720px) {
-  .topbar-inner { min-height: 56px; padding: 0 20px; }
   .workspace { padding: 0 20px; }
   .hero { padding: 28px 0 26px; }
   .lead { font-size: 14px; margin-bottom: 16px; }

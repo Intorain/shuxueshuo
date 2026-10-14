@@ -44,7 +44,7 @@ description: Create or revise a student-facing interactive math practice page in
 ## 实现顺序
 
 1. 检查现有题号、章节分类和工作区改动，选定稳定题目 ID、路径 ID、节点 ID；不覆盖已有题目。
-2. 新建 `site/1/<lesson-id>/index.html`，复用页面外壳、公共资源与 DOM 挂载点。将题目内容与只读推导写入本题 HTML 模板，在 `practice-config` 中声明组件及本地答案。
+2. 新建 `site/1/<lesson-id>/index.html`，复用页面外壳、公共资源与 DOM 挂载点。将题目内容与只读推导写入本题 HTML 模板，在 `practice-config` 中声明组件及本地答案。站点头部和面包屑只保留空的 `<!-- site-header:begin --><!-- site-header:end -->` 标记块，再运行 `node tools/sync-site-header.mjs` 生成；新专题目录需先在该脚本的 `CHAPTERS` 中登记名称。
 3. 新建 `server/shuxueshuo_server/tutor_demo/lessons/<lesson-id>.json`。ID、版本、问题、组件、候选项与答案同页面对齐；语义判定与教学参考留在教师 JSON。
 4. 需要的新能力同时更新公共组件、本地校验和后台契约；不把题目变量、具体答案或路线 ID 加入通用 Prompt。参考结论不等于学生作答证据。
 5. 增加该题的一致性与操作序列测试，逐条练习路径验证。题目完整可用后，在 `site/1/index.html` 对应题型中新增链接，更新可见题数、提示和返回入口；不链接旧题解页，不把未完成题目伪装成可练习。

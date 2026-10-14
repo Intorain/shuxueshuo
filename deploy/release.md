@@ -1,6 +1,6 @@
 # 服务器发布手册
 
-面向当前生产形态：**产品 API/Worker/publisher 用发布包镜像**；**Studio 前端单独打 Docker 镜像**；**Nginx / 静态站 / 部分脚本仍可用服务器 `git pull`**。
+面向当前生产形态：**产品 API/Worker/publisher 用发布包镜像**；**Studio 前端单独打 Docker 镜像**；**主站静态页、Nginx 配置和部分宿主脚本用服务器 `git pull`**（发布包不含静态站）。
 
 > **公开仓库注意**：勿把真实 ECS IP、SSH 账号口令、数据库/broker/模型密钥写入本文或提交到 Git。下文用占位符；本机可先 `export DEPLOY_SSH='user@your-ecs-host'`。
 
@@ -15,19 +15,20 @@
 
 | 改动 | 发布方式 |
 | --- | --- |
-| `server/shuxueshuo_server/product/**`、`deploy/product/**`（Compose/管理脚本） | **本机构建发布包 → 上传 → `services-start` 或 `deploy`** |
+| `server/shuxueshuo_server/product/**`、`deploy/product/**`（Compose/管理脚本） | **本机构建发布包 → 上传 → `deploy` → `git pull` → 校验 → `services-start`** |
 | `frontend/**`（Studio 工作台） | **本机构建 `shuxueshuo-studio` → 上传 → `docker load` 换容器** |
-| `deploy/nginx/**`、主站纯样式／布局／图片、普通静态页、仓库说明 | 服务器 **`git pull`**，必要时 `nginx -t && reload` |
-| 知识节点、图解正文、专题映射、私有小题原稿 | 更新管理镜像并执行 **`publish-learning`**，配套更新主站静态文件 |
-| 交互题目的步骤／选项／教师 JSON、学习记录或导师后端 | **新产品包与配套静态文件一起发布**，确保原稿、运行时及数据库关联一致 |
+| `deploy/nginx/**`、主站纯样式／布局／图片、普通静态页、仓库说明 | 服务器 **`git pull`**；Nginx 配置变更再 `nginx -t && reload` |
+| 知识节点、图解正文、专题映射、私有小题原稿 | 同提交发布包执行 **`deploy`**，服务器 **`git pull` 到同一提交**，`verify-release` 后启动 |
+| 交互题目的步骤／选项／教师 JSON、学习记录或导师后端 | **新产品包 `deploy` + 服务器 `git pull` 同一提交**，确保原稿、运行时及数据库关联一致 |
 | OCR wrapper / `deploy/ocr/**`（含 sidecar 脚本；镜像未变） | 服务器 **`git pull`**（sidecar 从仓库挂载）；compose/runner 变更仍须 **新产品包** |
 | 仅改 `server/.env` 模型密钥 | 改宿主机文件（**勿提交**）；**重启** api/worker/publisher 容器即可，无需新发布包 |
 
 以前「服务器 `git pull` 就发布」适合宿主机直接跑 `uvicorn`。现在产品与 Studio 跑在 **固定 digest 的镜像**里，业务代码变更必须打进镜像再换容器。
 
-主站仍由 Nginx 直接读取宿主机 `site/`，纯静态改动继续可以 `git pull`。镜像内的文件副本供内容导入与题页生成使用，
-不会随宿主机更新。涉及这些用途时，按[内容发布规则](product/README.md#个人知识图谱内容发布)同步对应镜像；
-仅改主站外观不要求所有镜像一起重建。
+主站由 Nginx 直接读取服务器仓库 `$HOME/code/shuxueshuo/site`，发布包只含镜像和脚本。纯静态改动 `git pull` 即可；
+教学内容版本变化时，先用同提交发布包 `deploy` 学习库，再 `git pull`，由 `verify-release` 核对
+「镜像原稿 = 学习库 = 仓库 `site/`」的内容版本。`git pull` 不保留旧哈希资源，已打开的旧页面刷新即可。
+首次替换必须先执行只读预检，见 [正式替换手册](product/learning-rollout.md)。
 
 ## 环境约定（占位符）
 
@@ -54,7 +55,7 @@ export DEPLOY_SSH='<user>@<ecs-host>'   # 例：deploy@ecs.example.internal
 
 题意抽取已切到 DeepSeek 视觉（首轮 / 修复 / 复核，`enabled`/`low`）。上线或换钥前按 [product/README.md](product/README.md) 中 **「题意抽取：服务器 server/.env 检查清单」** 核对；改 `.env` 后需重启受管服务，代码变更仍须新产品包。
 
-发布包要求：**干净 Git 工作树**（先 commit/push）。构建机需 Docker Desktop / buildx。
+发布包要求：**干净 Git 工作树**（先提交；打包不要求 push）。构建机需 Docker Desktop / buildx。
 
 ---
 
@@ -95,17 +96,41 @@ rsync -avz --progress \
 
 ### A3. 服务器切换并启动
 
-首次装库用 `install`；**已有 `/srv/shuxueshuo` 只换应用镜像**用下面 `services-*`。  
-库结构/迁移变更再用发布包内的 `server/deploy.sh`（见 [product/README.md](product/README.md)）。
+首次装库用 `install`；以下命令用于已有实例：先 `prepare-release`、`preflight-learning`，获取目标提交并检查仓库干净、可快进，再停止应用、执行 `deploy`，
+把服务器仓库 `git pull` 到发布包的同一提交（须已 push），严格 `verify-release`，最后启动同包应用。
+首次旧图谱替换按 [正式替换手册](product/learning-rollout.md) 添加显式参数；存在旧个人记录时停止。
 
 ```bash
+set -euo pipefail
 RELEASE=$HOME/releases/shuxueshuo-release-<RELEASE_ID>-amd64
+
+"$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
+  --release "$RELEASE" prepare-release
+"$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
+  --release "$RELEASE" preflight-learning
+
+# 停服务、改库之前检查；不自动回退领先或分叉的服务器仓库。
+REV=$(sed -n 's/^PRODUCT_SOURCE_REVISION=//p' "$RELEASE/release.env")
+SITE_REPO=${PRODUCT_REPO_HOST:-"$HOME/code/shuxueshuo"}
+git -C "$SITE_REPO" fetch
+bash "$RELEASE/scripts/server/check-site-revision.sh" \
+  --repo "$SITE_REPO" --revision "$REV" --allow-forward
 
 grep '^API_PORT=' /srv/shuxueshuo/config/runtime.env
 # 生产应为 API_PORT='8000'
 
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
   --release "$RELEASE" services-stop
+
+# current/empty 状态用普通 deploy；legacy_public_only 见正式替换手册。
+"$RELEASE/scripts/server/deploy.sh" --data-dir /srv/shuxueshuo --release "$RELEASE"
+
+# 主站静态页：仓库前进到发布包的提交（教学内容版本须一致）
+git -C "$SITE_REPO" merge --ff-only "$REV"
+
+# 严格校验仓库干净且 HEAD == REV，再检查镜像、学习库及页面的内容版本。
+"$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
+  --release "$RELEASE" verify-release
 
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
   --release "$RELEASE" services-start
@@ -179,19 +204,29 @@ curl -sSI https://studio.shuxueshuo.com/ | head
 
 ## C. 只更新 Nginx / 仓库配置（git pull）
 
+Studio 配置可独立更新：
+
 ```bash
 cd "$HOME/code/shuxueshuo"
 git pull
 
 sudo cp deploy/nginx/studio.shuxueshuo.com.conf \
   /etc/nginx/conf.d/studio.shuxueshuo.com.conf
-# 主站模板如有变更：
-# sudo cp deploy/nginx/shuxueshuo.conf /etc/nginx/conf.d/shuxueshuo.conf
-
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
 Studio Nginx：`/` → `:3000`；`/api/product/` → `:8000`（`Host 127.0.0.1`）。
+
+主站模板的 root 是仓库 `site/`。纯静态页面改动只需 `git pull`，不必 reload；主站模板有变更时：
+
+```bash
+cd "$HOME/code/shuxueshuo"
+git pull
+# 先核对证书路径；只改了页面时跳过以下三步。
+sudo cp deploy/nginx/shuxueshuo.conf /etc/nginx/conf.d/shuxueshuo.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
 
 ---
 
@@ -220,13 +255,28 @@ scp /tmp/shuxueshuo-studio.tar.gz "${DEPLOY_SSH}:shuxueshuo-studio.tar.gz"
 echo "服务器 RELEASE=\$HOME/releases/shuxueshuo-release-${RELEASE_ID}-amd64"
 ```
 
-服务器：
+服务器（已有实例；首次装库和旧公共内容替换分别按 A3 和正式替换手册处理）：
 
 ```bash
+set -euo pipefail
 RELEASE=$HOME/releases/shuxueshuo-release-<RELEASE_ID>-amd64
 
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
+  --release "$RELEASE" prepare-release
+"$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
+  --release "$RELEASE" preflight-learning
+REV=$(sed -n 's/^PRODUCT_SOURCE_REVISION=//p' "$RELEASE/release.env")
+SITE_REPO=${PRODUCT_REPO_HOST:-"$HOME/code/shuxueshuo"}
+git -C "$SITE_REPO" fetch
+bash "$RELEASE/scripts/server/check-site-revision.sh" \
+  --repo "$SITE_REPO" --revision "$REV" --allow-forward
+"$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
   --release "$RELEASE" services-stop
+# 仅 current/已安装 empty 状态直接继续；其他状态按正式替换手册处理。
+"$RELEASE/scripts/server/deploy.sh" --data-dir /srv/shuxueshuo --release "$RELEASE"
+git -C "$SITE_REPO" merge --ff-only "$REV"
+"$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
+  --release "$RELEASE" verify-release
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
   --release "$RELEASE" services-start
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
@@ -237,8 +287,10 @@ docker rm -f shuxueshuo-studio
 docker run -d --name shuxueshuo-studio --restart unless-stopped \
   -p 127.0.0.1:3000:3000 shuxueshuo-studio:latest
 
-cd "$HOME/code/shuxueshuo" && git pull
+cd "$HOME/code/shuxueshuo"
 sudo cp deploy/nginx/studio.shuxueshuo.com.conf /etc/nginx/conf.d/studio.shuxueshuo.com.conf
+# 主站模板有变更时才安装（先核对证书路径）。
+sudo cp deploy/nginx/shuxueshuo.conf /etc/nginx/conf.d/shuxueshuo.conf
 sudo nginx -t && sudo systemctl reload nginx
 
 curl -sS http://127.0.0.1:8000/api/product/v1/health
@@ -274,7 +326,9 @@ curl -sSI https://studio.shuxueshuo.com/ | head
 
 ## 回滚
 
-- **产品**：`services-stop` 后改用上一版 `RELEASE` 目录再 `services-start`（镜像仍在本机则无需重传）。
+- **产品部署失败**：先核对提交阶段。数据库事务提交前失败，旧库仍保留，仓库不要 `git pull`，使用旧包脚本和旧 `--release` 执行 `resume`，再启动旧应用；提交后（doctor）失败则排除原因，用目标包 `resume` 后照常 `git pull`、`verify-release`、启动。尚未停写的预检失败无需恢复登录。具体命令见[正式替换手册](product/learning-rollout.md#维护窗口与首次替换)。
+- **产品跨版本回滚**：不能只启动上一版镜像或回退仓库。按[备份和回滚](product/learning-rollout.md#备份和回滚)将备份恢复到独立实例，仓库回到旧提交，校验旧数据库、旧 API 和旧页面后一起切换。
+- **仅静态页面**：仓库 `git checkout <旧提交> -- site/` 或 `git revert`；回退后的教学内容版本须仍与学习库一致。
 - **Studio**：保留旧 tag（如 `shuxueshuo-studio:YYYYMMDD-HHMM`），`docker run` 换回旧镜像。
 - **Nginx**：从 git 历史恢复 conf 后 reload。
 

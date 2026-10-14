@@ -1,0 +1,3007 @@
+{
+  "id": "basic-inequality",
+  "label": "基本不等式",
+  "groups": [
+    {
+      "id": "direct",
+      "label": "直接法求最值",
+      "description": "式子已满足“一正二定三相等”，直接套用公式。",
+      "problems": [
+        "basic-inequality-q01",
+        "basic-inequality-q02",
+        "basic-inequality-q03",
+        "basic-inequality-q04",
+        "basic-inequality-q05"
+      ]
+    },
+    {
+      "id": "matching",
+      "label": "常规配凑法求最值",
+      "description": "先凑配表达式，配出满足条件的两项。第 08 题也可以找对称结构、和积换元，同类题见第 07 组。",
+      "problems": [
+        "basic-inequality-q06",
+        "basic-inequality-q07",
+        "basic-inequality-q08",
+        "basic-inequality-q09"
+      ]
+    },
+    {
+      "id": "homogeneous",
+      "label": "配齐次式求最值",
+      "description": "利用条件中的定值，将目标配成零次齐次式。",
+      "problems": [
+        "basic-inequality-q10",
+        "basic-inequality-q13",
+        "basic-inequality-q14",
+        "basic-inequality-q15"
+      ]
+    },
+    {
+      "id": "elimination",
+      "label": "消参法求最值",
+      "description": "用条件把一个变量表示成另一个，代入后化成一元式。第 30 题的第二条路径也是消元后分式分离。",
+      "problems": [
+        "basic-inequality-q16",
+        "basic-inequality-q17",
+        "basic-inequality-q18",
+        "basic-inequality-q19",
+        "basic-inequality-q20"
+      ]
+    },
+    {
+      "id": "substitution",
+      "label": "换元求最值",
+      "description": "把复杂的部分看成整体换成新变量，条件与范围随之改写。",
+      "problems": [
+        "basic-inequality-q11",
+        "basic-inequality-q12",
+        "basic-inequality-q21",
+        "basic-inequality-q22"
+      ]
+    },
+    {
+      "id": "split",
+      "label": "分式分离法求最值",
+      "description": "分子次数高于分母时，先逐项分离出整式部分，再配出积为定值的两项；分子次数较低时，先取倒数再分离。",
+      "problems": [
+        "basic-inequality-q23",
+        "basic-inequality-q24",
+        "basic-inequality-q25",
+        "basic-inequality-q26",
+        "basic-inequality-q27"
+      ]
+    },
+    {
+      "id": "symmetric",
+      "label": "找对称结构和积换元",
+      "description": "条件与目标交换 x、y 后不变时，用 s = x + y、p = xy 改写，再由和积关系得到范围。第 08 题的第二条路径也是这种做法；第 30 题也可以消元后分式分离，同类题见第 04 组。",
+      "problems": [
+        "basic-inequality-q28",
+        "basic-inequality-q29",
+        "basic-inequality-q30"
+      ]
+    }
+  ],
+  "problems": {
+    "basic-inequality-q01": {
+      "label": "Q01",
+      "path": "/1/q01/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "direct": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $m+n=2$ 是定值，要求积 $mn$ 的最大值：定和求积。"
+              },
+              "title": "观察结构",
+              "position": 1
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $m+n\\ge2\\sqrt{mn}$，即 $2\\sqrt{mn}\\le2$，所以 $mn\\le1$。"
+              },
+              "title": "应用基本不等式",
+              "position": 2
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $m=n$，与 $m+n=2$ 联立得 $m=n=1$，都是正数，取得到。"
+              },
+              "title": "验证取等",
+              "position": 3
+            }
+          },
+          "label": "直接应用基本不等式"
+        },
+        "elimination": {
+          "methods": {
+            "field": "technique",
+            "options": {
+              "square": [
+                "method-square-extremum"
+              ],
+              "vertex": [
+                "method-quadratic-extremum"
+              ]
+            }
+          },
+          "steps": {
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "观察结构",
+              "position": 1
+            },
+            "quadratic": {
+              "refs": {
+                "field": "technique",
+                "options": {
+                  "square": [
+                    "method-complete-square",
+                    "method-square-extremum",
+                    "quadratic-function-properties#forms"
+                  ],
+                  "vertex": [
+                    "method-quadratic-extremum",
+                    "quadratic-interval-extremum",
+                    "quadratic-function-properties#vertex"
+                  ]
+                }
+              },
+              "tip": {
+                "field": "technique",
+                "options": {
+                  "square": {
+                    "field": "variable",
+                    "options": {
+                      "m": {
+                        "ref": "method-complete-square",
+                        "resource": "complete-square-area",
+                        "note": "本题 $mn=m(2-m)=-(m-1)^2+1\\le1$，$m=1$ 时取到最大值 $1$。"
+                      },
+                      "n": {
+                        "ref": "method-complete-square",
+                        "resource": "complete-square-area",
+                        "note": "本题 $mn=n(2-n)=-(n-1)^2+1\\le1$，$n=1$ 时取到最大值 $1$。"
+                      }
+                    }
+                  },
+                  "vertex": {
+                    "field": "variable",
+                    "options": {
+                      "m": {
+                        "ref": "quadratic-function-properties#vertex",
+                        "resource": "parabola-axis-drag",
+                        "note": "本题 $y=-m^2+2m$ 开口向下，对称轴 $m=1$ 在 $(0,2)$ 内，顶点处取到最大值 $1$。"
+                      },
+                      "n": {
+                        "ref": "quadratic-function-properties#vertex",
+                        "resource": "parabola-axis-drag",
+                        "note": "本题 $y=-n^2+2n$ 开口向下，对称轴 $n=1$ 在 $(0,2)$ 内，顶点处取到最大值 $1$。"
+                      }
+                    }
+                  }
+                }
+              },
+              "title": "求二次式的上界",
+              "position": 2
+            },
+            "feasibility": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题候选值 $m=n=1$：两数都为正，和为 $2$，满足原题条件，最大值 $1$ 取得到。"
+              },
+              "title": "验证取值",
+              "position": 3
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "设正实数 $m,n$ 满足 $m+n=2$，求 $mn$ 的最大值。"
+    },
+    "basic-inequality-q02": {
+      "label": "Q02",
+      "path": "/1/q02/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "direct": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $x^2\\cdot\\frac1{x^2}=1$ 是定值，要求和的最小值：定积求和。"
+              },
+              "title": "观察结构",
+              "position": 1
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $x^2+\\frac1{x^2}\\ge2\\sqrt{x^2\\cdot\\frac1{x^2}}=2$。"
+              },
+              "title": "应用基本不等式",
+              "position": 2
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x^2=\\frac1{x^2}$，即 $x^4=1$，$x=\\pm1$，取得到，最小值是 $2$。"
+              },
+              "title": "验证取等",
+              "position": 3
+            }
+          },
+          "label": "直接应用基本不等式"
+        },
+        "square": {
+          "methods": [
+            "method-square-extremum"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "method-complete-square"
+              ],
+              "title": "选择平方结构",
+              "position": 1
+            },
+            "equality": {
+              "refs": [
+                "square-nonnegative#nonnegative",
+                "function-range-extrema#attainability",
+                "square-nonnegative"
+              ],
+              "tip": {
+                "ref": "square-nonnegative",
+                "resource": "square-area",
+                "note": "本题 $x^2+\\frac1{x^2}=\\left(x-\\frac1x\\right)^2+2\\ge2$，平方项为 $0$ 要 $x=\\frac1x$，即 $x=\\pm1$。"
+              },
+              "title": "验证取等",
+              "position": 2
+            }
+          },
+          "label": "配方利用平方非负"
+        }
+      },
+      "statement": "$x^2+\\frac{1}{x^2}$ 的最小值为？（在实数范围内讨论，$x\\ne0$。）"
+    },
+    "basic-inequality-q03": {
+      "label": "Q03",
+      "path": "/1/q03/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "direct": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $x\\cdot2y=2xy=8$ 是定值，要求 $x+2y$ 的最小值：定积求和。"
+              },
+              "title": "观察结构",
+              "position": 1
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $x+2y\\ge2\\sqrt{x\\cdot2y}=2\\sqrt8=4\\sqrt2$。"
+              },
+              "title": "应用基本不等式",
+              "position": 2
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x=2y$，与 $xy=4$ 联立得 $x=2\\sqrt2$，$y=\\sqrt2$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 3
+            }
+          },
+          "label": "直接应用基本不等式"
+        }
+      },
+      "statement": "已知 $x>0,\\ y>0,\\ xy=4$，则 $x+2y$ 的最小值为？"
+    },
+    "basic-inequality-q04": {
+      "label": "Q04",
+      "path": "/1/q04/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "direct": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "amgm-formula",
+                "inequality-properties",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "positive",
+                "note": "本题 $x<0$，$x$ 与 $\\frac4x$ 都是负数，不满足一正；先提出负号，对正数 $-x$、$-\\frac4x$ 用基本不等式。"
+              },
+              "title": "整理表达式",
+              "position": 1
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $(-x)+\\left(-\\frac4x\\right)\\ge2\\sqrt{(-x)\\cdot\\left(-\\frac4x\\right)}=4$。"
+              },
+              "title": "应用基本不等式",
+              "position": 2
+            },
+            "bound": {
+              "refs": [
+                "skill-inequality-transform",
+                "inequality-properties#multiplication"
+              ],
+              "tip": {
+                "ref": "inequality-properties#multiplication",
+                "resource": "order-flip-lines",
+                "note": "本题由 $(-x)+\\left(-\\frac4x\\right)\\ge4$，两边乘 $-1$ 要变向：$x+\\frac4x\\le-4$，再减 $4$ 得原式 $\\le-8$。"
+              },
+              "title": "回到原式",
+              "position": 3
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $-x=-\\frac4x$，即 $x^2=4$；又 $x<0$，所以 $x=-2$，最大值 $-8$ 取得到。"
+              },
+              "title": "验证取等",
+              "position": 4
+            }
+          },
+          "label": "转化为正项后应用基本不等式"
+        }
+      },
+      "statement": "已知 $x<0$，则 $x+\\frac4x-4$ 有（ ）。A. 最大值0；B. 最小值0；C. 最大值-8；D. 最小值-8。"
+    },
+    "basic-inequality-q05": {
+      "label": "Q05",
+      "path": "/1/q05/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "direct": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $2^a\\cdot2^b=2^{a+b}=8$ 是定值，要求和的最小值：定积求和。"
+              },
+              "title": "观察结构",
+              "position": 1
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $2^a+2^b\\ge2\\sqrt{2^a\\cdot2^b}=2\\sqrt8=4\\sqrt2$。"
+              },
+              "title": "应用基本不等式",
+              "position": 2
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $2^a=2^b$，即 $a=b$，与 $a+b=3$ 联立得 $a=b=\\frac32$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 3
+            }
+          },
+          "label": "直接应用基本不等式"
+        }
+      },
+      "statement": "设 $a、b$ 为实数，且 $a+b=3$，则 $2^a+2^b$ 的最小值为？"
+    },
+    "basic-inequality-q06": {
+      "label": "Q06",
+      "path": "/1/q06/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "matching": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "method-matching"
+              ],
+              "title": "凑配表达式",
+              "position": 1
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题凑成 $2(x-1)+\\frac2{x-1}+2$ 后，$2(x-1)\\cdot\\frac2{x-1}=4$ 是定值：定积求和。"
+              },
+              "title": "观察结构",
+              "position": 2
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $2(x-1)+\\frac2{x-1}\\ge2\\sqrt4=4$，原式 $\\ge4+2=6$。"
+              },
+              "title": "应用基本不等式",
+              "position": 3
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $2(x-1)=\\frac2{x-1}$，即 $(x-1)^2=1$；又 $x>1$，所以 $x=2$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 4
+            }
+          },
+          "label": "配凑后应用基本不等式"
+        }
+      },
+      "statement": "已知实数 $x>1$，则 $2x+\\frac2{x-1}$ 的最小值为？"
+    },
+    "basic-inequality-q07": {
+      "label": "Q07",
+      "path": "/1/q07/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "matching": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "method-matching"
+              ],
+              "title": "凑配表达式",
+              "position": 1
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $x^2+(9-x^2)=9$ 是定值，要求根号内积 $x^2(9-x^2)$ 的最大值：定和求积。"
+              },
+              "title": "观察结构",
+              "position": 2
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $x^2(9-x^2)\\le\\left(\\frac{x^2+9-x^2}2\\right)^2=\\frac{81}4$。"
+              },
+              "title": "应用基本不等式",
+              "position": 3
+            },
+            "bound": {
+              "refs": [
+                "skill-inequality-transform",
+                "inequality-properties#multiplication"
+              ],
+              "tip": {
+                "ref": "inequality-properties#multiplication",
+                "resource": "order-flip-lines",
+                "note": "本题 $\\sqrt{x^2(9-x^2)}\\le\\frac92$，前面是负号，乘 $-1$ 要变向：$y=-\\sqrt{x^2(9-x^2)}\\ge-\\frac92$。"
+              },
+              "title": "代回原式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x^2=9-x^2$，即 $x^2=\\frac92$；又 $-3<x<0$，所以 $x=-\\frac{3\\sqrt2}2$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "凑配后应用基本不等式"
+        }
+      },
+      "statement": "已知 $-3<x<0$，则 $y=x\\sqrt{9-x^2}$ 的最小值为？"
+    },
+    "basic-inequality-q08": {
+      "label": "Q08",
+      "path": "/1/q08/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "matching": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "method-matching"
+              ],
+              "title": "凑配表达式",
+              "position": 1
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $(x+y)\\cdot\\frac4{x+y}=4$ 是定值，要求和的最小值：定积求和。"
+              },
+              "title": "观察结构",
+              "position": 2
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $x+y+\\frac4{x+y}\\ge2\\sqrt4=4$。"
+              },
+              "title": "应用基本不等式",
+              "position": 3
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x+y=2$，与 $xy=1$ 联立得 $x=y=1$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 4
+            }
+          },
+          "label": "常规配凑"
+        },
+        "symmetric": {
+          "methods": [
+            "method-sum-product-range"
+          ],
+          "steps": {
+            "symmetry": {
+              "refs": [
+                "method-sum-product#identities"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题交换 $x$、$y$ 后，条件 $xy=1$ 与目标 $\\frac{x^2+y^2+6}{x+y}$ 都不变，可以用 $s=x+y$、$p=xy$ 改写。"
+              },
+              "title": "识别对称结构",
+              "position": 1
+            },
+            "substitution": {
+              "refs": [
+                "method-sum-product"
+              ],
+              "title": "和积换元",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $x^2+y^2=s^2-2p=s^2-2$，目标化成 $s+\\frac4s$，$s\\cdot\\frac4s=4$ 是定值：定积求和。"
+              },
+              "title": "观察结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $s+\\frac4s\\ge2\\sqrt4=4$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $s=2$，即 $x+y=2$、$xy=1$，得 $x=y=1$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "找对称结构，和积换元"
+        }
+      },
+      "statement": "已知正数 $x,y$ 满足 $xy=1$，则 $\\frac{x^2+y^2+6}{x+y}$ 的最小值为？"
+    },
+    "basic-inequality-q09": {
+      "label": "Q09",
+      "path": "/1/q09/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "matching": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "skill-equality-transform",
+                "skill-simplify"
+              ],
+              "title": "整理条件",
+              "position": 1
+            },
+            "sign": {
+              "refs": [
+                "amgm-formula#formula",
+                "skill-inequality-transform"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "positive",
+                "note": "本题 $ab>0$ 时两数同号，又 $2a+3b=1>0$，所以 $a,b>0$；先在正积情形下求上界，最后再与 $ab<0$ 的情形比较。"
+              },
+              "title": "判断正负",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $2a+3b=1$ 是定值，要求 $ab$ 的最大值，先看积 $2a\\cdot3b=6ab$：定和求积。"
+              },
+              "title": "观察结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $2a\\cdot3b\\le\\left(\\frac{2a+3b}2\\right)^2=\\frac14$，所以 $ab\\le\\frac1{24}$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $2a=3b$，与 $2a+3b=1$ 联立得 $a=\\frac14$，$b=\\frac16$，代回原条件成立，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "配凑后应用基本不等式"
+        },
+        "elimination": {
+          "methods": {
+            "field": "technique",
+            "options": {
+              "square": [
+                "method-square-extremum"
+              ],
+              "vertex": [
+                "method-quadratic-extremum"
+              ]
+            }
+          },
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "skill-equality-transform",
+                "skill-simplify"
+              ],
+              "title": "整理条件",
+              "position": 1
+            },
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消参",
+              "position": 2
+            },
+            "quadratic": {
+              "refs": {
+                "field": "technique",
+                "options": {
+                  "square": [
+                    "method-complete-square",
+                    "method-square-extremum",
+                    "quadratic-function-properties#forms"
+                  ],
+                  "vertex": [
+                    "method-quadratic-extremum",
+                    "quadratic-interval-extremum",
+                    "quadratic-function-properties#vertex"
+                  ]
+                }
+              },
+              "tip": {
+                "field": "technique",
+                "options": {
+                  "square": {
+                    "field": "variable",
+                    "options": {
+                      "a": {
+                        "ref": "method-complete-square",
+                        "resource": "complete-square-area",
+                        "note": "本题 $b=\\frac{1-2a}3$，$ab=\\frac{a(1-2a)}3=-\\frac23\\left(a-\\frac14\\right)^2+\\frac1{24}\\le\\frac1{24}$。"
+                      },
+                      "b": {
+                        "ref": "method-complete-square",
+                        "resource": "complete-square-area",
+                        "note": "本题 $a=\\frac{1-3b}2$，$ab=\\frac{b(1-3b)}2=-\\frac32\\left(b-\\frac16\\right)^2+\\frac1{24}\\le\\frac1{24}$。"
+                      }
+                    }
+                  },
+                  "vertex": {
+                    "field": "variable",
+                    "options": {
+                      "a": {
+                        "ref": "quadratic-function-properties#vertex",
+                        "resource": "parabola-axis-drag",
+                        "note": "本题 $ab=-\\frac23a^2+\\frac a3$ 开口向下，对称轴 $a=\\frac14$，顶点处 $ab=\\frac1{24}$；$a=\\frac14$ 不是要排除的 $0$、$\\frac12$。"
+                      },
+                      "b": {
+                        "ref": "quadratic-function-properties#vertex",
+                        "resource": "parabola-axis-drag",
+                        "note": "本题 $ab=-\\frac32b^2+\\frac b2$ 开口向下，对称轴 $b=\\frac16$，顶点处 $ab=\\frac1{24}$；$b=\\frac16$ 不是要排除的 $0$、$\\frac13$。"
+                      }
+                    }
+                  }
+                }
+              },
+              "title": "求二次式的上界",
+              "position": 3
+            },
+            "feasibility": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题候选值 $a=\\frac14$，$b=\\frac16$：两数非零，代回 $\\left(\\frac1a-2\\right)\\left(\\frac1b-3\\right)=2\\times3=6$，成立。"
+              },
+              "title": "验证取值",
+              "position": 4
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "已知实数 $a,b$ 满足 $\\left(\\frac1a-2\\right)\\left(\\frac1b-3\\right)=6$，则 $ab$ 的最大值为？"
+    },
+    "basic-inequality-q10": {
+      "label": "Q10",
+      "path": "/1/q10/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "homogeneous": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题 $\\frac5x+\\frac4y$ 是负一次，$x+5y$ 是一次，相乘得零次式。"
+              },
+              "title": "识别齐次结构",
+              "position": 1
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "title": "配齐次式",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $\\left(\\frac5x+\\frac4y\\right)(x+5y)=25+\\frac{25y}x+\\frac{4x}y$，$\\frac{25y}x\\cdot\\frac{4x}y=100$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac{25y}x+\\frac{4x}y\\ge2\\sqrt{100}=20$，原式 $\\ge25+20=45$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $\\frac{25y}x=\\frac{4x}y$，即 $2x=5y$，与 $x+5y=1$ 联立得 $x=\\frac13$，$y=\\frac2{15}$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "配齐次式"
+        }
+      },
+      "statement": "已知 $x,y>0$，且 $x+5y=1$，则 $\\frac5x+\\frac4y$ 的最小值为？"
+    },
+    "basic-inequality-q11": {
+      "label": "Q11",
+      "path": "/1/q11/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "substitution": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "换元",
+              "position": 1
+            },
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题令 $t=a+1$，则 $t+b=3$；$\\frac2t+\\frac4b$ 是负一次，$t+b$ 是一次，相乘得零次式。"
+              },
+              "title": "识别齐次结构",
+              "position": 2
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "note": "本题 $t+b=3$ 不等于 $1$，要乘 $\\frac{t+b}3=1$：原式 $=\\frac13\\left(\\frac2t+\\frac4b\\right)(t+b)$。"
+              },
+              "title": "配齐次式",
+              "position": 3
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题展开得 $\\frac13\\left(6+\\frac{2b}t+\\frac{4t}b\\right)$，$\\frac{2b}t\\cdot\\frac{4t}b=8$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 4
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac{2b}t+\\frac{4t}b\\ge2\\sqrt8=4\\sqrt2$，原式 $\\ge\\frac{6+4\\sqrt2}3$。"
+              },
+              "title": "应用基本不等式",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $b=\\sqrt2t$，与 $t+b=3$ 联立得 $t=3(\\sqrt2-1)$，在 $(1,3)$ 内，取得到。"
+              },
+              "title": "验证取等",
+              "position": 6
+            }
+          },
+          "label": "换元法"
+        }
+      },
+      "statement": "已知 $a>0,\\ b>0$，且 $a+b=2$，求 $\\frac2{a+1}+\\frac4b$ 的最小值。"
+    },
+    "basic-inequality-q12": {
+      "label": "Q12",
+      "path": "/1/q12/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "substitution": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "换元",
+              "position": 1
+            },
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题令 $x=2m+1$，$y=n+1$，则 $x+y=8$；$\\frac1x+\\frac1y$ 是负一次，$x+y$ 是一次，相乘得零次式。"
+              },
+              "title": "识别齐次结构",
+              "position": 2
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "note": "本题 $x+y=8$，要乘 $\\frac{x+y}8=1$：原式 $=\\frac18\\left(\\frac1x+\\frac1y\\right)(x+y)$。"
+              },
+              "title": "配齐次式",
+              "position": 3
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题展开得 $\\frac18\\left(2+\\frac yx+\\frac xy\\right)$，$\\frac yx\\cdot\\frac xy=1$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 4
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac yx+\\frac xy\\ge2$，原式 $\\ge\\frac18\\times4=\\frac12$。"
+              },
+              "title": "应用基本不等式",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x=y=4$，即 $m=\\frac32$，$n=3$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 6
+            }
+          },
+          "label": "换元法"
+        }
+      },
+      "statement": "已知正数 $m,n$ 满足 $2m+n=6$，求 $\\frac1{2m+1}+\\frac1{n+1}$ 的最小值。"
+    },
+    "basic-inequality-q13": {
+      "label": "Q13",
+      "path": "/1/q13/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "homogeneous": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题 $\\frac1a$ 是负一次，$\\frac ab$ 是零次，条件 $2a+b$ 是一次：目标不是齐次式，只需给 $\\frac1a$ 配次数。"
+              },
+              "title": "识别齐次结构",
+              "position": 1
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "case": "local",
+                "note": "本题 $\\frac ab$ 已是零次，只给 $\\frac1a$ 乘 $2a+b$：$\\frac{2a+b}a=2+\\frac ba$。整体乘会把 $\\frac ab$ 乘成一次的 $\\frac{2a^2}b+a$。"
+              },
+              "title": "配齐次式",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $\\frac1a=\\frac{2a+b}a=2+\\frac ba$，原式 $=2+\\frac ba+\\frac ab$，$\\frac ba\\cdot\\frac ab=1$：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac ba+\\frac ab\\ge2$，原式 $\\ge4$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $a=b$，与 $2a+b=1$ 联立得 $a=b=\\frac13$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "配齐次式"
+        }
+      },
+      "statement": "已知 $a>0,b>0,2a+b=1$，则 $\\frac1a+\\frac ab$ 的最小值为？"
+    },
+    "basic-inequality-q14": {
+      "label": "Q14",
+      "path": "/1/q14/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "homogeneous": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "rewrite": {
+              "refs": [
+                "method-matching",
+                "skill-simplify"
+              ],
+              "title": "整体乘 1",
+              "position": 1
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $\\left(x+\\frac1y\\right)\\left(\\frac1x+4y\\right)=5+4xy+\\frac1{xy}$，$4xy\\cdot\\frac1{xy}=4$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 2
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $4xy+\\frac1{xy}\\ge2\\sqrt4=4$，原式 $\\ge9$。"
+              },
+              "title": "应用基本不等式",
+              "position": 3
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $xy=\\frac12$，与 $\\frac1x+4y=1$ 联立得 $x=3$，$y=\\frac16$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 4
+            }
+          },
+          "label": "直接乘 1"
+        },
+        "substitution": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "换元",
+              "position": 1
+            },
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题令 $t=\\frac1y$，目标 $x+t$ 是一次，条件 $\\frac1x+\\frac4t$ 是负一次，相乘得零次式。"
+              },
+              "title": "识别齐次结构",
+              "position": 2
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "note": "本题条件 $\\frac1x+\\frac4t=1$，整体乘入：$x+t=(x+t)\\left(\\frac1x+\\frac4t\\right)$。"
+              },
+              "title": "配齐次式",
+              "position": 3
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题展开得 $5+\\frac{4x}t+\\frac tx$，$\\frac{4x}t\\cdot\\frac tx=4$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 4
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac{4x}t+\\frac tx\\ge4$，原式 $\\ge9$。"
+              },
+              "title": "应用基本不等式",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $t=2x$，代入 $\\frac1x+\\frac4t=1$ 得 $x=3$，$t=6$（即 $y=\\frac16$），取得到。"
+              },
+              "title": "验证取等",
+              "position": 6
+            }
+          },
+          "label": "先换元再配齐次"
+        }
+      },
+      "statement": "设 $x>0,\\ y>0$，$\\frac1x+4y=1$，则 $x+\\frac1y$ 的最小值为？"
+    },
+    "basic-inequality-q15": {
+      "label": "Q15",
+      "path": "/1/q15/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "homogeneous": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题拆成 $\\left(\\frac ba+\\frac ab\\right)+\\left(\\frac1a+\\frac1b\\right)$：前一组零次，后一组负一次，条件 $a+b$ 一次。"
+              },
+              "title": "识别齐次结构",
+              "position": 1
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "case": "local",
+                "note": "本题 $\\frac ba+\\frac ab$ 已是零次，只给 $\\frac1a+\\frac1b$ 乘 $a+b$，第二组展开得 $2+\\frac ba+\\frac ab$。整体乘会把前一组乘成一次。"
+              },
+              "title": "配齐次式",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $\\frac1a+\\frac1b=\\left(\\frac1a+\\frac1b\\right)(a+b)=2+\\frac ba+\\frac ab$，原式 $=2+\\frac{2b}a+\\frac{2a}b$，两项积为 $4$：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac{2b}a+\\frac{2a}b\\ge2\\sqrt4=4$，原式 $\\ge6$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $a=b$，与 $a+b=1$ 联立得 $a=b=\\frac12$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "配齐次式"
+        }
+      },
+      "statement": "已知 $a>0,\\ b>0,\\ a+b=1$，则 $\\frac{b+1}a+\\frac{a+1}b$ 的最小值为？"
+    },
+    "basic-inequality-q16": {
+      "label": "Q16",
+      "path": "/1/q16/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "elimination": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消参",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $7-2y=-2(y+1)+9$，所以 $x=\\frac{7-2y}{y+1}=-2+\\frac9{y+1}$。"
+              },
+              "title": "分式分离",
+              "position": 2
+            },
+            "rewrite": {
+              "refs": [
+                "method-matching"
+              ],
+              "tip": {
+                "ref": "method-matching",
+                "resource": "matching-constant",
+                "note": "本题 $x+y=y+\\frac9{y+1}-2$，把 $y$ 凑成 $y+1$：$(y+1)+\\frac9{y+1}-3$，两项积为 $9$。"
+              },
+              "title": "凑配表达式",
+              "position": 3
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $(y+1)\\cdot\\frac9{y+1}=9$ 是定值，要求和的最小值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 4
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $(y+1)+\\frac9{y+1}\\ge2\\sqrt9=6$，$x+y\\ge6-3=3$。"
+              },
+              "title": "应用基本不等式",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $y+1=3$，即 $y=2$，$x=1$，都为正，取得到。"
+              },
+              "title": "验证取等",
+              "position": 6
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "已知 $x>0,\\ y>0$，且 $x+2y+xy-7=0$，则 $x+y$ 的最小值为？"
+    },
+    "basic-inequality-q17": {
+      "label": "Q17",
+      "path": "/1/q17/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "elimination": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消参",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $m^2=\\frac{1-n^4}{5n^2}=\\frac1{5n^2}-\\frac{n^2}5$，加上 $n^2$ 得 $m^2+n^2=\\frac1{5n^2}+\\frac{4n^2}5$。"
+              },
+              "title": "分式分离",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $\\frac1{5n^2}\\cdot\\frac{4n^2}5=\\frac4{25}$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac1{5n^2}+\\frac{4n^2}5\\ge2\\sqrt{\\frac4{25}}=\\frac45$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $\\frac1{5n^2}=\\frac{4n^2}5$，即 $n^2=\\frac12$，此时 $m^2=\\frac3{10}\\ge0$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "已知 $5m^2n^2+n^4=1$，则 $m^2+n^2$ 的最小值为？"
+    },
+    "basic-inequality-q18": {
+      "label": "Q18",
+      "path": "/1/q18/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "elimination": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "factor": {
+              "refs": [
+                "method-matching",
+                "skill-factor"
+              ],
+              "tip": {
+                "ref": "method-matching",
+                "resource": "matching-constant",
+                "note": "本题 $2ab+2a+b=3$ 两边加 $1$，凑成 $(2a+1)(b+1)=4$。"
+              },
+              "title": "配因式",
+              "position": 1
+            },
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消参",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题原式 $=\\frac{b+1}4+\\frac1b=\\frac b4+\\frac1b+\\frac14$，$\\frac b4\\cdot\\frac1b=\\frac14$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac b4+\\frac1b\\ge2\\sqrt{\\frac14}=1$，原式 $\\ge\\frac54$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $\\frac b4=\\frac1b$，即 $b=2$，此时 $2a+1=\\frac43$，$a=\\frac16>0$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "已知正数 $a,b$ 满足 $2ab+2a+b=3$，则 $\\frac1{2a+1}+\\frac1b$ 的最小值为？"
+    },
+    "basic-inequality-q19": {
+      "label": "Q19",
+      "path": "/1/q19/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "elimination": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消参",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $a+4b=a+\\frac{36a}{a-1}$，而 $36a=36(a-1)+36$，所以 $\\frac{36a}{a-1}=36+\\frac{36}{a-1}$。"
+              },
+              "title": "分式分离",
+              "position": 2
+            },
+            "rewrite": {
+              "refs": [
+                "method-matching"
+              ],
+              "tip": {
+                "ref": "method-matching",
+                "resource": "matching-constant",
+                "note": "本题把 $a$ 凑成 $a-1$：$a+\\frac{36}{a-1}+36=(a-1)+\\frac{36}{a-1}+37$，两项积为 $36$。"
+              },
+              "title": "凑配表达式",
+              "position": 3
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $(a-1)\\cdot\\frac{36}{a-1}=36$ 是定值（由 $b>0$ 知 $a>1$）：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 4
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $(a-1)+\\frac{36}{a-1}\\ge2\\sqrt{36}=12$，$a+4b\\ge49$。"
+              },
+              "title": "应用基本不等式",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $a-1=6$，即 $a=7$，$b=\\frac{21}2$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 6
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "已知 $a>0,\\ b>0$，$9a+b=ab$，则 $a+4b$ 的最小值为？"
+    },
+    "basic-inequality-q20": {
+      "label": "Q20",
+      "path": "/1/q20/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "elimination": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消参",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $3n-7=3(n-3)+2$，所以 $m=\\frac{3n-7}{n-3}=3+\\frac2{n-3}$。"
+              },
+              "title": "分式分离",
+              "position": 2
+            },
+            "rewrite": {
+              "refs": [
+                "method-matching"
+              ],
+              "tip": {
+                "ref": "method-matching",
+                "resource": "matching-constant",
+                "note": "本题 $m+2n=2n+\\frac2{n-3}+3$，把 $2n$ 凑成 $2(n-3)+6$：$2(n-3)+\\frac2{n-3}+9$。"
+              },
+              "title": "凑配表达式",
+              "position": 3
+            },
+            "positive": {
+              "refs": [
+                "amgm-formula#formula",
+                "skill-inequality-transform"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "positive",
+                "note": "本题 $m=\\frac{3n-7}{n-3}$，所以 $m-2=\\frac{n-1}{n-3}$。由 $m>2$、$n>1$，左边和分子都为正，所以 $n-3>0$，两项都为正。"
+              },
+              "title": "判断两项为正",
+              "position": 4
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $2(n-3)\\cdot\\frac2{n-3}=4$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 5
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $2(n-3)+\\frac2{n-3}\\ge2\\sqrt4=4$，$m+2n\\ge13$。"
+              },
+              "title": "应用基本不等式",
+              "position": 6
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $n-3=1$，即 $n=4$，$m=5$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 7
+            }
+          },
+          "label": "消参法"
+        }
+      },
+      "statement": "已知 $m>2,\\ n>1$，且 $3m+3n=mn+7$，则 $m+2n$ 的最小值为？"
+    },
+    "basic-inequality-q21": {
+      "label": "Q21",
+      "path": "/1/q21/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "substitution": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "双换元",
+              "position": 1
+            },
+            "express": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "用新元表示目标",
+              "position": 2
+            },
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题令 $x=4a+b$，$y=a+2b$，目标 $5a+3b=x+y$ 是一次，条件 $\\frac1x+\\frac1y=3$ 是负一次，相乘得零次式。"
+              },
+              "title": "识别齐次结构",
+              "position": 3
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "note": "本题条件等于 $3$，要乘 $\\frac13\\left(\\frac1x+\\frac1y\\right)=1$：原式 $=\\frac13(x+y)\\left(\\frac1x+\\frac1y\\right)$。"
+              },
+              "title": "配齐次式",
+              "position": 4
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题展开得 $\\frac13\\left(2+\\frac yx+\\frac xy\\right)$，$\\frac yx\\cdot\\frac xy=1$：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 5
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac yx+\\frac xy\\ge2$，原式 $\\ge\\frac43$。"
+              },
+              "title": "应用基本不等式",
+              "position": 6
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x=y=\\frac23$，即 $a=\\frac2{21}$，$b=\\frac27$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 7
+            }
+          },
+          "label": "换元法"
+        }
+      },
+      "statement": "已知 $a>0,\\ b>0$，若 $\\frac1{4a+b}+\\frac1{a+2b}=3$，求 $5a+3b$ 的最小值。"
+    },
+    "basic-inequality-q22": {
+      "label": "Q22",
+      "path": "/1/q22/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "substitution": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "双换元",
+              "position": 1
+            },
+            "express": {
+              "refs": [
+                "method-substitution"
+              ],
+              "title": "用新元表示条件",
+              "position": 2
+            },
+            "homogeneity": {
+              "refs": [
+                "method-homogeneous#degree"
+              ],
+              "tip": {
+                "ref": "method-homogeneous#degree",
+                "resource": "homogeneous-degree-count",
+                "note": "本题令 $a=2x-y$，$b=x+2y$，条件化成 $a+2b=1$；$\\frac1a+\\frac2b$ 是负一次，$a+2b$ 是一次，相乘得零次式。"
+              },
+              "title": "识别齐次结构",
+              "position": 3
+            },
+            "rewrite": {
+              "refs": [
+                "method-homogeneous"
+              ],
+              "tip": {
+                "ref": "method-homogeneous",
+                "resource": "homogeneous-degree",
+                "note": "本题 $a+2b=1$，整体乘入：原式 $=\\left(\\frac1a+\\frac2b\\right)(a+2b)$。"
+              },
+              "title": "配齐次式",
+              "position": 4
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题展开得 $5+\\frac{2b}a+\\frac{2a}b$，两项积为 $4$：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 5
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac{2b}a+\\frac{2a}b\\ge4$，原式 $\\ge9$。"
+              },
+              "title": "应用基本不等式",
+              "position": 6
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $a=b=\\frac13$，即 $x=\\frac15$，$y=\\frac1{15}$，满足 $x>y>0$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 7
+            }
+          },
+          "label": "换元法"
+        }
+      },
+      "statement": "已知 $x>y>0$，且 $4x+3y=1$，求 $\\frac1{2x-y}+\\frac2{x+2y}$ 的最小值。"
+    },
+    "basic-inequality-q23": {
+      "label": "Q23",
+      "path": "/1/q23/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "split": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "title": "分式分离",
+              "position": 1
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $y=x-1+\\frac4x$，$x\\cdot\\frac4x=4$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 2
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $x+\\frac4x\\ge2\\sqrt4=4$，$y\\ge3$。"
+              },
+              "title": "应用基本不等式",
+              "position": 3
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $x=\\frac4x$，又 $x>0$，所以 $x=2$，最小值 $3$。"
+              },
+              "title": "验证取等",
+              "position": 4
+            }
+          },
+          "label": "分式分离法"
+        }
+      },
+      "statement": "已知 $x>0$，求 $y=\\frac{x^2-x+4}{x}$ 的最小值，以及取得最小值时 $x$ 的值。"
+    },
+    "basic-inequality-q24": {
+      "label": "Q24",
+      "path": "/1/q24/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "split": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "tip": {
+                "ref": "method-substitution",
+                "resource": "substitution-denominator",
+                "note": "本题令 $t=x-2>0$，$x=t+2$，分子 $x^2-2x+4=t^2+2t+4$。"
+              },
+              "title": "换元",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "title": "分式分离",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $f(x)=t+2+\\frac4t$，$t\\cdot\\frac4t=4$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $t+\\frac4t\\ge4$，$f(x)\\ge6$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $t=2$，即 $x=4$，所以 $a=4$。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "分式分离法"
+        }
+      },
+      "statement": "若函数 $f(x)=\\frac{x^2-2x+4}{x-2}\\ (x>2)$ 在 $x=a$ 处取最小值，求 $a$ 的值。"
+    },
+    "basic-inequality-q25": {
+      "label": "Q25",
+      "path": "/1/q25/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "split": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "tip": {
+                "ref": "method-substitution",
+                "resource": "substitution-denominator",
+                "note": "本题令 $t=x+1>0$，$x=t-1$，分子 $x^2+3x+6=t^2+t+4$。"
+              },
+              "title": "换元",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "title": "分式分离",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $y=t+1+\\frac4t$，$t\\cdot\\frac4t=4$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $t+\\frac4t\\ge4$，$y\\ge5$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $t=2$，即 $x=1$，最小值 $5$。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "分式分离法"
+        }
+      },
+      "statement": "当 $x>-1$ 时，求函数 $y=\\frac{x^2+3x+6}{x+1}$ 的最小值。"
+    },
+    "basic-inequality-q26": {
+      "label": "Q26",
+      "path": "/1/q26/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "reciprocal": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "transform": {
+              "refs": [
+                "skill-inequality-transform",
+                "inequality-properties#reciprocal"
+              ],
+              "tip": {
+                "ref": "inequality-properties#reciprocal",
+                "resource": "order-flip-lines",
+                "note": "本题 $x>0$ 时 $y>0$；同正取倒数，大小顺序颠倒，$y$ 最大对应 $\\frac1y$ 最小。"
+              },
+              "title": "转化目标",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $\\frac1y=\\frac{x^2+4}{2x}=\\frac x2+\\frac2x$。"
+              },
+              "title": "分式分离",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $\\frac x2\\cdot\\frac2x=1$ 是定值，求 $\\frac1y$ 的最小值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $\\frac x2+\\frac2x\\ge2$，即 $\\frac1y\\ge2$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $\\frac x2=\\frac2x$，即 $x=2$，此时 $y=\\frac12$ 是最大值。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "取倒数后分式分离"
+        }
+      },
+      "statement": "若 $x>0$，求函数 $y=\\frac{2x}{x^2+4}$ 的最大值。"
+    },
+    "basic-inequality-q27": {
+      "label": "Q27",
+      "path": "/1/q27/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "reciprocal": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "transform": {
+              "refs": [
+                "skill-inequality-transform",
+                "inequality-properties#reciprocal"
+              ],
+              "tip": {
+                "ref": "inequality-properties#reciprocal",
+                "resource": "order-flip-lines",
+                "note": "本题 $x>0$ 时 $y=\\frac{2x+1}{x^2+1}>0$；同正取倒数，大小顺序颠倒，$y$ 最大对应 $\\frac1y$ 最小。"
+              },
+              "title": "转化目标",
+              "position": 1
+            },
+            "substitution": {
+              "refs": [
+                "method-substitution"
+              ],
+              "tip": {
+                "ref": "method-substitution",
+                "resource": "substitution-denominator",
+                "note": "本题令 $t=2x+1>1$，$x=\\frac{t-1}2$，$x^2+1=\\frac{t^2-2t+5}4$。"
+              },
+              "title": "换元",
+              "position": 2
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $\\frac1y=\\frac{t^2-2t+5}{4t}=\\frac14\\left(t-2+\\frac5t\\right)$。"
+              },
+              "title": "分式分离",
+              "position": 3
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $t\\cdot\\frac5t=5$ 是定值：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 4
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $t+\\frac5t\\ge2\\sqrt5$，$\\frac1y\\ge\\frac{2\\sqrt5-2}4=\\frac{\\sqrt5-1}2$。"
+              },
+              "title": "应用基本不等式",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $t=\\sqrt5>1$，即 $x=\\frac{\\sqrt5-1}2>0$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 6
+            },
+            "back": {
+              "refs": [
+                "skill-inequality-transform",
+                "inequality-properties#reciprocal"
+              ],
+              "tip": {
+                "ref": "inequality-properties#reciprocal",
+                "resource": "order-flip-lines",
+                "note": "本题 $\\frac1y\\ge\\frac{\\sqrt5-1}2>0$，取倒数变向：$y\\le\\frac2{\\sqrt5-1}=\\frac{\\sqrt5+1}2$。"
+              },
+              "title": "换回 y",
+              "position": 7
+            }
+          },
+          "label": "取倒数后分式分离"
+        }
+      },
+      "statement": "若 $x>0$，求函数 $y=\\frac{2x+1}{x^2+1}$ 的最大值。"
+    },
+    "basic-inequality-q28": {
+      "label": "Q28",
+      "path": "/1/q28/",
+      "types": [
+        "type-binary-quadratic-range"
+      ],
+      "routes": {
+        "symmetric": {
+          "methods": [
+            "method-sum-product-range"
+          ],
+          "steps": {
+            "symmetry": {
+              "refs": [
+                "method-sum-product#identities"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题交换 $x$、$y$ 后，$x^2+y^2-xy$ 与 $x+y$ 都不变，是对称式。"
+              },
+              "title": "识别对称结构",
+              "position": 1
+            },
+            "substitution": {
+              "refs": [
+                "method-sum-product"
+              ],
+              "title": "和积换元",
+              "position": 2
+            },
+            "condition": {
+              "refs": [
+                "method-sum-product#identities",
+                "skill-equality-transform"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题 $x^2+y^2-xy=(x+y)^2-3xy=s^2-3p$，条件化成 $s^2-3p=1$。"
+              },
+              "title": "改写条件",
+              "position": 3
+            },
+            "inequality": {
+              "refs": [
+                "square-nonnegative"
+              ],
+              "tip": {
+                "ref": "square-nonnegative",
+                "resource": "square-area",
+                "note": "本题 $x,y$ 是任意实数，由 $(x-y)^2\\ge0$ 得 $p\\le\\frac{s^2}4$；代入 $p=\\frac{s^2-1}3$ 得 $s^2\\le4$。"
+              },
+              "title": "选不等式",
+              "position": 4
+            },
+            "range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $s^2\\le4$ 即 $(s+2)(s-2)\\le0$，取两根之间：$-2\\le s\\le2$。"
+              },
+              "title": "解出范围",
+              "position": 5
+            },
+            "equality": {
+              "refs": [
+                "square-nonnegative#nonnegative",
+                "function-range-extrema#attainability",
+                "square-nonnegative"
+              ],
+              "tip": {
+                "ref": "square-nonnegative",
+                "resource": "square-area",
+                "note": "本题端点要 $(x-y)^2=0$，即 $x=y$；代入条件得 $x=y=\\pm1$，$s=\\pm2$ 都取得到。"
+              },
+              "title": "验证端点",
+              "position": 6
+            }
+          },
+          "label": "找对称结构，和积换元"
+        }
+      },
+      "statement": "若实数 $x,y$ 满足 $x^2+y^2-xy=1$，求 $x+y$ 的取值范围。"
+    },
+    "basic-inequality-q29": {
+      "label": "Q29",
+      "path": "/1/q29/",
+      "types": [
+        "type-binary-quadratic-range"
+      ],
+      "routes": {
+        "symmetric": {
+          "methods": [
+            "method-sum-product-range"
+          ],
+          "steps": {
+            "symmetry": {
+              "refs": [
+                "method-sum-product#identities"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题交换 $x$、$y$ 后，$x^2+4y^2-2xy$ 变成 $y^2+4x^2-2xy$，$\\frac x2+y$ 也变了，都不对称。"
+              },
+              "title": "识别对称结构",
+              "position": 1
+            },
+            "construct": {
+              "refs": [
+                "method-substitution",
+                "method-sum-product#identities"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "case": "construct",
+                "note": "本题 $4y^2=(2y)^2$，令 $a=x$，$b=2y$：条件化成 $a^2+b^2-ab=1$，目标 $\\frac x2+y=\\frac{a+b}2$，都对称。"
+              },
+              "title": "构造对称",
+              "position": 2
+            },
+            "substitution": {
+              "refs": [
+                "method-sum-product"
+              ],
+              "title": "和积换元",
+              "position": 3
+            },
+            "condition": {
+              "refs": [
+                "method-sum-product#identities",
+                "skill-equality-transform"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题 $a^2+b^2-ab=s^2-3p$，条件化成 $s^2-3p=1$。"
+              },
+              "title": "改写条件",
+              "position": 4
+            },
+            "inequality": {
+              "refs": [
+                "square-nonnegative"
+              ],
+              "tip": {
+                "ref": "square-nonnegative",
+                "resource": "square-area",
+                "note": "本题由 $(a-b)^2\\ge0$ 得 $p\\le\\frac{s^2}4$，代入 $p=\\frac{s^2-1}3$ 得 $s^2\\le4$。"
+              },
+              "title": "选不等式",
+              "position": 5
+            },
+            "range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $s^2\\le4$ 得 $-2\\le s\\le2$，目标 $\\frac x2+y=\\frac s2$，范围是 $[-1,1]$。"
+              },
+              "title": "解出范围",
+              "position": 6
+            },
+            "equality": {
+              "refs": [
+                "square-nonnegative#nonnegative",
+                "function-range-extrema#attainability",
+                "square-nonnegative"
+              ],
+              "tip": {
+                "ref": "square-nonnegative",
+                "resource": "square-area",
+                "note": "本题端点要 $a=b$，即 $x=2y$；代入得 $x=\\pm1$，$y=\\pm\\frac12$，端点取得到。"
+              },
+              "title": "验证端点",
+              "position": 7
+            }
+          },
+          "label": "找对称结构，和积换元"
+        }
+      },
+      "statement": "若实数 $x,y$ 满足 $x^2+4y^2-2xy=1$，求 $\\frac x2+y$ 的取值范围。"
+    },
+    "basic-inequality-q30": {
+      "label": "Q30",
+      "path": "/1/q30/",
+      "types": [
+        "type-sum-product-extremum"
+      ],
+      "routes": {
+        "symmetric": {
+          "methods": [
+            "method-sum-product-range"
+          ],
+          "steps": {
+            "symmetry": {
+              "refs": [
+                "method-sum-product#identities"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题交换 $a$、$b$ 后，$2ab=a+2b+3$ 变成 $2ab=b+2a+3$，$a+2b$ 也变了，都不对称。"
+              },
+              "title": "识别对称结构",
+              "position": 1
+            },
+            "construct": {
+              "refs": [
+                "method-substitution",
+                "method-sum-product#identities"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "case": "construct",
+                "note": "本题令 $x=a$，$y=2b$：条件 $2ab=a+2b+3$ 化成 $xy=x+y+3$，目标 $a+2b=x+y$，都对称。"
+              },
+              "title": "构造对称",
+              "position": 2
+            },
+            "substitution": {
+              "refs": [
+                "method-sum-product"
+              ],
+              "title": "和积换元",
+              "position": 3
+            },
+            "condition": {
+              "refs": [
+                "method-sum-product#identities",
+                "skill-equality-transform"
+              ],
+              "tip": {
+                "ref": "method-sum-product#identities",
+                "resource": "sum-product-identities",
+                "note": "本题 $xy=x+y+3$，即 $p=s+3$。"
+              },
+              "title": "改写条件",
+              "position": 4
+            },
+            "inequality": {
+              "refs": {
+                "field": "inequality_form",
+                "options": {
+                  "p_le": [
+                    "square-nonnegative#sum-product",
+                    "method-sum-product#feasible"
+                  ],
+                  "s_ge": [
+                    "amgm-formula#formula",
+                    "skill-apply-amgm",
+                    "method-amgm-direct#bound"
+                  ]
+                }
+              },
+              "tip": {
+                "field": "inequality_form",
+                "options": {
+                  "p_le": {
+                    "ref": "square-nonnegative#sum-product",
+                    "resource": "square-area",
+                    "note": "本题由 $(x-y)^2\\ge0$ 得 $p\\le\\frac{s^2}4$，代入 $p=s+3$ 得 $s^2-4s-12\\ge0$。"
+                  },
+                  "s_ge": {
+                    "ref": "amgm-formula#formula",
+                    "resource": "amgm-semicircle",
+                    "case": "apply",
+                    "note": "本题 $x,y>0$，$s\\ge2\\sqrt p$，代入 $p=s+3$ 得 $s\\ge2\\sqrt{s+3}$，两边平方得 $s^2-4s-12\\ge0$。"
+                  }
+                }
+              },
+              "title": "选不等式",
+              "position": 5
+            },
+            "solve": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $s^2-4s-12=(s+2)(s-6)\\ge0$，得 $s\\le-2$ 或 $s\\ge6$；又 $s=x+y>0$，所以 $s\\ge6$。"
+              },
+              "title": "解不等式",
+              "position": 6
+            },
+            "equality": {
+              "refs": [
+                "square-nonnegative#nonnegative",
+                "function-range-extrema#attainability",
+                "square-nonnegative"
+              ],
+              "tip": {
+                "ref": "square-nonnegative",
+                "resource": "square-area",
+                "note": "本题取等要 $x=y$，又 $s=6$，所以 $x=y=3$，即 $a=3$，$b=\\frac32$。"
+              },
+              "title": "验证取等",
+              "position": 7
+            }
+          },
+          "label": "找对称结构，和积换元"
+        },
+        "elimination": {
+          "methods": [
+            "method-amgm-direct"
+          ],
+          "steps": {
+            "eliminate": {
+              "refs": [
+                "method-elimination"
+              ],
+              "title": "消元定范围",
+              "position": 1
+            },
+            "split": {
+              "refs": [
+                "method-fraction-split"
+              ],
+              "tip": {
+                "ref": "method-fraction-split",
+                "resource": "fraction-split-degree",
+                "note": "本题 $\\frac{a+3}{a-1}=1+\\frac4{a-1}$，所以 $a+2b=a+1+\\frac4{a-1}=(a-1)+\\frac4{a-1}+2$。"
+              },
+              "title": "分式分离",
+              "position": 2
+            },
+            "structure": {
+              "refs": [
+                "method-amgm-direct#check",
+                "amgm-formula#checklist"
+              ],
+              "tip": {
+                "ref": "amgm-formula#checklist",
+                "resource": "amgm-semicircle",
+                "case": "fixed",
+                "note": "本题 $(a-1)\\cdot\\frac4{a-1}=4$ 是定值（$a>1$）：定积求和。"
+              },
+              "title": "观察和积结构",
+              "position": 3
+            },
+            "amgm": {
+              "refs": [
+                "skill-apply-amgm",
+                "amgm-formula#formula"
+              ],
+              "tip": {
+                "ref": "amgm-formula#formula",
+                "resource": "amgm-semicircle",
+                "case": "apply",
+                "note": "本题 $(a-1)+\\frac4{a-1}\\ge2\\sqrt4=4$，$a+2b\\ge6$。"
+              },
+              "title": "应用基本不等式",
+              "position": 4
+            },
+            "equality": {
+              "refs": [
+                "method-amgm-direct#attain",
+                "amgm-formula#attainability"
+              ],
+              "tip": {
+                "ref": "amgm-formula#attainability",
+                "resource": "amgm-semicircle",
+                "case": "equal",
+                "note": "本题取等要 $a-1=2$，即 $a=3$，$b=\\frac32$，取得到。"
+              },
+              "title": "验证取等",
+              "position": 5
+            }
+          },
+          "label": "消元后分式分离"
+        }
+      },
+      "statement": "已知 $a>0$，$b>0$，且 $2ab=a+2b+3$，求 $a+2b$ 的最小值。"
+    }
+  },
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

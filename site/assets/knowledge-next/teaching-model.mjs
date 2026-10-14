@@ -41,8 +41,10 @@ export function confirmedChoices(steps = [], state) {
 
 export function previewHref(path, learning = false) {
   const url = new URL(path, 'https://preview.invalid');
-  url.searchParams.set('knowledge', 'next');
-  if (learning) url.searchParams.set('learning', '1');
+  url.searchParams.delete('knowledge');
+  url.searchParams.delete('learning');
+  url.searchParams.delete('preview');
+  if (!learning) url.searchParams.set('preview', '1');
   return url.pathname + url.search + url.hash;
 }
 
@@ -50,7 +52,11 @@ export const libraryPath = (path) => path.replace(/[^/]+\/$/, '');
 
 // Links from a problem page back to its library or to another associated problem stay in the preview.
 export function previewTarget(url, { paths, library, topic, learning = false }) {
-  if (library !== '/' && url.pathname === library) return learning ? `${topic}?learning=1` : topic;
-  if (paths.includes(url.pathname)) return previewHref(url.pathname + url.search + url.hash, learning);
+  const params = url.searchParams;
+  const explicitPreview = params.get('preview') === '1' ||
+    (params.get('knowledge') === 'next' && params.get('learning') !== '1');
+  const record = learning && !explicitPreview;
+  if (library !== '/' && url.pathname === library) return previewHref(url.pathname + url.search + url.hash, record);
+  if (paths.includes(url.pathname)) return previewHref(url.pathname + url.search + url.hash, record);
   return null;
 }

@@ -3,7 +3,7 @@
   "kind": "knowledge",
   "label": "不等式的性质",
   "summary": "不等式的方向随运算条件变化，同乘或同除负数必须改变方向。",
-  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "source": "人教 A 版必修第一册第二章",
   "prerequisites": [
     "real-order"
   ],

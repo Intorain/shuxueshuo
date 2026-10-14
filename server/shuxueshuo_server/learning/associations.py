@@ -78,23 +78,14 @@ def snapshot(c, problem, route):
             'types': types, 'steps': steps, 'association_hash': row['association_hash']}
 
 
-def directory_progress(c, scope, statuses):
+def directory_progress_batch(c, scopes, statuses):
+    """Read the public hierarchy once, then aggregate each requested directory."""
+    scopes = list(dict.fromkeys(scopes))
     nodes = {n['id']: dict(n) for n in c.execute(text(
         'SELECT id,kind,label FROM knowledge_nodes WHERE is_active')).mappings()}
-    if scope not in nodes or nodes[scope]['kind'] not in DIRECTORY_KINDS:
+    if any(scope not in nodes or nodes[scope]['kind'] not in DIRECTORY_KINDS for scope in scopes):
         raise HTTPException(404, '没有找到教材、章或节。')
     edges = list(c.execute(text("SELECT source_id,target_id,relation_type FROM knowledge_edges WHERE relation_type IN ('contains','extends')")).mappings())
-    sections, pending, visited = set(), [scope], set()
-    while pending:
-        source = pending.pop()
-        if source in visited:
-            continue
-        visited.add(source)
-        if nodes[source]['kind'] == 'section':
-            sections.add(source)
-        else:
-            pending.extend(e['target_id'] for e in edges if e['source_id'] == source
-                           and e['target_id'] in nodes and nodes[e['target_id']]['kind'] in DIRECTORY_KINDS)
     index = {n['node_id']: n for n in statuses}
 
     def count(rows):
@@ -102,12 +93,30 @@ def directory_progress(c, scope, statuses):
                 'statuses': {s: sum(r['status'] == s for r in rows)
                              for s in ('unassessed', 'mastered', 'needs_review')}}
 
-    result = {'scope': scope, 'label': nodes[scope]['label']}
-    for relation in ('contains', 'extends'):
-        ids = {e['target_id'] for e in edges if e['source_id'] in sections
-               and e['relation_type'] == relation and e['target_id'] in index}
-        rows = [index[i] for i in sorted(ids)]
-        result[relation] = count(rows) | {
-            'node_ids': sorted(ids),
-            'by_kind': {kind: count([r for r in rows if r['kind'] == kind]) for kind in ABILITY_KINDS}}
-    return result
+    def aggregate(scope):
+        sections, pending, visited = set(), [scope], set()
+        while pending:
+            source = pending.pop()
+            if source in visited:
+                continue
+            visited.add(source)
+            if nodes[source]['kind'] == 'section':
+                sections.add(source)
+            else:
+                pending.extend(e['target_id'] for e in edges if e['source_id'] == source
+                               and e['target_id'] in nodes and nodes[e['target_id']]['kind'] in DIRECTORY_KINDS)
+        result = {'scope': scope, 'label': nodes[scope]['label']}
+        for relation in ('contains', 'extends'):
+            ids = {e['target_id'] for e in edges if e['source_id'] in sections
+                   and e['relation_type'] == relation and e['target_id'] in index}
+            rows = [index[i] for i in sorted(ids)]
+            result[relation] = count(rows) | {
+                'node_ids': sorted(ids),
+                'by_kind': {kind: count([r for r in rows if r['kind'] == kind]) for kind in ABILITY_KINDS}}
+        return result
+
+    return [aggregate(scope) for scope in scopes]
+
+
+def directory_progress(c, scope, statuses):
+    return directory_progress_batch(c, [scope], statuses)[0]

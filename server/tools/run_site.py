@@ -7,6 +7,7 @@ Install/migrate it first (see docs/site-login-local-testing.md).
 
 import argparse
 import os
+import re
 import secrets
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
@@ -14,8 +15,10 @@ from types import SimpleNamespace
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from starlette.exceptions import HTTPException
 
 from shuxueshuo_server.auth.api import install_auth
 from shuxueshuo_server.auth.config import AuthConfig
@@ -35,6 +38,39 @@ class LocalModelBudget:
 
     def failed(self, session_id):
         pass
+
+
+class SiteStaticFiles(StaticFiles):
+    """Mirror the public Nginx cache and namespace redirect policy locally."""
+
+    async def get_response(self, path, scope):
+        if path == 'knowledge-next':
+            target = '/knowledge/'
+        elif path.startswith('knowledge-next/') and not (
+            path == 'knowledge-next/assets' or path.startswith('knowledge-next/assets/')
+        ):
+            target = '/knowledge/' + path.removeprefix('knowledge-next/')
+        else:
+            target = None
+        if target is not None:
+            if scope['path'].endswith('/') and not target.endswith('/'):
+                target += '/'
+            query = scope.get('query_string', b'').decode('latin-1')
+            return RedirectResponse(
+                target + ('?' + query if query else ''), status_code=301,
+                headers={'Cache-Control': 'no-cache'},
+            )
+        try:
+            response = await super().get_response(path, scope)
+        except HTTPException as error:
+            error.headers = {**(error.headers or {}), 'Cache-Control': 'no-cache'}
+            raise
+        hashed = re.match(r'^knowledge(?:-next)?/assets/[0-9a-f]{12}/', path)
+        response.headers['Cache-Control'] = (
+            'public, max-age=31536000, immutable'
+            if hashed and response.status_code in (200, 206, 304) else 'no-cache'
+        )
+        return response
 
 
 def create_local_app(settings, config):
@@ -61,7 +97,7 @@ def create_local_app(settings, config):
     app = FastAPI(lifespan=lifespan)
     install_auth(app, config=config)
     app.include_router(create_router(budget=LocalModelBudget(), enable_explanation=True))
-    app.mount("/", StaticFiles(directory=REPO / "site", html=True), name="site")
+    app.mount("/", SiteStaticFiles(directory=REPO / "site", html=True), name="site")
     return app
 
 

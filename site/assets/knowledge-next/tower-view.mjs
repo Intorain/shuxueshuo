@@ -1,3 +1,4 @@
+import {isPreview, modeHref} from '../practice/learning-mode.mjs';
 /* 3D knowledge city: every chapter is a tower. Built chapters are full knowledge towers; the rest are
    scaffolding from the textbook outline. Three levels: city → tower → node. Names are DOM buttons over the
    WebGL canvas so they stay sharp, clickable and reachable with Tab. */
@@ -163,7 +164,7 @@ function mount() {
     group.add(hit);
     towerHits.push(hit);
     const top = c.built ? TOWER.chapterY : ROOF + 150;
-    const cityLabel = label(group, `<button type="button" data-chapter="${chapterId}" style="--sc:${color}"><small>${h(chapterName(c))}</small><b>${h(c.label)}</b><span>${c.built ? `已录入 · ${nodeCount(c)} 个节点` : c.partial ? `部分录入 · ${nodeCount(c)} 个节点` : `建设中 · ${c.sections.length} 节`}</span></button>`, `city-tower${c.built ? ' is-built' : c.partial ? ' is-partial' : ''}`, new THREE.Vector3(0, top + 130, 0), [0.5, 1]);
+    const cityLabel = label(group, `<div class="city-tower-card" style="--sc:${color}"><button type="button" data-chapter="${chapterId}"><small>${h(chapterName(c))}</small><b>${h(c.label)}</b><span>${c.built ? `已录入 · ${nodeCount(c)} 个节点` : c.partial ? `部分录入 · ${nodeCount(c)} 个节点` : `建设中 · ${c.sections.length} 节`}</span></button>${c.node ? `<div data-progress-scope="${c.node}" data-progress-compact></div>` : ''}</div>`, `city-tower${c.built ? ' is-built' : c.partial ? ' is-partial' : ''}`, new THREE.Vector3(0, top + 130, 0), [0.5, 1]);
     cityLabels.set(chapterId, cityLabel.element);
     cityAnchors.push({id: chapterId, object: cityLabel, element: cityLabel.element, built: recorded(c), small: false, hidden: false});
     if (c.built) buildTower(info);
@@ -279,7 +280,7 @@ function mount() {
       const element = document.createElement('div');
       element.className = 'tower-label is-away';
       element.dataset.kind = n.kind;
-      element.innerHTML = `<button type="button" data-node="${n.id}" aria-label="${kindText(n)}：${h(n.label)}" tabindex="-1"><span>${h(n.label)}</span></button>`;
+      element.innerHTML = `<button type="button" data-node="${n.id}" data-learning-node="${n.id}" aria-label="${kindText(n)}：${h(n.label)}" tabindex="-1"><span>${h(n.label)}</span></button>`;
       const name = new THREE.CSS2DObject(element);
       name.center.set(0.5, 0);
       name.position.set(0, ORG.includes(n.kind) ? -(n.kind === 'chapter' ? 34 : 24) : -15, 0);
@@ -718,43 +719,50 @@ function mount() {
       const r = panel.getBoundingClientRect();
       if (r.width && r.height && !panel.hidden) placed.push({l: r.left - origin.left, r: r.right - origin.left, t: r.top - origin.top, b: r.bottom - origin.top});
     }
-    if (state.level === 'tower') {
-      const own = portalAnchors.filter(p => p.chapter === state.chapter).map(p => {
-        p.object.getWorldPosition(anchor);
-        const distance = anchor.distanceTo(camera.position);
-        anchor.project(camera);
-        return {p, distance, x: (anchor.x + 1) / 2 * size.width, y: (1 - anchor.y) / 2 * size.height, front: anchor.z < 1};
-      }).sort((a, b) => a.distance - b.distance);
-      for (const {p, x, y, front} of own) {
-        const w = p.element.offsetWidth / 2, box = {l: x - w - 4, r: x + w + 4, t: y - p.element.offsetHeight - 4, b: y + 2};
-        const hidden = !front || placed.some(q => box.l < q.r && box.r > q.l && box.t < q.b && box.b > q.t);
-        if (!hidden) placed.push(box);
-        if (hidden !== p.hidden) { p.hidden = hidden; p.element.classList.toggle('is-crowded', hidden); }
-      }
-    }
+    const own = state.level !== 'tower' ? [] : portalAnchors.filter(p => p.chapter === state.chapter).map(p => {
+      p.object.getWorldPosition(anchor);
+      const distance = anchor.distanceTo(camera.position);
+      anchor.project(camera);
+      return {p, distance, x: (anchor.x + 1) / 2 * size.width, y: (1 - anchor.y) / 2 * size.height, front: anchor.z < 1};
+    }).sort((a, b) => a.distance - b.distance);
     const list = cityAnchors.map(a => {
       a.object.getWorldPosition(anchor);
       const distance = anchor.distanceTo(camera.position);
       anchor.project(camera);
       return {a, distance, x: (anchor.x + 1) / 2 * size.width, y: (1 - anchor.y) / 2 * size.height, front: anchor.z < 1};
     }).sort((p, q) => (q.a.id === state.hoverTower) - (p.a.id === state.hoverTower) || q.a.built - p.a.built || p.distance - q.distance);
-    for (const {a, distance, x, y, front} of list) {
+    const ground = state.level !== 'city' ? [] : groundLabels.map(g => {
+      g.getWorldPosition(anchor).project(camera);
+      return {g, x: (anchor.x + 1) / 2 * size.width, y: (1 - anchor.y) / 2 * size.height, front: anchor.z < 1};
+    });
+    // Size-changing writes first, then every read, then the visibility writes,
+    // so one frame costs at most one layout instead of one per label.
+    for (const {a, distance} of list) {
       const small = !a.built && a.id !== state.hoverTower && distance > smallFrom;
-      if (small !== a.small) { a.small = small; a.element.classList.toggle('is-small', small); a.size = null; }
+      if (small !== a.small) { a.small = small; a.element.classList.toggle('is-small', small); }
+    }
+    for (const item of own) item.size = {w: item.p.element.offsetWidth, h: item.p.element.offsetHeight};
+    // Progress and its retry control can change the label's height after it
+    // first appears. Include the whole non-interactive card in collision tests.
+    for (const item of list) { const card = item.a.element.firstElementChild; item.a.size = {w: card.offsetWidth, h: card.offsetHeight}; }
+    for (const item of ground) item.size = {w: item.g.element.offsetWidth, h: item.g.element.offsetHeight};
+    const overlaps = box => placed.some(q => box.l < q.r && box.r > q.l && box.t < q.b && box.b > q.t);
+    for (const {p, x, y, front, size: s} of own) {
+      const box = {l: x - s.w / 2 - 4, r: x + s.w / 2 + 4, t: y - s.h - 4, b: y + 2};
+      const hidden = !front || overlaps(box);
+      if (!hidden) placed.push(box);
+      if (hidden !== p.hidden) { p.hidden = hidden; p.element.classList.toggle('is-crowded', hidden); }
+    }
+    for (const {a, x, y, front} of list) {
       if (a.id === state.chapter && state.level === 'tower') continue;
-      const button = a.element.firstElementChild;
-      a.size ||= {w: button.offsetWidth, h: button.offsetHeight};
       const box = {l: x - a.size.w / 2 - 4, r: x + a.size.w / 2 + 4, t: y - a.size.h - 4, b: y + 2};
       const pinned = a.built || a.id === state.hoverTower;
-      const hidden = !front || (!pinned && placed.some(p => box.l < p.r && box.r > p.l && box.t < p.b && box.b > p.t));
+      const hidden = !front || (!pinned && overlaps(box));
       if (!hidden) placed.push(box);
       if (hidden !== a.hidden) { a.hidden = hidden; a.element.classList.toggle('is-crowded', hidden); }
     }
-    if (state.level !== 'city') return;
-    for (const g of groundLabels) {
-      g.getWorldPosition(anchor).project(camera);
-      const x = (anchor.x + 1) / 2 * size.width, y = (1 - anchor.y) / 2 * size.height, w = g.element.offsetWidth / 2, hh = g.element.offsetHeight / 2;
-      const hidden = anchor.z >= 1 || placed.some(p => x - w < p.r && x + w > p.l && y - hh < p.b && y + hh > p.t);
+    for (const {g, x, y, front, size: s} of ground) {
+      const hidden = !front || overlaps({l: x - s.w / 2, r: x + s.w / 2, t: y - s.h / 2, b: y + s.h / 2});
       g.element.classList.toggle('is-crowded', hidden);
     }
   }
@@ -773,7 +781,7 @@ function mount() {
 /* Drawer, crumbs, bottom bar, search and URL state. */
 const drawer = () => $('#tower-drawer'), selection = () => $('#tower-selection');
 const graph2D = n => {
-  if (!n.home) return '/knowledge-next/';
+  if (!n.home) return '/knowledge/';
   const scope = ORG.includes(n.kind) ? n.id : sectionsOf(n.id)[0] || chapters.get(n.home).node;
   const v = ORG.includes(n.kind) ? 'curriculum' : n.kind === 'knowledge' ? 'knowledge' : 'solution';
   return `${chapterPath(n.home)}?scope=${scope}&view=${v}&node=${n.id}&expand=${n.id}`;
@@ -800,7 +808,7 @@ function showChapterCard(c) {
   drawer().hidden = false;
   state.card = true;
   const own = towers.get(c.id).graph?.nodes.filter(n => !ORG.includes(n.kind)) || [];
-  selection().innerHTML = `<p class="drawer-kind" data-kind="chapter"><i aria-hidden="true"></i>章 · ${c.built ? '已录入' : c.partial ? '部分录入' : '建设中'}</p><h2>${h(c.label)}</h2>
+  selection().innerHTML = `<p class="drawer-kind" data-kind="chapter"><i aria-hidden="true"></i>章 · ${c.built ? '已录入' : c.partial ? '部分录入' : '建设中'}</p><h2>${h(c.label)}</h2>${c.node ? `<div data-progress-scope="${c.node}"></div>` : ''}
 <p class="tower-home">${h(book.label)} · 第 ${c.number} 章<span>· ${h(strand.label)}${strand.center ? '' : '主线'}</span></p>
 <p class="drawer-summary">${c.built ? '本章的公共知识节点已录入，可以在塔里逐个查看。' : c.partial ? `本章目前只录入了被其他章引用的 ${own.length} 个节点，其余各节仍按教材目录预留。跨章连线从这里通向引用它们的塔。` : `本章尚未录入公共知识节点。塔身按教材目录预留了 ${c.sections.length} 节的位置，录入后会像第二章一样点亮。`}</p>
 ${recorded(c) ? `<div class="drawer-actions"><a class="drawer-primary" href="${chapterPath(c.id)}">打开本章平面图谱 ↗</a></div>` : ''}
@@ -817,7 +825,7 @@ function showSelection() {
   drawer().hidden = !n;
   if (!n) { selection().replaceChildren(); placeDrawer(); return; }
   const out = graph.edges.filter(e => e.from === n.id), inc = graph.edges.filter(e => e.to === n.id), sections = sectionsOf(n.id).map(id => byId.get(id));
-  selection().innerHTML = `<p class="drawer-kind" data-kind="${n.kind}"><i aria-hidden="true"></i>${kindText(n)}</p><h2>${h(n.label)}</h2>
+  selection().innerHTML = `<p class="drawer-kind" data-kind="${n.kind}"><i aria-hidden="true"></i>${kindText(n)}</p><h2>${h(n.label)}</h2>${ORG.includes(n.kind)?`<div data-progress-scope="${n.id}"></div>`:`<div data-learning-node="${n.id}" data-learning-full></div>`}
 ${sections.length ? `<p class="tower-home">位于 ${sections.map(s => `<button type="button" data-section-pick="${s.id}">${h(s.label.split(' ')[0])}</button>`).join('')}${sections.length > 1 ? '<span>· 多节共用</span>' : ''}</p>` : ''}
 <p class="drawer-summary">${h(n.summary)}</p>
 <div class="drawer-actions">${ORG.includes(n.kind) ? `<a class="drawer-primary" href="${graph2D(n)}">在平面图谱中查看 ↗</a>` : `<a class="drawer-primary" href="${nodeHref(n.id)}">${detailLabel(n)} ↗</a><a class="drawer-secondary" href="${graph2D(n)}">在平面图谱中查看</a>`}${n.steps?.length ? '<button type="button" id="tower-play" class="drawer-play">▶ 演示解题路径</button>' : ''}</div>
@@ -841,7 +849,7 @@ function updateURL() {
   else if (state.section) p.set('section', state.section);
   else if (state.level === 'tower') p.set('chapter', state.chapter);
   else if (state.strand) p.set('strand', state.strand);
-  history.replaceState(null, '', `${location.pathname}${p.size ? `?${p}` : ''}`);
+  history.replaceState(null, '', modeHref(`${location.pathname}${p.size ? `?${p}` : ''}`, {preview:isPreview(location.search)}, location.href));
 }
 function refresh() { renderChrome(); updateURL(); view.apply(); view.touch(); }
 function enterTower(id, {fly = true} = {}) {
@@ -972,7 +980,7 @@ async function boot() {
     return;
   }
   try {
-    const [g, c] = await Promise.all(['/knowledge-next/graph.json', '/knowledge-next/city.json'].map(async url => { const res = await fetch(url, {cache: 'no-cache'}); if (!res.ok) throw new Error(String(res.status)); return res.json(); }));
+    const [g, c] = await Promise.all(['/knowledge/graph.json', '/knowledge/city.json'].map(async url => { const res = await fetch(url, {cache: 'no-cache'}); if (!res.ok) throw new Error(String(res.status)); return res.json(); }));
     graph = g; city = c;
   } catch {
     status('知识图谱数据加载失败，请检查网络后重试。');

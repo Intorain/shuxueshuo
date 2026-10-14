@@ -3,7 +3,7 @@
   "kind": "knowledge",
   "label": "平方的非负性",
   "summary": "任何实数的平方非负，等于零恰好要求原数为零；由此可以比较二次表达式。",
-  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "source": "人教 A 版必修第一册第二章",
   "entries": [
     {
       "id": "nonnegative",

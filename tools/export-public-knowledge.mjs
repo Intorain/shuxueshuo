@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import path from 'node:path';
+import { realpath } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { loadSources, repoRoot } from './lib/public-knowledge-sources.mjs';
 import { validateGraph } from '../site/assets/knowledge-next/model.mjs';
@@ -12,7 +12,7 @@ export async function exportContent(root = repoRoot) {
   const teaching = await loadTeaching(root, nodes, manifest);
   return exportRows(root, { nodes, edges, manifest, teaching });
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && await realpath(process.argv[1]) === await realpath(fileURLToPath(import.meta.url))) {
   try {
     if (process.argv.slice(2).some((arg) => arg !== '--check')) throw Error('Usage: node tools/export-public-knowledge.mjs [--check]');
     const data = await exportContent();

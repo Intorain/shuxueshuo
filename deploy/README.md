@@ -1,6 +1,6 @@
 # 部署
 
-服务器上的仓库路径：**`/home/ronghao/code/shuxueshuo`**。站点根目录：**`/home/ronghao/code/shuxueshuo/site`**。
+服务器上的仓库路径：**`/home/ronghao/code/shuxueshuo`**。站点根目录：**`/home/ronghao/code/shuxueshuo/site`**（`git pull` 更新，发布包不含静态站）。
 
 **日常发布（产品镜像 / Studio / Nginx 怎么发）见：[release.md](release.md)。**
 
@@ -8,7 +8,7 @@
 
 更细的 CentOS 7、故障排查与接口说明见：[server/README.md](../server/README.md)。
 
-主站静态文件压缩在 `deploy/nginx/shuxueshuo.conf` 的两个静态 `location /` 中配置：HTML、JS、CSS、JSON 等超过 1 KiB 时按客户端协商使用 gzip，保留原生 ETag / Last-Modified 协商缓存。高中题库优先使用页面已加载的目录脚本，避免再下载一份完整 JSON。发布需同步 `site/` 并安装此主站 Nginx 配置，执行 `sudo nginx -t && sudo systemctl reload nginx`；无需重建产品 Docker 镜像。用真实 GET 检查压缩（HEAD 不触发响应体压缩）：
+主站静态文件压缩在 `deploy/nginx/shuxueshuo.conf` 的两个静态 `location /` 中配置：HTML、JS、CSS、JSON 等超过 1 KiB 时按客户端协商使用 gzip，保留原生 ETag / Last-Modified 协商缓存。高中题库优先使用页面已加载的目录脚本，避免再下载一份完整 JSON。页面用 `git pull` 更新；Nginx 配置变化时安装此主站配置，执行 `sudo nginx -t && sudo systemctl reload nginx`。教学内容版本变化时须与学习库一起发布，见 [release.md](release.md)。用真实 GET 检查压缩（HEAD 不触发响应体压缩）：
 
 ```bash
 curl -sS --compressed -D - -o /dev/null 'https://shuxueshuo.com/assets/js/senior-high-catalog-data.js?v=29'
@@ -111,11 +111,13 @@ uv sync --frozen
 
 ## Nginx
 
-1. 复制配置（模板已包含 **`location /api/`** → `127.0.0.1:8000`，与静态站点同文件）：
+1. 复制配置（模板已包含 **`location /api/`** → `127.0.0.1:8000`，与静态站点同文件；root 为仓库 `site/`）：
 
    ```bash
    sudo cp /home/ronghao/code/shuxueshuo/deploy/nginx/shuxueshuo.conf /etc/nginx/conf.d/shuxueshuo.conf
    ```
+
+   Nginx worker 用户须能遍历仓库路径并读取 `site/`。
 
 2. **证书路径**（已与模板一致）：
 
@@ -165,37 +167,15 @@ uv sync --frozen
 
 ## 更新站点与 API
 
-**静态文件**：在服务器执行 `git pull`，或从本机 rsync `site/`：
+主站 HTML/CSS/JS 用服务器 `git pull` 更新。`git pull` 不会更新正在运行的镜像：API 与教学原稿使用产品发布包，按[服务器发布手册](release.md)执行 `deploy`，再把仓库前进到同一提交，`verify-release` 核对镜像、学习库与仓库 `site/` 的内容版本后启动。API 依赖变化须重建配套镜像，生产容器不使用宿主机 `uv sync` 或旧 systemd 服务更新。
 
-此方式适用于纯外观与普通静态页面。若同时改变交互题目的步骤、教师 JSON、知识节点／图解正文或小题，
-还须更新配套镜像并导入数据库，见[个人知识图谱内容发布](product/README.md#个人知识图谱内容发布)。
-`git pull` 不会更新正在运行的镜像。产品 Docker 环境的 API 发布以[服务器发布手册](release.md)为准。
+仅页面、样式或图片变化（教学内容版本不变）：
 
 ```bash
 cd /home/ronghao/code/shuxueshuo && git pull
 ```
 
-```bash
-rsync -avz --delete ./site/ ronghao@<ECS IP>:/home/ronghao/code/shuxueshuo/site/
-```
-
-**API 依赖变更时**（`server/pyproject.toml` 或 `uv.lock` 有更新）：
-
-```bash
-cd /home/ronghao/code/shuxueshuo/server
-export PATH="$HOME/.local/bin:$PATH"
-uv sync --frozen
-sudo systemctl restart shuxueshuo-api
-```
-
-**仅静态 HTML/CSS/JS 变更**：一般只需覆盖 `site/`；微信分享脚本若仍指向同源 **`/api/wechat/jssdk-config`**，无需重启 API。
-
-若 **Nginx 配置**有更新：
-
-```bash
-sudo cp /home/ronghao/code/shuxueshuo/deploy/nginx/shuxueshuo.conf /etc/nginx/conf.d/shuxueshuo.conf
-sudo nginx -t && sudo systemctl reload nginx
-```
+部署失败时按[正式替换手册](product/learning-rollout.md#维护窗口与首次替换)判断恢复阶段：事务提交前回滚旧库，仓库不前进，用旧包 `resume`；提交后保留新库，用目标包 `resume`。未进入停写阶段的预检失败无需恢复登录。跨版本回滚须让数据库、API 与仓库页面一起匹配。
 
 ---
 

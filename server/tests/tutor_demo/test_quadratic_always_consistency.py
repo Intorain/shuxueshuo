@@ -262,19 +262,38 @@ def test_condition_step_uses_three_fixed_label_roles():
                     assert re.fullmatch(pattern, label), (name, node['id'], label)
 
 def test_condition_step_links_the_extremum_knowledge_tip():
-    knowledge = (ROOT / 'site/assets/explain/knowledge/extremum-transfer.js').read_text()
+    source = ROOT / 'site/data/knowledge-next'
+    topic = json.loads((source / 'topics/quadratic-always.json').read_text())
+    catalog = json.loads((source / 'catalog.json').read_text())
+    node = json.loads((source / 'nodes/function-range-extrema.json').read_text())
+    assert any(entry['id'] == 'quantified' for entry in node['entries'])
+    resource = catalog['resources']['quantified-horizontal-line']
+    knowledge = (ROOT / 'site' / resource['module'].lstrip('/')).read_text()
     cells = re.search(r'const CELLS = \{(.*?)\};', knowledge, re.S)[1]
-    assert "import(new URL('../explain/explain.js?v=2', runtimeSrc)" in (ROOT / 'site/assets/practice/runtime.js').read_text()
+    runtime = (ROOT / 'site/assets/practice/runtime.js').read_text()
+    assert "fetch('/knowledge/teaching/manifest.json'" in runtime
+    assert 'module.createPreview(lesson, host' in runtime
+    associations = (ROOT / 'site/assets/knowledge-next/practice-preview.mjs').read_text()
+    assert '/knowledge/teaching/problems/${encodeURIComponent(lesson.id)}.json' in associations
+    assert '/knowledge/teaching/resources/${encodeURIComponent(id)}.json' in associations
     seen = 0
     for name, text, config in all_pages():
-        for nodes in config['routes'].values():
+        problem = topic['problems'][f'quadratic-always-{name}']
+        for route, nodes in config['routes'].items():
             for node in nodes:
                 if not node['id'].endswith('_condition'):
                     continue
-                tip = node.get('tip')
-                assert tip and tip['id'] == 'extremum-transfer', (name, node['id'])
+                old_tip = node.get('tip')
+                assert old_tip and old_tip['id'] == 'extremum-transfer', (name, node['id'])
+                step = problem['routes'][route]['steps'][node['id']]
+                tip = step['tip']
+                assert {'skill-quantified-range', 'function-range-extrema#quantified', 'quantifiers'} <= set(step['refs'])
+                assert tip['ref'] == 'function-range-extrema#quantified'
+                assert tip['resource'] == 'quantified-horizontal-line'
+                assert tip['case'] == old_tip['case'] and tip['note'] == old_tip['note']
                 quantifier = 'exists' if node['question'].startswith('要使存在') else 'forall'
                 assert re.fullmatch(rf'{quantifier}-(gt|lt)', tip['case']), (name, node['id'], tip['case'])
+                assert tip['case'] in resource['cases']
                 assert f"'{tip['case']}': [" in cells, tip['case']
                 assert tip['note'].startswith('本题'), (name, node['id'])
                 seen += 1

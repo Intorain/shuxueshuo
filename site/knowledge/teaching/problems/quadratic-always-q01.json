@@ -1,0 +1,196 @@
+{
+  "topic": "quadratic-always",
+  "id": "quadratic-always-q01",
+  "label": "Q01",
+  "path": "/2/q01/",
+  "types": [
+    "type-quantified-quadratic"
+  ],
+  "routes": {
+    "discriminant": {
+      "methods": [
+        "method-discriminant"
+      ],
+      "steps": {
+        "d_basis": {
+          "refs": [
+            "method-discriminant"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "d_rewrite": {
+          "refs": [
+            "skill-inequality-transform",
+            "skill-simplify"
+          ],
+          "title": "整理不等式",
+          "position": 2
+        },
+        "d_position": {
+          "refs": [
+            "quadratic-function-properties",
+            "quadratic-function-properties#zeros"
+          ],
+          "tip": {
+            "ref": "quadratic-function-properties#zeros",
+            "resource": "parabola-sign-grid",
+            "note": "本题 $g(x)=x^2-2x+a^2-3a-3$ 开口向上，要 $g(x)\\ge0$ 恒成立：带等号，图像可以和横轴相切，但不能穿过。"
+          },
+          "title": "判断图像位置",
+          "position": 3
+        },
+        "d_delta": {
+          "refs": [
+            "quadratic-equation#discriminant",
+            "method-discriminant#conditions",
+            "quadratic-function-properties#zeros"
+          ],
+          "tip": {
+            "ref": "quadratic-function-properties#zeros",
+            "resource": "parabola-sign-grid",
+            "note": "本题要“恒 $\\ge0$”，开口向上时对应 $\\Delta\\le0$：不相交 $\\Delta<0$、相切 $\\Delta=0$ 都满足。"
+          },
+          "title": "建立判别式条件",
+          "position": 4
+        },
+        "d_range": {
+          "refs": [
+            "quadratic-inequality-solve"
+          ],
+          "tip": {
+            "ref": "quadratic-inequality-solve",
+            "resource": "quadratic-sign-reading",
+            "note": "本题 $a^2-3a-4=(a+1)(a-4)\\ge0$，开口向上、带等号，取两根之外并含根：$a\\le-1$ 或 $a\\ge4$。"
+          },
+          "title": "求参数范围",
+          "position": 5
+        },
+        "d_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $a=-1$、$a=4$ 时原不等式化为 $(x-1)^2\\ge0$：图像与横轴相切，原题带等号，两个边界都保留。"
+          },
+          "title": "检查边界",
+          "position": 6
+        }
+      },
+      "label": "判别式法"
+    },
+    "extremum": {
+      "methods": [
+        "method-separation"
+      ],
+      "steps": {
+        "e_basis": {
+          "refs": [
+            "method-separation"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "e_condition": {
+          "refs": [
+            "skill-quantified-range",
+            "function-range-extrema#quantified",
+            "quantifiers"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#quantified",
+            "resource": "quantified-horizontal-line",
+            "case": "forall-lt",
+            "note": "本题 $f(x)\\le c$ 对所有实数 $x$ 成立：恒成立、小于等于，看 $f(x)$ 的最高点，所以 $c\\ge f(x)_{\\max}$。"
+          },
+          "title": "转化为最值条件",
+          "position": 2
+        },
+        "e_extremum": {
+          "refs": [
+            "method-complete-square",
+            "method-square-extremum",
+            "square-nonnegative#nonnegative"
+          ],
+          "tip": {
+            "ref": "method-complete-square",
+            "resource": "complete-square-area",
+            "note": "本题 $-x^2+2x+3=-(x^2-2x)+3=4-(x-1)^2\\le4$，$x=1$ 时取等，最大值是 $4$。"
+          },
+          "title": "求最值",
+          "position": 3
+        },
+        "e_range": {
+          "refs": [
+            "quadratic-inequality-solve"
+          ],
+          "tip": {
+            "ref": "quadratic-inequality-solve",
+            "resource": "quadratic-sign-reading",
+            "note": "本题由 $a^2-3a\\ge4$ 得 $(a+1)(a-4)\\ge0$，开口向上、带等号，取两根之外并含根：$a\\le-1$ 或 $a\\ge4$。"
+          },
+          "title": "求参数范围",
+          "position": 4
+        },
+        "e_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $a=-1$、$a=4$ 时 $a^2-3a=4$，正好等于 $f(x)$ 的最大值；最大值取得到，原题又允许“$\\le$”，两个边界都保留。"
+          },
+          "title": "检查边界",
+          "position": 5
+        }
+      },
+      "label": "分离参数法"
+    }
+  },
+  "statement": "若不等式 $-x^2+2x+3\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ],
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

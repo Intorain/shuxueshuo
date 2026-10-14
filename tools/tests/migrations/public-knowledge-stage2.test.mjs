@@ -14,7 +14,7 @@ const teaching = await loadTeaching(repoRoot, nodes, manifest);
 
 test('stage 2 baseline retains all legacy problem identities and hint branches', async () => {
   assert.deepEqual(teaching.counts, { problems: 39, routes: 50, steps: 259, tips: 219 });
-  const legacy = await json('site/data/knowledge/graph.json');
+  const legacy = await json('server/tests/fixtures/learning-legacy/public/graph.json');
   assert.deepEqual(
     teaching.migration.nodes.map((n) => n.legacy).sort(),
     legacy.nodes.map((n) => n.id).sort()
@@ -26,7 +26,7 @@ test('stage 2 baseline retains all legacy problem identities and hint branches',
       note: b.value.note
     }));
   for (const topic of teaching.topics) {
-    const old = await json(`site/data/knowledge/topics/${topic.id}.json`);
+    const old = await json(`server/tests/fixtures/learning-legacy/public/topics/${topic.id}.json`);
     assert.deepEqual(Object.keys(topic.problems), Object.keys(old.problems));
     for (const [pid, problem] of Object.entries(topic.problems)) {
       assert.equal(problem.path, old.problems[pid].path, pid);
@@ -47,9 +47,9 @@ test('stage 2 baseline accounts for every legacy drill and preserves unedited qu
   const base = 'server/shuxueshuo_server/learning';
   const originals = new Map(),
     migrated = new Map();
-  for (const file of await fs.readdir(path.join(repoRoot, base, 'drills'))) {
+  for (const file of await fs.readdir(path.join(repoRoot, 'server/tests/fixtures/learning-legacy/drills'))) {
     if (!file.endsWith('.json')) continue;
-    const set = await json(`${base}/drills/${file}`);
+    const set = await json(`server/tests/fixtures/learning-legacy/drills/${file}`);
     for (const item of set.items) originals.set(`${set.node}--${item.id}`, item);
   }
   for (const file of await fs.readdir(path.join(repoRoot, base, 'drills-next/sets'))) {

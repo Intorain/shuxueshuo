@@ -1,4 +1,4 @@
-/* Addresses shared by the explainer shell, the knowledge pages and tools/build-knowledge-pages.mjs. */
-export const TOPIC_URL = id => `/data/knowledge/topics/${id}.json?v=3`;
+/* Compatibility addresses into the current public graph. */
+export const TOPIC_URL = id => `/knowledge/teaching/topics/${id}.json`;
 
 export const detailHref = node => `/knowledge/${node}/`;

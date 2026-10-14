@@ -1,8 +1,0 @@
-.kn-mastery { display:inline-block; font:500 12px/1.6 system-ui; white-space:nowrap; border-radius:6px; padding:2px 7px; color:#53636c; background:#edf1f3; }
-.kn-mastery.mastered {color:#076b55;background:#e4f5ed;}
-.kn-mastery.needs_review {color:#905209;background:#fff0d9;}
-.kn-personal {margin:16px 0;padding:14px;border:1px solid #dce8e4;border-radius:12px;line-height:1.7;}
-.kn-personal h3 {font-size:15px;margin:0;}.kn-personal p {font-size:14px;margin:8px 0;}.kn-personal small {color:#657e77;}
-.kn-personal details {margin:8px 0;} .kn-record {overflow-wrap:anywhere;}
-.kg-star .kn-mastery {margin-left:6px;font-size:11px;} .kg-item summary>.kn-mastery {margin-left:auto;}
-.practice-record-status {font-size:13px;color:#58736d;margin:16px 0;}

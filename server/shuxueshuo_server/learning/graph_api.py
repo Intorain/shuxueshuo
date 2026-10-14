@@ -1,12 +1,13 @@
 """Authenticated student data; public content writes only through the publisher."""
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 
-from ..product.db import transaction
+from ..product.db import lock, transaction
 from . import associations, drills, practice
 from .api import Auth, User
 
@@ -54,13 +55,32 @@ def answer(attempt_id: UUID, position: int, body: AnswerDrill, user: User, auth:
 @router.get("/nodes")
 def nodes(user: User, auth: Auth):
     with transaction(auth.db) as c:
-        return {"nodes": drills.statuses(c, UUID(user["id"]))}
+        lock(c, "learning.publish", shared=True)
+        return {"content_version": associations.content_metadata(c)["content_version"],
+                "nodes": drills.statuses(c, UUID(user["id"]))}
 
 
 @router.get('/progress')
 def progress(scope: str, user: User, auth: Auth):
     with transaction(auth.db) as c:
-        return associations.directory_progress(c, scope, drills.statuses(c, UUID(user['id'])))
+        lock(c, 'learning.publish', shared=True)
+        return associations.directory_progress(c, scope, drills.statuses(c, UUID(user['id']))) | {
+            'content_version': associations.content_metadata(c)['content_version']}
+
+
+@router.get('/progress/batch')
+def progress_batch(
+    user: User,
+    auth: Auth,
+    scope: Annotated[
+        list[Annotated[str, Field(min_length=1, max_length=100)]],
+        Query(min_length=1, max_length=100),
+    ],
+):
+    with transaction(auth.db) as c:
+        lock(c, 'learning.publish', shared=True)
+        return {'content_version': associations.content_metadata(c)['content_version'],
+                'progress': associations.directory_progress_batch(c, scope, drills.statuses(c, UUID(user['id'])))}
 
 
 class StartPractice(BaseModel):

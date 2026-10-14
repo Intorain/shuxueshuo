@@ -35,21 +35,21 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
   const page = (title, body) =>
     shell(
       title,
-      `<main id="main" class="workspace teaching-page"><section class="hero"><p class="eyebrow" data-teaching-mode>教学内容 · 关联预览</p><h1>${h(title)}</h1><p data-preview-notice>关联预览，不保存练习记录。</p><nav><a href="/knowledge-next/">知识图谱</a> · <a href="/knowledge-next/topics/">专题与迁移审阅</a></nav></section>${body}</main>`,
+      `<main id="main" class="workspace teaching-page"><section class="hero"><p class="eyebrow" data-teaching-mode>教学关联</p><h1>${h(title)}</h1><p data-preview-notice>本页用于查看教学关联；可进入正式练习或无记录预览。</p><nav><a href="/knowledge/">知识图谱</a> · <a href="/knowledge/topics/">专题与迁移审阅</a></nav></section>${body}</main>`,
       version,
-      `<link rel="stylesheet" href="/knowledge-next/assets/${version}/teaching.css">`
+      `<link rel="stylesheet" href="/knowledge/assets/${version}/teaching.css">`
     );
   const index = teaching.topics
     .map(
       (t) =>
-        `<li><a href="/knowledge-next/topics/${t.id}/">${h(t.label)}</a> · <a href="/knowledge-next/topics/${t.id}/review/">题目、步骤和图解关联表</a></li>`
+        `<li><a href="/knowledge/topics/${t.id}/">${h(t.label)}</a> · <a href="/knowledge/topics/${t.id}/review/">题目、步骤和图解关联表</a></li>`
     )
     .join('');
   outputs.set(
     'topics/index.html',
     page(
       '教学关联迁移',
-      `<p>${teaching.counts.problems} 道题 · ${teaching.counts.routes} 条路线 · ${teaching.counts.steps} 个步骤 · ${teaching.counts.tips} 个提示分支</p><ul>${index}<li><a href="/knowledge-next/topics/drills/">小题去向表 · ${teaching.drills.totalCount} 道</a></li><li><a href="/knowledge-next/topics/migration/">旧新节点身份清单 · ${teaching.migration.nodes.length} 个旧节点</a></li></ul><p>训练分组沿用现有编排；每道题的公共题型单独标注。仅按已提交通过的选择解析关联；候选分支未覆盖全部选项时，作答后显示。</p>`
+      `<p>${teaching.counts.problems} 道题 · ${teaching.counts.routes} 条路线 · ${teaching.counts.steps} 个步骤 · ${teaching.counts.tips} 个提示分支</p><ul>${index}<li><a href="/knowledge/topics/drills/">小题去向表 · ${teaching.drills.totalCount} 道</a></li><li><a href="/knowledge/topics/migration/">旧新节点身份清单 · ${teaching.migration.nodes.length} 个旧节点</a></li></ul><p>训练分组沿用现有编排；每道题的公共题型单独标注。仅按已提交通过的选择解析关联；候选分支未覆盖全部选项时，作答后显示。</p>`
     )
   );
   outputs.set(
@@ -76,7 +76,7 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
           `<section id="group-${g.id}"><h2>${h(g.label)}</h2><p>${textHtml(g.description)}</p><ol class="teaching-problems">${g.problems
             .map((pid) => {
               const p = t.problems[pid];
-              return `<li><a href="${previewHref(p.path)}"><b>${h(p.label)}</b> · ${textHtml(p.statement)}</a><p>公共题型：${p.types.map(link).join('、')}</p><p>路线：${Object.values(
+              return `<li><a href="${h(p.path)}"><b>${h(p.label)}</b> · ${textHtml(p.statement)}</a> · <a href="${previewHref(p.path)}">无记录预览</a><p>公共题型：${p.types.map(link).join('、')}</p><p>路线：${Object.values(
                 p.routes
               )
                 .map((r) => h(r.label))
@@ -128,7 +128,7 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
       `topics/${t.id}/review/index.html`,
       page(
         `${t.label}关联表`,
-        `<p><a href="../">回到专题预览</a></p><h2>题目与路线</h2>${table(['题目', '原路线', '公共题型', '实际方法 / 待选择的候选方法'], pr)}<h2>步骤关联</h2>${table(['题目', '路线', '步骤', '关联'], sr)}<h2>图解提示分支</h2><p>此审阅表含完成后的说明；练习弹层在步骤完成前隐藏这些说明。</p>${table(['题目', '步骤', '条件', '节点或条目', '资源 / case', '完成后说明'], tr)}`
+        `<p><a href="../">回到专题目录</a></p><h2>题目与路线</h2>${table(['题目', '原路线', '公共题型', '实际方法 / 待选择的候选方法'], pr)}<h2>步骤关联</h2>${table(['题目', '路线', '步骤', '关联'], sr)}<h2>图解提示分支</h2><p>此审阅表含完成后的说明；练习弹层在步骤完成前隐藏这些说明。</p>${table(['题目', '步骤', '条件', '节点或条目', '资源 / case', '完成后说明'], tr)}`
       )
     );
   }
@@ -137,9 +137,9 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
     'topics/drills/index.html',
     page(
       '小题迁移去向',
-      `<p>迁移来源 ${drills.sourceCount} 道${drills.newCount ? `；新增 ${drills.newCount} 道` : ''}；有效 ${drills.active} 道；暂时停用 ${drills.retired} 道。五题检测资格仅供阶段 3 导入，本预览不开放作答。</p>${table(
+      `<p>迁移来源 ${drills.sourceCount} 道${drills.newCount ? `；新增 ${drills.newCount} 道` : ''}；有效 ${drills.active} 道；暂时停用 ${drills.retired} 道。五题检测从节点详情页进入，实际资格以学习服务为准。</p>${table(
         ['主要考查节点', '有效题数', '五题检测资格'],
-        drills.sets.map((s) => [link(s.node), s.count, s.eligible ? '数量满足，待阶段 3 接入' : '不足五题'])
+        drills.sets.map((s) => [link(s.node), s.count, s.eligible ? '数量满足' : '不足五题'])
       )}${table(
         ['原题身份', '迁移动作', '新归属', '说明'],
         drills.records.map((r) => [
@@ -187,7 +187,7 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
     'teaching/manifest.json',
     JSON.stringify({
       schemaVersion: 1,
-      module: `/knowledge-next/assets/${version}/practice-preview.mjs`,
+      module: `/knowledge/assets/${version}/practice-preview.mjs`,
       counts: teaching.counts
     }) + '\n'
   );

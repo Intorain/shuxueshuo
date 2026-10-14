@@ -1,14 +1,14 @@
 """python -m shuxueshuo_server.product.admin.cli --mode local COMMAND"""
 import argparse
-from contextlib import contextmanager
 import fcntl
 import json
-from pathlib import Path
 import subprocess
 import sys
+from contextlib import contextmanager
+from pathlib import Path
 
-from sqlalchemy.exc import SQLAlchemyError
 import psycopg
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..config import Settings
 from ..db import engine
@@ -39,10 +39,13 @@ def main(argv=None):
     p.add_argument('--port', type=int)
     p.add_argument('--pg-bin')
     p.add_argument('command', choices=['configure', 'install', 'deploy', 'resume', 'bootstrap', 'migrate', 'seed', 'doctor', 'status', 'db-start', 'db-stop', 'backup', 'restore',
-        'publish-learning', 'check-learning', 'rebuild-learning', 'reassess-learning',
+        'publish-learning', 'check-learning', 'preflight-learning', 'verify-release', 'rebuild-learning', 'reassess-learning',
         'services-install', 'services-start', 'services-stop', 'services-status', 'services-doctor'])
     p.add_argument('--backup')
     p.add_argument('--target')
+    p.add_argument('--site-version', type=Path, help='knowledge/teaching/version.json of the served site')
+    p.add_argument('--site-optional', action='store_true', help='report, but do not refuse, a site content mismatch')
+    p.add_argument('--replace-legacy-public', action='store_true')
     args = p.parse_args(argv)
     try:
         initialize = args.command in ('configure', 'install', 'restore')
@@ -53,8 +56,13 @@ def main(argv=None):
                 raise Conflict('restore.target_already_installed')
             args.instance = args.target
         settings = Settings.load(args.mode, args.data_dir, args.instance, args.port, initialize=initialize, pg_bin=args.pg_bin)
-        with instance_lock(settings.root):
+        if args.replace_legacy_public and args.command != 'deploy':
+            raise ProductError('learning.public_replacement_requires_deploy')
+        if args.command in ('preflight-learning', 'verify-release'):
             result = execute(settings, args)
+        else:
+            with instance_lock(settings.root):
+                result = execute(settings, args)
         print(json.dumps(result or {'ok': True}, ensure_ascii=False, default=str))
         return 0
     except IntegrityFailure as exc:
@@ -78,14 +86,18 @@ def execute(settings, args):
         from .runtime import execute as execute_runtime
         return execute_runtime(settings, operation)
     if operation == 'deploy':
-        from .backup import backup, stopped_writes
-        with stopped_writes(settings, keep_on_failure=True):
-            saved = backup(settings, fenced=True)
-            database.migrate(settings)
-            publish_learning(settings)
-            result = database.doctor(settings, maintenance=True)
-        return {**result, **saved}
+        from .learning import deploy
+        return deploy(settings, replace_public=args.replace_legacy_public)
+    if operation == 'preflight-learning':
+        from .learning import preflight
+        return preflight(settings)
+    if operation == 'verify-release':
+        from .learning import verify_release
+        return verify_release(settings, args.site_version, require_site=not args.site_optional)
     if operation == 'publish-learning':
+        if settings.mode == 'server':
+            from .learning import verify_release
+            verify_release(settings, require_site=False)
         return publish_learning(settings)
     if operation == 'check-learning':
         from ...learning.content import load_content
@@ -94,6 +106,9 @@ def execute(settings, args):
         from .learning import reassess, rebuild
         return (rebuild if operation == 'rebuild-learning' else reassess)(settings)
     if operation == 'resume':
+        if settings.mode == 'server':
+            from .learning import verify_release
+            verify_release(settings, require_site=False)
         result = database.doctor(settings, maintenance=True)
         with psycopg.connect(database.dsn(settings.url('bootstrap')), autocommit=True) as c:
             c.execute('ALTER ROLE product_app LOGIN')

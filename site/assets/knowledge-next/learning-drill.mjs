@@ -2,7 +2,7 @@ import {escapeHtml as h} from './resource-links.mjs';
 import {learningApi} from './learning-model.mjs';
 
 let dialog, run, source, owner = null, pending = null, busy = false, epoch = 0;
-let selected = new Set(), mathReady = null;
+let selected = new Set(), mathReady = null, requestController = new AbortController();
 function math(root) {
   root.querySelectorAll('[data-math-text]').forEach(el => window.PracticeMath?.render(el, el.textContent));
 }
@@ -52,7 +52,7 @@ function shell() {
   });
   window.addEventListener('site-auth-change', event => {
     if (owner && event.detail.user?.id !== owner) {
-      epoch++; run = pending = owner = null; busy = false; dialog.close();
+      epoch++; requestController.abort(); requestController = new AbortController(); run = pending = owner = null; busy = false; dialog.close();
     }
   });
 }
@@ -83,12 +83,22 @@ async function perform() {
   dialog.querySelector('[data-retry]').hidden = true;
   dialog.querySelector('[data-refresh]').hidden = true;
   try {
-    const next = await learningApi(request.path, {body:request.body, user:owner});
+    const next = await learningApi(request.path, {body:request.body, user:owner, signal:requestController.signal});
     if (stamp !== epoch) return;
+    const completed = request.position != null && next.status === 'completed' &&
+      !(run?.id === next.id && run.status === 'completed');
     run = {...next, showPosition:request.position}; pending = null; render();
     dialog.querySelector('.kd-network').textContent = '已保存';
-    window.dispatchEvent(new CustomEvent('learning-nodes-change'));
-    try { localStorage.setItem('sss-learning-change', String(Date.now())); } catch {}
+    // Intermediate answers only change this round. Keep the current detail's
+    // progress up to date without reloading assessments in this or other tabs.
+    window.dispatchEvent(new CustomEvent('learning-drill-progress', {detail:{
+      userId:owner, nodeId:source.node, attemptId:run.id, status:run.status,
+      answered:run.items.filter(item => item.answered_at).length, total:run.items.length
+    }}));
+    if (completed) {
+      window.dispatchEvent(new CustomEvent('learning-nodes-change'));
+      try { localStorage.setItem('sss-learning-change', `${owner}:${run.id}:${Date.now()}`); } catch {}
+    }
   } catch (error) {
     if (stamp !== epoch) return;
     const retryable = error.retryable || !error.status;

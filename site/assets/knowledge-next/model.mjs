@@ -7,8 +7,8 @@ const DETAIL_CONTENTS = {textbook: '全书目录', chapter: '本章目录', sect
 export const detailLabel = node => `看${DETAIL_CONTENTS[node.kind] || '完整详情'}`;
 export const VIEW_RELATIONS = {curriculum: ['contains','extends','method_rule','step_rule'], knowledge: ['prerequisite','uses','involves'], solution: ['candidate','method_rule','calls','step_rule','selects']};
 export const splitRef = ref => { const [id, entry] = ref.split('#'); return {id, entry}; };
-export const nodeHref = ref => { const {id, entry} = splitRef(ref); return `/knowledge-next/${id}/${entry ? `#${entry}` : ''}`; };
-export const chapterPath = id => `/knowledge-next/chapters/${id}/`;
+export const nodeHref = ref => { const {id, entry} = splitRef(ref); return `/knowledge/${id}/${entry ? `#${entry}` : ''}`; };
+export const chapterPath = id => `/knowledge/chapters/${id}/`;
 export const chapterTag = c => `${c.book} · 第 ${c.number} 章`;
 export const RESERVED_PATHS = ['3d', 'assets', 'chapters', 'nodes', 'topics', 'teaching'];
 export const anchors = node => [...(node.entries || []), ...(node.steps || []), ...(node.operations || []), ...(node.branches || [])];
@@ -210,17 +210,18 @@ export function readState(search, graph, {scopes, defaultScope = graph.defaultSc
   const validScope = scopes ? scopes.includes(scope) : graph.nodes.some(n => n.id === scope && ['section','chapter','textbook'].includes(n.kind));
   return normalizeViewFilters({scope: validScope ? scope : defaultScope, view: VIEWS[view] ? view : 'curriculum', q: (p.get('q') || '').slice(0,150), node: known.has(p.get('node')) ? p.get('node') : '', kinds: list('kinds',new Set(Object.keys(KINDS))), relations: list('relations',new Set(Object.keys(RELATIONS))), expanded: list('expand',known)});
 }
-export function writeState(state, base = '/knowledge-next/') {
+export function writeState(state, base = '/knowledge/') {
   const p = new URLSearchParams({scope: state.scope, view: state.view});
   for (const k of ['q','node']) if (state[k]) p.set(k,state[k]);
   for (const [key, attr] of [['kinds','kinds'],['relations','relations'],['expand','expanded']]) if (state[attr]?.length) p.set(key,state[attr].join(','));
   return `${base}?${p}`;
 }
 export function safeGraphReturn(value) {
-  if (!value) return '/knowledge-next/';
+  if (!value) return '/knowledge/';
   try {
     const u = new URL(value, 'https://local.invalid');
-    return u.origin === 'https://local.invalid' && /^\/knowledge-next\/(chapters\/[a-z0-9-]+\/)?$/.test(u.pathname) ? u.pathname + u.search : '/knowledge-next/';
-  } catch { return '/knowledge-next/'; }
+    if (u.pathname.startsWith('/knowledge-next/')) u.pathname = u.pathname.replace('/knowledge-next/', '/knowledge/');
+    return u.origin === 'https://local.invalid' && /^\/knowledge\/(chapters\/[a-z0-9-]+\/)?$/.test(u.pathname) ? u.pathname + u.search + u.hash : '/knowledge/';
+  } catch { return '/knowledge/'; }
 }
 export function searchNodes(nodes, q) { const needle = q.trim().toLocaleLowerCase(); return needle ? nodes.filter(n => [n.label,...(n.aliases || [])].some(x => x.toLocaleLowerCase().includes(needle))) : []; }

@@ -1,13 +1,11 @@
 """Portable logical backups. Original instance and artifact keys remain untouched."""
+import json
+import os
+import subprocess
 from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
-from io import BytesIO
-import json
-import os
-import shutil
-import subprocess
 from uuid import uuid4
 
 import psycopg
@@ -17,7 +15,7 @@ from .. import models as m
 from ..db import engine, transaction
 from ..errors import Conflict, IntegrityFailure
 from ..storage import LocalArtifactStorage, parts
-from .database import dsn, doctor, grant
+from .database import doctor, dsn, grant
 
 
 @contextmanager
@@ -81,6 +79,9 @@ def backup(settings, *, fenced=False):
             manifest = dict(schema_version='product-backup/v1', revision=revision, counts=counts,
                 application_version=os.environ.get('PRODUCT_RELEASE_ID', 'development'),
                 database_sha256=dump_hash, artifacts=artifacts, complete=True)
+            release_path = settings.root / 'config/release-path'
+            if release_path.is_file():
+                manifest['previous_release_path'] = release_path.read_text().strip()
             (temp / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
             for name in ('database.dump', 'manifest.json'):
                 with (temp / name).open('rb') as f:

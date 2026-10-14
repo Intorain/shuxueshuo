@@ -3,7 +3,7 @@
   "kind": "problem_type",
   "label": "一元分式不等式求解问题",
   "summary": "解分母含 x 的不等式，写出全部解，别忘了分母不能为 0。",
-  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "source": "人教 A 版必修第一册第二章",
   "sample": "解不等式 $\\frac{2-x}{3x+1}\\ge1$。",
   "features": [
     {

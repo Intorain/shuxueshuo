@@ -1,0 +1,161 @@
+{
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f",
+  "problems": {
+    "basic-inequality-q01": {
+      "path": "/1/q01/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q02": {
+      "path": "/1/q02/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q03": {
+      "path": "/1/q03/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q04": {
+      "path": "/1/q04/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q05": {
+      "path": "/1/q05/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q06": {
+      "path": "/1/q06/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q07": {
+      "path": "/1/q07/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q08": {
+      "path": "/1/q08/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q09": {
+      "path": "/1/q09/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q10": {
+      "path": "/1/q10/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q11": {
+      "path": "/1/q11/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q12": {
+      "path": "/1/q12/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q13": {
+      "path": "/1/q13/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q14": {
+      "path": "/1/q14/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q15": {
+      "path": "/1/q15/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q16": {
+      "path": "/1/q16/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q17": {
+      "path": "/1/q17/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q18": {
+      "path": "/1/q18/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q19": {
+      "path": "/1/q19/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q20": {
+      "path": "/1/q20/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q21": {
+      "path": "/1/q21/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q22": {
+      "path": "/1/q22/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q23": {
+      "path": "/1/q23/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q24": {
+      "path": "/1/q24/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q25": {
+      "path": "/1/q25/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q26": {
+      "path": "/1/q26/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q27": {
+      "path": "/1/q27/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q28": {
+      "path": "/1/q28/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q29": {
+      "path": "/1/q29/",
+      "topic": "basic-inequality"
+    },
+    "basic-inequality-q30": {
+      "path": "/1/q30/",
+      "topic": "basic-inequality"
+    },
+    "quadratic-always-q01": {
+      "path": "/2/q01/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q02": {
+      "path": "/2/q02/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q03": {
+      "path": "/2/q03/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q04": {
+      "path": "/2/q04/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q05": {
+      "path": "/2/q05/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q06": {
+      "path": "/2/q06/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q07": {
+      "path": "/2/q07/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q08": {
+      "path": "/2/q08/",
+      "topic": "quadratic-always"
+    },
+    "quadratic-always-q09": {
+      "path": "/2/q09/",
+      "topic": "quadratic-always"
+    }
+  }
+}

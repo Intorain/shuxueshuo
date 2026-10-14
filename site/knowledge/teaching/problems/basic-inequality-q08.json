@@ -1,0 +1,180 @@
+{
+  "topic": "basic-inequality",
+  "id": "basic-inequality-q08",
+  "label": "Q08",
+  "path": "/1/q08/",
+  "types": [
+    "type-sum-product-extremum"
+  ],
+  "routes": {
+    "matching": {
+      "methods": [
+        "method-amgm-direct"
+      ],
+      "steps": {
+        "rewrite": {
+          "refs": [
+            "method-matching"
+          ],
+          "title": "凑配表达式",
+          "position": 1
+        },
+        "structure": {
+          "refs": [
+            "method-amgm-direct#check",
+            "amgm-formula#checklist"
+          ],
+          "tip": {
+            "ref": "amgm-formula#checklist",
+            "resource": "amgm-semicircle",
+            "case": "fixed",
+            "note": "本题 $(x+y)\\cdot\\frac4{x+y}=4$ 是定值，要求和的最小值：定积求和。"
+          },
+          "title": "观察结构",
+          "position": 2
+        },
+        "amgm": {
+          "refs": [
+            "skill-apply-amgm",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "apply",
+            "note": "本题 $x+y+\\frac4{x+y}\\ge2\\sqrt4=4$。"
+          },
+          "title": "应用基本不等式",
+          "position": 3
+        },
+        "equality": {
+          "refs": [
+            "method-amgm-direct#attain",
+            "amgm-formula#attainability"
+          ],
+          "tip": {
+            "ref": "amgm-formula#attainability",
+            "resource": "amgm-semicircle",
+            "case": "equal",
+            "note": "本题取等要 $x+y=2$，与 $xy=1$ 联立得 $x=y=1$，取得到。"
+          },
+          "title": "验证取等",
+          "position": 4
+        }
+      },
+      "label": "常规配凑"
+    },
+    "symmetric": {
+      "methods": [
+        "method-sum-product-range"
+      ],
+      "steps": {
+        "symmetry": {
+          "refs": [
+            "method-sum-product#identities"
+          ],
+          "tip": {
+            "ref": "method-sum-product#identities",
+            "resource": "sum-product-identities",
+            "note": "本题交换 $x$、$y$ 后，条件 $xy=1$ 与目标 $\\frac{x^2+y^2+6}{x+y}$ 都不变，可以用 $s=x+y$、$p=xy$ 改写。"
+          },
+          "title": "识别对称结构",
+          "position": 1
+        },
+        "substitution": {
+          "refs": [
+            "method-sum-product"
+          ],
+          "title": "和积换元",
+          "position": 2
+        },
+        "structure": {
+          "refs": [
+            "method-amgm-direct#check",
+            "amgm-formula#checklist"
+          ],
+          "tip": {
+            "ref": "amgm-formula#checklist",
+            "resource": "amgm-semicircle",
+            "case": "fixed",
+            "note": "本题 $x^2+y^2=s^2-2p=s^2-2$，目标化成 $s+\\frac4s$，$s\\cdot\\frac4s=4$ 是定值：定积求和。"
+          },
+          "title": "观察结构",
+          "position": 3
+        },
+        "amgm": {
+          "refs": [
+            "skill-apply-amgm",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "apply",
+            "note": "本题 $s+\\frac4s\\ge2\\sqrt4=4$。"
+          },
+          "title": "应用基本不等式",
+          "position": 4
+        },
+        "equality": {
+          "refs": [
+            "method-amgm-direct#attain",
+            "amgm-formula#attainability"
+          ],
+          "tip": {
+            "ref": "amgm-formula#attainability",
+            "resource": "amgm-semicircle",
+            "case": "equal",
+            "note": "本题取等要 $s=2$，即 $x+y=2$、$xy=1$，得 $x=y=1$，取得到。"
+          },
+          "title": "验证取等",
+          "position": 5
+        }
+      },
+      "label": "找对称结构，和积换元"
+    }
+  },
+  "statement": "已知正数 $x,y$ 满足 $xy=1$，则 $\\frac{x^2+y^2+6}{x+y}$ 的最小值为？",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ],
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

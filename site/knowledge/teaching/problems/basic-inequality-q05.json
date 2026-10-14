@@ -1,0 +1,104 @@
+{
+  "topic": "basic-inequality",
+  "id": "basic-inequality-q05",
+  "label": "Q05",
+  "path": "/1/q05/",
+  "types": [
+    "type-sum-product-extremum"
+  ],
+  "routes": {
+    "direct": {
+      "methods": [
+        "method-amgm-direct"
+      ],
+      "steps": {
+        "structure": {
+          "refs": [
+            "method-amgm-direct#check",
+            "amgm-formula#checklist"
+          ],
+          "tip": {
+            "ref": "amgm-formula#checklist",
+            "resource": "amgm-semicircle",
+            "case": "fixed",
+            "note": "本题 $2^a\\cdot2^b=2^{a+b}=8$ 是定值，要求和的最小值：定积求和。"
+          },
+          "title": "观察结构",
+          "position": 1
+        },
+        "amgm": {
+          "refs": [
+            "skill-apply-amgm",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "apply",
+            "note": "本题 $2^a+2^b\\ge2\\sqrt{2^a\\cdot2^b}=2\\sqrt8=4\\sqrt2$。"
+          },
+          "title": "应用基本不等式",
+          "position": 2
+        },
+        "equality": {
+          "refs": [
+            "method-amgm-direct#attain",
+            "amgm-formula#attainability"
+          ],
+          "tip": {
+            "ref": "amgm-formula#attainability",
+            "resource": "amgm-semicircle",
+            "case": "equal",
+            "note": "本题取等要 $2^a=2^b$，即 $a=b$，与 $a+b=3$ 联立得 $a=b=\\frac32$，取得到。"
+          },
+          "title": "验证取等",
+          "position": 3
+        }
+      },
+      "label": "直接应用基本不等式"
+    }
+  },
+  "statement": "设 $a、b$ 为实数，且 $a+b=3$，则 $2^a+2^b$ 的最小值为？",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ],
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

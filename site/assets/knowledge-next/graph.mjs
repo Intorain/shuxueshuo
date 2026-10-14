@@ -1,3 +1,4 @@
+import {isPreview, modeHref} from '../practice/learning-mode.mjs';
 import {KINDS,RELATIONS,VIEWS,VIEW_KINDS,VIEW_RELATIONS,nodeHref,detailLabel,chapterPath,chapterTag,readState,writeState,projectGraph,scopeMembers,searchNodes,curriculumStructure,normalizeViewFilters} from './model.mjs';
 import {layoutGraph,fitGraph} from './layout.mjs';
 import {escapeHtml as h} from './resource-links.mjs';
@@ -10,7 +11,7 @@ const FAMILY={contains:'org',extends:'org',prerequisite:'know',uses:'know',invol
 const RULES={method_selection:'选法规则',step_selection:'步骤选择规则'};
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),narrow=matchMedia('(max-width: 760px)');
 const config=JSON.parse($('#graph-config').textContent),scopeOptions={scopes:config.scopes,defaultScope:config.defaultScope};
-let graph,byId,chapters,inChapter,state,projection,layout,transform={x:0,y:0,k:1},loading=false,hoverId='',camera=0,pathTimer=0,searchOpen=false,drag;
+let graph,byId,chapters,inChapter,state,projection,layout,transform={x:0,y:0,k:1},loading=false,hoverId='',camera=0,pathTimer=0,searchOpen=false,drag,autoView=true;
 
 function el(tag,attrs={},text){const item=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))item.setAttribute(k,v);if(text!==undefined)item.textContent=text;return item;}
 const kindText=n=>`${KINDS[n.kind]}${n.subtype?` · ${RULES[n.subtype]}`:''}`;
@@ -20,7 +21,7 @@ const elsewhere=id=>{const home=byId.get(id)?.home;return Boolean(home&&home!==c
 function homeHref(id){
   const n=byId.get(id),c=chapters.get(n.home),scope=c.sections.find(s=>scopeMembers(graph,s.id).has(id))?.id||c.node;
   const view=n.kind==='knowledge'?'knowledge':['textbook','chapter','section'].includes(n.kind)?'curriculum':'solution';
-  return `${chapterPath(c.id)}?scope=${scope}&view=${view}&node=${id}&expand=${id}`;
+  return modeHref(`${chapterPath(c.id)}?scope=${scope}&view=${view}&node=${id}&expand=${id}${location.hash}`,{preview:isPreview(location.search)},location.href);
 }
 const nodeEl=id=>viewport.querySelector(`[data-node="${CSS.escape(id)}"]`);
 const stepTargets=s=>[...(s.calls||[]),...(s.rule?[s.rule]:[])];
@@ -34,38 +35,41 @@ function moveTo(next,animate=true){
   camera=requestAnimationFrame(step);
 }
 const drawerInset=()=>!narrow.matches&&!drawer.hidden?drawer.offsetWidth+28:0;
+const readableScale=()=>narrow.matches?.68:.8;
 function fit(animate=true,{readable=false}={}){
-  if(!layout)return;const box=svg.getBoundingClientRect(),w=box.width-drawerInset();
-  const next=fitGraph(layout,w,box.height),minScale=narrow.matches?.68:.5;
-  // Start at a readable size; the explicit fit action always shows the whole graph.
-  if(readable&&next.k<minScale){next.k=minScale;next.x=narrow.matches?0:(w-layout.width*next.k)/2;next.y=0;}
+  if(!layout)return;autoView=true;const box=svg.getBoundingClientRect(),w=box.width-drawerInset();
+  const next=fitGraph(layout,w,box.height),minScale=readableScale();
+  // Start with legible labels from the top-left; the explicit fit action always shows the whole graph.
+  if(readable&&next.k<minScale){const k=minScale;next.k=k;next.x=Math.max(0,(w-layout.width*k)/2);next.y=Math.max(0,(box.height-layout.height*k)/2);}
   moveTo(next,animate);
 }
-function zoom(factor,point){if(!layout)return;const box=svg.getBoundingClientRect(),p=point||{x:box.width/2,y:box.height/2},minScale=Math.min(.2,fitGraph(layout,box.width-drawerInset(),box.height).k);const k=Math.max(minScale,Math.min(2.4,transform.k*factor)),ratio=k/transform.k;moveTo({k,x:p.x-(p.x-transform.x)*ratio,y:p.y-(p.y-transform.y)*ratio},false);}
-function center(id,animate=true){const p=layout?.positions.get(id);if(!p)return;const box=svg.getBoundingClientRect(),k=Math.min(1.15,Math.max(.9,transform.k));moveTo({k,x:(box.width-drawerInset())/2-(p.x+p.w/2)*k,y:box.height/2-(p.y+p.h/2)*k},animate);}
+function zoom(factor,point){if(!layout)return;autoView=false;const box=svg.getBoundingClientRect(),p=point||{x:box.width/2,y:box.height/2},minScale=Math.min(.2,fitGraph(layout,box.width-drawerInset(),box.height).k);const k=Math.max(minScale,Math.min(2.4,transform.k*factor)),ratio=k/transform.k;moveTo({k,x:p.x-(p.x-transform.x)*ratio,y:p.y-(p.y-transform.y)*ratio},false);}
+function center(id,animate=true){const p=layout?.positions.get(id);if(!p)return;autoView=false;const box=svg.getBoundingClientRect(),k=Math.min(1.15,Math.max(.9,transform.k));moveTo({k,x:(box.width-drawerInset())/2-(p.x+p.w/2)*k,y:box.height/2-(p.y+p.h/2)*k},animate);}
 function frameAll(ids){
   const ps=ids.map(id=>layout?.positions.get(id)).filter(Boolean);if(!ps.length)return false;
   const x0=Math.min(...ps.map(p=>p.x)),y0=Math.min(...ps.map(p=>p.y)),x1=Math.max(...ps.map(p=>p.x+p.w)),y1=Math.max(...ps.map(p=>p.y+p.h));
   const box=svg.getBoundingClientRect(),w=box.width-drawerInset(),k=Math.min(1.1,(w-120)/(x1-x0),(box.height-100)/(y1-y0));
   if(k<.5)return false;
-  moveTo({k,x:(w-(x1-x0)*k)/2-x0*k,y:(box.height-(y1-y0)*k)/2-y0*k});return true;
+  autoView=false;moveTo({k,x:(w-(x1-x0)*k)/2-x0*k,y:(box.height-(y1-y0)*k)/2-y0*k});return true;
 }
 function reveal(id){
   const p=layout?.positions.get(id);if(!p)return;const box=svg.getBoundingClientRect(),right=box.width-drawerInset()-16;
   const left=transform.x+p.x*transform.k,top=transform.y+p.y*transform.k;
   if(left<16||left+p.w*transform.k>right||top<16||top+p.h*transform.k>box.height-16)center(id);
 }
+function stateHref() {
+  return modeHref(writeState(state,config.base)+location.hash,{preview:isPreview(location.search)},location.href);
+}
 function updateURL(replace=false) {
-  const url=new URL(writeState(state,config.base),location.origin);
-  if(new URLSearchParams(location.search).get('learning')==='1') url.searchParams.set('learning','1');
-  const next=url.pathname+url.search;
-  if(location.pathname+location.search!==next) {
+  const url=new URL(stateHref(),location.origin);
+  const next=url.pathname+url.search+url.hash;
+  if(location.pathname+location.search+location.hash!==next) {
     const previousScope=new URLSearchParams(location.search).get('scope');
     history[replace?'replaceState':'pushState']({},'',next);
     if(previousScope!==url.searchParams.get('scope')) window.dispatchEvent(new CustomEvent('knowledge-scope-change'));
   }
 }
-function detailHref(id){const u=new URL(nodeHref(id),location.origin);u.searchParams.set('graph',writeState(state,config.base));return u.pathname+u.search;}
+function detailHref(id){const u=new URL(nodeHref(id),location.origin);u.searchParams.set('graph',stateHref());return modeHref(u.href,{preview:isPreview(location.search)});}
 
 // Frames already show membership, so the active node's other relations surface on demand.
 function surfaced(active){
@@ -114,11 +118,11 @@ function showSelection(){
   drawer.hidden=!n;if(!n){selection.replaceChildren();return;}
   const visible=layout.positions.has(n.id),out=graph.edges.filter(e=>e.from===n.id),inc=graph.edges.filter(e=>e.to===n.id);
   const home=n.home&&n.home!==config.chapter?chapters.get(n.home):null;
-  const orgHref=n.kind==='textbook'?'/knowledge-next/':`${chapterPath(n.home)}${n.kind==='section'?`?scope=${n.id}`:''}`;
+  const orgHref=n.kind==='textbook'?'/knowledge/':`${chapterPath(n.home)}${n.kind==='section'?`?scope=${n.id}`:''}`;
   const primary=!ORG.includes(n.kind)?`<a class="drawer-primary" href="${detailHref(n.id)}">${detailLabel(n)} ↗</a>`
     :config.scopes.includes(n.id)?(n.id===state.scope?'':`<button type="button" id="enter-scope" class="drawer-primary">只看${n.kind==='chapter'?'全章':'这一节'}</button>`)
     :`<a class="drawer-primary" href="${orgHref}">${n.kind==='textbook'?'打开知识图谱总览':'打开所在章的图谱'} ↗</a>`;
-  selection.innerHTML=`<p class="drawer-kind" data-kind="${n.kind}"><i aria-hidden="true"></i>${kindText(n)}${n.related?' · 展开内容':''}</p><h2>${h(n.label)}</h2><p class="drawer-summary">${h(n.summary)}</p>
+  selection.innerHTML=`<p class="drawer-kind" data-kind="${n.kind}"><i aria-hidden="true"></i>${kindText(n)}${n.related?' · 展开内容':''}</p><h2>${h(n.label)}</h2>${ORG.includes(n.kind)?`<div data-progress-scope="${n.id}"></div>`:`<div data-learning-node="${n.id}" data-learning-full></div>`}<p class="drawer-summary">${h(n.summary)}</p>
 ${home?`<p class="drawer-home">归属 <b>${h(chapterTag(home))} ${h(home.label)}</b>，与本章内容直接相关。<a href="${homeHref(n.id)}">去那一章的图谱 →</a></p>`:''}
 <div class="drawer-actions">${primary}${n.steps?.length?'<button type="button" id="play-path" class="drawer-play">▶ 演示解题路径</button>':''}</div>
 ${visible?'':`<p class="drawer-note">该节点不在当前视图或筛选范围内。<button type="button" data-select-related="${n.id}">在图中显示</button></p>`}
@@ -208,7 +212,9 @@ function drawNode(n,i){
   const label=el('text',{x:36,y:p.h/2-(p.lines.length-1)*8.5+4.5,class:'node-label'});
   p.lines.forEach((line,k)=>label.append(el('tspan',{x:36,dy:k?17:0},line)));body.append(label);
   if(tag){const w=tag.length*11+14;body.append(el('rect',{class:'node-tag-bg',x:p.w-w-10,y:-8,width:w,height:16,rx:8}),el('text',{class:'node-tag',x:p.w-10-w/2,y:4,'text-anchor':'middle'},tag));}
-  body.append(el('title',{},`${kindText(n)} · ${n.summary}`));g.append(body);
+  body.append(el('title',{},`${kindText(n)} · ${n.summary}`));
+  if(!ORG.includes(n.kind)&&n.kind!=='judgment_rule')body.append(el('g',{'data-learning-node':n.id,transform:`translate(${p.w-6},${p.h-4})`,class:'kx-personal-svg'}));
+  g.append(body);
   g.addEventListener('click',()=>select(n.id));
   g.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse'){hoverId=n.id;paint();}});
   g.addEventListener('pointerleave',()=>{if(hoverId){hoverId='';paint();}});
@@ -232,10 +238,14 @@ function drawJump(item){
   return g;
 }
 
+function arrange(){
+  const box=svg.getBoundingClientRect();
+  return layoutGraph(projection.nodes,projection.edges,{view:state.view,structure:state.view==='curriculum'?curriculumStructure(graph,state.scope):null,canvas:{width:box.width,height:box.height,minScale:readableScale()}});
+}
 function draw(){
   stopPath();syncControls();hoverId='';
   projection=projectGraph(graph,state,config.chapter);
-  layout=layoutGraph(projection.nodes,projection.edges,{view:state.view,structure:state.view==='curriculum'?curriculumStructure(graph,state.scope):null});
+  layout=arrange();
   const back=el('g',{class:'layer-back'}),edges=el('g',{class:'layer-edges'}),nodes=el('g',{class:'layer-nodes'}),implicit=new Set(layout.implicit);
   for(const b of layout.bands)if(b.label){const g=el('g',{class:'lane'});g.append(el('rect',{x:b.x,y:b.y,width:b.w,height:b.h,rx:24,class:'lane-band'}),el('text',{x:b.x+20,y:b.y+30,class:'lane-label'},b.label),el('text',{x:b.x+b.w-20,y:b.y+30,class:'lane-count','text-anchor':'end'},String(b.count)));back.append(g);}
   for(const f of layout.frames)back.append(el('rect',{x:f.x,y:f.y,width:f.w,height:f.h,rx:26,class:`frame${f.dashed?' dashed':''}`,'data-frame':f.id}));
@@ -254,7 +264,7 @@ function draw(){
 async function load(){
   if(loading)return;loading=true;$('#retry-graph').hidden=true;
   try{
-    const res=await fetch('/knowledge-next/graph.json',{cache:'no-cache'});if(!res.ok)throw new Error(String(res.status));
+    const res=await fetch('/knowledge/graph.json',{cache:'no-cache'});if(!res.ok)throw new Error(String(res.status));
     graph=await res.json();if(!Array.isArray(graph.nodes)||!Array.isArray(graph.edges))throw new Error('Invalid graph');
     byId=new Map(graph.nodes.map(n=>[n.id,n]));chapters=new Map(graph.chapters.map(c=>[c.id,c]));inChapter=scopeMembers(graph,config.node);
     state=readState(location.search,graph,scopeOptions);
@@ -280,11 +290,18 @@ $('#zoom-in').addEventListener('click',()=>zoom(1.25));$('#zoom-out').addEventLi
 $('#drawer-close').addEventListener('click',()=>select(''));
 svg.addEventListener('wheel',event=>{if(!layout)return;event.preventDefault();const box=svg.getBoundingClientRect();zoom(Math.exp(-event.deltaY*.0012),{x:event.clientX-box.left,y:event.clientY-box.top});},{passive:false});
 svg.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node],[data-jump]'))return;cancelAnimationFrame(camera);drag={id:e.pointerId,x:e.clientX,y:e.clientY,startX:transform.x,startY:transform.y,moved:false};svg.setPointerCapture(e.pointerId);svg.classList.add('is-dragging');});
-svg.addEventListener('pointermove',e=>{if(drag?.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>4)drag.moved=true;transform.x=drag.startX+dx;transform.y=drag.startY+dy;applyTransform();});
+svg.addEventListener('pointermove',e=>{if(drag?.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>4){drag.moved=true;autoView=false;}transform.x=drag.startX+dx;transform.y=drag.startY+dy;applyTransform();});
 const endDrag=clear=>{if(clear&&drag&&!drag.moved&&state?.node)select('');drag=null;svg.classList.remove('is-dragging');};
 svg.addEventListener('pointerup',()=>endDrag(true));svg.addEventListener('pointercancel',()=>endDrag(false));
-svg.addEventListener('keydown',e=>{if(e.target!==svg)return;const delta={ArrowLeft:[40,0],ArrowRight:[-40,0],ArrowUp:[0,40],ArrowDown:[0,-40]}[e.key];if(delta){e.preventDefault();transform.x+=delta[0];transform.y+=delta[1];applyTransform();}else if(e.key==='+')zoom(1.25);else if(e.key==='-')zoom(.8);else if(e.key==='0')fit();});
+svg.addEventListener('keydown',e=>{if(e.target!==svg)return;const delta={ArrowLeft:[40,0],ArrowRight:[-40,0],ArrowUp:[0,40],ArrowDown:[0,-40]}[e.key];if(delta){e.preventDefault();autoView=false;transform.x+=delta[0];transform.y+=delta[1];applyTransform();}else if(e.key==='+')zoom(1.25);else if(e.key==='-')zoom(.8);else if(e.key==='0')fit();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state?.node&&!e.target.closest?.('input'))select('');});
 window.addEventListener('popstate',()=>{if(!graph)return;state=readState(location.search,graph,scopeOptions);draw();if(state.node)center(state.node,false);});
-let resizeTimer,lastWidth=0;new ResizeObserver(([entry])=>{const w=Math.round(entry.contentRect.width);if(w===lastWidth)return;lastWidth=w;clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>fit(false),100);}).observe(svg);
+let resizeTimer,lastWidth=0;new ResizeObserver(([entry])=>{const w=Math.round(entry.contentRect.width),first=!lastWidth;if(w===lastWidth)return;lastWidth=w;if(first)return;clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{
+  if(!layout)return;
+  // Re-flow only when the frame arrangement changes; a view the reader has moved stays put.
+  const next=layout.perRow?arrange():null;
+  if(next&&(next.perRow!==layout.perRow||next.cols!==layout.cols)){draw();if(state.node)reveal(state.node);}
+  else if(autoView)fit(false,{readable:true});
+  else if(state.node)reveal(state.node);
+},100);}).observe(svg);
 load();

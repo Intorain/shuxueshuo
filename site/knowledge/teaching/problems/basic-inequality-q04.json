@@ -1,0 +1,118 @@
+{
+  "topic": "basic-inequality",
+  "id": "basic-inequality-q04",
+  "label": "Q04",
+  "path": "/1/q04/",
+  "types": [
+    "type-sum-product-extremum"
+  ],
+  "routes": {
+    "direct": {
+      "methods": [
+        "method-amgm-direct"
+      ],
+      "steps": {
+        "rewrite": {
+          "refs": [
+            "amgm-formula",
+            "inequality-properties",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "positive",
+            "note": "本题 $x<0$，$x$ 与 $\\frac4x$ 都是负数，不满足一正；先提出负号，对正数 $-x$、$-\\frac4x$ 用基本不等式。"
+          },
+          "title": "整理表达式",
+          "position": 1
+        },
+        "amgm": {
+          "refs": [
+            "skill-apply-amgm",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "apply",
+            "note": "本题 $(-x)+\\left(-\\frac4x\\right)\\ge2\\sqrt{(-x)\\cdot\\left(-\\frac4x\\right)}=4$。"
+          },
+          "title": "应用基本不等式",
+          "position": 2
+        },
+        "bound": {
+          "refs": [
+            "skill-inequality-transform",
+            "inequality-properties#multiplication"
+          ],
+          "tip": {
+            "ref": "inequality-properties#multiplication",
+            "resource": "order-flip-lines",
+            "note": "本题由 $(-x)+\\left(-\\frac4x\\right)\\ge4$，两边乘 $-1$ 要变向：$x+\\frac4x\\le-4$，再减 $4$ 得原式 $\\le-8$。"
+          },
+          "title": "回到原式",
+          "position": 3
+        },
+        "equality": {
+          "refs": [
+            "method-amgm-direct#attain",
+            "amgm-formula#attainability"
+          ],
+          "tip": {
+            "ref": "amgm-formula#attainability",
+            "resource": "amgm-semicircle",
+            "case": "equal",
+            "note": "本题取等要 $-x=-\\frac4x$，即 $x^2=4$；又 $x<0$，所以 $x=-2$，最大值 $-8$ 取得到。"
+          },
+          "title": "验证取等",
+          "position": 4
+        }
+      },
+      "label": "转化为正项后应用基本不等式"
+    }
+  },
+  "statement": "已知 $x<0$，则 $x+\\frac4x-4$ 有（ ）。A. 最大值0；B. 最小值0；C. 最大值-8；D. 最小值-8。",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ],
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

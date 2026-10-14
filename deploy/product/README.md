@@ -1,7 +1,7 @@
 # 产品 P1 安装与管理
 
 P1 提供 27 张产品表、不可变产物存储和内部事务接口。P2 已增加本地上传 API、页面 HTTP 路由、RabbitMQ/Celery 和 Review；完整启停命令见 [P2 本地运行手册](../../docs/product-p2-local-runbook.md)。本文件继续说明数据库底座和后续服务器部署。
-不读取或迁移旧 Review SQLite，不改变原 `site/` 及 Nginx 配置。
+不读取或迁移旧 Review SQLite。主站静态页面不进发布包：Nginx 直接读取服务器仓库 `site/`，用 `git pull` 更新；教学内容版本须与学习库一致，步骤见 [学习内容正式替换](learning-rollout.md)。
 
 ## 本地原生 PostgreSQL
 
@@ -53,7 +53,7 @@ macOS 默认数据目录为 `$HOME/Library/Application Support/shuxueshuo/local`
 
 命令先校验、报告清理范围、停写和备份，再在同一事务中清理旧学习记录、升级结构并发布新内容。
 用户、登录、其他产品数据及无关题目的学习标记保留；失败事务回滚，维护状态保留供诊断。
-此命令拒绝服务器和容器环境，也拒绝重复用于已升级的实例。服务器的首次切换安排在阶段 4。
+此命令拒绝服务器和容器环境，也拒绝重复用于已升级的实例。服务器另有仅替换旧公共内容的显式入口；发现任何旧学习记录即停止，见 [正式替换手册](learning-rollout.md)。
 
 固定本地联调使用 `127.0.0.1:8779` 和默认数据目录、数据库端口 `5432`。题页参数
 `?knowledge=next` 为无记录预览，`?knowledge=next&learning=1` 为登录联调；节点详情页使用
@@ -61,7 +61,7 @@ macOS 默认数据目录为 `$HOME/Library/Application Support/shuxueshuo/local`
 
 ## 服务器 Docker 发布
 
-服务器预装 Docker/Compose，不要求 uv/Python。构建机需要 Docker buildx、Python 3；更新依赖锁时使用 uv。
+服务器预装 Docker/Compose，不要求 uv/Python。构建机需要 Docker buildx、Node.js、Python 3；更新依赖锁时使用 uv。
 管理镜像基于固定 digest 的 PostgreSQL 17.10 bookworm，包含 pg_dump/pg_restore；Python 包使用锁定版本和哈希。
 P2 发布包额外包含固定平台的 RabbitMQ 4.3.2 与 `Dockerfile.app` 构建的 API/Worker/publisher 镜像。
 系统包在镜像构建时安装，交付以生成的镜像内容 ID 固定；不宣称跨时间重建得到逐字节相同的系统层。
@@ -76,7 +76,7 @@ P2 发布包额外包含固定平台的 RabbitMQ 4.3.2 与 `Dockerfile.app` 构�
 ./deploy/product/build-release.sh --release p1-20260911-arm64 --platform linux/arm64 --output /absolute/path/release-arm64
 ```
 
-发布包包含 `images.tar`、镜像哈希、版本清单及对应版本 `scripts/`。
+发布包包含 `images.tar`、镜像哈希、内容版本、提交版本及对应版本 `scripts/`，不含静态站。构建会运行图谱生成器 `--check` 并核对该提交 `site/` 与原稿的内容版本；镜像与脚本来自同一 `git archive`。
 清单中的 Alembic revision 从同份打包源码解析，不使用固定版本号。
 将完整发布包传到服务器，通过包内脚本执行；清单与校验文件应随受信任交付渠道传输，校验和不替代发布来源认证。
 
@@ -143,16 +143,16 @@ OCR sidecar 仍串行处理，增加并发主要让其他题在某题等待模�
 数据库仅映射 `127.0.0.1:5432`，可通过 `--port` 修改；持久卷名绑定实例和数据根，不复用其他实例的卷。
 admin 以部署用户 UID/GID 运行，按需挂载配置及数据；不启动业务容器。
 
-版本升级：先停止所有使用该数据库的业务写入进程及清理进程，再执行新发布包的 `server/deploy.sh`。
+版本升级：先按[正式替换手册](learning-rollout.md#维护窗口与首次替换)获取发布提交，运行 `server/check-site-revision.sh --allow-forward` 检查仓库干净且能快进；再停止所有使用该数据库的业务写入进程及清理进程，执行新发布包的 `server/deploy.sh`。
 脚本取得实例锁，临时禁用 app 登录，发现仍有 app 连接则拒绝部署；完成备份、迁移与权限自检后才恢复登录。
 
 ```bash
 /absolute/path/new-release/scripts/server/deploy.sh --release /absolute/path/new-release --data-dir /srv/shuxueshuo
 ```
 
-失败不会自动回退数据库；app 可能留在 NOLOGIN 的维护状态。排查后用已验证的目标版本执行 `resume`，它先运行完整 doctor 再开放登录。
+失败恢复取决于数据库事务是否已提交：提交前，DDL 和导入数据一起回滚到旧库，app 保持 NOLOGIN，仓库不要 `git pull`，使用**旧发布包的脚本和 `--release`** 执行 `resume`，再启动旧包应用。提交后，数据库保留新版本，若 doctor 失败，排除原因后使用**目标发布包**执行 `resume`（先核对数据库与目标包内容一致），再继续 `git pull` 与 `verify-release`。预检阶段尚未停写的失败不需要 `resume`。详细判定和命令见[正式替换手册](learning-rollout.md#维护窗口与首次替换)。
 宿主机异常退出可能留下 `locks/server-operation` 目录；确认没有管理操作运行后，管理员才能移除这个空锁目录。
-P1 不升级 PostgreSQL 大版本，也不替换运行中的旧 API、Review、Nginx。P2 要另接任务排空和服务切换。
+发布不升级 PostgreSQL 大版本，也不自动修改运行中的 Nginx 配置；先排空任务、停应用再部署。`deploy` 成功后数据库已恢复 LOGIN，应用保持停止；把服务器仓库前进到发布包的提交（`PRODUCT_SOURCE_REVISION`），显式 `verify-release` 检查仓库干净且 HEAD 与该提交完全相同，再核对镜像、学习库与仓库 `site/` 的内容版本，最后 `services-start`。`services-start` 前的校验不要求仓库提交相同，对仓库 `site/` 只报告不阻止，保留纯静态页面独立更新和无人值守重启的行为。
 
 ## 配置和数据库客户端
 
@@ -294,21 +294,19 @@ RELEASE=$(cat /srv/shuxueshuo/config/release-path)
 服务端 `drills-next/`、教师契约、`site/assets/explain/` 和 `site/1/`、`site/2/` 题页。
 管理镜像按需复制这些输入，构建时用镜像内的 Node.js/Python 执行完整内容校验，不依赖旧图谱或生成页面。
 新增专题目录时须同步增加管理 Dockerfile 及 dockerignore 的输入范围；漏项会使构建校验失败。
-API/Worker 镜像保留页面生成所需的 `site/assets/`，排除仅供主站展示的 `xiaohongshu/` 图片，
-不包含整套公共题页。主站仍由宿主机 Nginx 读取仓库的 `site/`。
-
-**镜像中的副本不会阻止静态网页用 `git pull` 发布。** 纯外观更新可单独发布；涉及入库内容时必须同步导入，
-宿主机 `git pull` 不会更新镜像内的原稿：
+API/Worker 镜像保留页面生成所需的 `site/assets/`，排除仅供主站展示的 `xiaohongshu/` 图片。
+主站网页不进镜像或发布包，由服务器仓库 `git pull` 更新。
 
 | 改动 | 需要执行 |
 | --- | --- |
-| 主站样式、布局、图片或不参与学习数据的普通页面 | 更新宿主机静态文件及缓存；不需要数据库导入或重建 API |
-| 知识节点、图解正文、专题关联、小题 | 用包含新原稿的管理镜像执行 `publish-learning`，配套切换静态文件 |
-| 题目、路线、步骤、教师 JSON 或后端逻辑 | 更新管理/API 镜像及相应静态文件，导入配套内容；表结构变化按 `deploy` 执行迁移 |
-| Worker 内嵌的题页生成 JS/CSS | 若要新生成的产物也使用新资源，须更新 API/Worker 镜像 |
+| 主站页面、样式、图片（教学内容版本不变） | 服务器仓库 `git pull` |
+| 图谱、关联、小题、教师契约或后端逻辑 | 从同一干净提交打包，执行 `deploy`，仓库 `git pull` 到同一提交，`verify-release` |
+| 当前包的内容幂等重发 | `publish-learning`；要求镜像原稿和数据库版本一致 |
+| Worker 生成资源 | 更新同包 API/Worker 镜像 |
+| Nginx 配置、OCR 宿主脚本 | 按各自运维说明更新 |
 
-这不新增常驻数据库服务。`0010` 已有内容的本地首次替换使用上文的 `rebuild-learning`；
-服务器首次替换与正式入口切换留到阶段 4，参见 [阶段 3 交接](../../docs/public-knowledge-graph-stage3.md)。
+服务器首次替换与恢复流程见 [学习内容正式替换](learning-rollout.md)。`preflight-learning` 使用只读事务，
+不初始化目录、不加载镜像、不启动服务；`prepare-release` 单独完成包校验和镜像载入。
 
 镜像验收（独立临时 PostgreSQL 容器，不使用宿主机数据库）：
 

@@ -312,21 +312,21 @@ test('problem-page links stay in the preview for any associated problem path', (
   const targets = {
     paths: ['/1/q01/', '/1/q02/', '/quadratic/q01/', '/preview-extra/q01/'],
     library: libraryPath('/quadratic/q01/'),
-    topic: '/knowledge-next/topics/quadratic-always/'
+    topic: '/knowledge/topics/quadratic-always/'
   };
   assert.equal(libraryPath('/1/q01/'), '/1/');
   assert.equal(targets.library, '/quadratic/');
-  assert.equal(previewTarget(link('/quadratic/'), targets), targets.topic);
-  assert.equal(previewTarget(link('/preview-extra/q01/#step-2'), targets), '/preview-extra/q01/?knowledge=next#step-2');
-  assert.equal(previewTarget(link('/1/q02/'), targets), '/1/q02/?knowledge=next');
+  assert.equal(previewTarget(link('/quadratic/'), targets), '/quadratic/?preview=1');
+  assert.equal(previewTarget(link('/preview-extra/q01/#step-2'), targets), '/preview-extra/q01/?preview=1#step-2');
+  assert.equal(previewTarget(link('/1/q02/'), targets), '/1/q02/?preview=1');
   assert.equal(previewTarget(link('/'), targets), null);
   assert.equal(previewTarget(link('/1/q99/'), targets), null);
   assert.equal(previewTarget(link('/'), { ...targets, library: libraryPath('/q01/') }), null);
 });
 
-test('generated previews preserve navigation and publish no private drill answers', async () => {
+test('generated public links offer explicit preview and publish no private drill answers', async () => {
   const { outputs } = await generate();
-  assert.equal(previewHref('/1/q01/?a=1#step-1'), '/1/q01/?a=1&knowledge=next#step-1');
+  assert.equal(previewHref('/1/q01/?a=1#step-1'), '/1/q01/?a=1&preview=1#step-1');
   const paths = JSON.parse(outputs.get('teaching/problems/basic-inequality-q01.json')).problemPaths;
   assert.deepEqual(
     paths,
@@ -336,7 +336,7 @@ test('generated previews preserve navigation and publish no private drill answer
     if (file.endsWith('.html'))
       for (const [, href] of body.matchAll(/href="(\/[^"]*)"/g))
         if (paths.includes(href.split(/[?#]/)[0]))
-          assert.ok(href.includes('knowledge=next'), `${file}: ${href}`);
+          assert.ok(!href.includes('knowledge=next') && !href.includes('learning=1'), `${file}: ${href}`);
     if (file.startsWith('teaching/'))
       assert.doesNotMatch(body, /"(?:answer|expected_answer|feedback|correct_options)"\s*:/);
     if (file.endsWith('/index.html')) assert.doesNotMatch(body, /class="drill-button"/);
@@ -349,6 +349,8 @@ test('generated previews preserve navigation and publish no private drill answer
     assert.ok(JSON.parse(outputs.get(`teaching/resources/${id}.json`)).html);
   }
   const review = outputs.get('topics/basic-inequality/review/index.html');
+  assert.match(review, /href="\/1\/q01\/\?preview=1"/);
+  assert.match(outputs.get('method-amgm-direct/index.html'), /href="\/1\/q03\/"/);
   assert.match(review, /基本不等式 · 求最值前检查：一正、二定、三相等/);
   assert.doesNotMatch(review, />[^<]* · checklist</);
   const body = JSON.parse(outputs.get('teaching/nodes/amgm-formula.json')).html;
@@ -498,7 +500,7 @@ test('real runtime keeps preview isolated for both login states, including failu
   );
   assert.match(
     result,
-    new RegExp(`${teaching.counts.routes} routes, 2 login states, failure and retry: passed`)
+    new RegExp(`${teaching.counts.routes} routes, 2 preview modes, 2 login states, failure and retry: passed`)
   );
 });
 
@@ -508,5 +510,5 @@ test('preview sheet preserves the teaching boundary and text when diagrams fail'
     ['--experimental-vm-modules', path.join(repoRoot, 'tools/tests/fixtures/practice-preview-sheet.mjs')],
     { encoding: 'utf8', timeout: 30000 }
   );
-  assert.match(result, /sheet boundaries, independent failures, retry and text-only fallback: passed/);
+  assert.match(result, /sheet boundaries, independent failures, retry, text-only fallback and in-place node sheet: passed/);
 });

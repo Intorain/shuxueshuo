@@ -1,0 +1,146 @@
+{
+  "topic": "quadratic-always",
+  "id": "quadratic-always-q03",
+  "label": "Q03",
+  "path": "/2/q03/",
+  "types": [
+    "type-quantified-quadratic"
+  ],
+  "routes": {
+    "discriminant": {
+      "methods": [
+        "method-discriminant"
+      ],
+      "steps": {
+        "d_basis": {
+          "refs": [
+            "method-discriminant"
+          ],
+          "title": "判断适用条件",
+          "position": 1
+        },
+        "d_degenerate": {
+          "refs": [
+            "method-discriminant#degree",
+            "linear-interval-extremum",
+            "quadratic-function-properties#definition"
+          ],
+          "tip": {
+            "ref": "quadratic-function-properties#definition",
+            "resource": "parabola-sign-grid",
+            "note": "本题 $a^2-1=0$ 有两个解：$a=1$ 时变成 $-1<0$，成立；$a=-1$ 时变成 $2x-1<0$，不恒成立，舍去。"
+          },
+          "title": "讨论 a²−1 = 0",
+          "position": 2
+        },
+        "d_position": {
+          "refs": [
+            "quadratic-function-properties",
+            "quadratic-function-properties#zeros"
+          ],
+          "tip": {
+            "ref": "quadratic-function-properties#zeros",
+            "resource": "parabola-sign-grid",
+            "note": "本题要 $f(x)<0$ 恒成立：开口向下（$a^2-1<0$），且与横轴没有公共点，相切也不行。"
+          },
+          "title": "判断图像位置",
+          "position": 3
+        },
+        "d_delta": {
+          "refs": [
+            "quadratic-equation#discriminant",
+            "method-discriminant#conditions",
+            "quadratic-function-properties#zeros"
+          ],
+          "tip": {
+            "ref": "quadratic-function-properties#zeros",
+            "resource": "parabola-sign-grid",
+            "note": "本题不带等号，只取 $\\Delta<0$：$\\Delta=(a-1)^2+4(a^2-1)=5a^2-2a-3<0$。"
+          },
+          "title": "建立判别式条件",
+          "position": 4
+        },
+        "d_range": {
+          "refs": [
+            "quadratic-inequality-solve"
+          ],
+          "tip": {
+            "ref": "quadratic-inequality-solve",
+            "resource": "quadratic-sign-reading",
+            "note": "本题 $5a^2-2a-3=(5a+3)(a-1)<0$，取两根之间：$-\\frac35<a<1$；再与前提 $-1<a<1$ 取交集，仍是 $-\\frac35<a<1$。"
+          },
+          "title": "求参数范围",
+          "position": 5
+        },
+        "d_merge": {
+          "refs": [
+            "method-discriminant#merge"
+          ],
+          "tip": {
+            "ref": "method-discriminant#merge",
+            "resource": "case-merge-union",
+            "note": "本题情况①只留下 $a=1$，情况②得 $-\\frac35<a<1$；取并集得 $-\\frac35<a\\le1$。"
+          },
+          "title": "合并两种情况",
+          "position": 6
+        },
+        "d_boundary": {
+          "refs": [
+            "function-range-extrema#attainability"
+          ],
+          "tip": {
+            "ref": "function-range-extrema#attainability",
+            "resource": "attainability-boundary",
+            "note": "本题 $a=-\\frac35$ 时左边是 $-\\left(\\frac45x-1\\right)^2$，在 $x=\\frac54$ 处等于 $0$，排除；$a=1$ 时是 $-1<0$，保留。"
+          },
+          "title": "检查边界",
+          "position": 7
+        }
+      },
+      "label": "判别式法"
+    }
+  },
+  "statement": "已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ],
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

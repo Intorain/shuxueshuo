@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import {createHash} from 'node:crypto';
 import {loadSources,generate,publish,repoRoot} from '../build-public-knowledge-graph.mjs';
 import {validateGraph,deriveEdges,inheritedKnowledge,scopeMembers,projectGraph,readState,writeState,safeGraphReturn,searchNodes,curriculumStructure,KINDS,normalizeViewFilters} from '../../site/assets/knowledge-next/model.mjs';
 import {layoutGraph,wrapLabel,fitGraph} from '../../site/assets/knowledge-next/layout.mjs';
@@ -73,16 +74,16 @@ test('URL state round-trips and rejects unsafe returns or unknown state',()=>{
   const state={scope:'section-2-2',view:'solution',q:'配方',node:'method-complete-square',kinds:['skill'],relations:['calls'],expanded:['method-amgm-direct']};
   assert.deepEqual(readState(writeState(state).split('?')[1],graph),state);
   assert.equal(readState('?scope=missing&view=bogus&node=missing',graph).node,'');
-  assert.equal(safeGraphReturn('https://evil.test/knowledge-next/'),'/knowledge-next/');
-  assert.equal(safeGraphReturn('//evil.test/knowledge-next/'),'/knowledge-next/');
-  assert.equal(safeGraphReturn('/knowledge-next/?view=solution'),'/knowledge-next/?view=solution');
-  assert.equal(safeGraphReturn('/knowledge-next/chapters/compulsory-1-ch3/?scope=section-3-2'),'/knowledge-next/chapters/compulsory-1-ch3/?scope=section-3-2');
-  assert.equal(safeGraphReturn('/knowledge-next/chapters/../x/'),'/knowledge-next/');
+  assert.equal(safeGraphReturn('https://evil.test/knowledge/'),'/knowledge/');
+  assert.equal(safeGraphReturn('//evil.test/knowledge/'),'/knowledge/');
+  assert.equal(safeGraphReturn('/knowledge/?view=solution'),'/knowledge/?view=solution');
+  assert.equal(safeGraphReturn('/knowledge/chapters/compulsory-1-ch3/?scope=section-3-2'),'/knowledge/chapters/compulsory-1-ch3/?scope=section-3-2');
+  assert.equal(safeGraphReturn('/knowledge/chapters/../x/'),'/knowledge/');
   assert.equal(searchNodes(nodes,'倒勾函数')[0].id,'reciprocal-sum-function');
   const ch3={scopes:['section-3-2','chapter-functions'],defaultScope:'section-3-2'};
   assert.equal(readState('?scope=section-2-1',graph,ch3).scope,'section-3-2');
   assert.equal(readState('?scope=chapter-functions',graph,ch3).scope,'chapter-functions');
-  assert.equal(writeState({...state,scope:'section-3-2'},'/knowledge-next/chapters/compulsory-1-ch3/').split('?')[0],'/knowledge-next/chapters/compulsory-1-ch3/');
+  assert.equal(writeState({...state,scope:'section-3-2'},'/knowledge/chapters/compulsory-1-ch3/').split('?')[0],'/knowledge/chapters/compulsory-1-ch3/');
 });
 
 test('view changes and restored URLs discard hidden filters while keeping compatible ones',()=>{
@@ -113,6 +114,43 @@ test('fit contains every node on mobile and desktop, including an open desktop d
         assert.ok(left>=0&&top>=0&&left+p.w*t.k<=width&&top+p.h*t.k<=height,`${scope}/${view}: ${id} 超出 ${width}×${height} 画布`);
       }
     }
+  }
+});
+
+test('chapter frames wrap or narrow to the arrangement that shows them largest',()=>{
+  const scope='chapter-quadratic-equations-inequalities',state={...readState('',graph),scope,view:'curriculum'};
+  const projected=projectGraph(graph,state),structure=curriculumStructure(graph,scope);
+  const flat=layoutGraph(projected.nodes,projected.edges,{view:'curriculum',structure});
+  for(const [width,height,rearranged] of [[2400,1400,false],[713,880,true],[333,520,true]]){
+    const wrapped=layoutGraph(projected.nodes,projected.edges,{view:'curriculum',structure,canvas:{width,height}});
+    assert.equal(wrapped.perRow<flat.frames.length||wrapped.cols<flat.cols,rearranged,`${width}×${height}`);
+    assert.ok(fitGraph(wrapped,width,height).k>=fitGraph(flat,width,height).k);
+    assert.equal(wrapped.positions.size,flat.positions.size);
+    for(const [a,b] of wrapped.frames.flatMap((f,i)=>wrapped.frames.slice(i+1).map(g=>[f,g])))
+      assert.ok(a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y,`${a.id} 与 ${b.id} 重叠`);
+  }
+});
+
+test('punctuation sticks to the formula before it while long formulas still wrap',async()=>{
+  const {textHtml}=await import('../lib/public-knowledge-html.mjs');
+  assert.match(textHtml('令 $t=x-2$。然后'),/<span class="math-tail"><span class="katex">[\s\S]*<\/span>。<\/span>然后/);
+  for(const [file,scope] of [['knowledge.css',''],['practice-preview.css','.kxp-sheet ']]){
+    const css=await fs.readFile(path.join(repoRoot,'site/assets/knowledge-next',file),'utf8');
+    assert.ok(css.includes(`${scope}.math-tail { white-space: nowrap; }`),file);
+    // nowrap is inherited; KaTeX breaks between its inline boxes only under normal.
+    assert.ok(css.includes(`${scope}.math-tail > .katex { white-space: normal; }`),file);
+  }
+});
+
+test('on a phone the readable first view needs no sideways panning',()=>{
+  for(const scope of ['chapter-quadratic-equations-inequalities','section-2-1','section-2-2','section-2-3']){
+    const state={...readState('',graph),scope,view:'curriculum'},projected=projectGraph(graph,state),structure=curriculumStructure(graph,scope);
+    const flat=layoutGraph(projected.nodes,projected.edges,{view:'curriculum',structure});
+    const phone=layoutGraph(projected.nodes,projected.edges,{view:'curriculum',structure,canvas:{width:390,height:520,minScale:.68}});
+    assert.ok(phone.width*Math.max(.68,fitGraph(phone,390,520).k)<=390,scope);
+    assert.equal(phone.positions.size,flat.positions.size,scope);
+    const desk=layoutGraph(projected.nodes,projected.edges,{view:'curriculum',structure,canvas:{width:1400,height:900,minScale:.8}});
+    assert.ok(Math.max(.8,fitGraph(desk,1400,900).k)>=Math.max(.8,fitGraph(flat,1400,900).k)-1e-6,scope);
   }
 });
 
@@ -165,19 +203,19 @@ test('rendered HTML is complete, pre-renders math and links every entry, step an
   assert.match(a.outputs.get('amgm-formula/index.html'),/class="katex"/);
   const square=a.outputs.get('square-nonnegative/index.html');
   assert.ok(square.includes('explain-square-nonnegative'));assert.ok(!square.includes('data-explain-open'));
-  assert.match(square,/href="\/knowledge-next\/amgm-formula\//);
+  assert.match(square,/href="\/knowledge\/amgm-formula\//);
   const method=a.outputs.get('method-amgm-parameter/index.html');
   assert.ok(method.includes('id="quantifier"')&&method.includes('id="parameter"'));
   const rule=a.outputs.get('rule-quadratic-method/index.html');
-  assert.match(rule,/data-graph-locate href="\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-3&view=solution&node=rule-quadratic-method/);
-  const script=a.outputs.get('chapters/compulsory-1-ch2/index.html').match(/src="(\/knowledge-next\/assets\/[^\"]+\/graph.mjs)"/)[1];
-  assert.ok(a.outputs.has(script.replace('/knowledge-next/','')));
+  assert.match(rule,/data-graph-locate href="\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-3&view=solution&node=rule-quadratic-method/);
+  const script=a.outputs.get('chapters/compulsory-1-ch2/index.html').match(/src="(\/knowledge\/assets\/[^\"]+\/graph.mjs)"/)[1];
+  assert.ok(a.outputs.has(script.replace('/knowledge/','')));
 });
 
 test('detail pages: position chain, two-sided relations, compact method path, method choice, organisation redirects',async()=>{
   const {outputs}=await generate();
   const amgm=outputs.get('amgm-formula/index.html');
-  assert.match(amgm,/<p class="appears"><span>出现在<\/span><a href="\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-2">/);
+  assert.match(amgm,/<p class="appears"><span>出现在<\/span><a href="\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-2">/);
   const hero=amgm.match(/<section class="hero detail-hero".*?<\/section>/s)[0];
   assert.match(hero,/<div class="region" data-kind="knowledge"><p class="region-label">前置知识 <span class="count">1<\/span>.*平方的非负性.*<div class="region" data-kind="skill"><p class="region-label">应用它的技能 <span class="count">2<\/span>.*<div class="region" data-kind="problem_type"><p class="region-label">考查它的题型 <span class="count">2<\/span>/s);
   assert.ok(!amgm.includes('id="relationships"')&&!amgm.includes('href="#relationships"'));
@@ -188,7 +226,7 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.match(amgm,/class="ag-slider"/);assert.ok(!amgm.includes('class="ag-tabs"'));
   const traps=amgm.match(/<section id="pitfalls">.*?<\/section>/s)[0];
   assert.equal(traps.match(/class="pitfall"/g).length,4);
-  assert.match(traps,/id="pitfall-fixed".*错误做法.*正确做法.*href="\/knowledge-next\/method-matching\/"/s);
+  assert.match(traps,/id="pitfall-fixed".*错误做法.*正确做法.*href="\/knowledge\/method-matching\/"/s);
   const homogeneous=outputs.get('method-homogeneous/index.html');
   assert.match(homogeneous,/<li id="fill">.*?<section class="resource-section is-placed" id="resource-homogeneous-degree">.*?<\/section><\/li>/s);
   assert.ok(homogeneous.includes('class="method-figure"') && !homogeneous.includes('class="method-steps"') && !homogeneous.includes('第 10 题'));
@@ -208,7 +246,7 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.ok(!sumProductRange.includes('class="sp-table"'));
   assert.match(outputs.get('skill-quadratic-sign/index.html'),/<li id="signs">.*?id="resource-quadratic-sign-chart".*?<li id="zeros">/s);
   assert.match(outputs.get('function-range-extrema/index.html'),/id="attainability".*?id="resource-attainability-boundary".*?id="quantified".*?id="resource-quantified-horizontal-line"/s);
-  assert.match(outputs.get('function-monotonicity/index.html'),/id="pitfall-open-interval".*?相关<\/span><a class="node-chip"[^>]*href="\/knowledge-next\/function-range-extrema\/#attainability"><i aria-hidden="true"><\/i>函数的值域与最值 · /s);
+  assert.match(outputs.get('function-monotonicity/index.html'),/id="pitfall-open-interval".*?相关<\/span><a class="node-chip"[^>]*href="\/knowledge\/function-range-extrema\/#attainability"><i aria-hidden="true"><\/i>函数的值域与最值 · /s);
   assert.ok(!amgm.includes('data-drill-open'));
   assert.match(amgm,/"drill":false/);
   assert.ok(!outputs.get('type-sum-product-extremum/index.html').includes('data-drill-open'));
@@ -217,7 +255,7 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.match(outputs.get('method-amgm-direct/index.html'),/data-kind="skill"><p class="region-label">用到的技能/);
   assert.ok(!amgm.includes('<table')&&!amgm.includes('node-identity')&&!amgm.includes('← 返回图谱'));
   const skill=outputs.get('method-matching/index.html');
-  assert.match(skill,/href="\/knowledge-next\/method-amgm-direct\/#prepare"/);
+  assert.match(skill,/href="\/knowledge\/method-amgm-direct\/#prepare"/);
   const method=outputs.get('method-amgm-direct/index.html');
   assert.match(method,/<div class="step-calls"><p class="rel-label">看题目情况选用<\/p>/);
   assert.match(method,/<div class="step-calls is-inline"><p class="rel-label">这一步用到<\/p>/);
@@ -226,12 +264,12 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.match(quantified,/<small>必修一·1章<\/small>/);
   assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-method"/g).length,4);
   assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-when"><strong>适合什么题：/g).length,4);
-  assert.match(outputs.get('section-2-2/index.html'), /"redirectHref":"\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"/);
-  assert.doesNotMatch(outputs.get('section-2-2/index.html'), /http-equiv="refresh"/);
-  assert.match(outputs.get('section-2-2/index.html'), /src="\/knowledge-next\/assets\/[a-f0-9]+\/learning.mjs"/);
-  assert.match(outputs.get('chapter-functions/index.html'), /"redirectHref":"\/knowledge-next\/chapters\/compulsory-1-ch3\/"/);
-  assert.match(outputs.get('textbook-pep-a-compulsory-1/index.html'), /"redirectHref":"\/knowledge-next\/"/);
-  for(const [file,html] of outputs)if(file.endsWith('.html'))assert.ok(!/href="\/knowledge-next\/(section-|chapter-|textbook-)/.test(html),file);
+  assert.match(outputs.get('section-2-2/index.html'), /"redirectHref":"\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"/);
+  assert.match(outputs.get('section-2-2/index.html'), /<noscript><meta http-equiv="refresh" content="0;url=\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"><\/noscript>/);
+  assert.match(outputs.get('section-2-2/index.html'), /src="\/knowledge\/assets\/[a-f0-9]+\/learning.mjs"/);
+  assert.match(outputs.get('chapter-functions/index.html'), /"redirectHref":"\/knowledge\/chapters\/compulsory-1-ch3\/"/);
+  assert.match(outputs.get('textbook-pep-a-compulsory-1/index.html'), /"redirectHref":"\/knowledge\/"/);
+  for(const [file,html] of outputs)if(file.endsWith('.html'))assert.ok(!/href="\/knowledge\/(section-|chapter-|textbook-)/.test(html),file);
 });
 
 test('2D pages: whole-curriculum overview, one graph page per recorded chapter, external nodes marked',async()=>{
@@ -243,10 +281,10 @@ test('2D pages: whole-curriculum overview, one graph page per recorded chapter, 
   for(const map of [wide,narrow]){assert.equal(map.match(/class="map-chapter /g).length,18);assert.equal(map.match(/class="map-link is-relation"/g).length,2);}
   assert.ok(wide.includes('is-outline')&&!narrow.includes('is-outline'),'手机版关系图只画跨章知识关联');
   assert.match(overview,/id="chapter-compulsory-1-ch3"[\s\S]*?<span>先修<\/span>/);
-  assert.match(overview,/href="\/knowledge-next\/chapters\/compulsory-1-ch2\/\?scope=section-2-3"/);
+  assert.match(overview,/href="\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-3"/);
   assert.match(overview,/overview\.mjs/);
   const ch2=outputs.get('chapters/compulsory-1-ch2/index.html'),config=JSON.parse(ch2.match(/<script id="graph-config" type="application\/json">(.*?)<\/script>/)[1]);
-  assert.deepEqual(config,{chapter:'compulsory-1-ch2',node:'chapter-quadratic-equations-inequalities',base:'/knowledge-next/chapters/compulsory-1-ch2/',defaultScope:'section-2-1',scopes:['section-2-1','section-2-2','section-2-3','chapter-quadratic-equations-inequalities']});
+  assert.deepEqual(config,{chapter:'compulsory-1-ch2',node:'chapter-quadratic-equations-inequalities',base:'/knowledge/chapters/compulsory-1-ch2/',defaultScope:'section-2-1',scopes:['section-2-1','section-2-2','section-2-3','chapter-quadratic-equations-inequalities']});
   assert.ok(!ch2.includes('data-scope="section-3-2"'));
   assert.match(ch2,/<details class="fallback-directory" open>/);
   const sections=[...ch2.matchAll(/<section id="dir-(section-[\d-]+)" class="dir-section"><h2><b>[\d.]+<\/b> [^<]+<span class="count">(\d+)<\/span>/g)];
@@ -270,7 +308,7 @@ test('2D pages: whole-curriculum overview, one graph page per recorded chapter, 
   const detail=outputs.get('quantifiers/index.html');
   assert.ok(!detail.includes('id="cross-chapter"'));
   assert.match(detail.match(/<section class="hero detail-hero".*?<\/section>/s)[0],/<small>必修一·2章<\/small>/,'别章节点在上方关系行里带章标');
-  assert.match(detail,/<a data-graph-return href="\/knowledge-next\/chapters\/compulsory-1-ch1\/\?scope=section-1-5/);
+  assert.match(detail,/<a data-graph-return href="\/knowledge\/chapters\/compulsory-1-ch1\/\?scope=section-1-5/);
 });
 
 test('knowledge city: whole-curriculum outline, chapter 2 built, towers inside their districts without overlap',async()=>{
@@ -327,26 +365,127 @@ test('knowledge city validation rejects bad outline references',()=>{
 test('resource adapter uses explicit mappings and fails unknown old links',()=>{
   const html='<button type="button" class="old" data-explain-open="old"></button>';
   const next=rewriteResourceLinks(html,{old:'function-range-extrema#attainability'},{'function-range-extrema':'函数的值域与最值'});
-  assert.match(next,/href="\/knowledge-next\/function-range-extrema\/#attainability"/);
+  assert.match(next,/href="\/knowledge\/function-range-extrema\/#attainability"/);
   assert.ok(!next.includes('data-explain-open'));
   assert.throws(()=>rewriteResourceLinks(html,{},{}),/未映射/);
 });
 
-test('--check catches missing, stale and removed pages without writing; build only owns preview output',async()=>{
+test('--check catches missing and stale pages; cleanup is limited to inventoried outputs',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'knowledge-next-test-'));
   try {
     await fs.mkdir(path.join(root,'site'));
     for(const part of ['data','assets','1','2'])await fs.symlink(path.join(repoRoot,'site',part),path.join(root,'site',part),'dir');
     await fs.symlink(path.join(repoRoot,'server'),path.join(root,'server'),'dir');
-    await fs.mkdir(path.join(root,'site/knowledge'));await fs.writeFile(path.join(root,'site/knowledge/index.html'),'untouched');
+    await fs.symlink(path.join(repoRoot,'tools'),path.join(root,'tools'),'dir');
+    await fs.mkdir(path.join(root,'site/knowledge'));await fs.writeFile(path.join(root,'site/knowledge/handwritten.txt'),'untouched');
     await publish({root});assert.equal((await publish({root,check:true})).changed,0);
-    const target=path.join(root,'site/knowledge-next/amgm-formula/index.html');
+    const target=path.join(root,'site/knowledge/amgm-formula/index.html');
     await fs.unlink(target);await assert.rejects(publish({root,check:true}),/缺失或过期/);
     await assert.rejects(fs.stat(target),/ENOENT/);
     await publish({root});await fs.writeFile(target,'stale');await assert.rejects(publish({root,check:true}),/缺失或过期/);
-    await fs.writeFile(path.join(root,'site/knowledge-next/removed.html'),'orphan');
-    await assert.rejects(publish({root,check:true}),/obsolete: removed.html/);await publish({root});
-    assert.equal(await fs.readFile(path.join(root,'site/knowledge/index.html'),'utf8'),'untouched');
-    await assert.rejects(fs.stat(path.join(root,'site/knowledge-next/removed.html')),/ENOENT/);
+    await fs.writeFile(path.join(root,'site/knowledge/removed.html'),'orphan');
+    const manifestPath=path.join(root,'site/knowledge/manifest.json');
+    const manifest=JSON.parse(await fs.readFile(manifestPath,'utf8'));
+    manifest.files.push('removed.html');await fs.writeFile(manifestPath,JSON.stringify(manifest));
+    await assert.rejects(publish({root,check:true}),/obsolete: knowledge\/removed.html/);await publish({root});
+    assert.equal(await fs.readFile(path.join(root,'site/knowledge/handwritten.txt'),'utf8'),'untouched');
+    await assert.rejects(fs.stat(path.join(root,'site/knowledge/removed.html')),/ENOENT/);
   }finally{await fs.rm(root,{recursive:true,force:true});}
 });
+
+test('cleanup removes only empty owned ancestors, including leftovers after first replacement', async () => {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'knowledge-empty-directories-'));
+  try {
+    await fs.mkdir(path.join(root,'site'));
+    for(const part of ['data','assets','1','2']) await fs.symlink(path.join(repoRoot,'site',part),path.join(root,'site',part),'dir');
+    await fs.symlink(path.join(repoRoot,'server'),path.join(root,'server'),'dir');
+    await fs.mkdir(path.join(root,'tools/data'),{recursive:true});
+    const oldFiles={'retired/deep/node/index.html':'old node','retained/node/index.html':'old retained node','old-empty/child/index.html':'already removed'};
+    await fs.writeFile(path.join(root,'tools/data/public-knowledge-legacy-files.json'),JSON.stringify({files:Object.fromEntries(Object.entries(oldFiles).map(([name,body])=>[name,createHash('sha256').update(body).digest('hex')]))}));
+    for(const [name,body] of Object.entries(oldFiles)) {
+      await fs.mkdir(path.dirname(path.join(root,'site/knowledge',name)),{recursive:true});
+      if(!name.startsWith('old-empty/')) await fs.writeFile(path.join(root,'site/knowledge',name),body);
+    }
+    await fs.writeFile(path.join(root,'site/knowledge/retained/node/notes.txt'),'handwritten');
+    await fs.mkdir(path.join(root,'site/knowledge/retired/handwritten-empty'),{recursive:true});
+    await fs.mkdir(path.join(root,'site/knowledge/untouched-empty'),{recursive:true});
+    await publish({root});
+    await assert.rejects(fs.stat(path.join(root,'site/knowledge/retired/deep')),/ENOENT/);
+    await assert.rejects(fs.stat(path.join(root,'site/knowledge/old-empty')),/ENOENT/);
+    assert.equal(await fs.readFile(path.join(root,'site/knowledge/retained/node/notes.txt'),'utf8'),'handwritten');
+    assert.ok((await fs.stat(path.join(root,'site/knowledge/retired/handwritten-empty'))).isDirectory());
+    assert.ok((await fs.stat(path.join(root,'site/knowledge/untouched-empty'))).isDirectory());
+
+    // A previous run may already have replaced the manifest but left empty
+    // legacy paths and obsolete bundle directories behind.
+    await fs.mkdir(path.join(root,'site/knowledge/old-empty/child'),{recursive:true});
+    await fs.mkdir(path.join(root,'site/knowledge-next/assets/0123456789ab'),{recursive:true});
+    await fs.mkdir(path.join(root,'site/knowledge-next/assets/handwritten-empty'),{recursive:true});
+    await assert.rejects(publish({root,check:true}),/obsolete directory: knowledge\/old-empty\/child/);
+    assert.ok((await fs.stat(path.join(root,'site/knowledge/old-empty/child'))).isDirectory());
+    await publish({root});
+    await assert.rejects(fs.stat(path.join(root,'site/knowledge/old-empty')),/ENOENT/);
+    await assert.rejects(fs.stat(path.join(root,'site/knowledge-next/assets/0123456789ab')),/ENOENT/);
+    assert.ok((await fs.stat(path.join(root,'site/knowledge-next/assets/handwritten-empty'))).isDirectory());
+    assert.equal((await publish({root,check:true})).changed,0);
+  } finally {
+    await fs.rm(root,{recursive:true,force:true});
+  }
+});
+
+for (const failure of ['modified deletion', 'modified replacement', 'unowned replacement', 'compatibility ownership']) {
+  test(`first replacement validates ${failure} before writing; retry preserves the same guard`, async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'knowledge-first-replacement-'));
+    const snapshot = async () => {
+      const result = new Map();
+      const visit = async directory => {
+        for (const entry of await fs.readdir(path.join(root, 'site', directory), {withFileTypes: true})) {
+          const name = path.posix.join(directory, entry.name);
+          if (entry.isDirectory()) await visit(name);
+          else result.set(name, createHash('sha256').update(await fs.readFile(path.join(root, 'site', name))).digest('hex'));
+        }
+      };
+      for (const directory of ['knowledge', 'knowledge-next']) await visit(directory);
+      return result;
+    };
+    try {
+      await fs.mkdir(path.join(root, 'site'));
+      for (const part of ['data', 'assets', '1', '2']) await fs.symlink(path.join(repoRoot, 'site', part), path.join(root, 'site', part), 'dir');
+      await fs.symlink(path.join(repoRoot, 'server'), path.join(root, 'server'), 'dir');
+      await fs.mkdir(path.join(root, 'tools/data'), {recursive: true});
+      await fs.mkdir(path.join(root, 'site/knowledge/nodes'), {recursive: true});
+      await fs.mkdir(path.join(root, 'site/knowledge-next'));
+      const oldFiles = {'index.html': 'old index', 'data.js': 'old data'};
+      if (failure === 'modified replacement') oldFiles['nodes/index.html'] = 'old nodes';
+      for (const [name, body] of Object.entries(oldFiles)) await fs.writeFile(path.join(root, 'site/knowledge', name), body);
+      const inventory = Object.fromEntries(Object.entries(oldFiles).map(([name, body]) => [name, createHash('sha256').update(body).digest('hex')]));
+      await fs.writeFile(path.join(root, 'tools/data/public-knowledge-legacy-files.json'), JSON.stringify({files: inventory}));
+      await fs.writeFile(path.join(root, 'site/knowledge-next/index.html'), 'old preview');
+      await fs.writeFile(path.join(root, 'site/knowledge-next/manifest.json'), JSON.stringify({
+        generator: failure === 'compatibility ownership' ? 'another-generator' : 'tools/build-public-knowledge-graph.mjs',
+        files: ['index.html', 'manifest.json'],
+      }));
+      let error;
+      if (failure === 'modified deletion') {
+        await fs.writeFile(path.join(root, 'site/knowledge/data.js'), 'user-modified data');
+        error = /拒绝删除已修改的旧文件：knowledge\/data.js/;
+      } else if (failure === 'modified replacement') {
+        await fs.writeFile(path.join(root, 'site/knowledge/nodes/index.html'), 'user-modified nodes');
+        error = /首次替换发现旧文件已被修改：knowledge\/nodes\/index.html/;
+      } else if (failure === 'unowned replacement') {
+        await fs.writeFile(path.join(root, 'site/knowledge/nodes/index.html'), 'handwritten nodes');
+        error = /拒绝覆盖未登记文件：knowledge\/nodes\/index.html/;
+      } else {
+        error = /无法管理其他生成器的目录：knowledge-next/;
+      }
+      const before = await snapshot();
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await assert.rejects(publish({root}), error);
+        assert.deepEqual(await snapshot(), before, `attempt ${attempt + 1} changed files or manifests`);
+        await assert.rejects(fs.stat(path.join(root, 'site/knowledge/manifest.json')), /ENOENT/);
+      }
+    } finally {
+      await fs.rm(root, {recursive: true, force: true});
+    }
+  });
+}

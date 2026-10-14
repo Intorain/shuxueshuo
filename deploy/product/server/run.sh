@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
-release='' operation='' root=${PRODUCT_DATA_DIR:-/srv/shuxueshuo} instance=server port='' backup='' target=''
+release='' operation='' root=${PRODUCT_DATA_DIR:-/srv/shuxueshuo} instance=server port='' backup='' target='' replace_public=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) [[ "$2" == server ]] || fail 'server mode required'; shift 2;;
@@ -11,7 +11,8 @@ while [[ $# -gt 0 ]]; do
     --port) port=${2:?}; shift 2;;
     --backup) backup=${2:?}; shift 2;;
     --target) target=${2:?}; shift 2;;
-    install|deploy|resume|status|migrate|seed|doctor|backup|restore|bootstrap|publish-learning|check-learning|reassess-learning|services-install|services-start|services-stop|services-status|services-doctor) operation=$1; shift;;
+    --replace-legacy-public) replace_public=1; shift;;
+    install|deploy|prepare-release|preflight-learning|verify-release|resume|status|migrate|seed|doctor|backup|restore|bootstrap|publish-learning|check-learning|reassess-learning|services-install|services-start|services-stop|services-status|services-doctor) operation=$1; shift;;
     *) fail "未知参数：$1";;
   esac
 done
@@ -23,7 +24,12 @@ port=${port:-5432}
 if [[ -f "$PRODUCT_REPO/server/pyproject.toml" && "$root" == "$PRODUCT_REPO"* ]]; then fail '数据目录不能在 Git 内'; fi
 [[ "$instance" =~ ^[a-z][a-z0-9_-]{0,39}$ && "$port" =~ ^[0-9]+$ ]] || fail '实例或端口无效'
 [[ -n "$operation" ]] || fail '缺少管理操作'
-if [[ "$operation" != install && "$operation" != restore && ! -f "$root/config/compose.env" ]]; then
+if [[ "$operation" == preflight-learning && ! -f "$root/config/compose.env" ]]; then
+  printf '%s\n' '{"state":"empty","revision":null,"counts":{},"action":"install"}'
+  exit 0
+fi
+[[ "$replace_public" == 0 || "$operation" == deploy ]] || fail '--replace-legacy-public 仅适用于 deploy'
+if [[ "$operation" != install && "$operation" != restore && "$operation" != prepare-release && ! -f "$root/config/compose.env" ]]; then
   fail '实例尚未安装'
 fi
 if [[ -z "$release" && -f "$root/config/release-path" ]]; then release=$(cat "$root/config/release-path"); fi
@@ -34,30 +40,49 @@ docker compose version >/dev/null
 PRODUCT_RABBITMQ_IMAGE=''
 PRODUCT_RABBITMQ_MANIFEST=''
 PRODUCT_APP_IMAGE=''
+PRODUCT_ADMIN_IMAGE_OCI=''
+PRODUCT_APP_IMAGE_OCI=''
+PRODUCT_POSTGRES_IMAGE_OCI=''
+PRODUCT_RABBITMQ_IMAGE_OCI=''
 while IFS='=' read -r key value; do
   [[ "$key" =~ ^PRODUCT_[A-Z_]+$ && "$value" =~ ^[a-zA-Z0-9/.:@_-]+$ ]] || fail '发布清单格式错误'
   case "$key" in
-    PRODUCT_RELEASE_ID|PRODUCT_PLATFORM|PRODUCT_ADMIN_IMAGE|PRODUCT_POSTGRES_IMAGE|PRODUCT_POSTGRES_MANIFEST|PRODUCT_ALEMBIC_REVISION|PRODUCT_SOURCE_REVISION)
+    PRODUCT_RELEASE_ID|PRODUCT_PLATFORM|PRODUCT_ADMIN_IMAGE|PRODUCT_POSTGRES_IMAGE|PRODUCT_POSTGRES_MANIFEST|PRODUCT_ALEMBIC_REVISION|PRODUCT_SOURCE_REVISION|PRODUCT_CONTENT_VERSION|PRODUCT_CONTENT_SCHEMA)
       export "$key=$value";;
-    PRODUCT_RABBITMQ_IMAGE|PRODUCT_RABBITMQ_MANIFEST|PRODUCT_APP_IMAGE)
+    PRODUCT_RABBITMQ_IMAGE|PRODUCT_RABBITMQ_MANIFEST|PRODUCT_APP_IMAGE|PRODUCT_ADMIN_IMAGE_OCI|PRODUCT_APP_IMAGE_OCI|PRODUCT_POSTGRES_IMAGE_OCI|PRODUCT_RABBITMQ_IMAGE_OCI)
       export "$key=$value";;
     *) fail '未知发布字段';;
   esac
 done < "$release/release.env"
 [[ "$PRODUCT_ADMIN_IMAGE" == sha256:* && "$PRODUCT_POSTGRES_IMAGE" == sha256:* ]] || fail '镜像必须固定内容 ID'
+resolve_image() {
+  local key=$1 alternate_key="${1}_OCI" primary alternate candidate actual
+  primary=${!key}; alternate=${!alternate_key}
+  [[ -n "$primary" ]] || return 0
+  [[ "$primary" =~ ^sha256:[a-f0-9]{64}$ ]] || fail '镜像内容 ID 无效'
+  [[ -z "$alternate" || "$alternate" =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'OCI 镜像内容 ID 无效'
+  for candidate in "$primary" "$alternate"; do
+    [[ -n "$candidate" ]] || continue
+    actual=$(docker image inspect --format '{{.Id}}' "$candidate" 2>/dev/null) || continue
+    [[ "$actual" == "$primary" || "$actual" == "$alternate" ]] || fail '镜像身份不在归档候选中'
+    printf -v "$key" '%s' "$actual"
+    export "$key"
+    return 0
+  done
+  return 1
+}
 need_load=0
-docker image inspect "$PRODUCT_ADMIN_IMAGE" >/dev/null 2>&1 || need_load=1
-docker image inspect "$PRODUCT_POSTGRES_IMAGE" >/dev/null 2>&1 || need_load=1
-if [[ -n "$PRODUCT_RABBITMQ_IMAGE" ]]; then
-  docker image inspect "$PRODUCT_RABBITMQ_IMAGE" >/dev/null 2>&1 || need_load=1
-fi
-if [[ -n "$PRODUCT_APP_IMAGE" ]]; then
-  docker image inspect "$PRODUCT_APP_IMAGE" >/dev/null 2>&1 || need_load=1
-fi
+for image_key in PRODUCT_ADMIN_IMAGE PRODUCT_POSTGRES_IMAGE PRODUCT_APP_IMAGE PRODUCT_RABBITMQ_IMAGE; do
+  resolve_image "$image_key" || need_load=1
+done
 if [[ "$need_load" == 1 ]]; then
+  [[ "$operation" != preflight-learning ]] || fail '只读预检不加载镜像，请先执行 prepare-release'
   [[ "$(checksum "$release/images.tar")" == "$(cat "$release/images.sha256")" ]] || fail '离线镜像包校验失败'
   docker load -i "$release/images.tar"
 fi
+for image_key in PRODUCT_ADMIN_IMAGE PRODUCT_POSTGRES_IMAGE PRODUCT_APP_IMAGE PRODUCT_RABBITMQ_IMAGE; do
+  resolve_image "$image_key" || fail "无法加载归档中的固定镜像身份：$image_key"
+done
 docker run --rm --entrypoint /opt/product/bin/python -v "$release:/release:ro" "$PRODUCT_ADMIN_IMAGE" -c \
  'import hashlib,json,pathlib; p=pathlib.Path("/release"); m=json.loads((p/"manifest.json").read_text()); assert all(hashlib.sha256((p/n).read_bytes()).hexdigest()==h for n,h in m["files"].items()), "release checksum mismatch"'
 actual_platform=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$PRODUCT_ADMIN_IMAGE")
@@ -71,6 +96,23 @@ PRODUCT_HOST_HOME="${PRODUCT_HOST_HOME:-$HOME}"
 PRODUCT_REPO_HOST="${PRODUCT_REPO_HOST:-$PRODUCT_HOST_HOME/code/shuxueshuo}"
 PRODUCT_OCR_IMAGE="${PRODUCT_OCR_IMAGE:-shuxueshuo-ocr:3.3.0}"
 export PRODUCT_REPO_HOST PRODUCT_HOST_HOME PRODUCT_OCR_IMAGE
+if [[ "$operation" == verify-release ]]; then
+  # A full release must use this exact clean checkout. services-start/doctor
+  # call the content-only optional check below, allowing independent page updates.
+  bash "$PRODUCT_SCRIPTS/server/check-site-revision.sh" \
+    --repo "$PRODUCT_REPO_HOST" --revision "${PRODUCT_SOURCE_REVISION:-}"
+fi
+if [[ "$operation" == prepare-release ]]; then
+  printf '%s\n' '{"ok":true,"prepared":"images_and_manifest","instance_changed":false}'
+  exit 0
+fi
+if [[ "$operation" == preflight-learning ]]; then
+  # Existing network and read-only mounts only: no configure, locks, volume or service startup.
+  exec docker run --rm --read-only --tmpfs /tmp --security-opt no-new-privileges:true \
+    --user "$PRODUCT_UID:$PRODUCT_GID" --network "shuxueshuo-product-${instance}_default" \
+    -e PRODUCT_IN_CONTAINER=1 -v "$root:/var/lib/shuxueshuo:ro" "$PRODUCT_ADMIN_IMAGE" \
+    --mode server --data-dir /var/lib/shuxueshuo --instance "$instance" --port "$port" preflight-learning
+fi
 mkdir -p "$root"
 mkdir -p "$root/locks"
 mkdir "$root/locks/server-operation" 2>/dev/null || fail '已有服务器管理操作运行；检查遗留锁后再重试'
@@ -90,9 +132,15 @@ PRODUCT_BOOTSTRAP_PASSWORD=$(sed -n "s/^PRODUCT_BOOTSTRAP_PASSWORD='\([^']*\)'$/
 export PRODUCT_BOOTSTRAP_PASSWORD
 compose=(docker compose --project-name "shuxueshuo-product-$instance" -f "$release/scripts/compose.yml" -f "$release/scripts/compose.server.yml")
 compose_app=("${compose[@]}" -f "$release/scripts/compose.app.yml")
-admin=("${compose[@]}" run --rm --no-deps -e "PRODUCT_OCR_URL=$PRODUCT_OCR_URL" admin --mode server --data-dir /var/lib/shuxueshuo --instance "$instance" --port "$port")
+# The public site is the repository's site/ (git pull); admin only reads its teaching content version.
+site_mount=() site_flag=()
+if [[ -f "$PRODUCT_REPO_HOST/site/knowledge/teaching/version.json" ]]; then
+  site_mount=(-v "$PRODUCT_REPO_HOST/site/knowledge/teaching:/site-teaching:ro")
+  site_flag=(--site-version /site-teaching/version.json)
+fi
+admin=("${compose[@]}" run --rm --no-deps ${site_mount[@]+"${site_mount[@]}"} -e "PRODUCT_OCR_URL=$PRODUCT_OCR_URL" admin ${site_flag[@]+"${site_flag[@]}"} --mode server --data-dir /var/lib/shuxueshuo --instance "$instance" --port "$port")
 # Join the app network so admin can resolve rabbitmq/api/ocr service names.
-admin_net=("${compose_app[@]}" run --rm -e "PRODUCT_OCR_URL=$PRODUCT_OCR_URL" admin --mode server --data-dir /var/lib/shuxueshuo --instance "$instance" --port "$port")
+admin_net=("${compose_app[@]}" run --rm ${site_mount[@]+"${site_mount[@]}"} -e "PRODUCT_OCR_URL=$PRODUCT_OCR_URL" admin ${site_flag[@]+"${site_flag[@]}"} --mode server --data-dir /var/lib/shuxueshuo --instance "$instance" --port "$port")
 
 load_runtime_exports() {
   [[ -f "$root/config/runtime.env" ]] || fail '请先执行 services-install'
@@ -129,7 +177,9 @@ case "$operation" in
     postgres_container=$("${compose[@]}" ps -q postgres)
     [[ -n "$postgres_container" ]] || fail '数据库容器未运行'
     [[ "$(docker inspect --format '{{.Image}}' "$postgres_container")" == "$PRODUCT_POSTGRES_IMAGE" ]] || fail '数据库镜像变更需要独立备份和升级流程'
-    "${admin[@]}" deploy;;
+    replacement=()
+    [[ "$replace_public" == 0 ]] || replacement=(--replace-legacy-public)
+    "${admin[@]}" deploy ${replacement[@]+"${replacement[@]}"};;
   restore)
     "${compose[@]}" up -d --wait --wait-timeout 90 postgres
     "${admin[@]}" bootstrap
@@ -147,6 +197,7 @@ case "$operation" in
       [[ "$volume_root" == "$root" ]] || fail '已有 RabbitMQ 卷绑定另一数据目录，拒绝复用'
     fi
     "${compose[@]}" up -d --wait --wait-timeout 90 postgres
+    "${admin[@]}" verify-release --site-optional
     "${compose_app[@]}" up -d --wait --wait-timeout 240 rabbitmq ocr api worker publisher
     "${admin_net[@]}" services-doctor;;
   services-stop)
@@ -164,6 +215,7 @@ case "$operation" in
     require_app_release
     load_runtime_exports
     "${compose[@]}" up -d --wait --wait-timeout 90 postgres
+    "${admin[@]}" verify-release --site-optional
     "${compose_app[@]}" up -d --wait --wait-timeout 240 rabbitmq ocr api worker publisher
     "${admin_net[@]}" services-doctor;;
   *) "${admin[@]}" "$operation";;

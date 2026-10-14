@@ -15,12 +15,7 @@
   <link rel="stylesheet" href="/topics/topics.css?v=20261004c">
   <title>高中数学专题练习 · 数学说</title>
   <script type="module" src="../assets/auth/site-auth.js?v=4"></script>
-  <script type="module">
-    const graph = await fetch('/data/knowledge/graph.json?v=2').then(response => response.json()).catch(() => null);
-    const count = kind => graph?.nodes.filter(node => node.kind === kind).length;
-    if (count('knowledge')) document.querySelector('[data-graph-desc]').innerHTML =
-      `<b>${count('knowledge')}</b> 个知识点、<b>${count('method')}</b> 个方法，以及它们之间的前提与依据关系`;
-  </script>
+  <script type="module" src="/topics/overview.mjs?v=1"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">跳到专题</a>
@@ -39,7 +34,7 @@
         <span class="graph-icon" aria-hidden="true"><svg viewBox="0 0 48 48" width="34" height="34"><path d="M11 25 24 12M11 25l13 13M24 12l13 13M24 38l13-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="25" r="5" fill="currentColor"/><circle cx="24" cy="12" r="4.5" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="38" r="4.5" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="31.5" y="19.5" width="11" height="11" rx="3" fill="#e2a43b"/></svg></span>
         <span class="graph-text">
           <span class="graph-title">知识图谱<span class="graph-tag">贯穿所有专题</span></span>
-          <span class="graph-desc" data-graph-desc>各专题用到的知识点和方法，以及它们之间的前提与依据关系</span>
+          <span class="graph-desc" data-graph-desc>各专题用到的知识、技能、方法和题型，以及它们之间的联系</span>
         </span>
         <span class="graph-go">打开图谱<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
@@ -62,7 +57,7 @@
             </math>
             <span class="formula-cond">(<var>a</var>, <var>b</var> &gt; 0)</span>
           </p>
-          <p class="topic-label">7 个题型</p>
+          <p class="topic-label">7 个训练分组</p>
           <ul class="topic-methods">
             <li><a href="/1/#group-direct">直接法</a></li>
             <li><a href="/1/#group-matching">配凑法</a></li>

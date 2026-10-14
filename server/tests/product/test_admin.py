@@ -1,11 +1,10 @@
-from pathlib import Path
+import json
 import os
 import shutil
 import subprocess
 
 import pytest
-
-from shuxueshuo_server.product.config import Settings, REPO
+from shuxueshuo_server.product.config import REPO, Settings
 from shuxueshuo_server.product.errors import Conflict, ProductError
 
 
@@ -68,6 +67,15 @@ def release_repository(tmp_path):
     shutil.copytree(REPO / 'deploy/product', repo / 'deploy/product')
     (repo / 'server').mkdir()
     (repo / 'server/content.txt').write_text('committed source')
+    teaching = repo / 'site/knowledge/teaching'
+    teaching.mkdir(parents=True)
+    (teaching / 'version.json').write_text('{"schema_version":2,"content_version":"' + 'a'*64 + '"}')
+    (repo / 'site/index.html').write_text('committed site')
+    tools = repo / 'tools'
+    tools.mkdir()
+    (tools / 'build-public-knowledge-graph.mjs').write_text('if (!process.argv.includes("--check")) process.exit(1);')
+    (tools / 'export-public-knowledge.mjs').write_text('console.log(JSON.stringify({schema_version:2,content_version:"' + 'a'*64 + '"}));')
+
     versions = repo / 'server/alembic/versions'
     versions.mkdir(parents=True)
     (versions / '0001.py').write_text("revision = 'fixture_base'\ndown_revision = None\n")
@@ -97,12 +105,16 @@ def test_release_uses_committed_archive_not_live_or_ignored_files(tmp_path):
     revision = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
     readme = (repo / 'deploy/product/README.md').read_bytes()
     (repo / 'server/ignored.txt').write_text('must not enter image')
+    scratch = tmp_path / 'real-scratch'
+    scratch.mkdir()
+    alias = tmp_path / 'scratch-alias'
+    alias.symlink_to(scratch, target_is_directory=True)
     binary = tmp_path / 'bin'
     binary.mkdir()
     # Fake the image transport only. Real git archive, tar, release packaging and checksums run.
     docker = binary / 'docker'
     docker.write_text('''#!/usr/bin/env python3
-import os,sys,io,json,tarfile
+import os,sys,io,json,tarfile,hashlib
 from pathlib import Path
 a=sys.argv[1:]
 if a[:2]==['buildx','build']:
@@ -115,18 +127,32 @@ elif a[:2]==['image','inspect']:
 elif a[0]=='save':
     # Packaging reads content IDs from Docker's archive manifest, not inspect.
     tags=a[a.index('-o')+2:]
-    manifest=[{'Config': str(i)*64+'.json', 'RepoTags': [tag], 'Layers': []}
-              for i,tag in enumerate(tags,1)]
-    content=json.dumps(manifest).encode()
+    manifest=[]; blobs={}; descriptors=[]
+    for i,tag in enumerate(tags,1):
+        config=json.dumps({'os':'linux','architecture':'arm64','fixture':i}).encode()
+        digest=hashlib.sha256(config).hexdigest()
+        blobs[digest+'.json']=config
+        manifest.append({'Config':digest+'.json','RepoTags':[tag],'Layers':[]})
+        oci=json.dumps({'schemaVersion':2,'config':{'digest':'sha256:'+digest},'layers':[]}).encode()
+        oid=hashlib.sha256(oci).hexdigest(); blobs['blobs/sha256/'+oid]=oci
+        descriptors.append({'digest':'sha256:'+oid})
+    blobs['manifest.json']=json.dumps(manifest).encode()
+    blobs['index.json']=json.dumps({'manifests':descriptors}).encode()
     with tarfile.open(a[a.index('-o')+1], 'w') as archive:
-        info=tarfile.TarInfo('manifest.json'); info.size=len(content)
-        archive.addfile(info,io.BytesIO(content))
+        for name,content in blobs.items():
+            info=tarfile.TarInfo(name); info.size=len(content)
+            archive.addfile(info,io.BytesIO(content))
 ''')
     docker.chmod(0o755)
     output = tmp_path / 'release'
     subprocess.run([str(repo / 'deploy/product/build-release.sh'), '--release', 'test-v1',
                     '--platform', 'linux/arm64', '--output', str(output)], check=True, capture_output=True,
-                   env={**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'], 'TEST_SOURCE_REPO': str(repo)})
+                   env={**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'], 'TEST_SOURCE_REPO': str(repo), 'TMPDIR': str(alias)})
     assert f'PRODUCT_SOURCE_REVISION={revision}\n' in (output / 'release.env').read_text()
     assert 'PRODUCT_ALEMBIC_REVISION=fixture_head\n' in (output / 'release.env').read_text()
     assert (output / 'scripts/README.md').read_bytes() == readme
+    assert f'PRODUCT_CONTENT_VERSION={"a" * 64}\n' in (output / 'release.env').read_text()
+    # The public site is updated by git pull on the server, never shipped in the package.
+    files = json.loads((output / 'manifest.json').read_text())['files']
+    assert {n for n in files if not n.startswith('scripts/')} == {'release.env', 'images.sha256'}
+    assert not any(p.name.startswith('site') for p in output.iterdir())

@@ -1,6 +1,8 @@
 import {KINDS,chapterPath,chapterTag,scopeMembers,searchNodes} from './model.mjs';
 import {escapeHtml as h} from './resource-links.mjs';
 import {bindSearchFocus} from './search-focus.mjs';
+import {legacyGraphHref} from './compat.mjs';
+import {isPreview, modeHref} from '../practice/learning-mode.mjs';
 
 const $=selector=>document.querySelector(selector);
 const input=$('#search'),results=$('#search-results');
@@ -9,7 +11,7 @@ let graph,chapters,byId,open=false;
 
 const loadGraph=async()=>{
   if(graph)return graph;
-  const res=await fetch('/knowledge-next/graph.json',{cache:'no-cache'});if(!res.ok)throw new Error(String(res.status));
+  const res=await fetch('/knowledge/graph.json',{cache:'no-cache'});if(!res.ok)throw new Error(String(res.status));
   graph=await res.json();byId=new Map(graph.nodes.map(n=>[n.id,n]));chapters=new Map(graph.chapters.map(c=>[c.id,c]));
   return graph;
 };
@@ -22,11 +24,11 @@ function nodeHome(id){
 
 // Links from before chapter pages existed (?scope=…&node=…) land on the chapter that owns them.
 const legacy=new URLSearchParams(location.search);
-if(legacy.has('scope')||legacy.has('node'))loadGraph().then(()=>{
-  const id=byId.has(legacy.get('node'))?legacy.get('node'):legacy.get('scope'),home=byId.get(id)?.home;
-  if(!home)return;
-  const next=new URL(chapterPath(home),location.origin);legacy.forEach((v,k)=>next.searchParams.set(k,v));
-  location.replace(next.pathname+next.search);
+if(legacy.has('scope')||legacy.has('node')||legacy.has('topic')||location.hash)loadGraph().then(async()=>{
+  const response = await fetch('/knowledge/teaching/migration.json', {cache: 'no-cache'});
+  if (!response.ok) return;
+  const next = legacyGraphHref(graph, await response.json(), location.href);
+  if (next) location.replace(next);
 }).catch(()=>{});
 
 function show(){
@@ -35,7 +37,7 @@ function show(){
   results.hidden=!open||!input.value.trim();
   results.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 }
-function go(id){const href=nodeHome(id);if(href)location.href=href;}
+function go(id){const href=nodeHome(id);if(href)location.href=modeHref(href,{preview:isPreview(location.search)},location.href);}
 input.addEventListener('input',async()=>{open=true;try{await loadGraph();show();}catch{results.innerHTML='<li class="search-empty">图谱数据加载失败，请稍后重试。</li>';results.hidden=false;}});
 input.addEventListener('focus',()=>{open=true;loadGraph().then(show).catch(()=>{});});
 bindSearchFocus(input,results,()=>{open=false;results.hidden=true;});

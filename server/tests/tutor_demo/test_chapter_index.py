@@ -1,5 +1,6 @@
 """Chapter indexes: the type directory matches the groups below it."""
 
+import json
 import re
 
 import pytest
@@ -36,19 +37,44 @@ def test_directory_matches_groups(chapter):
 
 def test_always_true_explainers_teach_when_to_use_the_method():
     home = (ROOT / "site/2/index.html").read_text()
-    methods = re.findall(r'data-explain="(method-[a-z-]+)"', home)
-    assert len(methods) == 4
-    problems = set(re.findall(r'class="problem-card" href="/2/q(\d+)/"', home))
-    for method in methods:
-        content = (ROOT / f"site/assets/explain/method/{method}.js").read_text()
-        judge = re.search(r'<section class="method-judge".*?</section>', content, re.S)
-        assert judge, method
-        judge = judge[0]
-        signal = re.search(r"读题信号 · 第 (\d\d) 题", judge)
-        assert signal and signal[1] in problems
-        assert "<mark>" in judge
-        assert re.findall(r'class="method-check-no"', judge)
-        targets = re.findall(r'data-explain-open="(method-[a-z-]+)"', judge)
-        assert targets and method not in targets and set(targets) <= set(methods)
-        assert re.search(r'class="method-figure">.*?<svg', content, re.S)
-        assert len(re.findall(r'class="method-step-no"', content)) == 3
+    links = re.findall(r'data-node-ref="(method-[a-z-]+)" href="([^"]+)"', home)
+    methods = {
+        "method-discriminant", "method-interval-extremum",
+        "method-separation", "method-variable-swap",
+    }
+    assert len(links) == 4 and {method for method, _ in links} == methods
+    assert 'data-explain=' not in home
+    source = ROOT / "site/data/knowledge-next"
+    catalog = json.loads((source / "catalog.json").read_text())
+    topic = json.loads((source / "topics/quadratic-always.json").read_text())
+    rule = json.loads((source / "nodes/rule-quadratic-method.json").read_text())
+    assert rule['subtype'] == 'method_selection'
+    assert {branch['target'] for branch in rule['branches']} == methods
+    assert all(branch['condition'] for branch in rule['branches'])
+    problems = set(re.findall(r'class="problem-card" href="(/2/q\d+/)"', home))
+    for method, href in links:
+        assert href == f'/knowledge/{method}/'
+        node = json.loads((source / f"nodes/{method}.json").read_text())
+        assert node['kind'] == 'method'
+        assert all(node[field] for field in ('input', 'output', 'conditions'))
+        assert len(node['steps']) >= 3
+        assert all(step['title'] and step['body'] for step in node['steps'])
+        step_ids = {step['id'] for step in node['steps']}
+        assert len(step_ids) == len(node['steps'])
+        assert node['examples'] and all(example['solution'] for example in node['examples'])
+        assert all(example['url'] in problems for example in node['examples'] if 'url' in example)
+        assert any(
+            method in route['methods']
+            for problem in topic['problems'].values()
+            for route in problem['routes'].values()
+        ), method
+        # The new detail page reuses the explicitly registered figure, while
+        # method choice and ordered teaching steps come from the public node.
+        figures = [catalog['resources'][ref] for ref in node['resources']]
+        assert figures and all(figure.get('part') == 'figure' for figure in figures)
+        assert any(figure['scope'] == method for figure in figures), method
+        for figure in figures:
+            if 'after' in figure:
+                assert figure['after'] in step_ids
+            content = (ROOT / 'site' / figure['module'].lstrip('/')).read_text()
+            assert '<svg' in content, figure['module']

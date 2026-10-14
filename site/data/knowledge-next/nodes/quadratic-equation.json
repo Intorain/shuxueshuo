@@ -3,7 +3,7 @@
   "kind": "knowledge",
   "label": "一元二次方程",
   "summary": "用判别式判断实根情况，用求根公式或因式分解确定根，并通过根与系数关系连接表达式。",
-  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "source": "人教 A 版必修第一册第二章",
   "entries": [
     {
       "id": "definition",

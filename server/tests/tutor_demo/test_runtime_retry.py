@@ -166,7 +166,7 @@ const scope = {
   generation: 0, requestController: null, busy: false, dialoguePause: null, dialogueTimer: 9,
   remote: null, pendingOperations: [], retryRequest: null, retryButton: {}, networkStatus: {},
   messageInput: {value: '', placeholder: ''}, steps: {}, attemptHistory: {},
-  invitedQuestions: new Set(), idleQuestion: null, lesson: {},
+  invitedQuestions: new Set(), idleQuestion: null, lesson: {}, preview: null,
   clearTimeout: () => cleared++, pauseIdle() {}, acceptSnapshot() {},
   PracticeContext: {create() {}}, crypto: {randomUUID: () => 'test'},
   window: {scrollTo() {}, SiteAuth: {enabled: true}, addEventListener: (name, cb) => {onAuthChange = cb;}},

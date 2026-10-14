@@ -1,0 +1,1189 @@
+{
+  "id": "quadratic-always",
+  "label": "一元二次不等式恒成立问题",
+  "groups": [
+    {
+      "id": "discriminant",
+      "label": "判别式法",
+      "description": "x 取全体实数时用：结合开口方向与判别式判断。",
+      "problems": [
+        "quadratic-always-q01",
+        "quadratic-always-q02",
+        "quadratic-always-q03"
+      ]
+    },
+    {
+      "id": "interval",
+      "label": "区间最值法（分类讨论）",
+      "description": "x 只在某个区间上取值时用：看对称轴与区间的位置，分类求最值。",
+      "problems": [
+        "quadratic-always-q04",
+        "quadratic-always-q05"
+      ]
+    },
+    {
+      "id": "separation",
+      "label": "分离参数法",
+      "description": "参数能单独移到一边、除数符号确定时用：比较参数与函数的最值。",
+      "problems": [
+        "quadratic-always-q06",
+        "quadratic-always-q07"
+      ]
+    },
+    {
+      "id": "variable",
+      "label": "更换主元法",
+      "description": "给出范围的是参数、要求的是 x 时用：把参数当主元，看两端。",
+      "problems": [
+        "quadratic-always-q08",
+        "quadratic-always-q09"
+      ]
+    }
+  ],
+  "problems": {
+    "quadratic-always-q01": {
+      "label": "Q01",
+      "path": "/2/q01/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "discriminant": {
+          "methods": [
+            "method-discriminant"
+          ],
+          "steps": {
+            "d_basis": {
+              "refs": [
+                "method-discriminant"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "d_rewrite": {
+              "refs": [
+                "skill-inequality-transform",
+                "skill-simplify"
+              ],
+              "title": "整理不等式",
+              "position": 2
+            },
+            "d_position": {
+              "refs": [
+                "quadratic-function-properties",
+                "quadratic-function-properties#zeros"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#zeros",
+                "resource": "parabola-sign-grid",
+                "note": "本题 $g(x)=x^2-2x+a^2-3a-3$ 开口向上，要 $g(x)\\ge0$ 恒成立：带等号，图像可以和横轴相切，但不能穿过。"
+              },
+              "title": "判断图像位置",
+              "position": 3
+            },
+            "d_delta": {
+              "refs": [
+                "quadratic-equation#discriminant",
+                "method-discriminant#conditions",
+                "quadratic-function-properties#zeros"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#zeros",
+                "resource": "parabola-sign-grid",
+                "note": "本题要“恒 $\\ge0$”，开口向上时对应 $\\Delta\\le0$：不相交 $\\Delta<0$、相切 $\\Delta=0$ 都满足。"
+              },
+              "title": "建立判别式条件",
+              "position": 4
+            },
+            "d_range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $a^2-3a-4=(a+1)(a-4)\\ge0$，开口向上、带等号，取两根之外并含根：$a\\le-1$ 或 $a\\ge4$。"
+              },
+              "title": "求参数范围",
+              "position": 5
+            },
+            "d_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $a=-1$、$a=4$ 时原不等式化为 $(x-1)^2\\ge0$：图像与横轴相切，原题带等号，两个边界都保留。"
+              },
+              "title": "检查边界",
+              "position": 6
+            }
+          },
+          "label": "判别式法"
+        },
+        "extremum": {
+          "methods": [
+            "method-separation"
+          ],
+          "steps": {
+            "e_basis": {
+              "refs": [
+                "method-separation"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "e_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-lt",
+                "note": "本题 $f(x)\\le c$ 对所有实数 $x$ 成立：恒成立、小于等于，看 $f(x)$ 的最高点，所以 $c\\ge f(x)_{\\max}$。"
+              },
+              "title": "转化为最值条件",
+              "position": 2
+            },
+            "e_extremum": {
+              "refs": [
+                "method-complete-square",
+                "method-square-extremum",
+                "square-nonnegative#nonnegative"
+              ],
+              "tip": {
+                "ref": "method-complete-square",
+                "resource": "complete-square-area",
+                "note": "本题 $-x^2+2x+3=-(x^2-2x)+3=4-(x-1)^2\\le4$，$x=1$ 时取等，最大值是 $4$。"
+              },
+              "title": "求最值",
+              "position": 3
+            },
+            "e_range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题由 $a^2-3a\\ge4$ 得 $(a+1)(a-4)\\ge0$，开口向上、带等号，取两根之外并含根：$a\\le-1$ 或 $a\\ge4$。"
+              },
+              "title": "求参数范围",
+              "position": 4
+            },
+            "e_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $a=-1$、$a=4$ 时 $a^2-3a=4$，正好等于 $f(x)$ 的最大值；最大值取得到，原题又允许“$\\le$”，两个边界都保留。"
+              },
+              "title": "检查边界",
+              "position": 5
+            }
+          },
+          "label": "分离参数法"
+        }
+      },
+      "statement": "若不等式 $-x^2+2x+3\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。"
+    },
+    "quadratic-always-q02": {
+      "label": "Q02",
+      "path": "/2/q02/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "discriminant": {
+          "methods": [
+            "method-discriminant"
+          ],
+          "steps": {
+            "d_basis": {
+              "refs": [
+                "method-discriminant"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "d_degenerate": {
+              "refs": [
+                "method-discriminant#degree",
+                "linear-interval-extremum",
+                "quadratic-function-properties#definition"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#definition",
+                "resource": "parabola-sign-grid",
+                "note": "本题 $k=0$ 时二次项消失，原不等式变成 $-2<0$，对所有 $x$ 成立，这种情况要单独算进去。"
+              },
+              "title": "讨论 k = 0",
+              "position": 2
+            },
+            "d_position": {
+              "refs": [
+                "quadratic-function-properties",
+                "quadratic-function-properties#zeros"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#zeros",
+                "resource": "parabola-sign-grid",
+                "note": "本题要 $f(x)<0$ 恒成立：只能开口向下（$k<0$），且与横轴没有公共点；相切时切点处 $f(x)=0$，不满足“$<0$”。"
+              },
+              "title": "判断图像位置",
+              "position": 3
+            },
+            "d_delta": {
+              "refs": [
+                "quadratic-equation#discriminant",
+                "method-discriminant#conditions",
+                "quadratic-function-properties#zeros"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#zeros",
+                "resource": "parabola-sign-grid",
+                "note": "本题不带等号，开口向下时只取 $\\Delta<0$：$\\Delta=(2k)^2+4k(k+2)=8k^2+8k<0$。"
+              },
+              "title": "建立判别式条件",
+              "position": 4
+            },
+            "d_range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $8k^2+8k=8k(k+1)<0$，取两根之间：$-1<k<0$；再与这种情况的前提 $k<0$ 取交集，仍是 $-1<k<0$。"
+              },
+              "title": "求参数范围",
+              "position": 5
+            },
+            "d_merge": {
+              "refs": [
+                "method-discriminant#merge"
+              ],
+              "tip": {
+                "ref": "method-discriminant#merge",
+                "resource": "case-merge-union",
+                "note": "本题情况①得 $k=0$，情况②得 $-1<k<0$；两种情况是“或”的关系，取并集得 $-1<k\\le0$。"
+              },
+              "title": "合并两种情况",
+              "position": 6
+            },
+            "d_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $k=-1$ 时左边是 $-(x+1)^2$，在 $x=-1$ 处等于 $0$，不满足“$<0$”，排除；$k=0$ 时是 $-2<0$，保留。"
+              },
+              "title": "检查边界",
+              "position": 7
+            }
+          },
+          "label": "判别式法"
+        }
+      },
+      "statement": "已知不等式 $kx^2+2kx-(k+2)<0$ 恒成立，求实数 $k$ 的取值范围。"
+    },
+    "quadratic-always-q03": {
+      "label": "Q03",
+      "path": "/2/q03/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "discriminant": {
+          "methods": [
+            "method-discriminant"
+          ],
+          "steps": {
+            "d_basis": {
+              "refs": [
+                "method-discriminant"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "d_degenerate": {
+              "refs": [
+                "method-discriminant#degree",
+                "linear-interval-extremum",
+                "quadratic-function-properties#definition"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#definition",
+                "resource": "parabola-sign-grid",
+                "note": "本题 $a^2-1=0$ 有两个解：$a=1$ 时变成 $-1<0$，成立；$a=-1$ 时变成 $2x-1<0$，不恒成立，舍去。"
+              },
+              "title": "讨论 a²−1 = 0",
+              "position": 2
+            },
+            "d_position": {
+              "refs": [
+                "quadratic-function-properties",
+                "quadratic-function-properties#zeros"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#zeros",
+                "resource": "parabola-sign-grid",
+                "note": "本题要 $f(x)<0$ 恒成立：开口向下（$a^2-1<0$），且与横轴没有公共点，相切也不行。"
+              },
+              "title": "判断图像位置",
+              "position": 3
+            },
+            "d_delta": {
+              "refs": [
+                "quadratic-equation#discriminant",
+                "method-discriminant#conditions",
+                "quadratic-function-properties#zeros"
+              ],
+              "tip": {
+                "ref": "quadratic-function-properties#zeros",
+                "resource": "parabola-sign-grid",
+                "note": "本题不带等号，只取 $\\Delta<0$：$\\Delta=(a-1)^2+4(a^2-1)=5a^2-2a-3<0$。"
+              },
+              "title": "建立判别式条件",
+              "position": 4
+            },
+            "d_range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $5a^2-2a-3=(5a+3)(a-1)<0$，取两根之间：$-\\frac35<a<1$；再与前提 $-1<a<1$ 取交集，仍是 $-\\frac35<a<1$。"
+              },
+              "title": "求参数范围",
+              "position": 5
+            },
+            "d_merge": {
+              "refs": [
+                "method-discriminant#merge"
+              ],
+              "tip": {
+                "ref": "method-discriminant#merge",
+                "resource": "case-merge-union",
+                "note": "本题情况①只留下 $a=1$，情况②得 $-\\frac35<a<1$；取并集得 $-\\frac35<a\\le1$。"
+              },
+              "title": "合并两种情况",
+              "position": 6
+            },
+            "d_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $a=-\\frac35$ 时左边是 $-\\left(\\frac45x-1\\right)^2$，在 $x=\\frac54$ 处等于 $0$，排除；$a=1$ 时是 $-1<0$，保留。"
+              },
+              "title": "检查边界",
+              "position": 7
+            }
+          },
+          "label": "判别式法"
+        }
+      },
+      "statement": "已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。"
+    },
+    "quadratic-always-q04": {
+      "label": "Q04",
+      "path": "/2/q04/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "interval": {
+          "methods": [
+            "method-interval-extremum"
+          ],
+          "steps": {
+            "i_basis": {
+              "refs": [
+                "method-interval-extremum"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "i_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-lt",
+                "note": "本题 $f(x)<0$ 对所有 $x\\in[1,2]$ 成立：恒成立、小于，看区间上的最高点。"
+              },
+              "title": "转化为最值条件",
+              "position": 2
+            },
+            "i_extremum": {
+              "refs": [
+                "quadratic-interval-extremum"
+              ],
+              "tip": {
+                "ref": "quadratic-interval-extremum",
+                "resource": "parabola-axis-drag",
+                "note": "本题开口向上，在 $[1,2]$ 上求最大值：对称轴 $x=-\\frac m2$ 和区间中点 $\\frac32$ 比，$m\\ge-3$ 时是 $f(2)$，$m<-3$ 时是 $f(1)$。"
+              },
+              "title": "分类讨论最值",
+              "position": 3
+            },
+            "i_range": {
+              "refs": [
+                "method-interval-extremum#conditions",
+                "skill-inequality-transform"
+              ],
+              "tip": {
+                "ref": "method-interval-extremum#conditions",
+                "resource": "case-merge-union",
+                "note": "本题情况① $m\\ge-3$ 且 $2m+8<0$，交集为空；情况② $m<-3$ 且 $m+5<0$，得 $m<-5$；取并集得 $m<-5$。"
+              },
+              "title": "求参数范围",
+              "position": 4
+            },
+            "i_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $m=-5$ 时 $f(1)=0$：最大值取得到且等于 $0$，不满足“$<0$”，排除。"
+              },
+              "title": "检查边界",
+              "position": 5
+            }
+          },
+          "label": "区间最值法"
+        },
+        "extremum": {
+          "methods": [
+            "method-separation"
+          ],
+          "steps": {
+            "e_basis": {
+              "refs": [
+                "method-separation"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "e_separate": {
+              "refs": [
+                "method-separation#separate",
+                "skill-inequality-transform",
+                "inequality-properties#multiplication"
+              ],
+              "tip": {
+                "ref": "inequality-properties#multiplication",
+                "resource": "order-flip-lines",
+                "note": "本题 $x\\in[1,2]$，$x>0$，两边除以 $x$ 不变向：$m<-\\left(x+\\frac4x\\right)$。"
+              },
+              "title": "分离参数",
+              "position": 2
+            },
+            "e_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-gt",
+                "note": "本题 $m<-h(x)$ 就是 $-h(x)>m$：恒成立、大于，看 $-h(x)$ 的最低点，也就是 $h(x)$ 的最高点。"
+              },
+              "title": "转化为最值条件",
+              "position": 3
+            },
+            "e_graph": {
+              "refs": [
+                "reciprocal-sum-function"
+              ],
+              "tip": {
+                "ref": "reciprocal-sum-function",
+                "resource": "reciprocal-window-range",
+                "note": "本题 $h(x)=x+\\frac4x$，$k=4$：最低点在 $x=\\sqrt4=2$，最小值 $2\\sqrt4=4$。"
+              },
+              "title": "画函数图像",
+              "position": 4
+            },
+            "e_extremum": {
+              "refs": [
+                "skill-reciprocal-range"
+              ],
+              "tip": {
+                "ref": "skill-reciprocal-range",
+                "resource": "reciprocal-window-range",
+                "note": "本题区间 $[1,2]$ 在最低点 $x=2$ 左侧，函数递减，最大值是左端 $h(1)=5$。"
+              },
+              "title": "求最值",
+              "position": 5
+            },
+            "e_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $m=-5$ 时，$x=1$ 处 $-h(1)=-5=m$：最大值取得到，$m<-h(x)$ 不成立，排除。"
+              },
+              "title": "检查边界",
+              "position": 6
+            }
+          },
+          "label": "分离参数法"
+        }
+      },
+      "statement": "当 $1\\le x\\le2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。"
+    },
+    "quadratic-always-q05": {
+      "label": "Q05",
+      "path": "/2/q05/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "interval": {
+          "methods": [
+            "method-interval-extremum"
+          ],
+          "steps": {
+            "i_basis": {
+              "refs": [
+                "method-interval-extremum"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "i_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "exists-gt",
+                "note": "本题存在 $x\\in(1,2)$ 使 $f(x)>0$：存在、大于，看最高处；开区间上取不到，就看取值范围的上端。"
+              },
+              "title": "转化为范围条件",
+              "position": 2
+            },
+            "i_extremum": {
+              "refs": [
+                "quadratic-interval-extremum"
+              ],
+              "tip": {
+                "ref": "quadratic-interval-extremum",
+                "resource": "parabola-axis-drag",
+                "note": "本题 $(1,2)$ 是开区间，端点取不到，求的是取值范围的上端：$m\\ge-3$ 时是 $f(2)$，$m<-3$ 时是 $f(1)$。"
+              },
+              "title": "分类讨论取值范围",
+              "position": 3
+            },
+            "i_range": {
+              "refs": [
+                "method-interval-extremum#conditions",
+                "skill-inequality-transform"
+              ],
+              "tip": {
+                "ref": "method-interval-extremum#conditions",
+                "resource": "case-merge-union",
+                "note": "本题情况① $m\\ge-3$ 且 $2m+8>0$，得 $m\\ge-3$；情况② $m<-3$ 且 $m+5>0$，得 $-5<m<-3$；取并集得 $m>-5$。"
+              },
+              "title": "求参数范围",
+              "position": 4
+            },
+            "i_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $m=-5$ 时上端 $f(1)=0$，但 $x=1$ 不在 $(1,2)$ 里，$f(x)$ 始终小于 $0$，没有 $x$ 满足“$>0$”，排除。"
+              },
+              "title": "检查边界",
+              "position": 5
+            }
+          },
+          "label": "区间最值法"
+        },
+        "extremum": {
+          "methods": [
+            "method-separation"
+          ],
+          "steps": {
+            "e_basis": {
+              "refs": [
+                "method-separation"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "e_separate": {
+              "refs": [
+                "method-separation#separate",
+                "skill-inequality-transform",
+                "inequality-properties#multiplication"
+              ],
+              "tip": {
+                "ref": "inequality-properties#multiplication",
+                "resource": "order-flip-lines",
+                "note": "本题 $x\\in(1,2)$，$x>0$，两边除以 $x$ 不变向：$m>-\\left(x+\\frac4x\\right)$。"
+              },
+              "title": "分离参数",
+              "position": 2
+            },
+            "e_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "exists-lt",
+                "note": "本题 $m>-h(x)$ 就是 $-h(x)<m$：存在、小于，看 $-h(x)$ 的最低处，也就是 $h(x)$ 取值的上端。"
+              },
+              "title": "转化为范围条件",
+              "position": 3
+            },
+            "e_graph": {
+              "refs": [
+                "reciprocal-sum-function"
+              ],
+              "tip": {
+                "ref": "reciprocal-sum-function",
+                "resource": "reciprocal-window-range",
+                "note": "本题 $h(x)=x+\\frac4x$，$k=4$：最低点在 $x=\\sqrt4=2$，最小值 $2\\sqrt4=4$。"
+              },
+              "title": "画函数图像",
+              "position": 4
+            },
+            "e_extremum": {
+              "refs": [
+                "skill-reciprocal-range"
+              ],
+              "tip": {
+                "ref": "skill-reciprocal-range",
+                "resource": "reciprocal-window-range",
+                "note": "本题 $(1,2)$ 在最低点 $x=2$ 左侧，函数递减；两端都取不到，取值范围是 $(4,5)$。"
+              },
+              "title": "求取值范围",
+              "position": 5
+            },
+            "e_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $m=-5$ 时要 $h(x)>5$，而 $h(x)$ 在 $(1,2)$ 上始终小于 $5$：上端取不到，排除。"
+              },
+              "title": "检查边界",
+              "position": 6
+            }
+          },
+          "label": "分离参数法"
+        }
+      },
+      "statement": "当 $1<x<2$ 时，关于 $x$ 的不等式 $x^2+mx+4>0$ 有解，求实数 $m$ 的取值范围。"
+    },
+    "quadratic-always-q06": {
+      "label": "Q06",
+      "path": "/2/q06/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "extremum": {
+          "methods": [
+            "method-separation"
+          ],
+          "steps": {
+            "e_basis": {
+              "refs": [
+                "method-separation"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "e_separate": {
+              "refs": [
+                "method-separation#separate",
+                "skill-inequality-transform",
+                "inequality-properties#multiplication"
+              ],
+              "tip": {
+                "ref": "inequality-properties#multiplication",
+                "resource": "order-flip-lines",
+                "note": "本题 $x<0$，两边除以负数 $x$ 要变向：$ax\\ge-x^2-2$ 变成 $a\\le-x-\\frac2x$。"
+              },
+              "title": "分离参数",
+              "position": 2
+            },
+            "e_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-gt",
+                "note": "本题 $a\\le h(x)$ 就是 $h(x)\\ge a$：恒成立、大于等于，看 $h(x)$ 的最低点。"
+              },
+              "title": "转化为最值条件",
+              "position": 3
+            },
+            "e_graph": {
+              "refs": [
+                "reciprocal-sum-function"
+              ],
+              "tip": {
+                "ref": "reciprocal-sum-function",
+                "resource": "reciprocal-window-range",
+                "note": "本题 $h(x)=-x-\\frac2x=(-x)+\\frac2{-x}$，两项都是正数，最低点在 $x=-\\sqrt2$，最小值 $2\\sqrt2$。"
+              },
+              "title": "画函数图像",
+              "position": 4
+            },
+            "e_extremum": {
+              "refs": [
+                "skill-reciprocal-range"
+              ],
+              "tip": {
+                "ref": "skill-reciprocal-range",
+                "resource": "reciprocal-window-range",
+                "note": "本题区间 $(-\\infty,0)$ 含最低点 $x=-\\sqrt2$，最小值 $h(-\\sqrt2)=2\\sqrt2$ 取得到。"
+              },
+              "title": "求最值",
+              "position": 5
+            },
+            "e_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $a=2\\sqrt2$ 时原不等式为 $(x+\\sqrt2)^2\\ge0$：最小值取得到，原题允许取等，保留。"
+              },
+              "title": "检查边界",
+              "position": 6
+            }
+          },
+          "label": "分离参数法"
+        },
+        "interval": {
+          "methods": [
+            "method-interval-extremum"
+          ],
+          "steps": {
+            "i_basis": {
+              "refs": [
+                "method-interval-extremum"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "i_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-gt",
+                "note": "本题 $f(x)\\ge0$ 对所有 $x<0$ 成立：恒成立、大于等于，看最低处；取不到也可以，只要下端 $\\ge0$。"
+              },
+              "title": "转化为范围条件",
+              "position": 2
+            },
+            "i_extremum": {
+              "refs": [
+                "quadratic-interval-extremum"
+              ],
+              "tip": {
+                "ref": "quadratic-interval-extremum",
+                "resource": "parabola-axis-drag",
+                "note": "本题区间 $(-\\infty,0)$ 是半无限区间，看下端：$a\\le0$ 时对称轴 $x=-\\frac a2\\ge0$，函数在区间上递减，下端是 $f(0)=2$，取不到；$a>0$ 时顶点在区间里，下端是最小值 $2-\\frac{a^2}4$。"
+              },
+              "title": "分类讨论取值范围",
+              "position": 3
+            },
+            "i_range": {
+              "refs": [
+                "method-interval-extremum#conditions",
+                "skill-inequality-transform"
+              ],
+              "tip": {
+                "ref": "method-interval-extremum#conditions",
+                "resource": "case-merge-union",
+                "note": "本题情况① $a\\le0$ 时下端 $2>0$，都成立；情况② $a>0$ 且 $2-\\frac{a^2}4\\ge0$，得 $0<a\\le2\\sqrt2$；取并集得 $a\\le2\\sqrt2$。"
+              },
+              "title": "求参数范围",
+              "position": 4
+            },
+            "i_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $a=2\\sqrt2$ 时最低点 $f(-\\sqrt2)=0$，原题是“$\\ge0$”，允许取等，保留。"
+              },
+              "title": "检查边界",
+              "position": 5
+            }
+          },
+          "label": "区间最值法"
+        }
+      },
+      "statement": "“$\\forall x<0,\\ x^2+ax+2\\ge0$”为真命题，求实数 $a$ 的取值范围。"
+    },
+    "quadratic-always-q07": {
+      "label": "Q07",
+      "path": "/2/q07/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "extremum": {
+          "methods": [
+            "method-separation"
+          ],
+          "steps": {
+            "e_basis": {
+              "refs": [
+                "method-separation"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "e_separate": {
+              "refs": [
+                "method-separation#separate",
+                "skill-inequality-transform",
+                "inequality-properties#multiplication"
+              ],
+              "tip": {
+                "ref": "inequality-properties#multiplication",
+                "resource": "order-flip-lines",
+                "note": "本题 $x\\in[2,3]$ 时 $x^2-x=x(x-1)>0$，除以正数不变向：$m<\\frac1{x^2-x}$。"
+              },
+              "title": "分离参数",
+              "position": 2
+            },
+            "e_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-gt",
+                "note": "本题 $m<h(x)$ 就是 $h(x)>m$：恒成立、大于，看 $h(x)$ 的最低点。"
+              },
+              "title": "转化为最值条件",
+              "position": 3
+            },
+            "e_extremum": {
+              "refs": [
+                "quadratic-interval-extremum",
+                "function-monotonicity",
+                "skill-inequality-transform#reciprocal"
+              ],
+              "tip": {
+                "ref": "function-monotonicity",
+                "resource": "monotonic-chain",
+                "note": "本题分母 $x^2-x$ 在 $[2,3]$ 上从 $2$ 增大到 $6$，都是正数，取倒数后递减：最小值 $h(3)=\\frac16$。"
+              },
+              "title": "求最值",
+              "position": 4
+            },
+            "e_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $m=\\frac16$ 时，$x=3$ 处左边等于 $0$，不满足“$<0$”，排除。"
+              },
+              "title": "检查边界",
+              "position": 5
+            }
+          },
+          "label": "分离参数法"
+        },
+        "interval": {
+          "methods": [
+            "method-interval-extremum"
+          ],
+          "steps": {
+            "i_basis": {
+              "refs": [
+                "method-interval-extremum"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "i_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-lt",
+                "note": "本题 $f(x)<0$ 对所有 $x\\in[2,3]$ 成立：恒成立、小于，看区间上的最高点。"
+              },
+              "title": "转化为最值条件",
+              "position": 2
+            },
+            "i_extremum": {
+              "refs": [
+                "quadratic-interval-extremum",
+                "skill-linear-range#constant"
+              ],
+              "tip": {
+                "ref": "quadratic-interval-extremum",
+                "resource": "parabola-axis-drag",
+                "note": "本题二次项系数 $m$ 含参数，按 $m=0$、$m>0$、$m<0$ 分类；对称轴 $x=\\frac12$ 在 $[2,3]$ 左侧，$m>0$ 时最大值 $f(3)$，$m<0$ 时最大值 $f(2)$。"
+              },
+              "title": "分类讨论最值",
+              "position": 3
+            },
+            "i_range": {
+              "refs": [
+                "method-interval-extremum#conditions",
+                "skill-inequality-transform"
+              ],
+              "tip": {
+                "ref": "method-interval-extremum#conditions",
+                "resource": "case-merge-union",
+                "note": "本题三种情况分别得 $m=0$、$0<m<\\frac16$、$m<0$，取并集得 $m<\\frac16$。"
+              },
+              "title": "求参数范围",
+              "position": 4
+            },
+            "i_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $m=\\frac16$ 时 $f(3)=0$：最大值取得到且等于 $0$，排除。"
+              },
+              "title": "检查边界",
+              "position": 5
+            }
+          },
+          "label": "区间最值法"
+        }
+      },
+      "statement": "$\\forall x\\in\\{x\\mid2\\le x\\le3\\}$，不等式 $mx^2-mx-1<0$ 恒成立，求实数 $m$ 的取值范围。"
+    },
+    "quadratic-always-q08": {
+      "label": "Q08",
+      "path": "/2/q08/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "variable": {
+          "methods": [
+            "method-variable-swap"
+          ],
+          "steps": {
+            "v_basis": {
+              "refs": [
+                "method-variable-swap"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "v_rewrite": {
+              "refs": [
+                "method-variable-swap"
+              ],
+              "title": "更换主元",
+              "position": 2
+            },
+            "v_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-lt",
+                "note": "本题把 $m$ 当主元，$f(m)<0$ 对所有 $m\\in[1,3]$ 成立：恒成立、小于，看最高点。"
+              },
+              "title": "转化为最值条件",
+              "position": 3
+            },
+            "v_extremum": {
+              "refs": [
+                "skill-linear-range",
+                "linear-interval-extremum#interval"
+              ],
+              "tip": {
+                "ref": "skill-linear-range",
+                "resource": "linear-range",
+                "note": "本题斜率 $x^2-x+1=\\left(x-\\frac12\\right)^2+\\frac34>0$，$f(m)$ 递增，最大值是右端 $f(3)=3x^2-3x-3$。"
+              },
+              "title": "求最值",
+              "position": 4
+            },
+            "v_range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $x^2-x-1<0$ 的两根是 $\\frac{1\\pm\\sqrt5}2$，开口向上、小于零，取两根之间。"
+              },
+              "title": "解关于 x 的不等式",
+              "position": 5
+            },
+            "v_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题边界处 $x^2-x=1$，原不等式变成 $2m-6<0$，$m=3$ 时等于 $0$，两个边界都排除。"
+              },
+              "title": "检查边界",
+              "position": 6
+            }
+          },
+          "label": "更换主元法"
+        }
+      },
+      "statement": "已知函数 $y=mx^2-mx-6+m$，若对于 $1\\le m\\le3$，$y<0$ 恒成立，求实数 $x$ 的取值范围。"
+    },
+    "quadratic-always-q09": {
+      "label": "Q09",
+      "path": "/2/q09/",
+      "types": [
+        "type-quantified-quadratic"
+      ],
+      "routes": {
+        "variable": {
+          "methods": [
+            "method-variable-swap"
+          ],
+          "steps": {
+            "v_basis": {
+              "refs": [
+                "method-variable-swap"
+              ],
+              "title": "判断适用条件",
+              "position": 1
+            },
+            "v_rewrite": {
+              "refs": [
+                "method-variable-swap"
+              ],
+              "title": "更换主元",
+              "position": 2
+            },
+            "v_condition": {
+              "refs": [
+                "skill-quantified-range",
+                "function-range-extrema#quantified",
+                "quantifiers"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#quantified",
+                "resource": "quantified-horizontal-line",
+                "case": "forall-gt",
+                "note": "本题把 $a$ 当主元，$f(a)>0$ 对所有 $a\\in[-1,1]$ 成立：恒成立、大于，看最低点。"
+              },
+              "title": "转化为最值条件",
+              "position": 3
+            },
+            "v_extremum": {
+              "refs": [
+                "skill-linear-range",
+                "linear-interval-extremum#interval"
+              ],
+              "tip": {
+                "ref": "skill-linear-range",
+                "resource": "linear-range",
+                "note": "本题斜率 $x^2-x$ 可正、可负、可为 $0$，不用分类：最小值总在某一端，所以要 $f(-1)>0$ 且 $f(1)>0$。"
+              },
+              "title": "求最值",
+              "position": 4
+            },
+            "v_range": {
+              "refs": [
+                "quadratic-inequality-solve"
+              ],
+              "tip": {
+                "ref": "quadratic-inequality-solve",
+                "resource": "quadratic-sign-reading",
+                "note": "本题 $1-x^2>0$ 得 $-1<x<1$；$(x-1)^2>0$ 是完全平方式，只排除 $x=1$；两个条件同时成立，取交集得 $-1<x<1$。"
+              },
+              "title": "解关于 x 的不等式",
+              "position": 5
+            },
+            "v_boundary": {
+              "refs": [
+                "function-range-extrema#attainability"
+              ],
+              "tip": {
+                "ref": "function-range-extrema#attainability",
+                "resource": "attainability-boundary",
+                "note": "本题 $x=-1$ 时原不等式为 $2a+2>0$，$a=-1$ 时等于 $0$；$x=1$ 时变成 $0>0$；两个边界都排除。"
+              },
+              "title": "检查边界",
+              "position": 6
+            }
+          },
+          "label": "更换主元法"
+        }
+      },
+      "statement": "已知 $y=ax^2-(a+1)x+1$，若对任意 $-1\\le a\\le1$，$y>0$ 恒成立，求 $x$ 的取值范围。"
+    }
+  },
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

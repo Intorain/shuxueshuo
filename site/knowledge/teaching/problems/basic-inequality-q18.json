@@ -1,0 +1,124 @@
+{
+  "topic": "basic-inequality",
+  "id": "basic-inequality-q18",
+  "label": "Q18",
+  "path": "/1/q18/",
+  "types": [
+    "type-sum-product-extremum"
+  ],
+  "routes": {
+    "elimination": {
+      "methods": [
+        "method-amgm-direct"
+      ],
+      "steps": {
+        "factor": {
+          "refs": [
+            "method-matching",
+            "skill-factor"
+          ],
+          "tip": {
+            "ref": "method-matching",
+            "resource": "matching-constant",
+            "note": "本题 $2ab+2a+b=3$ 两边加 $1$，凑成 $(2a+1)(b+1)=4$。"
+          },
+          "title": "配因式",
+          "position": 1
+        },
+        "eliminate": {
+          "refs": [
+            "method-elimination"
+          ],
+          "title": "消参",
+          "position": 2
+        },
+        "structure": {
+          "refs": [
+            "method-amgm-direct#check",
+            "amgm-formula#checklist"
+          ],
+          "tip": {
+            "ref": "amgm-formula#checklist",
+            "resource": "amgm-semicircle",
+            "case": "fixed",
+            "note": "本题原式 $=\\frac{b+1}4+\\frac1b=\\frac b4+\\frac1b+\\frac14$，$\\frac b4\\cdot\\frac1b=\\frac14$ 是定值：定积求和。"
+          },
+          "title": "观察和积结构",
+          "position": 3
+        },
+        "amgm": {
+          "refs": [
+            "skill-apply-amgm",
+            "amgm-formula#formula"
+          ],
+          "tip": {
+            "ref": "amgm-formula#formula",
+            "resource": "amgm-semicircle",
+            "case": "apply",
+            "note": "本题 $\\frac b4+\\frac1b\\ge2\\sqrt{\\frac14}=1$，原式 $\\ge\\frac54$。"
+          },
+          "title": "应用基本不等式",
+          "position": 4
+        },
+        "equality": {
+          "refs": [
+            "method-amgm-direct#attain",
+            "amgm-formula#attainability"
+          ],
+          "tip": {
+            "ref": "amgm-formula#attainability",
+            "resource": "amgm-semicircle",
+            "case": "equal",
+            "note": "本题取等要 $\\frac b4=\\frac1b$，即 $b=2$，此时 $2a+1=\\frac43$，$a=\\frac16>0$，取得到。"
+          },
+          "title": "验证取等",
+          "position": 5
+        }
+      },
+      "label": "消参法"
+    }
+  },
+  "statement": "已知正数 $a,b$ 满足 $2ab+2a+b=3$，则 $\\frac1{2a+1}+\\frac1b$ 的最小值为？",
+  "problemPaths": [
+    "/1/q01/",
+    "/1/q02/",
+    "/1/q03/",
+    "/1/q04/",
+    "/1/q05/",
+    "/1/q06/",
+    "/1/q07/",
+    "/1/q08/",
+    "/1/q09/",
+    "/1/q10/",
+    "/1/q11/",
+    "/1/q12/",
+    "/1/q13/",
+    "/1/q14/",
+    "/1/q15/",
+    "/1/q16/",
+    "/1/q17/",
+    "/1/q18/",
+    "/1/q19/",
+    "/1/q20/",
+    "/1/q21/",
+    "/1/q22/",
+    "/1/q23/",
+    "/1/q24/",
+    "/1/q25/",
+    "/1/q26/",
+    "/1/q27/",
+    "/1/q28/",
+    "/1/q29/",
+    "/1/q30/",
+    "/2/q01/",
+    "/2/q02/",
+    "/2/q03/",
+    "/2/q04/",
+    "/2/q05/",
+    "/2/q06/",
+    "/2/q07/",
+    "/2/q08/",
+    "/2/q09/"
+  ],
+  "content_version": "589a59d31d1ebf39d2424f7baf3234bbef4e6274d8d9653ac1c0a6b74cd4db8f"
+}

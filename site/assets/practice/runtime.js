@@ -1,41 +1,49 @@
 /* Shared practice runtime: HTML owns course content; dialogue sync is opt-in. */
 const practiceParams = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
-const practiceKnowledgeNext = practiceParams.get('knowledge') === 'next';
-const practiceKnowledgePreview = practiceKnowledgeNext && practiceParams.get('learning') !== '1';
-const practiceLocalHost = /^(localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)$/i.test(typeof location === 'undefined' ? '' : location.hostname);
+// Keep this synchronous check identical to learning-mode.mjs so a preview never
+// initializes authentication or recorders while the published registry loads.
+const practiceKnowledgePreview = practiceParams.get('preview') === '1' ||
+  (practiceParams.get('knowledge') === 'next' && practiceParams.get('learning') !== '1');
+let practiceKnowledgeNext = practiceKnowledgePreview;
 const practiceRuntimeSrc = document.currentScript?.src;
-// Only learning writes require graph metadata. Ordinary tutor sessions remain independent.
-const practiceAccess = {enabled: false, contentVersion: null, reason: ''};
-const practiceTutorEnabled = () => !practiceKnowledgePreview && (!practiceKnowledgeNext || practiceAccess.enabled);
+const practiceAccess = {enabled: false, published: null, contentVersion: null, reason: ''};
+const practiceTutorEnabled = () => !practiceKnowledgePreview;
 async function checkPracticeContent() {
   practiceAccess.enabled = false;
   practiceAccess.reason = '';
   practiceAccess.contentVersion = null;
-  if (practiceKnowledgePreview) return practiceAccess;
-  if (!practiceKnowledgeNext) {
-    practiceAccess.reason = '本页不保存练习进度，点选练习和向老师提问仍可使用。';
-    return practiceAccess;
-  }
+  practiceAccess.problem = null;
+  const read = async url => {
+    const response = await fetch(url, {cache: 'no-cache', signal: AbortSignal.timeout(15000)});
+    if (!response.ok) throw Error('学习关联暂不可用');
+    return response.json();
+  };
   try {
-    const response = await fetch('/api/learning/content', {cache: 'no-store', signal:AbortSignal.timeout(15000)});
-    if (!response.ok) throw Error('学习服务暂不可用');
-    const content = await response.json();
-    if (content.schema_version !== 2 || typeof content.content_version !== 'string' || !content.content_version) {
-      throw Error('学习服务版本信息不完整，暂不保存进度。');
+    const registry = await read('/knowledge/teaching/problems.json');
+    if (!registry.content_version || !registry.problems || Array.isArray(registry.problems)) {
+      throw Error('已发布题目目录暂不可用');
     }
-    const page = await fetch('/knowledge-next/teaching/version.json', {cache: 'no-cache', signal:AbortSignal.timeout(15000)});
-    if (!page.ok) throw Error('新关联版本暂不可用');
-    const version = await page.json();
     const lessonId = JSON.parse(document.getElementById('practice-config').textContent).id;
-    const association = await fetch(`/knowledge-next/teaching/problems/${encodeURIComponent(lessonId)}.json`, {cache:'no-cache', signal:AbortSignal.timeout(15000)});
-    if (!association.ok) throw Error('本题新关联暂不可用');
-    const problem = await association.json();
-    if (!version.content_version || version.content_version !== content.content_version || problem.content_version !== version.content_version) {
+    const entry = registry.problems[lessonId];
+    practiceAccess.published = Boolean(entry && entry.path === location.pathname.replace(/index\.html$/, ''));
+    practiceKnowledgeNext = practiceAccess.published;
+    if (!practiceAccess.published || practiceKnowledgePreview) return practiceAccess;
+    const [content, version, problem] = await Promise.all([
+      read('/api/learning/content'),
+      read('/knowledge/teaching/version.json'),
+      read(`/knowledge/teaching/problems/${encodeURIComponent(lessonId)}.json`)
+    ]);
+    if (content.schema_version !== 2 || !content.content_version) throw Error('学习服务版本信息不完整');
+    if (registry.content_version !== content.content_version || version.content_version !== content.content_version ||
+        problem.content_version !== version.content_version) {
       throw Error('页面与学习服务的内容版本不同，请刷新页面后再保存。');
     }
     practiceAccess.contentVersion = version.content_version;
+    practiceAccess.problem = problem;
     practiceAccess.enabled = true;
-  } catch (error) { practiceAccess.reason = error.message; }
+  } catch (error) {
+    practiceAccess.reason = error.message;
+  }
   return practiceAccess;
 }
 const practiceContentReady = checkPracticeContent();
@@ -84,23 +92,40 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
     snapshot.state = state; render();
   };
   let recorder = null;
+  let recorderLoadAttempts = 0;
+  const useServerProgress = () => Boolean(practiceAccess.enabled && recorder && window.SiteAuth?.user?.id);
+  function recorderUnavailable() {
+    practiceAccess.enabled = false;
+    practiceAccess.reason = '学习记录组件加载失败，请重试保存连接。';
+    renderLearningNotice();
+    preview?.update(snapshot);
+    return null;
+  }
   async function enableRecorder(access) {
     if (!access.enabled) return null;
     if (recorder) return recorder;
+    if (snapshot?.completed.length || remote || busy) {
+      access.enabled = false;
+      access.reason = '当前已有未保存的练习，请刷新后开始保存。';
+      return null;
+    }
     await practiceAuthReady;
-    const module = await import(new URL('../learning/practice-records.js?v=5', runtimeSrc).href);
+    const moduleURL = new URL('../learning/practice-records.js?v=5', runtimeSrc);
+    if (recorderLoadAttempts++) moduleURL.searchParams.set('retry', String(recorderLoadAttempts));
+    const module = await import(moduleURL.href);
     recorder = module.createRecorder(lesson, restorePractice, {contentVersion: access.contentVersion, onConfirmed: history => {
       if (history.route_id !== state.method) return;
       confirmedProgress(history);
       if (preview) preview.update(snapshot);
     }});
+    preview?.update(snapshot);
     return recorder;
   }
-  let recorderReady = practiceContentReady.then(enableRecorder).catch(() => null);
+  let recorderReady = practiceContentReady.then(enableRecorder).catch(recorderUnavailable);
   const methods = lesson.methods;
   const runtimeSrc = document.currentScript?.src;
   practiceContentReady.then(access => {
-    if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js?v=3', runtimeSrc).href).catch(() => {});
+    if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js?v=4', runtimeSrc).href).catch(() => {});
   });
   let titles = [];
   let remote = null;
@@ -230,10 +255,16 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
         networkStatus.textContent = '老师正在思考…';
         timeout = setTimeout(() => controller.abort(), 55000);
         try {
-          if (practiceKnowledgeNext && !payload.practice_attempt_id) {
+          if (practiceAccess.enabled && !payload.practice_attempt_id) {
             const recorder = await recorderReady;
-            if (!recorder) throw Error('学习记录组件不可用，请刷新后重试。');
-            Object.assign(payload, await recorder.dialogue(snapshot));
+            if (!recorder && practiceAccess.enabled) recorderUnavailable();
+            // Loading may fail while this question is waiting. Continue with
+            // an independent tutor instead of binding an unsaved attempt.
+            if (practiceAccess.enabled && recorder) Object.assign(payload, await recorder.dialogue(snapshot));
+            // Questions asked before choosing a route use an independent tutor
+            // session. Once a recorded route exists, restore a new bound session
+            // instead of attributing the earlier conversation to that attempt.
+            if (payload.practice_attempt_id && remote && !remote.practiceAttemptId) remote = null;
           }
           if (thisGeneration !== generation) return;
           if (!remote) {
@@ -255,7 +286,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
               payload.pending_operations = structuredClone(pendingOperations);
               payload.revision = started.revision;
             }
-            remote = {session_id: started.session_id, revision: started.revision, user_id: user.id};
+            remote = {session_id: started.session_id, revision: started.revision, user_id: user.id, practiceAttemptId: payload.practice_attempt_id || null};
           }
           if (remote.user_id !== user.id) { restart(); return; }
           data = await post(`${api}/sessions/${remote.session_id}/events`, payload);
@@ -281,7 +312,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       const acknowledged = new Set(payload.pending_operations.map(operation => operation.event_id));
       const tail = pendingOperations.filter(operation => !acknowledged.has(operation.event_id));
       const merged = PracticeContext.reconcile(data, tail, lesson);
-      remote = {session_id: data.session_id, revision: data.revision, user_id: user.id};
+      remote = {session_id: data.session_id, revision: data.revision, user_id: user.id, practiceAttemptId: payload.practice_attempt_id || remote?.practiceAttemptId || null};
       pendingOperations = merged.remaining;
       acceptSnapshot(merged.view);
       if (payload.practice_attempt_id) recorderReady.then(r => practiceAccess.enabled && r?.routed(snapshot));
@@ -342,7 +373,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       pendingOperations.push(operation);
       acceptSnapshot(PracticeContext.apply(snapshot, operation, lesson));
       const nextView = structuredClone(snapshot);
-      recorderReady.then(r => practiceAccess.enabled && r?.action(previousView, operation, nextView));
+      if (practiceAccess.enabled) recorderReady.then(r => r?.action(previousView, operation, nextView));
       showProgress(oldActive, oldAttempt);
       announce(state.feedback || '已记录你的选择。');
       return;
@@ -502,13 +533,17 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
   function openTip(stage) {
     if (practiceKnowledgeNext) {
       if (preview) preview.openStep(state.method, stage, structuredClone(snapshot));
-      else announce('新关联尚未加载，请使用页首的重试入口。');
+      else announce('本题的知识点还在加载；如果页面下方显示加载失败，点那里的“重试”。');
+      return;
+    }
+    if (practiceAccess.published === null) {
+      announce('知识点暂时打不开：还没连上学习服务，可以点题目上方的“重试保存连接”。');
       return;
     }
     const tip = resolveTip(nodeAt(stage)?.tip);
     if (!tip || !runtimeSrc) return;
     const view = structuredClone(snapshot), ticket = generation;
-    explain ||= import(new URL('../explain/explain.js?v=2', runtimeSrc).href);
+    explain ||= import(new URL('../explain/explain.js?v=3', runtimeSrc).href);
     explain.then(async module => {
       if (ticket !== generation || snapshot.attempt_id !== view.attempt_id) return;
       const shown = await module.openExplainer(tip.id, {tip: stage < view.state.active ? tip : null, detail: false});
@@ -717,6 +752,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       restart({accountChanged: true});
       accountId = nextId;
     } else if (nextId) accountId = nextId;
+    preview?.update(snapshot);
   });
   document.querySelector('#completion').addEventListener('click', event => {
     const button = event.target.closest('[data-switch-route]');
@@ -735,19 +771,55 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
     if (document.hidden) pauseIdle();
     else resumeIdle();
   });
+  // Keep preview navigation safe even when the optional enhancement fails to
+  // load. This guard is synchronous; the shared module also handles formal and
+  // dynamically inserted links once available.
+  if (practiceKnowledgePreview) {
+    const preservePreview = anchor => {
+      const href = anchor?.getAttribute('href');
+      if (!href || href.startsWith('#') || anchor.hasAttribute('data-learning-exit')) return;
+      const url = new URL(href, location.href);
+      if (url.origin !== new URL(location.href).origin || !['http:', 'https:'].includes(url.protocol)) return;
+      url.searchParams.delete('knowledge');
+      url.searchParams.delete('learning');
+      url.searchParams.set('preview', '1');
+      anchor.setAttribute('href', url.pathname + url.search + url.hash);
+    };
+    document.querySelectorAll('a[href]').forEach(preservePreview);
+    for (const type of ['click', 'auxclick', 'contextmenu']) {
+      document.addEventListener(type, event => preservePreview(event.target.closest('a[href]')), true);
+    }
+  }
+  import(new URL('./learning-mode.mjs?v=1', runtimeSrc).href).then(module => module.bindModeLinks(document, location.href)).catch(() => {});
+  if (practiceKnowledgePreview) {
+    const style = document.createElement('style');
+    style.textContent = '.composer,[data-hint]{display:none!important}';
+    document.head.append(style);
+    document.querySelector('.composer').hidden = true;
+  }
   let reloadKnowledgePreview = null;
-  if (practiceKnowledgeNext) {
+  async function initializeKnowledge() {
+    if (reloadKnowledgePreview || !practiceKnowledgeNext) return;
     const style = document.createElement('style');
     if (practiceKnowledgePreview) {
       style.textContent = '.composer,[data-hint]{display:none!important}';
       document.head.append(style);
       document.querySelector('.composer').hidden = true;
     }
+    if (practiceKnowledgePreview) {
+      const banner = document.createElement('p');
+      banner.className = 'kxp-preview-banner';
+      banner.textContent = '关联预览 · 不保存练习记录';
+      steps.before(banner);
+    }
+    // Problem-level associations sit below all steps and never compete with the exercise.
     const host = document.createElement('aside');
     host.id = 'knowledge-preview';
-    host.setAttribute('aria-label', '关联预览');
-    host.innerHTML = `<strong>${practiceKnowledgePreview ? '关联预览，不保存练习记录' : practiceLocalHost ? '新关联登录联调 · 登录后保存练习' : '新关联练习 · 登录后保存进度'}</strong><p role="status">正在加载新教学关联…</p><button type="button" hidden>重试加载新关联</button>`;
-    steps.before(host);
+    host.className = 'kxp-bar';
+    host.setAttribute('aria-label', '本题涉及的题型与方法');
+    host.innerHTML = '<p class="kxp-status" role="status"></p><button type="button" class="kxp-reload" hidden>重试</button>';
+    host.hidden = true;
+    document.querySelector('#completion').after(host);
     const status = host.querySelector('[role="status"]');
     const retry = host.querySelector('button');
     let loading = false;
@@ -755,12 +827,12 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       if (loading) return;
       loading = true;
       retry.hidden = true;
-      status.textContent = '正在加载新教学关联…';
+      status.textContent = '';
       try {
-        const response = await fetch('/knowledge-next/teaching/manifest.json', {cache:'no-cache'});
+        const response = await fetch('/knowledge/teaching/manifest.json', {cache:'no-cache'});
         if (!response.ok) throw Error('新关联目录不可用');
         const manifest = await response.json();
-        if (!/^\/knowledge-next\/assets\/[a-f0-9]+\/practice-preview\.mjs$/.test(manifest.module)) {
+        if (!/^\/knowledge\/assets\/[a-f0-9]+\/practice-preview\.mjs$/.test(manifest.module)) {
           throw Error('新关联模块地址无效');
         }
         const module = await import(manifest.module + (retry.dataset.attempt ? '?retry=' + Date.now() : ''));
@@ -769,7 +841,9 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
         host.querySelector('.kxp-associations')?.remove?.();
         preview = await module.createPreview(lesson, host, {
           learning: !practiceKnowledgePreview,
+          useServerProgress,
           expectedContentVersion: access.contentVersion,
+          problem: access.problem,
           getConfirmedChoices: () => confirmedOnServer,
           getPassedFields: () => passedFieldsOnServer,
           onShown: (view, stage, tip) => {
@@ -778,7 +852,8 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
           }
         });
         preview.update(snapshot);
-        status.textContent = '新关联已加载。点选与步骤判定仍可正常使用。';
+        status.textContent = '';
+        host.hidden = false;
       } catch (error) {
         if (error.code === 'content_version_mismatch') {
           practiceAccess.enabled = false;
@@ -786,8 +861,9 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
           renderLearningNotice();
           render();
         }
-        status.textContent = '新关联加载失败；可继续本地点选，使用下面的按钮重试。';
+        status.textContent = '本题的题型与方法加载失败，不影响做题。';
         retry.hidden = false;
+        host.hidden = false;
         retry.dataset.attempt = '1';
       } finally {
         loading = false;
@@ -795,7 +871,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
     }
     retry.addEventListener('click', loadPreview);
     reloadKnowledgePreview = loadPreview;
-    loadPreview();
+    await loadPreview();
   }
   let learningNotice = null;
   function renderLearningNotice() {
@@ -807,16 +883,9 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       learningNotice.setAttribute('role', 'status');
       steps.before(learningNotice);
     }
-    learningNotice.hidden = practiceAccess.enabled;
+    learningNotice.hidden = practiceAccess.enabled || practiceAccess.published === false;
     if (!practiceAccess.enabled) {
-      const url = new URL(location.href);
-      url.searchParams.set('knowledge', 'next'); url.searchParams.set('learning', '1');
-      const integrationLink = practiceLocalHost ? `<a href="${escapeHTML(url.pathname + url.search + url.hash)}">进入新关联登录联调 →</a> ` : '';
-      if (!practiceKnowledgeNext) {
-        learningNotice.innerHTML = `<p>${escapeHTML(practiceAccess.reason)}</p>${integrationLink}`;
-        return;
-      }
-      learningNotice.innerHTML = `<p>${escapeHTML(practiceAccess.reason)} 当前可继续静态作答。</p>${integrationLink}<button type="button" data-check-learning>重试检查学习服务</button> <button type="button" data-refresh-learning>刷新页面</button>`;
+      learningNotice.innerHTML = `<p>${escapeHTML(practiceAccess.reason)} 本次暂不保存进度，点选练习和向老师提问仍可使用。</p><button type="button" data-check-learning>重试保存连接</button> <button type="button" data-refresh-learning>刷新页面</button>`;
       learningNotice.querySelector('[data-refresh-learning]').onclick = () => location.reload();
       learningNotice.querySelector('[data-check-learning]').onclick = async event => {
         event.currentTarget.disabled = true;
@@ -825,21 +894,24 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
         if (recorder && previousVersion !== access.contentVersion) {
           access.enabled = false;
           access.reason = '内容版本已变化，请刷新页面后再保存。';
-        } else if (access.enabled && !recorder && snapshot.completed.length) {
+        } else if (access.enabled && !recorder && (snapshot.completed.length || remote)) {
           // Static work predating the version check is not server-confirmed evidence.
           access.enabled = false;
           access.reason = '学习服务已恢复；当前已有未保存的步骤，请刷新后开始保存。';
         } else if (access.enabled) {
-          recorderReady = enableRecorder(access).catch(() => null);
-          if (runtimeSrc) import(new URL('../learning/learning-marks.js?v=3', runtimeSrc).href).catch(() => {});
+          recorderReady = enableRecorder(access).catch(recorderUnavailable);
+          await recorderReady;
+          if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js?v=4', runtimeSrc).href).catch(() => {});
           await reloadKnowledgePreview?.();
         }
+        await initializeKnowledge();
         renderLearningNotice();
         render();
       };
     }
   }
   practiceContentReady.then(() => {
+    initializeKnowledge();
     renderLearningNotice();
     render();
   });

@@ -41,6 +41,9 @@ class Element {
   before(element) {
     this.beforeElement = element;
   }
+  after(element) {
+    this.afterElement = element;
+  }
   insertAdjacentHTML(_position, html) {
     this.innerHTML += html;
   }
@@ -58,6 +61,7 @@ const scripts = await Promise.all(
 );
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 let total = 0;
+for (const previewSearch of ['?knowledge=next', '?preview=1&knowledge=next&learning=1'])
 for (const signedIn of [false, true])
   for (const [pid, lesson] of teaching.lessons) {
     const document = new Element(),
@@ -65,7 +69,7 @@ for (const signedIn of [false, true])
       requests = [],
       imports = [],
       events = [];
-    document.currentScript = { src: 'http://localhost/assets/practice/runtime.js?v=39' };
+    document.currentScript = { src: 'http://localhost/assets/practice/runtime.js?v=40' };
     document.head = new Element();
     document.documentElement = new Element();
     document.createElement = () => new Element();
@@ -98,7 +102,8 @@ for (const signedIn of [false, true])
       structuredClone,
       URL,
       URLSearchParams,
-      location: { search: '?knowledge=next' },
+      location: { search: previewSearch, href: 'http://localhost/1/q01/' + previewSearch, pathname: '/1/q01/' },
+      AbortSignal,
       crypto: { randomUUID: () => String(++sequence) },
       performance,
       clearTimeout,
@@ -121,13 +126,17 @@ for (const signedIn of [false, true])
         return {
           ok: fetchOk,
           status: fetchOk ? 200 : 503,
-          json: async () => ({ module: '/knowledge-next/assets/abc123/practice-preview.mjs' })
+          json: async () => ({ module: '/knowledge/assets/abc123/practice-preview.mjs' })
         };
       }
     });
     const importModuleDynamically = async (spec) => {
       imports.push(spec);
-      assert.match(spec, /^\/knowledge-next\/assets\/[a-f0-9]+\/practice-preview\.mjs/);
+      if (spec.endsWith('learning-mode.mjs?v=1')) {
+        const modes = new vm.SyntheticModule(['bindModeLinks'], function () {this.setExport('bindModeLinks', () => {});}, {context:sandbox});
+        await modes.link(() => {}); await modes.evaluate(); return modes;
+      }
+      assert.match(spec, /^\/knowledge\/assets\/[a-f0-9]+\/practice-preview\.mjs/);
       const module = new vm.SyntheticModule(
         ['createPreview'],
         function () {
@@ -149,7 +158,10 @@ for (const signedIn of [false, true])
       if (window.PracticeComponents) sandbox.PracticeComponents = window.PracticeComponents;
     }
     await tick();
-    const host = document.querySelector('#steps').beforeElement;
+    // Problem-level associations live below all steps and stay hidden until they have content.
+    const host = document.querySelector('#completion').afterElement;
+    assert.equal(host.id, 'knowledge-preview');
+    assert.equal(host.hidden, false);
     assert.match(host.querySelector('[role="status"]').textContent, /加载失败/);
     assert.equal(host.querySelector('button').hidden, false);
     const click = (element, attrs) => {
@@ -218,11 +230,12 @@ for (const signedIn of [false, true])
     }
     await tick();
     assert.deepEqual(requests, [
-      '/knowledge-next/teaching/manifest.json',
-      '/knowledge-next/teaching/manifest.json'
+      '/knowledge/teaching/problems.json',
+      '/knowledge/teaching/manifest.json',
+      '/knowledge/teaching/manifest.json'
     ]);
-    assert.equal(imports.length, 1);
+    assert.equal(imports.length, 2);
     assert.deepEqual(events, []);
   }
-assert.equal(total, teaching.counts.routes);
-console.log(`${total} routes, 2 login states, failure and retry: passed`);
+assert.equal(total, teaching.counts.routes * 2);
+console.log(`${teaching.counts.routes} routes, 2 preview modes, 2 login states, failure and retry: passed`);

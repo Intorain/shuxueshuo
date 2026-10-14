@@ -1,44 +1,70 @@
-import {ABILITY_KINDS, STATUS_LABELS, learningHref, learningVersion, learningApi, learningDirectoryHref, progressScope, practiceEventView, renderLearningMath, preserveLearningLink} from './learning-model.mjs';
+import {ABILITY_KINDS, STATUS_LABELS, learningApi, learningDirectoryHref, progressScope, practiceEventView, renderLearningMath} from './learning-model.mjs';
+import {isPreview, bindModeLinks, modeHref} from '../practice/learning-mode.mjs';
+import {personalState} from './personal-state.mjs';
+import {bindPersonalOverlay, updateLocalDrillProgress} from './personal-overlay.mjs';
 import {escapeHtml as h} from './resource-links.mjs';
 
-const params = new URLSearchParams(location.search);
-const enabled = params.get('learning') === '1';
+const preview = isPreview(location.search);
+const when = iso => new Date(iso).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 const nodeConfig = document.querySelector('#node-page-config');
 const config = nodeConfig ? JSON.parse(nodeConfig.textContent) : null;
+bindModeLinks(document, location.href);
 if (config?.redirectHref) {
-  location.replace(enabled ? learningDirectoryHref(config, location.href) : config.redirectHref);
+  location.replace(learningDirectoryHref(config, location.href));
 } else {
   const hero = document.querySelector('main .hero');
-  const mode = document.createElement('p');
-  mode.className = 'kx-learning-entry';
-  if (!enabled) {
-    if (/^(localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)$/i.test(location.hostname)) {
-      mode.innerHTML = `<a href="${h(learningHref(location.href))}">进入登录联调 · 查看个人状态与五题检测 →</a>`;
-      hero?.append(mode);
-    }
+  const actions = hero?.querySelector('.detail-actions') || hero;
+  // A node's own status is one line in the action row; its records follow the article.
+  const nodePage = !!config && (ABILITY_KINDS.includes(config.kind) || config.kind === 'judgment_rule');
+  const mine = document.createElement('div');
+  mine.className = 'kx-mine';
+  mine.setAttribute('aria-live', 'polite');
+  mine.hidden = true;
+  const records = document.createElement('section');
+  records.className = 'kx-records';
+  records.setAttribute('aria-label', config?.kind === 'judgment_rule' ? '我的判断记录' : '我的练习记录');
+  records.hidden = true;
+  if (nodePage) {
+    actions?.append(mine);
+    const article = document.querySelector('.detail-body');
+    const source = article?.querySelector(':scope > .source');
+    if (source) source.before(records);
+    else if (article) article.append(records);
+    else hero?.after(records);
+  }
+  const controls = document.querySelector('[data-personal-controls]') || document.createElement('div');
+  controls.classList.add('kx-learning-entry');
+  const panel = document.createElement('section');
+  panel.className = 'kx-learning-panel';
+  panel.setAttribute('aria-label', '个人学习记录');
+  panel.setAttribute('aria-live', 'polite');
+  panel.hidden = true;
+  // Chapter graphs keep the switch and the scope summary on one bar; the overview follows the saved preference without a switch.
+  if (document.querySelector('#graph-config')) {
+    const bar = document.createElement('div');
+    bar.className = 'kx-learning-bar';
+    bar.append(controls, panel);
+    hero?.after(bar);
   } else {
-    mode.textContent = '登录联调 · 正在确认内容版本…';
-    document.querySelectorAll('[data-teaching-mode]').forEach(el => el.textContent = '教学内容 · 登录联调');
-    document.querySelectorAll('a[href]').forEach(a => {
-      if (a.textContent === '专题预览') a.textContent = '专题练习';
-      else if (a.textContent === '打开原题 · 关联预览') a.textContent = '打开原题 · 登录联调';
-    });
-    document.querySelectorAll('[data-preview-notice]').forEach(el => el.textContent = '登录联调：进入题页后，练习记录保存到当前账号。');
-    hero?.append(mode);
-    const preserveLink = a => preserveLearningLink(a, location.href);
-    document.querySelectorAll('a[href]').forEach(preserveLink);
-    // Graph drawers and topic tables add links after the initial page load.
-    for (const type of ['click', 'auxclick', 'contextmenu']) document.addEventListener(type, e => preserveLink(e.target.closest('a[href]')), true);
+    if (!controls.isConnected && (preview || !document.querySelector('main.kx-overview'))) actions?.append(controls);
+    hero?.after(panel);
+  }
+  if (preview) {
+    controls.innerHTML = `<span>无记录预览</span> · <a data-learning-exit href="${h(modeHref(location.href))}">返回正式图谱</a>`;
+  } else {
+    const store = personalState();
+    bindPersonalOverlay(store);
     const graphConfig = document.querySelector('#graph-config');
     const graph = graphConfig ? JSON.parse(graphConfig.textContent) : null;
-    const panel = document.createElement('section');
-    panel.className = 'kx-learning-panel';
-    panel.setAttribute('aria-label', '个人学习记录');
-    panel.setAttribute('aria-live', 'polite');
-    hero?.after(panel);
-    let ticket = 0, contentVersion = null;
-    const stateConfig = config;
-    const scope = () => progressScope(location.search, graph);
+    const scope = () => config && ['textbook', 'chapter', 'section'].includes(config.kind) ? config.id : progressScope(location.search, graph);
+    // Only an entry anchor narrows the records; other in-page anchors change nothing.
+    const entryAnchor = () => {
+      const anchor = location.hash.slice(1);
+      return config?.entryIds?.includes(anchor) ? anchor : '';
+    };
+    let ticket = 0, contentVersion = null, rendered = '', evidenceController, localDrillProgress = null;
+    const drawDrillProgress = () => updateLocalDrillProgress(mine.querySelector('[data-drill-progress]'),
+      localDrillProgress, store.snapshot().userId, config?.id);
     // Formula rendering is an enhancement; a failed script must not hide evidence.
     const renderMath = async target => {
       try { await renderLearningMath(target); }
@@ -50,55 +76,66 @@ if (config?.redirectHref) {
         target.append(retry);
       }
     };
-    const read = async path => {
-      if (path.startsWith('/api/')) return learningApi(path);
-      const response = await fetch(path, {cache: 'no-cache', signal: AbortSignal.timeout(15000)});
-      if (!response.ok) throw Error('内容版本暂不可用，请重试。');
-      return response.json();
+    const KIND_NAMES = {knowledge: '知识点', skill: '技能', method: '方法', problem_type: '题型'};
+    const count = (row, status) => row?.statuses?.[status] || 0;
+    const cell = row => row?.total
+      ? `<b>${count(row, 'mastered')}</b> / ${row.total}${count(row, 'needs_review') ? ` <span class="needs_review">${count(row, 'needs_review')} 待巩固</span>` : ''}`
+      : '<span class="kx-none">—</span>';
+    const progressTable = groups => {
+      const kinds = Object.keys(KIND_NAMES).filter(kind => groups.some(([, value]) => value.by_kind?.[kind]?.total));
+      const row = (label, cells, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><th scope="row">${label}</th>${cells.join('')}</tr>`;
+      return `<table class="kx-progress-table"><thead><tr><th></th>${groups.map(([name, value]) => `<th scope="col">${name} <span>${value.total} 个</span></th>`).join('')}</tr></thead><tbody>${
+        kinds.map(kind => row(KIND_NAMES[kind], groups.map(([, value]) => `<td>${cell(value.by_kind?.[kind])}</td>`))).join('')
+      }${row('合计', groups.map(([, value]) => `<td>${cell(value)}</td>`), 'kx-progress-total')
+      }${row('有检测题', groups.map(([, value]) => `<td>${value.eligible} 个</td>`), 'kx-progress-eligible')}</tbody></table>`;
     };
-    const aggregate = (name, value) => {
-      if (!value) return '';
-      const counts = value.statuses;
-      const byKind = Object.entries(value.by_kind || {}).map(([kind, row]) =>
-        `<li>${h({knowledge:'知识点',skill:'技能',method:'方法',problem_type:'题型'}[kind] || kind)}：${row.total} 个，已掌握 ${row.statuses?.mastered || 0}，待巩固 ${row.statuses?.needs_review || 0}，未评估 ${row.statuses?.unassessed || 0}</li>`).join('');
-      return `<article><h3>${name} · ${value.total} 个能力节点</h3><p>已掌握 ${counts.mastered} · 待巩固 ${counts.needs_review} · 未评估 ${counts.unassessed} · 可检测 ${value.eligible}</p>${byKind ? `<ul>${byKind}</ul>` : ''}</article>`;
+    const meter = (name, value) => {
+      const m = count(value, 'mastered'), r = count(value, 'needs_review'), pct = n => `${(n / value.total * 100).toFixed(1)}%`;
+      return `<span class="kx-meter"><span class="kx-meter-name">${name}</span><span class="kx-meter-bar" role="img" aria-label="${name}已掌握 ${m} 个，待巩固 ${r} 个，共 ${value.total} 个"><i class="mastered" style="width:${pct(m)}"></i><i class="needs_review" style="width:${pct(r)}"></i></span><span class="kx-meter-num"><b>${m}</b> / ${value.total}</span></span>`;
     };
-    async function refresh() {
+    let progressOpen = false;
+    function drawControls(current) {
+      if (!current.userId) {
+        controls.innerHTML = '<button type="button" class="kx-login" data-login>登录后记录掌握情况</button>';
+        controls.querySelector('[data-login]').onclick = () => window.SiteAuth?.requireLogin({title:'登录后记录学习情况', intro:'检测结果和练习记录会保存在你的账号里。'});
+        return;
+      }
+      const legend = current.enabled && current.phase === 'ready' && !nodePage
+        ? `<span class="kx-personal-legend"><span class="mastered"><i aria-hidden="true">✓</i>${STATUS_LABELS.mastered}</span><span class="needs_review"><i aria-hidden="true">!</i>${STATUS_LABELS.needs_review}</span></span>` : '';
+      controls.innerHTML = `<label><input type="checkbox" data-toggle-personal ${current.enabled ? 'checked' : ''}> ${nodePage ? '显示我的记录' : '标出我的掌握情况'}</label>${legend}${current.phase === 'loading' ? '<span>读取中…</span>' : current.phase === 'error' ? `<span role="status">${h(current.error.message)}</span><button type="button" data-retry>重试</button>` : ''}`;
+      controls.querySelector('[data-toggle-personal]').onchange = event => store.setEnabled(event.target.checked);
+      controls.querySelector('[data-retry]')?.addEventListener('click', () => store.refresh());
+    }
+    async function refresh(current = store.snapshot()) {
+      const key = `${current.revision}|${scope() || ''}|${entryAnchor()}`;
+      if (key === rendered) return;
+      rendered = key;
       const stamp = ++ticket;
-      panel.replaceChildren();
+      evidenceController?.abort();
+      evidenceController = new AbortController();
+      const signal = evidenceController.signal;
+      panel.replaceChildren(); panel.hidden = true;
+      mine.replaceChildren(); mine.hidden = true;
+      records.replaceChildren(); records.hidden = true;
+      drawControls(current);
+      if (current.phase !== 'ready') return;
+      contentVersion = current.contentVersion;
+      const user = {id:current.userId};
+      // Overviews and 3D have compact per-directory summaries instead of a duplicate panel.
+      if (!config && !scope()) return;
+      if (!nodePage) panel.hidden = false;
       try {
-        contentVersion = await learningVersion(read);
-        if (stamp !== ticket) return;
-        mode.textContent = '登录联调 · 学习记录保存到当前账号';
-        await window.SiteAuth?.ready;
-        const user = window.SiteAuth?.user;
-        if (!user) {
-          panel.innerHTML = '<p>登录后查看个人学习状态与练习证据。</p><button type="button" data-login>登录并继续</button>';
-          panel.querySelector('[data-login]').onclick = async () => {
-            await window.SiteAuth?.requireLogin({title:'登录后查看学习记录', intro:'五题全部完成后更新节点状态。'});
-            refresh();
-          };
-          return;
-        }
         if (config && ABILITY_KINDS.includes(config.kind)) {
-          const result = await learningApi('/nodes', {user: user.id});
-          if (stamp !== ticket) return;
-          const state = result.nodes.find(n => n.node_id === config.id);
-          if (!state) throw Error('当前节点尚未发布到学习服务。');
-          panel.innerHTML = `<h2>我的状态 <span class="kx-status ${h(state.status)}">${STATUS_LABELS[state.status]}</span>${state.in_progress ? ' · 练习中' : ''}</h2><p>${state.attempt_id ? `最近完成的五题首答 ${state.correct_count} / 5 · ${h(new Date(state.completed_at).toLocaleString())}` : '尚无本节点的有效评测证据。'}</p><p>五题全部完成后更新状态。新一轮答错，完成后可变为待巩固。</p>${state.eligible ? '<button type="button" data-start-drill>刷题 · 5 题</button>' : `<p>当前 ${state.item_count} 道有效小题，暂未开放五题检测。</p>`}${state.attempt_id ? '<button type="button" data-drill-evidence>查看评估依据</button><div class="kx-drill-evidence"></div>' : ''}<div class="kx-evidence"></div>`;
-          const showDrill = panel.querySelector('[data-drill-evidence]');
-          if (showDrill) showDrill.onclick = async () => {
-            showDrill.disabled = true;
-            try {
-              const run = await learningApi(`/drills/${state.attempt_id}`, {user:user.id});
-              if (stamp !== ticket) return;
-              const target = panel.querySelector('.kx-drill-evidence');
-              target.innerHTML = `<p>最近完成的五题首答记录</p><ol>${run.items.map(item => `<li><p data-math-text>${h(item.statement_md)} · ${item.is_correct ? '答对' : '答错'}</p><p data-math-text>所选答案：${h(item.options.filter(option => item.selected?.includes(option.value)).map(option => option.label).join('；'))}</p></li>`).join('')}</ol>`;
-              await renderMath(target);
-            } catch (error) { panel.querySelector('.kx-drill-evidence').textContent = error.message; }
-            finally { showDrill.disabled = false; }
-          };
-          const start = panel.querySelector('[data-start-drill]');
+          const state = current.nodes.get(config.id);
+          if (!state) throw Error('这里暂时不能记录学习情况。');
+          const result = state.attempt_id
+            ? `上次检测${state.correct_count === 5 ? ' 5/5 全对' : `答对 ${state.correct_count}/5`} · ${h(when(state.completed_at))}`
+            : state.eligible ? '' : '暂时没有检测题';
+          const action = !state.eligible ? '' : state.in_progress ? '继续检测' : state.attempt_id ? '再测一次' : '做 5 道题检测';
+          mine.innerHTML = `<span class="kx-status ${h(state.status)}" title="做完 5 道检测题后更新：全对为已掌握，有错为待巩固">${STATUS_LABELS[state.status]}</span>${result ? `<span class="kx-mine-text">${result}</span>` : ''}<span class="kx-mine-text" data-drill-progress>${state.in_progress ? ' · 有一轮没做完' : ''}</span>${action ? `<button type="button" data-start-drill>${action}</button>` : ''}`;
+          mine.hidden = false;
+          drawDrillProgress();
+          const start = mine.querySelector('[data-start-drill]');
           if (start) start.onclick = async () => {
             start.disabled = true;
             try {
@@ -107,64 +144,134 @@ if (config?.redirectHref) {
             } catch (error) { start.after(document.createTextNode(error.message)); }
             finally { start.disabled = false; }
           };
-          await evidence(panel.querySelector('.kx-evidence'), config.id, user.id, stamp);
+          await loadEvidence(config.id, user.id, stamp, signal);
         } else if (config?.kind === 'judgment_rule') {
-          panel.innerHTML = '<h2>判断记录</h2><p>只记录实际发生的判断与选择，不设置掌握状态。</p><div class="kx-evidence"></div>';
-          await evidence(panel.querySelector('.kx-evidence'), config.id, user.id, stamp);
+          await loadEvidence(config.id, user.id, stamp, signal);
         } else if (scope()) {
-          const result = await learningApi(`/progress?scope=${encodeURIComponent(scope())}`, {user:user.id});
+          const [result] = await store.getProgress([scope()]);
           if (stamp !== ticket) return;
-          panel.innerHTML = `<h2>学习进度</h2>${aggregate('包含', result.contains)}${aggregate('拓展', result.extends)}<p>每组内按节点去重；这些计数不表示教材、章或节的掌握概率。</p>`;
-        } else panel.innerHTML = '<p>进入具体章节查看学习进度，或打开节点详情进行五题检测。</p>';
+          if (!result) throw Error('目录进度暂不可用，请重试。');
+          const groups = [['课内', result.contains], ['拓展', result.extends]].filter(([, value]) => value?.total);
+          const note = '<p class="kx-progress-note">只有做完 5 道检测题才算掌握；做例题不改变掌握情况。</p>';
+          const body = groups.length ? `${progressTable(groups)}${note}` : '<p>这里还没有可以检测的内容。</p>';
+          panel.classList.toggle('kx-learning-compact', !!graph);
+          if (graph) {
+            panel.innerHTML = `<div class="kx-progress-head"><span class="kx-progress-label">我已掌握</span>${groups.map(([name, value]) => meter(name, value)).join('') || '<span class="kx-none">暂无内容</span>'}${groups.length ? `<button type="button" class="kx-progress-toggle" aria-expanded="${progressOpen}">明细</button>` : ''}</div><div class="kx-progress-body"${progressOpen ? '' : ' hidden'}>${body}</div>`;
+            panel.querySelector('.kx-progress-toggle')?.addEventListener('click', event => {
+              progressOpen = !progressOpen;
+              event.currentTarget.setAttribute('aria-expanded', String(progressOpen));
+              panel.querySelector('.kx-progress-body').hidden = !progressOpen;
+            });
+          } else panel.innerHTML = `<h2>我的进度</h2>${body}`;
+        } else panel.innerHTML = '<p>进入具体章节查看我的进度，或打开某个知识点做检测。</p>';
       } catch (error) {
         if (stamp !== ticket) return;
-        mode.textContent = '登录联调 · 学习记录暂不可用';
+        if (nodePage) {
+          records.hidden = true;
+          mine.hidden = false;
+          mine.innerHTML = `<span class="kx-mine-text">${h(error.message)}</span><button type="button" data-retry>重试</button>`;
+          mine.querySelector('[data-retry]').onclick = () => store.refresh();
+          return;
+        }
         panel.innerHTML = `<p>${h(error.message)} 公共正文仍可阅读。</p><button type="button" data-retry>重试读取</button>`;
-        panel.querySelector('[data-retry]').onclick = refresh;
+        panel.querySelector('[data-retry]').onclick = () => store.refresh();
       }
     }
-    async function evidence(host, id, user, stamp) {
-      const anchor = location.hash.slice(1);
-      const entry = stateConfig.entryIds?.includes(anchor) ? anchor : '';
+    // Records fail on their own; the status line and drill button stay usable.
+    async function loadEvidence(id, user, stamp, signal) {
+      try { await evidence(records, id, user, stamp, signal); }
+      catch (error) {
+        if (stamp !== ticket || signal.aborted) return;
+        records.innerHTML = `<p class="kx-records-error">练习记录暂时读不出来：${h(error.message)} <button type="button" data-retry-records>重试</button></p>`;
+        records.hidden = false;
+        records.querySelector('[data-retry-records]').onclick = () => {
+          records.replaceChildren(); records.hidden = true;
+          loadEvidence(id, user, stamp, signal);
+        };
+      }
+    }
+    async function evidence(host, id, user, stamp, signal) {
+      const entry = entryAnchor();
       const query = entry ? `?entry=${encodeURIComponent(entry)}` : '';
-      const result = await learningApi(`/nodes/${encodeURIComponent(id)}/evidence${query}`, {user});
+      const result = await learningApi(`/nodes/${encodeURIComponent(id)}/evidence${query}`, {user, signal});
       if (stamp !== ticket) return;
       const rows = result.evidence;
-      const drills = result.drills || [];
-      const runLabels = {completed:'已完成', in_progress:'进行中', closed:'已关闭'};
-      host.innerHTML = `<details><summary>小题首答 · 最近 ${drills.length} 条${entry ? ' · 当前条目' : ''}</summary><p>保留每次遇到这道题时的首答；进行中或已关闭的轮次不更新掌握状态。</p>${drills.length ? drills.map(row => `<details><summary>${h(new Date(row.answered_at).toLocaleString())} · 第 ${row.position} 题 · ${row.is_correct ? '答对' : '答错'} · ${h(runLabels[row.status] || row.status)}</summary><button type="button" data-drill-record="${h(row.attempt_id)}" data-position="${row.position}">查看当时题目与首答</button><div class="kx-record"></div></details>`).join('') : '<p>暂无首答记录。</p>'}</details><details><summary>整题过程 · 最近 ${rows.length} 条${entry ? ' · 当前条目' : ''}</summary><p>整题过程仅作证据，暂不用于掌握评估。</p>${rows.length ? rows.map(row => `<details><summary>${h(row.label || row.problem_id || '练习')} · ${h(row.title || row.step_id || '')} · ${row.passed ? '已完成' : '进行中'}</summary><p>提交 ${row.submit_count || 0} 次 · 错误 ${row.wrong_count || 0} 次${row.hint_used ? ' · 使用过提示' : ''}</p><button type="button" data-record="${h(row.attempt_id)}" data-step="${h(row.step_id || '')}">查看原始记录</button><div class="kx-record"></div></details>`).join('') : '<p>暂无记录。</p>'}</details>`;
+      const rounds = new Map();
+      for (const row of result.drills || []) (rounds.get(row.attempt_id) || rounds.set(row.attempt_id, []).get(row.attempt_id)).push(row);
+      if (!rounds.size && !rows.length) return;
+      const roundState = {in_progress:'进行中', closed:'中途结束'};
+      const drillItems = [...rounds].map(([attempt, items]) => {
+        const first = items.reduce((a, b) => a.answered_at <= b.answered_at ? a : b);
+        const meta = [`答对 ${items.filter(row => row.is_correct).length}/${items.length}`, roundState[first.status]].filter(Boolean).join(' · ');
+        return `<li><div class="kx-rec-head"><span class="kx-rec-main">${h(when(first.answered_at))} 的检测</span><span class="kx-rec-meta">${meta}</span><button type="button" data-drill-record="${h(attempt)}" data-positions="${items.map(row => row.position).join(',')}">看题</button></div><div class="kx-record"></div></li>`;
+      }).join('');
+      // One problem attempt per group; its steps keep the server's recency order.
+      const attempts = new Map();
+      for (const row of rows) (attempts.get(row.attempt_id) || attempts.set(row.attempt_id, []).get(row.attempt_id)).push(row);
+      const attemptState = {in_progress:'做到一半', completed:'整题完成', closed:'中途结束'};
+      const practiceItems = [...attempts.values()].map(steps => {
+        const first = steps[0], name = h(first.label || first.problem_id || '练习');
+        const title = first.path ? `<a href="${h(modeHref(first.path, {preview:false}, location.href))}">${name}</a>` : name;
+        return `<li class="kx-rec-problem"><div class="kx-rec-head"><span class="kx-rec-main">${title}</span><span class="kx-rec-meta">${attemptState[first.status] || ''}</span></div><ul>${steps.map(row => {
+          const meta = [row.passed ? '做对了' : '还没做完', row.wrong_count ? `答错 ${row.wrong_count} 次` : '', row.hint_used ? '看过提示' : ''].filter(Boolean).join(' · ');
+          return `<li><div class="kx-rec-head"><span class="kx-rec-step">${h(row.title || row.step_id || '')}</span><span class="kx-rec-meta">${meta}</span><button type="button" data-record="${h(row.attempt_id)}" data-step="${h(row.step_id || '')}">回看</button></div><div class="kx-record"></div></li>`;
+        }).join('')}</ul></li>`;
+      }).join('');
+      const counts = [rounds.size ? `检测 ${rounds.size} 次` : '', attempts.size ? `例题 ${attempts.size} 道` : '', entry ? '只看当前条目' : ''].filter(Boolean).join(' · ');
+      host.innerHTML = `<details><summary><span class="kx-records-title">${config.kind === 'judgment_rule' ? '我的判断记录' : '我的练习记录'}</span><span class="kx-rec-meta">${counts}</span></summary>${drillItems ? `<h3>检测题</h3><ul>${drillItems}</ul>` : ''}${practiceItems ? `<h3>做过的例题里用到它的步骤</h3><ul>${practiceItems}</ul>` : ''}</details>`;
+      host.hidden = false;
       host.onclick = async event => {
         const button = event.target.closest('[data-record], [data-drill-record]');
         if (!button) return;
+        const target = button.closest('li').querySelector('.kx-record');
+        const label = button.dataset.drillRecord ? '看题' : '回看';
+        if (target.innerHTML) { target.replaceChildren(); button.textContent = label; return; }
         button.disabled = true;
         try {
           if (button.dataset.drillRecord) {
-            const run = await learningApi(`/drills/${button.dataset.drillRecord}`, {user});
+            const run = await learningApi(`/drills/${button.dataset.drillRecord}`, {user, signal});
             if (stamp !== ticket) return;
-            const item = run.items.find(item => item.position === Number(button.dataset.position));
-            if (!item) throw Error('未找到该首答题目。');
-            button.nextElementSibling.innerHTML = `<p data-math-text>${h(item.statement_md)}</p><p data-math-text>所选答案：${h(item.options.filter(option => item.selected?.includes(option.value)).map(option => option.label).join('；'))}</p>`;
-            await renderMath(button.nextElementSibling);
-            return;
+            const keep = new Set(button.dataset.positions.split(',').map(Number));
+            target.innerHTML = `<ol>${run.items.filter(item => keep.has(item.position)).map(item => {
+              const picked = item.options.filter(option => item.selected?.includes(option.value)).map(option => option.label).join('；');
+              return `<li class="${item.is_correct ? 'is-right' : 'is-wrong'}"><p data-math-text>${h(item.statement_md)}</p><p class="kx-rec-meta" data-math-text>${item.is_correct ? '答对' : '答错'}${picked ? ` · 你选了：${h(picked)}` : ''}</p></li>`;
+            }).join('')}</ol>`;
+          } else {
+            const history = await learningApi(`/practice/${button.dataset.record}`, {user, signal});
+            if (stamp !== ticket) return;
+            const contexts = new Map(history.events.filter(e => e.event_type === 'context').map(e => [e.id, e.payload]));
+            target.innerHTML = history.events.filter(e => e.step_id === button.dataset.step).map(e => {
+              const view = practiceEventView(e, contexts);
+              return `<div class="kx-event"><p><strong>${h(view.title)}</strong>${e.created_at ? ` <span class="kx-rec-meta">${h(when(e.created_at))}</span>` : ''}</p>${view.text ? `<p data-math-text>${h(view.text)}</p>` : ''}${view.details.map(detail => `<p class="kx-rec-meta" data-math-text>${h(detail)}</p>`).join('')}</div>`;
+            }).join('') || '<p>这一步还没有记录。</p>';
           }
-          const history = await learningApi(`/practice/${button.dataset.record}`, {user});
-          if (stamp !== ticket) return;
-          const contexts = new Map(history.events.filter(e => e.event_type === 'context').map(e => [e.id, e.payload]));
-          button.nextElementSibling.innerHTML = history.events.filter(e => e.step_id === button.dataset.step).map(e => {
-            const view = practiceEventView(e, contexts);
-            return `<p><strong>${h(view.title)}</strong> · ${h(e.created_at || '')}</p><p data-math-text>${h(view.text)}</p>${view.details.map(detail => `<p data-math-text>${h(detail)}</p>`).join('')}`;
-          }).join('');
-          await renderMath(button.nextElementSibling);
-        } catch (error) { button.nextElementSibling.textContent = error.message; }
+          button.textContent = '收起';
+          await renderMath(target);
+        } catch (error) { target.textContent = error.message; }
         finally { button.disabled = false; }
       };
     }
-    window.addEventListener('site-auth-change', refresh);
-    window.addEventListener('learning-nodes-change', refresh);
-    window.addEventListener('knowledge-scope-change', refresh);
-    window.addEventListener('popstate', refresh);
-    window.addEventListener('hashchange', refresh);
-    window.addEventListener('storage', e => {if (e.key === 'sss-learning-change') refresh();});
-    refresh();
+    store.subscribe(refresh);
+    const syncUser = () => {
+      localDrillProgress = null;
+      return store.setUser(window.SiteAuth?.user);
+    };
+    const refreshAssessments = () => {
+      localDrillProgress = null;
+      return store.refresh();
+    };
+    window.addEventListener('site-auth-change', syncUser);
+    window.addEventListener('learning-drill-progress', event => {
+      if (event.detail.userId !== store.snapshot().userId || event.detail.nodeId !== config?.id) return;
+      localDrillProgress = event.detail;
+      drawDrillProgress();
+    });
+    window.addEventListener('learning-nodes-change', refreshAssessments);
+    for (const type of ['knowledge-scope-change', 'popstate', 'hashchange']) window.addEventListener(type, () => refresh());
+    window.addEventListener('storage', event => {
+      if (event.key === 'sss-learning-change') refreshAssessments();
+      else if (event.key?.startsWith('sss-knowledge-personal:')) store.syncPreference();
+    });
+    Promise.resolve(window.SiteAuth?.ready).then(syncUser);
   }
 }

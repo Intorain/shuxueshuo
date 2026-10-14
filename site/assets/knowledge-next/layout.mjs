@@ -122,7 +122,7 @@ function lanesLayout(nodes, edges, defs) {
   };
 }
 
-function curriculumLayout(nodes, edges, structure) {
+function curriculumLayout(nodes, edges, structure, {perRow = Infinity, cols: frameCols = 0} = {}) {
   const byId = new Map(nodes.map(n => [n.id, n])), positions = new Map(), frames = [], labels = [], notes = [];
   const sections = structure.sections, home = new Map();
   for (const relation of ['contains', 'extends']) for (const s of sections) for (const m of s.members) {
@@ -141,8 +141,10 @@ function curriculumLayout(nodes, edges, structure) {
   });
   if (crumbs.length) y += 40 + 30;
 
-  let fx = PAD, bottom = y, right = x;
+  let fx = PAD, bottom = y, right = x, inRow = 0;
   const place = (id, ids, {cols, title = '', header = '', dashed = false, shared = []}) => {
+    if (inRow >= perRow) { fx = PAD; y = bottom + FRAME_GAP; inRow = 0; }
+    inRow++;
     const inner = cols * NODE_W + (cols - 1) * GAP_X;
     let cy = y + FRAME_PAD;
     if (header && byId.has(header)) { const s = pill(byId.get(header)); positions.set(header, {x: fx + FRAME_PAD, y: cy, ...s, w: Math.min(inner, s.w)}); cy += 40 + 20; }
@@ -176,18 +178,38 @@ function curriculumLayout(nodes, edges, structure) {
     fx += w + FRAME_GAP; bottom = Math.max(bottom, y + h); right = Math.max(right, fx - FRAME_GAP);
   };
   const widest = Math.max(1, ...ROW_ORDER.map(k => [...home].filter(([id]) => byId.get(id).kind === k).length));
-  const cols = sections.length > 1 ? 3 : Math.min(5, Math.max(3, widest));
+  const cols = frameCols || (sections.length > 1 ? 3 : Math.min(5, Math.max(3, widest)));
   for (const s of sections) {
     const own = [...home].filter(([, v]) => v.section === s.id).map(([id]) => id);
     const shared = s.members.filter(m => byId.has(m.id) && home.get(m.id)?.section !== s.id).map(m => m.id);
     place(s.id, own, {cols, header: s.id, title: s.label, shared});
   }
   if (related.length) place('related', related, {cols: 2, title: '按需展开的相关内容', dashed: true});
-  return {positions, width: right + PAD, height: bottom + PAD, routing: 'frames', implicit: ['contains', 'extends'], bands: [], frames, labels, notes};
+  return {positions, width: right + PAD, height: bottom + PAD, routing: 'frames', implicit: ['contains', 'extends'], bands: [], frames, labels, notes, perRow, cols};
 }
 
-export function layoutGraph(nodes, edges, {view, structure} = {}) {
-  if (view === 'curriculum' && structure) return curriculumLayout(nodes, edges, structure);
+// With a canvas size, section frames wrap (and narrow) into whichever arrangement
+// shows them largest. The first view never drops below canvas.minScale, so among
+// arrangements clamped to it the one showing the most of the graph wins.
+export function layoutGraph(nodes, edges, {view, structure, canvas} = {}) {
+  if (view === 'curriculum' && structure) {
+    let best = curriculumLayout(nodes, edges, structure);
+    if (!canvas?.width || !canvas?.height) return best;
+    const {width, height, minScale = 0} = canvas;
+    const score = l => {
+      const k = Math.max(fitGraph(l, width, height).k, minScale);
+      return [k, Math.min(1, width / (l.width * k)) * Math.min(1, height / (l.height * k))];
+    };
+    const better = ([k, seen], [bestK, bestSeen]) => k > bestK + 1e-6 || (k > bestK - 1e-6 && seen > bestSeen + 1e-6);
+    let bestScore = score(best);
+    const colsOptions = [...new Set([best.cols, Math.min(best.cols, 3), 2])];
+    for (const cols of colsOptions) for (let perRow = best.frames.length; perRow >= 1; perRow--) {
+      if (cols === best.cols && perRow === best.frames.length) continue;
+      const next = curriculumLayout(nodes, edges, structure, {perRow, cols}), s = score(next);
+      if (better(s, bestScore)) { best = next; bestScore = s; }
+    }
+    return best;
+  }
   if (LANES[view]) return lanesLayout(nodes, edges, LANES[view]);
   const rank = ranks(nodes, edges), levels = [...new Set(rank.values())].sort((a, b) => a - b);
   return lanesLayout(nodes, edges, levels.map(r => ({label: '', test: n => rank.get(n.id) === r})));

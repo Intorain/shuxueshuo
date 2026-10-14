@@ -1,9 +1,13 @@
 import {mountResource} from './resource-runtime.mjs';
 import {safeGraphReturn,VIEW_KINDS} from './model.mjs';
+import {isPreview,modeHref} from '../practice/learning-mode.mjs';
 
 const config=JSON.parse(document.querySelector('#node-page-config').textContent);
 const params=new URLSearchParams(location.search);
-const returnTo=safeGraphReturn(params.get('graph'));
+// The current page owns its mode. A saved graph URL may still carry preview
+// after the student has explicitly returned to the formal detail page.
+const preview=isPreview(location.search);
+const returnTo=modeHref(safeGraphReturn(params.get('graph')),{preview},location.href);
 if(params.has('graph')) {
   document.querySelectorAll('[data-graph-return]').forEach(a=>a.href=returnTo);
   const locate=new URL(returnTo,location.origin);
@@ -17,8 +21,8 @@ if(params.has('graph')) {
   if(kinds.length && !kinds.includes(config.kind)) locate.searchParams.delete('kinds');
   const expanded=new Set((locate.searchParams.get('expand') || '').split(',').filter(Boolean));
   expanded.add(config.id);locate.searchParams.set('expand',[...expanded].join(','));
-  document.querySelectorAll('[data-graph-locate]').forEach(a=>a.href=locate.pathname+locate.search);
-  document.querySelectorAll('[data-node-link]').forEach(a=>{const u=new URL(a.href);u.searchParams.set('graph',returnTo);a.href=u.pathname+u.search+u.hash;});
+  document.querySelectorAll('[data-graph-locate]').forEach(a=>a.href=locate.pathname+locate.search+locate.hash);
+  document.querySelectorAll('[data-node-link]').forEach(a=>{const u=new URL(a.href);u.searchParams.set('graph',returnTo);a.href=modeHref(u.href,{preview},location.href);});
 }
 if(matchMedia('(max-width: 760px)').matches) document.querySelector('.detail-toc details').open=false;
 

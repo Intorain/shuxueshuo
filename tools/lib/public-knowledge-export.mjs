@@ -72,7 +72,7 @@ export async function exportRows(root, { nodes, edges, manifest, teaching }) {
   rows.knowledge_resources = Object.entries(resources).map(([id, body]) => ({ id, body, version: body.version, is_active: true }));
   for (const topic of teaching.topics) {
     const { problems, ...body } = topic;
-    rows.practice_topics.push({ id: topic.id, label: topic.label, path: `/knowledge-next/topics/${topic.id}/`, body, groups: topic.groups, is_active: true });
+    rows.practice_topics.push({ id: topic.id, label: topic.label, path: Object.values(topic.problems)[0].path.replace(/q\d+\/$/, ''), body, groups: topic.groups, is_active: true });
     for (const [position, [pid, problem]] of Object.entries(problems).entries()) {
       const teacher = await read(path.join(root, `server/shuxueshuo_server/tutor_demo/lessons/${pid}.json`));
       const contracts = Object.fromEntries(Object.entries(teacher.routes).map(([rid, route]) => [rid,

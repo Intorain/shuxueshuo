@@ -3,7 +3,7 @@
   "kind": "knowledge",
   "label": "等式的性质",
   "summary": "等式可经合法运算推导新等式；逆向使用时要检查非零、定义域等条件。",
-  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "source": "人教 A 版必修第一册第二章",
   "entries": [
     {
       "id": "relation",

@@ -1457,6 +1457,16 @@ button.shape[aria-expanded=true] {
 .practice-record-status { margin:16px 0; color:var(--muted); font-size:14px; line-height:1.7; }
 .practice-record-status button { margin:8px 8px 0 0; padding:8px 14px; min-height:42px; border:1px solid var(--teal); border-radius:10px; background:var(--paper); color:var(--teal); }
 .practice-record-status button:disabled { opacity:.6; }
+
+/* Problem-level types and methods, one quiet line below all steps */
+.kxp-bar { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; margin:6px 0 0; padding:16px 2px 0; border-top:1px dashed #d6e1dd; }
+.kxp-bar[hidden], .kxp-reload[hidden] { display:none; }
+.kxp-bar > .kxp-associations { flex:1; min-width:0; }
+.kxp-bar .kxp-status { margin:0; color:var(--muted); font-size:13px; }
+.kxp-bar .kxp-status:empty { display:none; }
+.kxp-reload { padding:4px 14px; border:1px solid var(--line); border-radius:999px; background:var(--paper); color:var(--teal-dark); font-size:13px; cursor:pointer; }
+.kxp-reload:hover { border-color:var(--teal); }
+.kxp-preview-banner { margin:0 0 16px; padding:8px 14px; border:1px dashed #9fcbc4; border-radius:12px; background:#f0f8f6; color:var(--teal-dark); font-size:13px; font-weight:600; }
 .step-card[aria-busy="true"] { opacity: .9; }
 
 .conversation-history { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 14px; }

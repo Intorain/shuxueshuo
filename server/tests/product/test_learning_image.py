@@ -13,7 +13,6 @@ from uuid import uuid4
 import pytest
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-
 from shuxueshuo_server.learning.content import ROOT, load_content
 from shuxueshuo_server.product.config import Settings, write_private
 
@@ -65,7 +64,7 @@ def test_admin_image_publishes_learning_with_readonly_nonroot_runtime(tmp_path):
                     "PRODUCT_IN_CONTAINER": "1",
                     "PRODUCT_PG_BIN_DIR": "/usr/lib/postgresql/17/bin",
                 },
-                "volumes": [f"{root}:/var/lib/shuxueshuo"],
+                "volumes": [f"{root}:/var/lib/shuxueshuo", f"{ROOT / 'site/knowledge/teaching'}:/site-teaching:ro"],
             },
         },
         "volumes": {"database": {}},
@@ -92,6 +91,8 @@ def test_admin_image_publishes_learning_with_readonly_nonroot_runtime(tmp_path):
                 "--rm",
                 "--no-deps",
                 "admin",
+                "--site-version",
+                "/site-teaching/version.json",
                 "--mode",
                 "server",
                 "--data-dir",
@@ -109,6 +110,9 @@ def test_admin_image_publishes_learning_with_readonly_nonroot_runtime(tmp_path):
         head = ScriptDirectory.from_config(Config(str(ROOT / 'server/alembic.ini'))).get_current_head()
         installed = admin("install")
         assert installed["ok"] and installed["revision"] == head
+        assert admin("verify-release")["site"] == "match"
+        assert admin("preflight-learning")["state"] == "current"
+        assert admin("deploy")["ok"]
         expected = {key: len(values) for key, values in load_content().items() if key != '_meta'}
         assert admin("publish-learning") == expected
         assert admin("publish-learning") == expected

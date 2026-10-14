@@ -1,10 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, symlink, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { exportContent } from '../export-public-knowledge.mjs';
 import { contentDigest } from '../lib/public-knowledge-export.mjs';
-import { generate } from '../build-public-knowledge-graph.mjs';
+import { generate, repoRoot } from '../build-public-knowledge-graph.mjs';
 
 const data = await exportContent();
+
+test('release checks execute through a symlinked source directory', async () => {
+  const temp = await mkdtemp(path.join(tmpdir(), 'knowledge-cli-'));
+  try {
+    const linkedRoot = path.join(temp, 'source');
+    await symlink(repoRoot, linkedRoot, 'dir');
+    for (const tool of ['build-public-knowledge-graph.mjs', 'export-public-knowledge.mjs']) {
+      const script = path.join(linkedRoot, 'tools', tool);
+      const output = JSON.parse(execFileSync(process.execPath, [script, '--check'], { encoding: 'utf8' }));
+      if (tool.startsWith('export-')) assert.equal(output.content_version, data._meta.content_version);
+      else assert.equal(output.changed, 0);
+      assert.throws(() => execFileSync(process.execPath, [script, '--invalid'], { stdio: 'pipe' }));
+    }
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
 
 test('structured export contains current ontology and private drills without HTML rendering', () => {
   assert.equal(data.knowledge_nodes.length, 67);

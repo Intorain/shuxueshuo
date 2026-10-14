@@ -363,6 +363,16 @@ def test_live_tutor_persists_original_dialogue(client, app, auth, phone):
     assert step["passed"] and step["submit_count"] == 1
     assert step["hint_used"] and step["last_grading_source"] == "llm"
     assert state(client)["status"] == "unassessed"
+    # A fresh real tutor session restores server-confirmed progress without
+    # manufacturing a student's rule choice or writing another learning event.
+    restored = client.post('/api/tutor-demo/sessions', json={
+        'lesson_id': PID, 'practice_attempt_id': str(a['id']),
+        'content_version': a['content_version'],
+    })
+    assert restored.status_code == 201, restored.text
+    assert restored.json()['state']['active'] == 1
+    assert restored.json()['confirmed_choices'] == {}
+    assert client.get(f"/api/learning/practice/{a['id']}").json()['events'] == history['events']
 
 
 def test_all_authored_routes_rule_recording(client, auth, phone):

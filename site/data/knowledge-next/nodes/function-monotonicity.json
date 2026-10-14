@@ -3,7 +3,7 @@
   "kind": "knowledge",
   "label": "函数的单调性",
   "summary": "在指定区间上用自变量与函数值的次序描述增减，必须同时说明适用区间。",
-  "source": "人教 A 版必修第一册 3.2；第二章区间最值问题引用",
+  "source": "人教 A 版必修第一册 3.2",
   "entries": [
     {
       "id": "definition",

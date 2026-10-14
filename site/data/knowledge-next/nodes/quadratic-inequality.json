@@ -3,7 +3,7 @@
   "kind": "knowledge",
   "label": "一元二次不等式",
   "summary": "二次不等式的解集由二次式的符号决定；图像在横轴上方或下方对应不同解集。",
-  "source": "人教 A 版必修第一册第二章；公共知识图谱设计 §4",
+  "source": "人教 A 版必修第一册第二章",
   "prerequisites": [
     "quadratic-function-properties",
     "quadratic-equation"

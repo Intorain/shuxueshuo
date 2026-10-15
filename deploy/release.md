@@ -112,7 +112,7 @@ RELEASE=$HOME/releases/shuxueshuo-release-<RELEASE_ID>-amd64
 # 停服务、改库之前检查；不自动回退领先或分叉的服务器仓库。
 REV=$(sed -n 's/^PRODUCT_SOURCE_REVISION=//p' "$RELEASE/release.env")
 SITE_REPO=${PRODUCT_REPO_HOST:-"$HOME/code/shuxueshuo"}
-git -C "$SITE_REPO" fetch
+(cd "$SITE_REPO" && git fetch)   # 服务器 git 1.8 不支持 -C
 bash "$RELEASE/scripts/server/check-site-revision.sh" \
   --repo "$SITE_REPO" --revision "$REV" --allow-forward
 
@@ -126,7 +126,7 @@ grep '^API_PORT=' /srv/shuxueshuo/config/runtime.env
 "$RELEASE/scripts/server/deploy.sh" --data-dir /srv/shuxueshuo --release "$RELEASE"
 
 # 主站静态页：仓库前进到发布包的提交（教学内容版本须一致）
-git -C "$SITE_REPO" merge --ff-only "$REV"
+(cd "$SITE_REPO" && git merge --ff-only "$REV")
 
 # 严格校验仓库干净且 HEAD == REV，再检查镜像、学习库及页面的内容版本。
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
@@ -267,14 +267,14 @@ RELEASE=$HOME/releases/shuxueshuo-release-<RELEASE_ID>-amd64
   --release "$RELEASE" preflight-learning
 REV=$(sed -n 's/^PRODUCT_SOURCE_REVISION=//p' "$RELEASE/release.env")
 SITE_REPO=${PRODUCT_REPO_HOST:-"$HOME/code/shuxueshuo"}
-git -C "$SITE_REPO" fetch
+(cd "$SITE_REPO" && git fetch)   # 服务器 git 1.8 不支持 -C
 bash "$RELEASE/scripts/server/check-site-revision.sh" \
   --repo "$SITE_REPO" --revision "$REV" --allow-forward
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
   --release "$RELEASE" services-stop
 # 仅 current/已安装 empty 状态直接继续；其他状态按正式替换手册处理。
 "$RELEASE/scripts/server/deploy.sh" --data-dir /srv/shuxueshuo --release "$RELEASE"
-git -C "$SITE_REPO" merge --ff-only "$REV"
+(cd "$SITE_REPO" && git merge --ff-only "$REV")
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \
   --release "$RELEASE" verify-release
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo \

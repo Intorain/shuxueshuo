@@ -40,7 +40,7 @@ RELEASE=/absolute/path/release
 
 ## 维护窗口与首次替换
 
-1. 保留当前完整发布包和数据库配置路径，记下服务器仓库当前提交（`git -C "$HOME/code/shuxueshuo" rev-parse HEAD`），用于回退页面。
+1. 保留当前完整发布包和数据库配置路径，记下服务器仓库当前提交（`cd "$HOME/code/shuxueshuo" && git rev-parse HEAD`），用于回退页面。
 
 停服务或改库前先获取目标提交，检查仓库干净且能快进到该提交。检查只读，不更新网页；仓库已领先、分叉或有本地改动时停止，不自动回退：
 
@@ -48,7 +48,7 @@ RELEASE=/absolute/path/release
 set -euo pipefail
 REV=$(sed -n 's/^PRODUCT_SOURCE_REVISION=//p' "$RELEASE/release.env")
 SITE_REPO=${PRODUCT_REPO_HOST:-"$HOME/code/shuxueshuo"}
-git -C "$SITE_REPO" fetch
+(cd "$SITE_REPO" && git fetch)   # 服务器 git 1.8 不支持 -C
 bash "$RELEASE/scripts/server/check-site-revision.sh" \
   --repo "$SITE_REPO" --revision "$REV" --allow-forward
 ```
@@ -97,7 +97,7 @@ OLD_RELEASE=/absolute/path/previous-release
 
 ```bash
 set -euo pipefail
-git -C "$SITE_REPO" merge --ff-only "$REV"
+(cd "$SITE_REPO" && git merge --ff-only "$REV")
 "$RELEASE/scripts/manage.sh" --mode server --data-dir /srv/shuxueshuo --release "$RELEASE" verify-release
 ```
 

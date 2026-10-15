@@ -110,3 +110,8 @@ def test_repository_subdirectory_is_not_the_published_site_root(repository):
     nested.mkdir()
     result = check(nested, target)
     assert result.returncode != 0 and '仓库根目录' in result.stderr
+
+
+def test_server_scripts_run_on_git_without_dash_c():
+    for script in (REPO / 'deploy/product/server').glob('*.sh'):
+        assert 'git -C' not in script.read_text(encoding='utf-8'), script.name

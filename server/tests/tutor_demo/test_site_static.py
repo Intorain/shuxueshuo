@@ -78,3 +78,5 @@ def test_nginx_cache_policy_matches_local_and_retains_security_headers():
     for location in re.findall(r'^    location /api/ \{(.*?)^    \}', source, re.MULTILINE | re.DOTALL):
         assert 'Cache-Control' not in location
     assert source.count('rewrite ^/knowledge-next/(?!assets(?:/|$))(.*)$ /knowledge/$1 permanent;') == 2
+    # Module scripts are rejected unless served as JavaScript; old mime.types lack mjs.
+    assert re.search(r'^types \{\s*application/javascript mjs;\s*\}', source, re.MULTILINE)

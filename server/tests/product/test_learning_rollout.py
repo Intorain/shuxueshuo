@@ -156,6 +156,31 @@ def test_verify_release_checks_database_and_repository_site(cluster, tmp_path):
         db.dispose()
 
 
+def test_pre_graph_database_with_only_whole_problem_marks_deploys_and_keeps_them(cluster, tmp_path):
+    settings = cluster('marks')
+    db = engine(settings.url('migration'))
+    config = Config(str(REPO / 'server/alembic.ini'))
+    with db.begin() as c:
+        config.attributes['connection'] = c
+        command.upgrade(config, '0007_learning_marks')
+    user = database.seed(db).user_id
+    with db.begin() as c:
+        c.execute(text("INSERT INTO student_learning_marks(user_id,problem_id,practiced,learning_status) "
+                       "VALUES(:u,'q01',true,'mastered'),(:u,'unrelated-lesson',true,'needs_review')"), {'u': user})
+    meta = content.load_content()['_meta']
+    try:
+        state = learning.preflight(settings)
+        assert state['state'] == 'empty' and state['kept'] == {'student_learning_marks': 2}
+        assert learning.deploy(settings)['ok']
+        assert learning.preflight(settings)['state'] == 'current'
+        assert learning.verify_release(settings, site_version(tmp_path, meta))['site'] == 'match'
+        with db.connect() as c:
+            marks = dict(c.execute(text('SELECT problem_id, learning_status FROM student_learning_marks')).all())
+        assert marks == {'basic-inequality-q01': 'mastered', 'unrelated-lesson': 'needs_review'}
+    finally:
+        db.dispose()
+
+
 def test_preflight_never_treats_unknown_existing_database_as_empty(cluster):
     settings = cluster('unknown')
     db = engine(settings.url('migration'))

@@ -113,6 +113,11 @@ def inspect_content(connection):
                 return {**result, 'reason': 'learning.unsupported_content_schema'}
             return {**result, **dict(current), 'state': 'current', 'action': 'deploy'}
     if any(counts.get(table, 0) for table in PERSONAL_TABLES):
+        # Before 0009 there is no public content to replace and the only personal table is
+        # the whole-problem marks, which 0008 renames in place; nothing in the chain deletes them.
+        if 'knowledge_nodes' not in existing and set(counts) & set(PERSONAL_TABLES) == {'student_learning_marks'}:
+            return {**result, 'state': 'empty', 'action': 'deploy',
+                    'kept': {'student_learning_marks': counts['student_learning_marks']}}
         return {**result, 'reason': 'learning.legacy_personal_records_present'}
     if counts.get('knowledge_nodes', 0):
         if revision != '0010_learning_record_integrity':

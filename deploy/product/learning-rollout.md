@@ -31,7 +31,7 @@ RELEASE=/absolute/path/release
 
 | state | 含义 | 后续操作 |
 | --- | --- | --- |
-| `empty` | 尚未安装，或已知迁移链上没有旧学习内容与记录 | 新实例 `install`；已安装实例普通 `deploy` |
+| `empty` | 尚未安装，或已知迁移链上没有旧学习内容与记录；`0009` 之前只有整题学习标记时也属此类，输出 `kept` 计数，迁移 `0008` 原地改为新题号并保留 | 新实例 `install`；已安装实例普通 `deploy` |
 | `legacy_public_only` | `0010` 下只有旧公共内容，全部旧个人学习表为空 | 明确使用 `deploy --replace-legacy-public` |
 | `current` | 已有第二版公共内容结构 | 普通 `deploy` |
 | `blocked` | 旧个人记录存在、未知迁移版本或不支持的内容结构 | 停止，另行设计保留历史的迁移，不能使用本地清理命令绕过 |

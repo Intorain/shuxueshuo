@@ -1,4 +1,4 @@
-import {bindModeLinks, isPreview, modeHref} from './learning-mode.mjs?v=1';
+import {bindModeLinks, isPreview, modeHref} from './learning-mode.mjs';
 
 const labels = {knowledge: '知识点', skill: '技能', method: '方法', problem_type: '题型'};
 const escape = text => String(text).replace(/[&<>"']/g, character =>

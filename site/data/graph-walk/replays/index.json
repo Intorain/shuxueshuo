@@ -1,0 +1,15 @@
+{
+  "bundleVersion": "1b2417e602cfbbb45d00c37f5eec8492beefc5d7b688e7c318c15647d33366c4",
+  "replays": [
+    {
+      "label": "Codex · 判别式法 → 分离参数法",
+      "recorder": "Codex",
+      "path": "walk-1b2417e602cf-e4cbec1377ae.json",
+      "routes": [
+        "discriminant",
+        "extremum"
+      ],
+      "status": "completed"
+    }
+  ]
+}

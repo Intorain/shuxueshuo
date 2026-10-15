@@ -110,7 +110,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       return null;
     }
     await practiceAuthReady;
-    const moduleURL = new URL('../learning/practice-records.js?v=5', runtimeSrc);
+    const moduleURL = new URL('../learning/practice-records.js', runtimeSrc);
     if (recorderLoadAttempts++) moduleURL.searchParams.set('retry', String(recorderLoadAttempts));
     const module = await import(moduleURL.href);
     recorder = module.createRecorder(lesson, restorePractice, {contentVersion: access.contentVersion, onConfirmed: history => {
@@ -125,7 +125,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
   const methods = lesson.methods;
   const runtimeSrc = document.currentScript?.src;
   practiceContentReady.then(access => {
-    if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js?v=4', runtimeSrc).href).catch(() => {});
+    if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js', runtimeSrc).href).catch(() => {});
   });
   let titles = [];
   let remote = null;
@@ -543,7 +543,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
     const tip = resolveTip(nodeAt(stage)?.tip);
     if (!tip || !runtimeSrc) return;
     const view = structuredClone(snapshot), ticket = generation;
-    explain ||= import(new URL('../explain/explain.js?v=3', runtimeSrc).href);
+    explain ||= import(new URL('../explain/explain.js', runtimeSrc).href);
     explain.then(async module => {
       if (ticket !== generation || snapshot.attempt_id !== view.attempt_id) return;
       const shown = await module.openExplainer(tip.id, {tip: stage < view.state.active ? tip : null, detail: false});
@@ -790,7 +790,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
       document.addEventListener(type, event => preservePreview(event.target.closest('a[href]')), true);
     }
   }
-  import(new URL('./learning-mode.mjs?v=1', runtimeSrc).href).then(module => module.bindModeLinks(document, location.href)).catch(() => {});
+  import(new URL('./learning-mode.mjs', runtimeSrc).href).then(module => module.bindModeLinks(document, location.href)).catch(() => {});
   if (practiceKnowledgePreview) {
     const style = document.createElement('style');
     style.textContent = '.composer,[data-hint]{display:none!important}';
@@ -832,7 +832,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
         const response = await fetch('/knowledge/teaching/manifest.json', {cache:'no-cache'});
         if (!response.ok) throw Error('新关联目录不可用');
         const manifest = await response.json();
-        if (!/^\/knowledge\/assets\/[a-f0-9]+\/practice-preview\.mjs$/.test(manifest.module)) {
+        if (manifest.module !== '/assets/knowledge-next/practice-preview.mjs') {
           throw Error('新关联模块地址无效');
         }
         const module = await import(manifest.module + (retry.dataset.attempt ? '?retry=' + Date.now() : ''));
@@ -901,7 +901,7 @@ const practiceAuthReady = !practiceKnowledgePreview && practiceRuntimeSrc
         } else if (access.enabled) {
           recorderReady = enableRecorder(access).catch(recorderUnavailable);
           await recorderReady;
-          if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js?v=4', runtimeSrc).href).catch(() => {});
+          if (access.enabled && runtimeSrc) import(new URL('../learning/learning-marks.js', runtimeSrc).href).catch(() => {});
           await reloadKnowledgePreview?.();
         }
         await initializeKnowledge();

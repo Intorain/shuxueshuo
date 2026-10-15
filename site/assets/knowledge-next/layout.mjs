@@ -82,7 +82,7 @@ function orderColumns(columns, edges) {
   }
 }
 
-function lanesLayout(nodes, edges, defs) {
+export function lanesLayout(nodes, edges, defs) {
   const byId = new Map(nodes.map(n => [n.id, n])), assigned = new Set(), columns = [], bands = [];
   for (const def of defs) {
     const members = nodes.filter(n => !assigned.has(n.id) && def.test(n));

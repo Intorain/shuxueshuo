@@ -17,6 +17,22 @@
       ]
     },
     {
+      "id": "normalize",
+      "title": "移项整理成与 0 比较",
+      "body": [
+        "把不等式两边的项移到同一侧，整理成关于量词变量的二次式与 $0$ 比较，保留原来的严格或非严格不等号。",
+        "例如 $-x^2+2x+3\\le a^2-3a$ 等价于 $x^2-2x+a^2-3a-3\\ge0$，关于 $x$ 的二次项系数为 $1$。"
+      ],
+      "calls": [
+        {
+          "ref": "skill-inequality-transform"
+        },
+        {
+          "ref": "skill-simplify"
+        }
+      ]
+    },
+    {
       "id": "conditions",
       "title": "写出开口和判别式的条件",
       "body": [
@@ -27,6 +43,14 @@
         {
           "ref": "skill-quadratic-sign",
           "when": "把「恒正、恒负」翻译成开口方向和交点个数时"
+        },
+        {
+          "ref": "skill-simplify",
+          "when": "代入系数计算并化简判别式时"
+        },
+        {
+          "ref": "skill-inequality-transform",
+          "when": "把判别式条件改写成参数的不等式时"
         }
       ]
     },

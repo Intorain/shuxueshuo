@@ -1,0 +1,5453 @@
+{
+  "schemaVersion": 1,
+  "problemId": "quadratic-always-q01",
+  "bundleVersion": "1b2417e602cfbbb45d00c37f5eec8492beefc5d7b688e7c318c15647d33366c4",
+  "graphVersion": "e985e92b9fedfead99932a962d8482681aca8a7e3d6d0484bdd318fbad846b5e",
+  "problem": {
+    "text": "若不等式 $-x^2+2x+3\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。",
+    "root": {
+      "facts": [
+        "a∈ℝ",
+        "∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a"
+      ],
+      "goals": [
+        {
+          "kind": "find_range",
+          "symbol": "a"
+        }
+      ],
+      "label": "题目",
+      "definitions": [],
+      "children": [],
+      "uncertainties": []
+    }
+  },
+  "notation": {
+    "path": "site/data/math-notation-v1/quadratic-always/q01.json",
+    "version": "6295b81bff002c23e1487489594468465dc98ded64abbb7d26374884bed20891",
+    "semantic": {
+      "scope": "r",
+      "facts": [
+        [
+          "default_domain",
+          [
+            "ref",
+            "r:scalar:a",
+            "scalar"
+          ],
+          "real"
+        ],
+        [
+          "quantifier",
+          "∀",
+          "quantified_0",
+          [
+            "real"
+          ],
+          [
+            "<=",
+            [
+              "+",
+              [
+                "+",
+                [
+                  "neg",
+                  [
+                    "^",
+                    [
+                      "bound",
+                      "quantified_0"
+                    ],
+                    [
+                      "number",
+                      "2"
+                    ]
+                  ]
+                ],
+                [
+                  "*",
+                  [
+                    "number",
+                    "2"
+                  ],
+                  [
+                    "bound",
+                    "quantified_0"
+                  ]
+                ]
+              ],
+              [
+                "number",
+                "3"
+              ]
+            ],
+            [
+              "-",
+              [
+                "^",
+                [
+                  "ref",
+                  "r:scalar:a",
+                  "scalar"
+                ],
+                [
+                  "number",
+                  "2"
+                ]
+              ],
+              [
+                "*",
+                [
+                  "number",
+                  "3"
+                ],
+                [
+                  "ref",
+                  "r:scalar:a",
+                  "scalar"
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "goals": [
+        {
+          "kind": "find_range",
+          "target": [
+            "ref",
+            "r:scalar:a",
+            "scalar"
+          ]
+        }
+      ],
+      "uncertainties": [],
+      "children": []
+    },
+    "sourceLocations": {
+      "[\"default_domain\",[\"ref\",\"r:scalar:a\",\"scalar\"],\"real\"]": {
+        "path": "r.facts[0]",
+        "source": "a∈ℝ"
+      },
+      "[\"quantifier\",\"∀\",\"quantified_0\",[\"real\"],[\"<=\",[\"+\",[\"+\",[\"neg\",[\"^\",[\"bound\",\"quantified_0\"],[\"number\",\"2\"]]],[\"*\",[\"number\",\"2\"],[\"bound\",\"quantified_0\"]]],[\"number\",\"3\"]],[\"-\",[\"^\",[\"ref\",\"r:scalar:a\",\"scalar\"],[\"number\",\"2\"]],[\"*\",[\"number\",\"3\"],[\"ref\",\"r:scalar:a\",\"scalar\"]]]]]": {
+        "path": "r.facts[1]",
+        "source": "∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a"
+      }
+    }
+  },
+  "intro": [
+    {
+      "id": "D1",
+      "title": "读题",
+      "question": "这道题在说什么？",
+      "query": {
+        "op": "reverse",
+        "relation": "involves",
+        "from": [
+          "quantifiers",
+          "quadratic-inequality"
+        ]
+      },
+      "interaction": {
+        "type": "checklist",
+        "title": "逐句读题",
+        "slots": [
+          {
+            "label": "“对任意实数 $x$ 恒成立”",
+            "options": [
+              {
+                "value": "every",
+                "label": "所有实数 $x$ 都要满足"
+              },
+              {
+                "value": "some",
+                "label": "找到一个 $x$ 满足就行"
+              },
+              {
+                "value": "zero",
+                "label": "只要 $x=0$ 时成立"
+              }
+            ]
+          },
+          {
+            "label": "“$-x^2+2x+3\\le a^2-3a$”",
+            "options": [
+              {
+                "value": "quadratic-in-x",
+                "label": "关于 $x$ 的一元二次不等式，$a$ 看作常数"
+              },
+              {
+                "value": "equation-in-a",
+                "label": "关于 $a$ 的方程"
+              },
+              {
+                "value": "linear",
+                "label": "一元一次不等式"
+              }
+            ]
+          },
+          {
+            "label": "“求实数 $a$ 的取值范围”",
+            "options": [
+              {
+                "value": "parameter-range",
+                "label": "求参数 $a$ 能取哪些值"
+              },
+              {
+                "value": "solve-x",
+                "label": "解出 $x$ 的取值范围"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_answer": {
+        "terms": [
+          "every",
+          "quadratic-in-x",
+          "parameter-range"
+        ]
+      },
+      "feedback": {
+        "terms": "再读一遍：“任意”是每一个 $x$ 都要满足；不等式里 $x$ 的最高次数是 $2$，$a$ 只是参数；题目要的是 $a$ 的范围，不是 $x$ 的解集。"
+      },
+      "submit_label": "读懂了，看图谱怎么走",
+      "source": "authored",
+      "candidateNodes": [
+        "quantifiers",
+        "quadratic-inequality",
+        "type-quantified-quadratic",
+        "type-amgm-quantified",
+        "type-parameter-quadratic-solve",
+        "type-quadratic-solve",
+        "type-rational-inequality",
+        "type-solution-parameters"
+      ],
+      "candidates": [
+        {
+          "id": "type-quantified-quadratic",
+          "coverage": 2
+        },
+        {
+          "id": "type-amgm-quantified",
+          "coverage": 1
+        },
+        {
+          "id": "type-parameter-quadratic-solve",
+          "coverage": 1
+        },
+        {
+          "id": "type-quadratic-solve",
+          "coverage": 1
+        },
+        {
+          "id": "type-rational-inequality",
+          "coverage": 1
+        },
+        {
+          "id": "type-solution-parameters",
+          "coverage": 1
+        }
+      ],
+      "effects": {
+        "nodes": [
+          "quantifiers",
+          "quadratic-inequality"
+        ],
+        "edges": [],
+        "calls": [],
+        "results": [
+          "合起来：关于 $x$ 的二次不等式对所有实数 $x$ 都成立，求参数 $a$ 的取值范围。"
+        ],
+        "log": "图谱查询：从 2 个知识线索反查，找到 6 个相关题型；最高覆盖 2/2。"
+      }
+    },
+    {
+      "id": "D2",
+      "title": "确定题型",
+      "question": "哪一个题型最直接描述本题的条件与求解目标？",
+      "query": {
+        "op": "rank_types",
+        "from": "D1",
+        "withConfuse": true
+      },
+      "interaction": {
+        "type": "choice",
+        "field": "problem_type",
+        "options": [
+          {
+            "value": "type-quantified-quadratic",
+            "label": "含参一元二次不等式的恒成立与存在成立问题"
+          },
+          {
+            "value": "type-parameter-quadratic-solve",
+            "label": "含参数的一元二次不等式求解问题"
+          },
+          {
+            "value": "type-amgm-quantified",
+            "label": "应用基本不等式的恒成立与存在成立问题"
+          }
+        ]
+      },
+      "expected_answer": {
+        "one_of": [
+          "type-quantified-quadratic"
+        ]
+      },
+      "feedback": {
+        "answer": "本题对所有 $x$ 成立，求的是参数 $a$ 的范围；并非给定参数后求 $x$ 的解集。"
+      },
+      "verdicts": {
+        "type-quantified-quadratic": {
+          "value": "fit",
+          "message": "这是直接描述本题的主要任务。"
+        },
+        "type-parameter-quadratic-solve": {
+          "value": "unfit",
+          "message": "该任务讨论参数取值后求 $x$ 的解集，与本题目标不同。"
+        },
+        "type-amgm-quantified": {
+          "value": "fit",
+          "implemented": false,
+          "message": "这是一条需要额外变形的有效替代思路，本 Demo 暂未提供交互：写成 $3+x(2-x)$，在 $0<x<2$ 用基本不等式，其余范围判断乘积符号。"
+        }
+      },
+      "submit_label": "确认题型",
+      "source": "authored",
+      "candidateNodes": [
+        "type-quantified-quadratic",
+        "type-parameter-quadratic-solve",
+        "type-amgm-quantified"
+      ],
+      "alternatives": {
+        "type-amgm-quantified": {
+          "message": "这是一条需要额外变形的有效替代思路，本 Demo 暂未提供交互：写成 $3+x(2-x)$，在 $0<x<2$ 用基本不等式，其余范围判断乘积符号。",
+          "href": "/knowledge/type-amgm-quantified/"
+        }
+      },
+      "effects": {
+        "nodes": [
+          "type-quantified-quadratic"
+        ],
+        "edges": [
+          "type-quantified-quadratic|involves|quantifiers",
+          "type-quantified-quadratic|involves|quadratic-inequality"
+        ],
+        "calls": [],
+        "results": [],
+        "log": "作答判断：选择主要题型「含参一元二次不等式的恒成立与存在成立问题」；另外 2 个题型保留为对照。"
+      }
+    },
+    {
+      "id": "D3",
+      "title": "选择解题方法",
+      "question": "本题落在哪一格？",
+      "query": {
+        "op": "method_rule",
+        "from": "type-quantified-quadratic"
+      },
+      "interaction": {
+        "type": "plane",
+        "title": "方法坐标图",
+        "x": {
+          "label": "$x$ 取全体实数吗？",
+          "options": [
+            {
+              "value": "interval",
+              "label": "否",
+              "note": "$x$ 在某个区间内"
+            },
+            {
+              "value": "real",
+              "label": "是",
+              "note": "$x\\in\\mathbb R$"
+            }
+          ]
+        },
+        "y": {
+          "label": "参数有给定范围吗？",
+          "options": [
+            {
+              "value": "given",
+              "label": "有",
+              "note": "如 $m\\in[1,3]$，求 $x$"
+            },
+            {
+              "value": "free",
+              "label": "没有",
+              "note": "要求的就是参数"
+            }
+          ]
+        },
+        "methods": [
+          {
+            "value": "discriminant",
+            "label": "判别式法",
+            "target": "method-discriminant",
+            "cells": [
+              [
+                "real",
+                "free"
+              ]
+            ],
+            "route": "discriminant"
+          },
+          {
+            "value": "interval",
+            "label": "区间最值法",
+            "target": "method-interval-extremum",
+            "cells": [
+              [
+                "interval",
+                "free"
+              ]
+            ]
+          },
+          {
+            "value": "separation",
+            "label": "分离参数法",
+            "target": "method-separation",
+            "cells": [
+              [
+                "interval",
+                "free"
+              ],
+              [
+                "real",
+                "free"
+              ]
+            ],
+            "route": "extremum"
+          },
+          {
+            "value": "swap",
+            "label": "更换主元法",
+            "target": "method-variable-swap",
+            "cells": [
+              [
+                "interval",
+                "given"
+              ],
+              [
+                "real",
+                "given"
+              ]
+            ]
+          }
+        ]
+      },
+      "expected_answer": {
+        "cell": [
+          "real",
+          "free"
+        ]
+      },
+      "verdicts": {
+        "discriminant": {
+          "value": "fit",
+          "message": "对所有实数 $x$ 成立，关于 $x$ 的二次项系数为 $-1$，确定非零。"
+        },
+        "interval": {
+          "value": "superseded",
+          "message": "$\\mathbb R$ 也是区间，区间最值法在数学上可行；但 $x$ 取全体实数时判别式法更直接，区间最值法留给 $x$ 在某个区间内的题。"
+        },
+        "separation": {
+          "value": "fit",
+          "message": "参数式 $a^2-3a$ 已在一边，另一边只含 $x$，无需除以含变量的式子。"
+        },
+        "swap": {
+          "value": "not_triggered",
+          "message": "更换主元用于参数有给定范围、要求 $x$ 的题；本题要求的是参数 $a$。"
+        }
+      },
+      "feedback": {
+        "x": "再看横轴：“对任意实数 $x$”说明 $x$ 取遍全体实数，不是某个区间。",
+        "y": "再看纵轴：题目没有给出 $a$ 的范围，$a$ 的范围正是要求的。",
+        "method": "这种方法不在这一格里，请从这一格列出的方法中选一种。"
+      },
+      "submit_label": "用这种方法解题",
+      "source": "authored",
+      "alternatives": {},
+      "candidateNodes": [
+        "rule-quadratic-method",
+        "method-discriminant",
+        "method-interval-extremum",
+        "method-separation",
+        "method-variable-swap"
+      ],
+      "effects": {
+        "nodes": [
+          "type-quantified-quadratic",
+          "rule-quadratic-method"
+        ],
+        "edges": [
+          "type-quantified-quadratic|method_rule|rule-quadratic-method"
+        ],
+        "calls": [],
+        "results": [],
+        "log": "图谱查询：进入「含参一元二次不等式的选法判断」，本题这一格有 2 种方法可用。"
+      }
+    }
+  ],
+  "routes": {
+    "discriminant": {
+      "id": "discriminant",
+      "label": "判别式法",
+      "method": "method-discriminant",
+      "branch": "discriminant",
+      "takeaway": "图像不低于横轴 $\\Leftrightarrow$ $\\Delta\\le0$；两个端点取等也成立。",
+      "steps": [
+        {
+          "id": "d_rewrite",
+          "title": "整理不等式",
+          "question": "哪一个式子与原不等式等价？",
+          "interaction": {
+            "type": "choice",
+            "field": "d_rewrite",
+            "options": [
+              {
+                "value": "nonnegative",
+                "label": "$x^2-2x+a^2-3a-3\\ge0$"
+              },
+              {
+                "value": "sign",
+                "label": "$x^2-2x+a^2-3a-3\\le0$"
+              },
+              {
+                "value": "constant",
+                "label": "$x^2-2x+a^2-3a+3\\ge0$"
+              }
+            ]
+          },
+          "expected_answer": {
+            "one_of": [
+              "nonnegative"
+            ]
+          },
+          "feedback": {
+            "answer": "把左侧移到右侧：$a^2-3a-(-x^2+2x+3)\\ge0$。留意常数项和不等号方向。"
+          },
+          "submit_label": "确认判断",
+          "display": "d_rewrite-done",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "normalize"
+            }
+          ],
+          "candidateNodes": [
+            "method-discriminant",
+            "skill-inequality-transform",
+            "skill-simplify"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "normalize",
+                "ref": "skill-inequality-transform",
+                "usedBasis": [
+                  "inequality-properties#addition"
+                ],
+                "edge": "method-discriminant|calls|skill-inequality-transform",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-inequality-transform|uses|inequality-properties"
+                ]
+              },
+              {
+                "method": "method-discriminant",
+                "step": "normalize",
+                "ref": "skill-simplify",
+                "usedBasis": [
+                  "equality-properties#identity"
+                ],
+                "edge": "method-discriminant|calls|skill-simplify",
+                "occurrence": 0,
+                "callIndex": 1,
+                "basisEdges": [
+                  "skill-simplify|uses|equality-properties"
+                ]
+              }
+            ],
+            "results": [
+              "记 $g(x)=x^2-2x+a^2-3a-3$，则 $g(x)\\ge0$ 对任意 $x\\in\\mathbb R$ 成立。"
+            ],
+            "log": "执行结果：整理为关于 $x$ 的二次式恒非负。",
+            "nodes": [
+              "method-discriminant",
+              "skill-inequality-transform",
+              "skill-simplify",
+              "inequality-properties",
+              "equality-properties"
+            ],
+            "edges": [
+              "method-discriminant|calls|skill-inequality-transform",
+              "skill-inequality-transform|uses|inequality-properties",
+              "method-discriminant|calls|skill-simplify",
+              "skill-simplify|uses|equality-properties"
+            ]
+          }
+        },
+        {
+          "id": "d_position",
+          "title": "判断图像位置",
+          "question": "$g(x)$ 开口向上。哪些图像能让 $g(x)\\ge0$ 对所有实数 $x$ 成立？选出全部。",
+          "interaction": {
+            "type": "multi",
+            "options": [
+              {
+                "value": "touch",
+                "name": "相切",
+                "label": "相切：图像与横轴只有一个公共点",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1,
+                    0
+                  ],
+                  "bounds": [
+                    -1.2,
+                    3.2,
+                    -2.2,
+                    3.6
+                  ],
+                  "xTicks": [],
+                  "variable": "x",
+                  "title": "二次函数图像",
+                  "description": "图像与横轴相切于一点。",
+                  "showVertex": false,
+                  "points": [
+                    {
+                      "x": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "value": "cross",
+                "name": "穿过",
+                "label": "穿过：图像与横轴有两个公共点",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1,
+                    -1.2
+                  ],
+                  "bounds": [
+                    -1.2,
+                    3.2,
+                    -2.2,
+                    3.6
+                  ],
+                  "xTicks": [],
+                  "variable": "x",
+                  "title": "二次函数图像",
+                  "description": "图像穿过横轴，与横轴有两个公共点。",
+                  "showVertex": false
+                }
+              },
+              {
+                "value": "apart",
+                "name": "不相交",
+                "label": "不相交：图像与横轴没有公共点",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1,
+                    1
+                  ],
+                  "bounds": [
+                    -1.2,
+                    3.2,
+                    -2.2,
+                    3.6
+                  ],
+                  "xTicks": [],
+                  "variable": "x",
+                  "title": "二次函数图像",
+                  "description": "图像与横轴没有公共点。",
+                  "showVertex": false
+                }
+              }
+            ]
+          },
+          "expected_answer": {
+            "required": [
+              "touch",
+              "apart"
+            ],
+            "allowed": [
+              "touch",
+              "apart"
+            ]
+          },
+          "feedback": {
+            "answer": "$\\ge0$ 允许函数值等于零，但不允许负值。逐个看：图像有没有落到横轴下方的部分？"
+          },
+          "submit_label": "确认判断",
+          "display": "d_position-done",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "conditions"
+            }
+          ],
+          "candidateNodes": [
+            "method-discriminant",
+            "skill-quadratic-sign",
+            "skill-simplify",
+            "skill-inequality-transform"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-function-properties#zeros",
+                  "quadratic-inequality#all-real"
+                ],
+                "edge": "method-discriminant|calls|skill-quadratic-sign",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-quadratic-sign|uses|quadratic-function-properties",
+                  "skill-quadratic-sign|uses|quadratic-inequality"
+                ]
+              }
+            ],
+            "results": [],
+            "log": "执行结果：图像不能低于横轴，允许与横轴相切。",
+            "nodes": [
+              "method-discriminant",
+              "skill-quadratic-sign",
+              "quadratic-function-properties",
+              "quadratic-inequality"
+            ],
+            "edges": [
+              "method-discriminant|calls|skill-quadratic-sign",
+              "skill-quadratic-sign|uses|quadratic-function-properties",
+              "skill-quadratic-sign|uses|quadratic-inequality"
+            ]
+          }
+        },
+        {
+          "id": "d_delta",
+          "title": "建立判别式条件",
+          "question": "上一步：图像与横轴至多有一个公共点。这对应哪个判别式条件？",
+          "interaction": {
+            "type": "choice",
+            "field": "d_delta",
+            "options": [
+              {
+                "value": "le",
+                "label": "$\\Delta\\le0$"
+              },
+              {
+                "value": "lt",
+                "label": "$\\Delta<0$"
+              },
+              {
+                "value": "ge",
+                "label": "$\\Delta\\ge0$"
+              }
+            ]
+          },
+          "expected_answer": {
+            "one_of": [
+              "le"
+            ]
+          },
+          "feedback": {
+            "answer": "相切对应 $\\Delta=0$，不相交对应 $\\Delta<0$。两种允许情况需要合并。"
+          },
+          "submit_label": "确认判断",
+          "display": "d_delta-done",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "conditions"
+            }
+          ],
+          "candidateNodes": [
+            "method-discriminant",
+            "skill-quadratic-sign",
+            "skill-simplify",
+            "skill-inequality-transform"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-equation#discriminant",
+                  "quadratic-inequality#all-real"
+                ],
+                "edge": "method-discriminant|calls|skill-quadratic-sign",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-quadratic-sign|uses|quadratic-equation",
+                  "skill-quadratic-sign|uses|quadratic-inequality"
+                ]
+              },
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-simplify",
+                "usedBasis": [
+                  "equality-properties#identity"
+                ],
+                "edge": "method-discriminant|calls|skill-simplify",
+                "occurrence": 1,
+                "callIndex": 1,
+                "basisEdges": [
+                  "skill-simplify|uses|equality-properties"
+                ]
+              },
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-inequality-transform",
+                "usedBasis": [
+                  "inequality-properties#multiplication"
+                ],
+                "edge": "method-discriminant|calls|skill-inequality-transform",
+                "occurrence": 1,
+                "callIndex": 2,
+                "basisEdges": [
+                  "skill-inequality-transform|uses|inequality-properties"
+                ]
+              }
+            ],
+            "results": [
+              "$\\Delta=4-4(a^2-3a-3)\\le0$，即 $a^2-3a-4\\ge0$。"
+            ],
+            "log": "执行结果：开口向上且恒非负，建立并化简判别式条件。",
+            "nodes": [
+              "method-discriminant",
+              "skill-quadratic-sign",
+              "skill-simplify",
+              "skill-inequality-transform",
+              "quadratic-equation",
+              "quadratic-inequality",
+              "equality-properties",
+              "inequality-properties"
+            ],
+            "edges": [
+              "method-discriminant|calls|skill-quadratic-sign",
+              "skill-quadratic-sign|uses|quadratic-equation",
+              "skill-quadratic-sign|uses|quadratic-inequality",
+              "method-discriminant|calls|skill-simplify",
+              "skill-simplify|uses|equality-properties",
+              "method-discriminant|calls|skill-inequality-transform",
+              "skill-inequality-transform|uses|inequality-properties"
+            ]
+          }
+        },
+        {
+          "id": "d_range",
+          "title": "求参数范围",
+          "question": "把 $a^2-3a-4\\ge0$ 看成关于 $a$ 的一元二次不等式，记 $h(a)=a^2-3a-4$。哪张图在横轴上标对了 $a$ 的范围？",
+          "interaction": {
+            "type": "choice",
+            "field": "d_range",
+            "options": [
+              {
+                "value": "inside",
+                "label": "$-1\\le a\\le4$",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1.5,
+                    -6.25
+                  ],
+                  "bounds": [
+                    -2.5,
+                    5.5,
+                    -7.5,
+                    7.5
+                  ],
+                  "xTicks": [
+                    [
+                      -1.75,
+                      "−1"
+                    ],
+                    [
+                      4.6,
+                      "4"
+                    ]
+                  ],
+                  "variable": "a",
+                  "title": "h(a) 的图像",
+                  "description": "横轴上标出两根之间，含端点。",
+                  "showVertex": false,
+                  "solution": {
+                    "intervals": [
+                      [
+                        -1,
+                        4
+                      ]
+                    ],
+                    "closed": true
+                  }
+                }
+              },
+              {
+                "value": "open",
+                "label": "$a<-1$ 或 $a>4$",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1.5,
+                    -6.25
+                  ],
+                  "bounds": [
+                    -2.5,
+                    5.5,
+                    -7.5,
+                    7.5
+                  ],
+                  "xTicks": [
+                    [
+                      -1.75,
+                      "−1"
+                    ],
+                    [
+                      4.6,
+                      "4"
+                    ]
+                  ],
+                  "variable": "a",
+                  "title": "h(a) 的图像",
+                  "description": "横轴上标出两根外侧，不含端点。",
+                  "showVertex": false,
+                  "solution": {
+                    "intervals": [
+                      [
+                        null,
+                        -1
+                      ],
+                      [
+                        4,
+                        null
+                      ]
+                    ],
+                    "closed": false
+                  }
+                }
+              },
+              {
+                "value": "outside",
+                "label": "$a\\le-1$ 或 $a\\ge4$",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1.5,
+                    -6.25
+                  ],
+                  "bounds": [
+                    -2.5,
+                    5.5,
+                    -7.5,
+                    7.5
+                  ],
+                  "xTicks": [
+                    [
+                      -1.75,
+                      "−1"
+                    ],
+                    [
+                      4.6,
+                      "4"
+                    ]
+                  ],
+                  "variable": "a",
+                  "title": "h(a) 的图像",
+                  "description": "横轴上标出两根外侧，含端点。",
+                  "showVertex": false,
+                  "solution": {
+                    "intervals": [
+                      [
+                        null,
+                        -1
+                      ],
+                      [
+                        4,
+                        null
+                      ]
+                    ],
+                    "closed": true
+                  }
+                }
+              }
+            ]
+          },
+          "expected_answer": {
+            "one_of": [
+              "outside"
+            ]
+          },
+          "feedback": {
+            "answer": "$h(a)\\ge0$ 就是图像在横轴上方或横轴上。看哪几段 $a$ 对应的图像不在横轴下方；端点处 $h(a)=0$，要不要算进去？"
+          },
+          "submit_label": "确认判断",
+          "display": "d_range-done",
+          "board": "range-board",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "solve"
+            }
+          ],
+          "candidateNodes": [
+            "method-discriminant",
+            "skill-simplify",
+            "skill-inequality-transform",
+            "quadratic-inequality-solve",
+            "skill-solve-quadratic",
+            "skill-quadratic-sign"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "solve",
+                "ref": "quadratic-inequality-solve",
+                "usedBasis": [],
+                "edge": "method-discriminant|calls|quadratic-inequality-solve",
+                "occurrence": 0,
+                "callIndex": 2,
+                "basisEdges": []
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "roots",
+                "ref": "skill-solve-quadratic",
+                "usedBasis": [
+                  "quadratic-equation#roots"
+                ],
+                "edge": "quadratic-inequality-solve|calls|skill-solve-quadratic",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-solve-quadratic|uses|quadratic-equation"
+                ]
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "signs",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-inequality#signs"
+                ],
+                "edge": "quadratic-inequality-solve|calls|skill-quadratic-sign",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-quadratic-sign|uses|quadratic-inequality"
+                ]
+              }
+            ],
+            "results": [
+              "$(a+1)(a-4)\\ge0$，得 $a\\le-1$ 或 $a\\ge4$。"
+            ],
+            "log": "执行结果：调用二次函数图像法求参数的解集。",
+            "nodes": [
+              "method-discriminant",
+              "quadratic-inequality-solve",
+              "skill-solve-quadratic",
+              "skill-quadratic-sign",
+              "quadratic-equation",
+              "quadratic-inequality"
+            ],
+            "edges": [
+              "method-discriminant|calls|quadratic-inequality-solve",
+              "quadratic-inequality-solve|calls|skill-solve-quadratic",
+              "skill-solve-quadratic|uses|quadratic-equation",
+              "quadratic-inequality-solve|calls|skill-quadratic-sign",
+              "skill-quadratic-sign|uses|quadratic-inequality"
+            ]
+          }
+        },
+        {
+          "id": "d_boundary",
+          "title": "检查边界",
+          "question": "上一步的范围以 $a=-1$、$a=4$ 为边界。逐个代回原不等式，它们要保留吗？",
+          "interaction": {
+            "type": "checklist",
+            "title": "逐个检查边界",
+            "slots": [
+              {
+                "label": "$a=-1$",
+                "hint": "此时 $a^2-3a=4$，原不等式变为 $-x^2+2x+3\\le4$",
+                "options": [
+                  {
+                    "value": "holds",
+                    "label": "对所有 $x$ 成立，保留",
+                    "note": "最终范围包含 $a=-1$。"
+                  },
+                  {
+                    "value": "fails",
+                    "label": "有 $x$ 不成立，排除",
+                    "note": "最终范围不含 $a=-1$。"
+                  }
+                ]
+              },
+              {
+                "label": "$a=4$",
+                "hint": "此时 $a^2-3a=4$，原不等式变为 $-x^2+2x+3\\le4$",
+                "options": [
+                  {
+                    "value": "holds",
+                    "label": "对所有 $x$ 成立，保留",
+                    "note": "最终范围包含 $a=4$。"
+                  },
+                  {
+                    "value": "fails",
+                    "label": "有 $x$ 不成立，排除",
+                    "note": "最终范围不含 $a=4$。"
+                  }
+                ]
+              }
+            ]
+          },
+          "expected_answer": {
+            "terms": [
+              "holds",
+              "holds"
+            ]
+          },
+          "feedback": {
+            "terms": "两个边界 $a=-1$、$a=4$ 都使 $a^2-3a=4$，原不等式变为 $-x^2+2x+3\\le4$，即 $(x-1)^2\\ge0$，对所有实数 $x$ 成立。"
+          },
+          "submit_label": "确认检查",
+          "display": "d_boundary-done",
+          "board": "boundary-board",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "merge"
+            }
+          ],
+          "candidateNodes": [
+            "method-discriminant"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [],
+            "results": [
+              "$a=-1$ 或 $a=4$ 时，原不等式等价于 $(x-1)^2\\ge0$，均成立。",
+              "答案：$a\\in(-\\infty,-1]\\cup[4,+\\infty)$。"
+            ],
+            "log": "执行结果：两端代回原式均成立，保留两个边界。",
+            "nodes": [
+              "method-discriminant"
+            ],
+            "edges": []
+          }
+        }
+      ]
+    },
+    "extremum": {
+      "id": "extremum",
+      "label": "分离参数法",
+      "method": "method-separation",
+      "branch": "separation",
+      "takeaway": "$a^2-3a$ 不低于 $-x^2+2x+3$ 的最大值 $4$；两个端点取等也成立。",
+      "steps": [
+        {
+          "id": "e_basis",
+          "title": "判断适用条件",
+          "question": "分离参数法能直接用吗？在适用地图上点出本题所在的一格。",
+          "interaction": {
+            "type": "grid",
+            "title": "分离参数法适用地图",
+            "x": {
+              "label": "参数能单独放到一边吗？",
+              "options": [
+                {
+                  "value": "tangled",
+                  "label": "分不开",
+                  "note": "$a$ 与 $x$ 缠在一起"
+                },
+                {
+                  "value": "separable",
+                  "label": "能分离",
+                  "note": "含移项后分离"
+                }
+              ]
+            },
+            "y": {
+              "label": "要除以含 $x$ 的式子吗？",
+              "options": [
+                {
+                  "value": "division",
+                  "label": "要除",
+                  "note": "除式的符号决定不等号方向"
+                },
+                {
+                  "value": "no_division",
+                  "label": "不用除",
+                  "note": "只需移项"
+                }
+              ]
+            },
+            "zones": [
+              {
+                "value": "direct",
+                "label": "直接比较最值",
+                "cells": [
+                  [
+                    "separable",
+                    "no_division"
+                  ]
+                ]
+              },
+              {
+                "value": "flip",
+                "label": "先定符号再除",
+                "cells": [
+                  [
+                    "separable",
+                    "division"
+                  ]
+                ]
+              },
+              {
+                "value": "unfit",
+                "label": "不适用",
+                "cells": [
+                  [
+                    "tangled",
+                    "division"
+                  ],
+                  [
+                    "tangled",
+                    "no_division"
+                  ]
+                ]
+              }
+            ]
+          },
+          "expected_answer": {
+            "cell": [
+              "separable",
+              "no_division"
+            ]
+          },
+          "feedback": {
+            "x": "再看横轴：原不等式里，含 $a$ 的项和含 $x$ 的项现在各在哪一边？",
+            "y": "再看纵轴：要把 $a$ 单独留在一边，需要除以含 $x$ 的式子吗？"
+          },
+          "submit_label": "确认判断",
+          "display": "e_basis-done",
+          "board": "separation-board",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "separate"
+            }
+          ],
+          "candidateNodes": [
+            "method-separation",
+            "skill-inequality-transform",
+            "skill-equality-transform"
+          ],
+          "skippedCalls": [
+            {
+              "method": "method-separation",
+              "step": "separate",
+              "ref": "skill-inequality-transform",
+              "usedBasis": [],
+              "edge": "method-separation|calls|skill-inequality-transform",
+              "occurrence": 0,
+              "callIndex": 0,
+              "basisEdges": []
+            },
+            {
+              "method": "method-separation",
+              "step": "separate",
+              "ref": "skill-equality-transform",
+              "usedBasis": [],
+              "edge": "method-separation|calls|skill-equality-transform",
+              "occurrence": 0,
+              "callIndex": 1,
+              "basisEdges": []
+            }
+          ],
+          "effects": {
+            "calls": [],
+            "results": [
+              "记 $f(x)=-x^2+2x+3$，$c=a^2-3a$，则 $f(x)\\le c$ 对任意 $x\\in\\mathbb R$ 成立。"
+            ],
+            "log": "作答判断：原式已经分离，本步未调用变形技能。",
+            "nodes": [
+              "method-separation"
+            ],
+            "edges": []
+          }
+        },
+        {
+          "id": "e_condition",
+          "title": "转化为最值条件",
+          "question": "要使 $f(x)\\le c$ 对所有实数 $x$ 成立，$c$ 应满足哪个条件？",
+          "interaction": {
+            "type": "choice",
+            "field": "e_condition",
+            "options": [
+              {
+                "value": "max",
+                "label": "$x\\in\\mathbb R$ 时，$c\\ge f(x)_{\\max}$"
+              },
+              {
+                "value": "min",
+                "label": "$x\\in\\mathbb R$ 时，$c\\ge f(x)_{\\min}$"
+              },
+              {
+                "value": "one_point",
+                "label": "$c\\ge f(0)$"
+              }
+            ]
+          },
+          "expected_answer": {
+            "one_of": [
+              "max"
+            ]
+          },
+          "feedback": {
+            "answer": "恒成立要求所有点都满足。水平线需要不低于最高点；只检查一个点不够。本题左侧向下无界，没有最小值。"
+          },
+          "submit_label": "确认判断",
+          "display": "e_condition-done",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "quantifier"
+            }
+          ],
+          "candidateNodes": [
+            "method-separation",
+            "skill-quantified-range"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-separation",
+                "step": "quantifier",
+                "ref": "skill-quantified-range",
+                "usedBasis": [
+                  "quantifiers#universal",
+                  "function-range-extrema#quantified"
+                ],
+                "edge": "method-separation|calls|skill-quantified-range",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-quantified-range|uses|quantifiers",
+                  "skill-quantified-range|uses|function-range-extrema"
+                ]
+              }
+            ],
+            "results": [
+              "$a^2-3a\\ge\\max_{x\\in\\mathbb R}(-x^2+2x+3)$。"
+            ],
+            "log": "执行结果：恒成立且函数值不超过参数式，要比较最大值。",
+            "nodes": [
+              "method-separation",
+              "skill-quantified-range",
+              "quantifiers",
+              "function-range-extrema"
+            ],
+            "edges": [
+              "method-separation|calls|skill-quantified-range",
+              "skill-quantified-range|uses|quantifiers",
+              "skill-quantified-range|uses|function-range-extrema"
+            ]
+          }
+        },
+        {
+          "id": "e_extremum",
+          "title": "求最值",
+          "question": "把 $f(x)=-x^2+2x+3$ 配方成「常数减平方」的形式，方框和圆圈各填什么？",
+          "interaction": {
+            "type": "fill",
+            "terms": [
+              "-1",
+              "1",
+              "2",
+              "3",
+              "4"
+            ],
+            "term_labels": {
+              "1": "$1$",
+              "2": "$2$",
+              "3": "$3$",
+              "4": "$4$",
+              "-1": "$-1$"
+            },
+            "slot_labels": [
+              "常数",
+              "平方里减去的数"
+            ],
+            "slot_shapes": [
+              "square",
+              "circle"
+            ]
+          },
+          "expected_answer": {
+            "terms": [
+              "4",
+              "1"
+            ]
+          },
+          "feedback": {
+            "terms": "把你填的式子展开，分别核对一次项和常数项，是否与 $-x^2+2x+3$ 相同。"
+          },
+          "submit_label": "确认配方",
+          "display": "e_extremum-done",
+          "board": "e_extremum-board",
+          "attempt_calculations": {
+            "1": {
+              "1": "e_extremum-attempt-1-1",
+              "2": "e_extremum-attempt-1-2",
+              "3": "e_extremum-attempt-1-3",
+              "4": "e_extremum-attempt-1-4",
+              "-1": "e_extremum-attempt-1-neg1"
+            },
+            "2": {
+              "1": "e_extremum-attempt-2-1",
+              "2": "e_extremum-attempt-2-2",
+              "3": "e_extremum-attempt-2-3",
+              "4": "e_extremum-attempt-2-4",
+              "-1": "e_extremum-attempt-2-neg1"
+            },
+            "3": {
+              "1": "e_extremum-attempt-3-1",
+              "2": "e_extremum-attempt-3-2",
+              "3": "e_extremum-attempt-3-3",
+              "4": "e_extremum-attempt-3-4",
+              "-1": "e_extremum-attempt-3-neg1"
+            },
+            "4": {
+              "1": "e_extremum-done",
+              "2": "e_extremum-attempt-4-2",
+              "3": "e_extremum-attempt-4-3",
+              "4": "e_extremum-attempt-4-4",
+              "-1": "e_extremum-attempt-4-neg1"
+            },
+            "-1": {
+              "1": "e_extremum-attempt-neg1-1",
+              "2": "e_extremum-attempt-neg1-2",
+              "3": "e_extremum-attempt-neg1-3",
+              "4": "e_extremum-attempt-neg1-4",
+              "-1": "e_extremum-attempt-neg1-neg1"
+            }
+          },
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "range"
+            }
+          ],
+          "candidateNodes": [
+            "method-separation",
+            "quadratic-interval-extremum",
+            "skill-linear-range",
+            "skill-reciprocal-range",
+            "method-square-extremum",
+            "method-complete-square"
+          ],
+          "skippedCalls": [
+            {
+              "method": "method-square-extremum",
+              "step": "prepare",
+              "ref": "method-elimination",
+              "usedBasis": [],
+              "edge": "method-square-extremum|calls|method-elimination",
+              "occurrence": 0,
+              "callIndex": 0,
+              "basisEdges": []
+            },
+            {
+              "method": "method-square-extremum",
+              "step": "prepare",
+              "ref": "method-substitution",
+              "usedBasis": [],
+              "edge": "method-square-extremum|calls|method-substitution",
+              "occurrence": 0,
+              "callIndex": 1,
+              "basisEdges": []
+            },
+            {
+              "method": "method-square-extremum",
+              "step": "range",
+              "ref": "quadratic-interval-extremum",
+              "usedBasis": [],
+              "edge": "method-square-extremum|calls|quadratic-interval-extremum",
+              "occurrence": 0,
+              "callIndex": 0,
+              "basisEdges": []
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-separation",
+                "step": "range",
+                "ref": "method-square-extremum",
+                "usedBasis": [],
+                "edge": "method-separation|calls|method-square-extremum",
+                "occurrence": 0,
+                "callIndex": 3,
+                "basisEdges": []
+              },
+              {
+                "method": "method-square-extremum",
+                "step": "square",
+                "ref": "method-complete-square",
+                "usedBasis": [
+                  "equality-properties#identity",
+                  "square-nonnegative#nonnegative"
+                ],
+                "edge": "method-square-extremum|calls|method-complete-square",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "method-complete-square|uses|equality-properties",
+                  "method-complete-square|uses|square-nonnegative"
+                ]
+              }
+            ],
+            "results": [
+              "$-x^2+2x+3=4-(x-1)^2\\le4$，$x=1$ 时取等。"
+            ],
+            "log": "执行结果：调用配方求最值法及配方技能；平方非负且可取零，最大值为 4。",
+            "nodes": [
+              "method-separation",
+              "method-square-extremum",
+              "method-complete-square",
+              "equality-properties",
+              "square-nonnegative"
+            ],
+            "edges": [
+              "method-separation|calls|method-square-extremum",
+              "method-square-extremum|calls|method-complete-square",
+              "method-complete-square|uses|equality-properties",
+              "method-complete-square|uses|square-nonnegative"
+            ]
+          }
+        },
+        {
+          "id": "e_range",
+          "title": "求参数范围",
+          "question": "由 $a^2-3a\\ge4$ 得 $a^2-3a-4\\ge0$，记 $h(a)=a^2-3a-4$。哪张图在横轴上标对了 $a$ 的范围？",
+          "interaction": {
+            "type": "choice",
+            "field": "e_range",
+            "options": [
+              {
+                "value": "inside",
+                "label": "$-1\\le a\\le4$",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1.5,
+                    -6.25
+                  ],
+                  "bounds": [
+                    -2.5,
+                    5.5,
+                    -7.5,
+                    7.5
+                  ],
+                  "xTicks": [
+                    [
+                      -1.75,
+                      "−1"
+                    ],
+                    [
+                      4.6,
+                      "4"
+                    ]
+                  ],
+                  "variable": "a",
+                  "title": "h(a) 的图像",
+                  "description": "横轴上标出两根之间，含端点。",
+                  "showVertex": false,
+                  "solution": {
+                    "intervals": [
+                      [
+                        -1,
+                        4
+                      ]
+                    ],
+                    "closed": true
+                  }
+                }
+              },
+              {
+                "value": "open",
+                "label": "$a<-1$ 或 $a>4$",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1.5,
+                    -6.25
+                  ],
+                  "bounds": [
+                    -2.5,
+                    5.5,
+                    -7.5,
+                    7.5
+                  ],
+                  "xTicks": [
+                    [
+                      -1.75,
+                      "−1"
+                    ],
+                    [
+                      4.6,
+                      "4"
+                    ]
+                  ],
+                  "variable": "a",
+                  "title": "h(a) 的图像",
+                  "description": "横轴上标出两根外侧，不含端点。",
+                  "showVertex": false,
+                  "solution": {
+                    "intervals": [
+                      [
+                        null,
+                        -1
+                      ],
+                      [
+                        4,
+                        null
+                      ]
+                    ],
+                    "closed": false
+                  }
+                }
+              },
+              {
+                "value": "outside",
+                "label": "$a\\le-1$ 或 $a\\ge4$",
+                "graph": {
+                  "coefficient": 1,
+                  "vertex": [
+                    1.5,
+                    -6.25
+                  ],
+                  "bounds": [
+                    -2.5,
+                    5.5,
+                    -7.5,
+                    7.5
+                  ],
+                  "xTicks": [
+                    [
+                      -1.75,
+                      "−1"
+                    ],
+                    [
+                      4.6,
+                      "4"
+                    ]
+                  ],
+                  "variable": "a",
+                  "title": "h(a) 的图像",
+                  "description": "横轴上标出两根外侧，含端点。",
+                  "showVertex": false,
+                  "solution": {
+                    "intervals": [
+                      [
+                        null,
+                        -1
+                      ],
+                      [
+                        4,
+                        null
+                      ]
+                    ],
+                    "closed": true
+                  }
+                }
+              }
+            ]
+          },
+          "expected_answer": {
+            "one_of": [
+              "outside"
+            ]
+          },
+          "feedback": {
+            "answer": "$h(a)\\ge0$ 就是图像在横轴上方或横轴上。看哪几段 $a$ 对应的图像不在横轴下方；端点处 $h(a)=0$，要不要算进去？"
+          },
+          "submit_label": "确认判断",
+          "display": "e_range-done",
+          "board": "range-board",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "restore"
+            }
+          ],
+          "candidateNodes": [
+            "method-separation",
+            "skill-inequality-transform",
+            "quadratic-inequality-solve",
+            "skill-solve-quadratic",
+            "skill-quadratic-sign"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-separation",
+                "step": "restore",
+                "ref": "quadratic-inequality-solve",
+                "usedBasis": [],
+                "edge": "method-separation|calls|quadratic-inequality-solve",
+                "occurrence": 0,
+                "callIndex": 1,
+                "basisEdges": []
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "roots",
+                "ref": "skill-solve-quadratic",
+                "usedBasis": [
+                  "quadratic-equation#roots"
+                ],
+                "edge": "quadratic-inequality-solve|calls|skill-solve-quadratic",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-solve-quadratic|uses|quadratic-equation"
+                ]
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "signs",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-inequality#signs"
+                ],
+                "edge": "quadratic-inequality-solve|calls|skill-quadratic-sign",
+                "occurrence": 0,
+                "callIndex": 0,
+                "basisEdges": [
+                  "skill-quadratic-sign|uses|quadratic-inequality"
+                ]
+              }
+            ],
+            "results": [
+              "$a^2-3a\\ge4$，所以 $a\\le-1$ 或 $a\\ge4$。"
+            ],
+            "log": "执行结果：还原为关于 $a$ 的二次不等式并求解。",
+            "nodes": [
+              "method-separation",
+              "quadratic-inequality-solve",
+              "skill-solve-quadratic",
+              "skill-quadratic-sign",
+              "quadratic-equation",
+              "quadratic-inequality"
+            ],
+            "edges": [
+              "method-separation|calls|quadratic-inequality-solve",
+              "quadratic-inequality-solve|calls|skill-solve-quadratic",
+              "skill-solve-quadratic|uses|quadratic-equation",
+              "quadratic-inequality-solve|calls|skill-quadratic-sign",
+              "skill-quadratic-sign|uses|quadratic-inequality"
+            ]
+          }
+        },
+        {
+          "id": "e_boundary",
+          "title": "检查边界",
+          "question": "上一步的范围以 $a=-1$、$a=4$ 为边界。逐个代回原不等式，它们要保留吗？",
+          "interaction": {
+            "type": "checklist",
+            "title": "逐个检查边界",
+            "slots": [
+              {
+                "label": "$a=-1$",
+                "hint": "此时 $a^2-3a=4$，原不等式变为 $-x^2+2x+3\\le4$",
+                "options": [
+                  {
+                    "value": "holds",
+                    "label": "对所有 $x$ 成立，保留",
+                    "note": "最终范围包含 $a=-1$。"
+                  },
+                  {
+                    "value": "fails",
+                    "label": "有 $x$ 不成立，排除",
+                    "note": "最终范围不含 $a=-1$。"
+                  }
+                ]
+              },
+              {
+                "label": "$a=4$",
+                "hint": "此时 $a^2-3a=4$，原不等式变为 $-x^2+2x+3\\le4$",
+                "options": [
+                  {
+                    "value": "holds",
+                    "label": "对所有 $x$ 成立，保留",
+                    "note": "最终范围包含 $a=4$。"
+                  },
+                  {
+                    "value": "fails",
+                    "label": "有 $x$ 不成立，排除",
+                    "note": "最终范围不含 $a=4$。"
+                  }
+                ]
+              }
+            ]
+          },
+          "expected_answer": {
+            "terms": [
+              "holds",
+              "holds"
+            ]
+          },
+          "feedback": {
+            "terms": "两个边界 $a=-1$、$a=4$ 都使 $a^2-3a=4$，原不等式变为 $-x^2+2x+3\\le4$，即 $(x-1)^2\\ge0$，对所有实数 $x$ 成立。"
+          },
+          "submit_label": "确认检查",
+          "display": "e_boundary-done",
+          "board": "boundary-board",
+          "source": "page",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "restore"
+            }
+          ],
+          "candidateNodes": [
+            "method-separation",
+            "skill-inequality-transform",
+            "quadratic-inequality-solve"
+          ],
+          "skippedCalls": [],
+          "effects": {
+            "calls": [],
+            "results": [
+              "$a=-1$ 或 $a=4$ 时 $a^2-3a=4$，正好等于函数最大值。",
+              "答案：$a\\in(-\\infty,-1]\\cup[4,+\\infty)$。"
+            ],
+            "log": "执行结果：最大值可达且原题允许等号，两端均保留。",
+            "nodes": [
+              "method-separation"
+            ],
+            "edges": []
+          }
+        }
+      ]
+    }
+  },
+  "templates": {
+    "boundary-board": "<div class=\"visual-board\"><div class=\"board-caption\">上一步得到的范围</div><div class=\"formula\" data-math-text>$a\\le\\boxed{-1}$ 或 $a\\ge\\boxed{4}$</div><p class=\"board-focus\" data-math-text>要检查的边界：$a=-1$ 和 $a=4$</p></div>",
+    "d_boundary-done": "<div class=\"checklist checklist-done\"><div class=\"checklist-head\"><span class=\"checklist-title\" data-math-text>检查的边界：$a=-1$ 和 $a=4$</span><span class=\"checklist-progress\">2 / 2</span></div><div class=\"checklist-row answered\"><span class=\"checklist-index\" aria-hidden=\"true\">✓</span><div class=\"checklist-body\"><p class=\"checklist-label\" data-math-text>$a=-1$：保留</p><p class=\"checklist-hint\" data-math-text>$a^2-3a=(-1)^2-3\\times(-1)=4$</p></div></div><div class=\"checklist-row answered\"><span class=\"checklist-index\" aria-hidden=\"true\">✓</span><div class=\"checklist-body\"><p class=\"checklist-label\" data-math-text>$a=4$：保留</p><p class=\"checklist-hint\" data-math-text>$a^2-3a=4^2-3\\times4=4$</p></div></div><p class=\"checklist-verdict\">两个边界都保留</p></div><div class=\"vertex-reasoning\"><figure class=\"quadratic-graph\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: 1, &quot;vertex&quot;: [1, 0], &quot;bounds&quot;: [-2, 4, -3, 6], &quot;xTicks&quot;: [[0, &quot;0&quot;], [1, &quot;1&quot;]], &quot;yLabel&quot;: &quot;0&quot;, &quot;variable&quot;: &quot;x&quot;, &quot;title&quot;: &quot;端点处 g(x) 的图像&quot;, &quot;description&quot;: &quot;端点处 g(x)=(x-1)^2，图像与横轴相切于 x=1。&quot;, &quot;uid&quot;: &quot;{{uid}}-boundary-touch&quot;, &quot;showVertex&quot;: false, &quot;markSign&quot;: true}\"></div><figcaption data-math-text>端点处 $g(x)=(x-1)^2$，与横轴相切</figcaption></figure><div class=\"reasoning\"><p data-math-text>两个边界都使 $\\Delta=0$。</p></div></div><details class=\"details\" id=\"{{uid}}-d_boundary-derivation\" open><summary>完整推导</summary><p data-math-text>检验：当 $a=-1$ 或 $a=4$ 时，$a^2-3a=4$，原不等式化为 $(x-1)^2\\ge0$，对任意 $x\\in\\mathbb R$ 成立。</p><p data-math-text>综上，实数 $a$ 的取值范围是 $(-\\infty,-1]\\cup[4,+\\infty)$。</p></details>",
+    "d_delta-done": "<p class=\"case-merge-caption\" data-math-text>$g(x)$ 开口向上</p><div class=\"case-merge\"><div class=\"case-merge-group\"><span class=\"case-merge-cell\"><span class=\"case-merge-name\">不相交</span><span class=\"case-merge-value\" data-math-text>$\\Delta&lt;0$</span></span><span class=\"case-merge-cell\"><span class=\"case-merge-name\">相切</span><span class=\"case-merge-value\" data-math-text>$\\Delta=0$</span></span><span class=\"case-merge-total\" data-math-text>取并集：$\\Delta\\le0$</span></div><span class=\"case-merge-cell rejected\"><span class=\"case-merge-name\">穿过</span><span class=\"case-merge-value\" data-math-text>$\\Delta&gt;0$</span><span class=\"case-merge-out\">✗ 不满足</span></span></div><details class=\"details\" id=\"{{uid}}-d_delta-derivation\" open><summary>完整推导</summary><p data-math-text>$\\therefore\\ \\Delta=(-2)^2-4\\times1\\times(a^2-3a-3)\\le0$，</p><p data-math-text>整理得 $a^2-3a-4\\ge0$。</p></details>",
+    "d_position-done": "<div class=\"graph-cases\"><figure class=\"graph-case\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: 1, &quot;vertex&quot;: [1, 1], &quot;bounds&quot;: [-1.2, 3.2, -2.2, 3.6], &quot;xTicks&quot;: [], &quot;yLabel&quot;: &quot;1&quot;, &quot;variable&quot;: &quot;x&quot;, &quot;title&quot;: &quot;二次函数图像&quot;, &quot;description&quot;: &quot;图像与横轴没有公共点，所有函数值都大于零。&quot;, &quot;uid&quot;: &quot;{{uid}}-apart-mini&quot;, &quot;showVertex&quot;: false, &quot;markSign&quot;: true}\"></div><figcaption><span class=\"graph-case-name\">不相交</span><span class=\"graph-case-fact\" data-math-text>$g(x)&gt;0$</span><span class=\"graph-case-verdict\">✓ 满足</span></figcaption></figure><figure class=\"graph-case\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: 1, &quot;vertex&quot;: [1, 0], &quot;bounds&quot;: [-1.2, 3.2, -2.2, 3.6], &quot;xTicks&quot;: [], &quot;yLabel&quot;: &quot;0&quot;, &quot;variable&quot;: &quot;x&quot;, &quot;title&quot;: &quot;二次函数图像&quot;, &quot;description&quot;: &quot;图像与横轴相切，切点处函数值等于零，其余大于零。&quot;, &quot;uid&quot;: &quot;{{uid}}-touch-mini&quot;, &quot;showVertex&quot;: false, &quot;markSign&quot;: true}\"></div><figcaption><span class=\"graph-case-name\">相切</span><span class=\"graph-case-fact\" data-math-text>切点 $g(x)=0$</span><span class=\"graph-case-verdict\">✓ 满足</span></figcaption></figure><figure class=\"graph-case rejected\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: 1, &quot;vertex&quot;: [1, -1.2], &quot;bounds&quot;: [-1.2, 3.2, -2.2, 3.6], &quot;xTicks&quot;: [], &quot;yLabel&quot;: &quot;-1.2&quot;, &quot;variable&quot;: &quot;x&quot;, &quot;title&quot;: &quot;二次函数图像&quot;, &quot;description&quot;: &quot;图像穿过横轴，两个交点之间函数值小于零。&quot;, &quot;uid&quot;: &quot;{{uid}}-cross-mini&quot;, &quot;showVertex&quot;: false, &quot;markSign&quot;: true}\"></div><figcaption><span class=\"graph-case-name\">穿过</span><span class=\"graph-case-fact\" data-math-text>部分 $g(x)&lt;0$</span><span class=\"graph-case-verdict\">✗ 不满足</span></figcaption></figure></div><p class=\"graph-cases-verdict\"><span class=\"nowrap\" data-math-text>$g(x)\\ge0$ 恒成立</span> ⇔ <span class=\"nowrap\">图像与横轴至多有一个公共点</span></p><details class=\"details\" id=\"{{uid}}-d_position-derivation\" open><summary>完整推导</summary><p data-math-text>$\\because$ $g(x)$ 的二次项系数 $1&gt;0$，图像开口向上，</p><p data-math-text>$\\therefore$ $g(x)\\ge0$ 恒成立 $\\iff$ $g(x)$ 的图像与 $x$ 轴至多有一个公共点。</p></details>",
+    "d_range-done": "<div class=\"vertex-reasoning\"><figure class=\"quadratic-graph\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: 1, &quot;vertex&quot;: [1.5, -6.25], &quot;bounds&quot;: [-2.5, 5.5, -7.5, 7.5], &quot;xTicks&quot;: [[-1, &quot;−1&quot;], [4, &quot;4&quot;]], &quot;yLabel&quot;: &quot;&quot;, &quot;variable&quot;: &quot;a&quot;, &quot;title&quot;: &quot;h(a) 的图像&quot;, &quot;description&quot;: &quot;h(a) 开口向上，两根外侧及端点处 h(a)≥0。&quot;, &quot;uid&quot;: &quot;{{uid}}-range-done&quot;, &quot;showVertex&quot;: false, &quot;markSign&quot;: true, &quot;solution&quot;: {&quot;intervals&quot;: [[null, -1], [4, null]], &quot;closed&quot;: true}}\"></div><figcaption data-math-text>$h(a)\\ge0$ 的部分：两根外侧，含端点</figcaption></figure><div class=\"reasoning\"><p data-math-text>$h(a)=(a+1)(a-4)$ 开口向上，零点 $a=-1$、$a=4$。</p></div></div><details class=\"details\" id=\"{{uid}}-d_range-derivation\" open><summary>完整推导</summary><p data-math-text>即 $(a+1)(a-4)\\ge0$，</p><p data-math-text>$\\therefore\\ a\\le-1$ 或 $a\\ge4$。</p></details>",
+    "d_rewrite-done": "<div class=\"visual-board\"><div class=\"formula fill-formula\"><span class=\"fill-group\" data-math-text>$g(x)=x^2-2x$</span><span class=\"fill-group\" data-math-text>$+\\,a^2-3a-3\\ge0$</span></div></div><details class=\"details\" id=\"{{uid}}-d_rewrite-derivation\" open><summary>完整推导</summary><p data-math-text>移项得 $x^2-2x+a^2-3a-3\\ge0$ 对任意 $x\\in\\mathbb R$ 恒成立。</p><p data-math-text>令 $g(x)=x^2-2x+a^2-3a-3$。</p></details>",
+    "e_basis-done": "<div class=\"checklist checklist-done\"><div class=\"checklist-head\"><span class=\"checklist-title\">分离参数法的两个前提</span><span class=\"checklist-progress\">2 / 2</span></div><div class=\"checklist-row answered\"><span class=\"checklist-index\" aria-hidden=\"true\">✓</span><div class=\"checklist-body\"><p class=\"checklist-label\">参数能否单独放到一边：已经分离</p><p class=\"checklist-hint\" data-math-text>左边 $-x^2+2x+3$ 只含 $x$，右边 $a^2-3a$ 只含 $a$。</p></div></div><div class=\"checklist-row answered\"><span class=\"checklist-index\" aria-hidden=\"true\">✓</span><div class=\"checklist-body\"><p class=\"checklist-label\" data-math-text>是否要除以含 $x$ 的式子：不需要除</p><p class=\"checklist-hint\">两边已经分开，不用做除法。</p></div></div><p class=\"checklist-verdict\">两个前提都满足，可以用分离参数法</p></div><details class=\"details\" id=\"{{uid}}-e_basis-derivation\" open><summary>完整推导</summary><p data-math-text>由题意，对任意 $x\\in\\mathbb R$，$-x^2+2x+3\\le a^2-3a$ 恒成立。</p><p data-math-text>记 $f(x)=-x^2+2x+3$，$c=a^2-3a$，$c$ 与 $x$ 无关。</p></details>",
+    "e_boundary-done": "<div class=\"checklist checklist-done\"><div class=\"checklist-head\"><span class=\"checklist-title\" data-math-text>检查的边界：$a=-1$ 和 $a=4$</span><span class=\"checklist-progress\">2 / 2</span></div><div class=\"checklist-row answered\"><span class=\"checklist-index\" aria-hidden=\"true\">✓</span><div class=\"checklist-body\"><p class=\"checklist-label\" data-math-text>$a=-1$：保留</p><p class=\"checklist-hint\" data-math-text>$a^2-3a=(-1)^2-3\\times(-1)=4$</p></div></div><div class=\"checklist-row answered\"><span class=\"checklist-index\" aria-hidden=\"true\">✓</span><div class=\"checklist-body\"><p class=\"checklist-label\" data-math-text>$a=4$：保留</p><p class=\"checklist-hint\" data-math-text>$a^2-3a=4^2-3\\times4=4$</p></div></div><p class=\"checklist-verdict\">两个边界都保留</p></div><div class=\"vertex-reasoning\"><figure class=\"quadratic-graph\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: -1, &quot;vertex&quot;: [1, 4], &quot;bounds&quot;: [-2, 4, -2, 7], &quot;xTicks&quot;: [[0, &quot;0&quot;], [1, &quot;1&quot;]], &quot;yLabel&quot;: &quot;4&quot;, &quot;variable&quot;: &quot;x&quot;, &quot;title&quot;: &quot;端点处左侧函数的图像&quot;, &quot;description&quot;: &quot;端点处右侧等于 4，正好是左侧的最大值。&quot;, &quot;uid&quot;: &quot;{{uid}}-boundary-peak&quot;, &quot;showVertex&quot;: false, &quot;referenceLines&quot;: [{&quot;value&quot;: 4, &quot;label&quot;: &quot;右侧 = 4&quot;}], &quot;points&quot;: [{&quot;x&quot;: 1, &quot;label&quot;: &quot;x = 1 取等&quot;}]}\"></div><figcaption data-math-text>端点处右侧 $a^2-3a=4$，碰到最大值</figcaption></figure><div class=\"reasoning\"><p data-math-text>两个边界都使右侧等于 $4$，正好等于左侧的最大值。</p></div></div><details class=\"details\" id=\"{{uid}}-e_boundary-derivation\" open><summary>完整推导</summary><p data-math-text>检验：当 $a=-1$ 或 $a=4$ 时，$a^2-3a=4=f(x)_{\\max}$，$f(x)\\le4$ 对任意 $x\\in\\mathbb R$ 成立。</p><p data-math-text>综上，实数 $a$ 的取值范围是 $(-\\infty,-1]\\cup[4,+\\infty)$。</p></details>",
+    "e_condition-done": "<div class=\"visual-board completed-visual\"><div class=\"board-caption\">恒成立转化为最值条件</div><div class=\"function-conversion\"><div><span class=\"conversion-label\" data-math-text>对所有实数 $x$ 都成立</span><div class=\"math\" data-math-text>$f(x)\\le a^2-3a$</div></div><span class=\"conversion-arrow\" aria-hidden=\"true\">⇔</span><div><span class=\"conversion-label\" data-math-text>只需比 $f(x)$ 的最高点</span><div class=\"math\" data-math-text>$a^2-3a\\ge\\textcolor{#087f79}{f(x)_{\\max}}$</div><span class=\"conversion-label\">不小于最大的，就不小于每一个</span></div></div></div><details class=\"details\" id=\"{{uid}}-e_condition-derivation\" open><summary>完整推导</summary><p data-math-text>$\\therefore$ 原不等式恒成立 $\\iff a^2-3a\\ge f(x)_{\\max}$。</p></details>",
+    "e_extremum-attempt-1-1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$1-(x-1)^2=-x^2+2x$</p><p data-math-text>$-x^2+2x\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>常数项是 $0$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-1-2": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$1-(x-2)^2=-x^2+4x-3$</p><p data-math-text>$-x^2+4x-3\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $4$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-3$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-1-3": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$1-(x-3)^2=-x^2+6x-8$</p><p data-math-text>$-x^2+6x-8\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $6$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-8$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-1-4": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$1-(x-4)^2=-x^2+8x-15$</p><p data-math-text>$-x^2+8x-15\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $8$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-15$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-1-neg1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$1-(x+1)^2=-x^2-2x$</p><p data-math-text>$-x^2-2x\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $-2$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $0$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-2-1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$2-(x-1)^2=-x^2+2x+1$</p><p data-math-text>$-x^2+2x+1\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>常数项是 $1$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-2-2": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$2-(x-2)^2=-x^2+4x-2$</p><p data-math-text>$-x^2+4x-2\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $4$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-2$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-2-3": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$2-(x-3)^2=-x^2+6x-7$</p><p data-math-text>$-x^2+6x-7\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $6$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-7$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-2-4": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$2-(x-4)^2=-x^2+8x-14$</p><p data-math-text>$-x^2+8x-14\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $8$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-14$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-2-neg1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$2-(x+1)^2=-x^2-2x+1$</p><p data-math-text>$-x^2-2x+1\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $-2$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $1$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-3-1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$3-(x-1)^2=-x^2+2x+2$</p><p data-math-text>$-x^2+2x+2\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>常数项是 $2$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-3-2": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$3-(x-2)^2=-x^2+4x-1$</p><p data-math-text>$-x^2+4x-1\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $4$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-1$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-3-3": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$3-(x-3)^2=-x^2+6x-6$</p><p data-math-text>$-x^2+6x-6\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $6$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-6$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-3-4": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$3-(x-4)^2=-x^2+8x-13$</p><p data-math-text>$-x^2+8x-13\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $8$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-13$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-3-neg1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$3-(x+1)^2=-x^2-2x+2$</p><p data-math-text>$-x^2-2x+2\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $-2$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $2$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-4-2": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$4-(x-2)^2=-x^2+4x$</p><p data-math-text>$-x^2+4x\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $4$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $0$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-4-3": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$4-(x-3)^2=-x^2+6x-5$</p><p data-math-text>$-x^2+6x-5\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $6$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-5$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-4-4": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$4-(x-4)^2=-x^2+8x-12$</p><p data-math-text>$-x^2+8x-12\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $8$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-12$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-4-neg1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$4-(x+1)^2=-x^2-2x+3$</p><p data-math-text>$-x^2-2x+3\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $-2$，与原式的 $2$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-neg1-1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$-1-(x-1)^2=-x^2+2x-2$</p><p data-math-text>$-x^2+2x-2\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>常数项是 $-2$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-neg1-2": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$-1-(x-2)^2=-x^2+4x-5$</p><p data-math-text>$-x^2+4x-5\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $4$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-5$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-neg1-3": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$-1-(x-3)^2=-x^2+6x-10$</p><p data-math-text>$-x^2+6x-10\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $6$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-10$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-neg1-4": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$-1-(x-4)^2=-x^2+8x-17$</p><p data-math-text>$-x^2+8x-17\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $8$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-17$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-attempt-neg1-neg1": "<section class=\"rewrite-calculation\" aria-label=\"本次填空的展开核对\"><span class=\"section-label\">把你的填写展开</span><div class=\"rewrite-calculation-math\"><p data-math-text>$-1-(x+1)^2=-x^2-2x-2$</p><p data-math-text>$-x^2-2x-2\\not\\equiv -x^2+2x+3$</p></div><div class=\"rewrite-calculation-feedback\"><p data-math-text>一次项系数是 $-2$，与原式的 $2$ 不同。</p><p data-math-text>常数项是 $-2$，与原式的 $3$ 不同。</p><p data-math-text>本步需要恒等变形，请调整不匹配的数。</p></div></section>",
+    "e_extremum-board": "<div class=\"visual-board\"><div class=\"board-caption\">尝试配方 · 确认后展开核对</div><div class=\"formula fill-formula\"><span class=\"fill-group\"><span data-math-text>$-x^2+2x+3\\ \\stackrel{?}{=}$</span></span><span class=\"fill-group\"><span data-fill=\"0\"></span><span data-math-text>$-\\,(x-$</span><span data-fill=\"1\"></span><span data-math-text>$)^2$</span></span></div></div>",
+    "e_extremum-done": "<div class=\"visual-board completed-visual\"><div class=\"board-caption\">配方求最大值</div><div class=\"function-conversion\"><div><span class=\"conversion-label\">原式</span><div class=\"math\" data-math-text>$-x^2+2x+3$</div></div><span class=\"conversion-arrow\" aria-hidden=\"true\">→</span><div><span class=\"conversion-label\">常数减平方项</span><div class=\"math\"><span data-math-text>$4-$</span><span class=\"square-term\" data-math-text>$(x-1)^2$</span></div><span class=\"conversion-label\" data-math-text>平方项 $\\ge0$，所以 $f(x)_{\\max}=4$，$x=1$ 时取到</span></div></div></div><details class=\"details\" id=\"{{uid}}-e_extremum-derivation\" open><summary>完整推导</summary><p data-math-text>$f(x)=-x^2+2x+3=4-(x-1)^2$，</p><p data-math-text>$\\because\\ (x-1)^2\\ge0$，$\\therefore\\ f(x)\\le4$，当 $x=1$ 时取等，</p><p data-math-text>$\\therefore\\ f(x)_{\\max}=4$，故 $a^2-3a\\ge4$，即 $a^2-3a-4\\ge0$。</p></details>",
+    "e_range-done": "<div class=\"vertex-reasoning\"><figure class=\"quadratic-graph\"><div data-quadratic-graph=\"{&quot;coefficient&quot;: 1, &quot;vertex&quot;: [1.5, -6.25], &quot;bounds&quot;: [-2.5, 5.5, -7.5, 7.5], &quot;xTicks&quot;: [[-1, &quot;−1&quot;], [4, &quot;4&quot;]], &quot;yLabel&quot;: &quot;&quot;, &quot;variable&quot;: &quot;a&quot;, &quot;title&quot;: &quot;h(a) 的图像&quot;, &quot;description&quot;: &quot;h(a) 开口向上，两根外侧及端点处 h(a)≥0。&quot;, &quot;uid&quot;: &quot;{{uid}}-range-done&quot;, &quot;showVertex&quot;: false, &quot;markSign&quot;: true, &quot;solution&quot;: {&quot;intervals&quot;: [[null, -1], [4, null]], &quot;closed&quot;: true}}\"></div><figcaption data-math-text>$h(a)\\ge0$ 的部分：两根外侧，含端点</figcaption></figure><div class=\"reasoning\"><p data-math-text>$h(a)=(a+1)(a-4)$ 开口向上，零点 $a=-1$、$a=4$。</p></div></div><details class=\"details\" id=\"{{uid}}-e_range-derivation\" open><summary>完整推导</summary><p data-math-text>即 $(a+1)(a-4)\\ge0$，</p><p data-math-text>$\\therefore\\ a\\le-1$ 或 $a\\ge4$。</p></details>",
+    "range-board": "<div class=\"visual-board\"><div class=\"formula fill-formula\"><span class=\"fill-group\" data-math-text>$h(a)=a^2-3a-4$</span><span class=\"fill-group\" data-math-text>$=(a+1)(a-4)$</span></div></div>",
+    "separation-board": "<div class=\"visual-board\"><div class=\"board-caption\">分离参数法</div><div class=\"formula\" data-math-text>$-x^2+2x+3\\le a^2-3a$</div><p class=\"board-focus\" data-math-text>把含 $a$ 的项单独放到一边，另一边只含 $x$</p></div>"
+  },
+  "completion": {
+    "answer": "$a\\in(-\\infty,-1]\\cup[4,+\\infty)$",
+    "back": {
+      "href": "/2/",
+      "label": "返回恒成立题库"
+    }
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": "equality-properties",
+        "kind": "knowledge",
+        "label": "等式的性质",
+        "summary": "等式可经合法运算推导新等式；逆向使用时要检查非零、定义域等条件。",
+        "source": "人教 A 版必修第一册第二章",
+        "entries": [
+          {
+            "id": "relation",
+            "title": "对称与传递",
+            "type": "性质",
+            "body": [
+              "$a=b\\Rightarrow b=a$；$a=b,b=c\\Rightarrow a=c$。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "addition",
+            "title": "同加同减",
+            "type": "性质",
+            "body": [
+              "$a=b\\iff a+c=b+c$，同减一个数也保持等价。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "multiplication",
+            "title": "同乘与非零同除",
+            "type": "性质",
+            "body": [
+              "$a=b\\Rightarrow ac=bc$；只有 $c\\ne0$ 时才能反推，也才能同除以 $c$。"
+            ],
+            "conditions": "同除的数 $c\\ne0$。"
+          },
+          {
+            "id": "identity",
+            "title": "等值替换与定义域",
+            "type": "性质",
+            "body": [
+              "等量代换：已知 $A=B$，就可以在式子里把 $A$ 换成 $B$。例如由 $x+y=1$ 得 $y=1-x$，于是 $xy=x(1-x)$。",
+              "化简时保留原式的取值范围：$\\frac{x^2-1}{x-1}$ 约分得 $x+1$，但原式要求 $x\\ne1$，化简后仍要写上 $x\\ne1$。",
+              "两边平方后不再等价：$a=b$ 能推出 $a^2=b^2$，但 $a^2=b^2$ 只能推出 $a=\\pm b$。所以解 $\\sqrt{x+2}=x$ 时，平方得 $x=2$ 或 $x=-1$，代回原方程检验，$x=-1$ 不成立，只有 $x=2$。"
+            ],
+            "conditions": "变量均为实数；代换时 $A=B$ 要在所讨论的范围内成立。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "不能除以零",
+            "prompt": "从 $ax=ay$ 能否推出 $x=y$？",
+            "solution": [
+              "$a\\ne0$ 时可以；$a=0$ 时原等式恒成立，对 $x,y$ 没有限制。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "function-range-extrema",
+        "kind": "knowledge",
+        "label": "函数的值域与最值",
+        "summary": "值域是所有实际函数值的集合；最大值、最小值必须属于这个集合。",
+        "source": "人教 A 版必修第一册 3.2",
+        "entries": [
+          {
+            "id": "range",
+            "title": "值域",
+            "type": "定义",
+            "body": [
+              "$f(D)=\\{f(x)\\mid x\\in D\\}$，保留原定义域和所有限制。"
+            ],
+            "conditions": "$D\\ne\\varnothing$。"
+          },
+          {
+            "id": "extrema",
+            "title": "最大值与最小值",
+            "type": "性质",
+            "body": [
+              "若某个实际函数值 $M$ 不小于其余函数值，$M$ 是最大值；最小值类似。仅有上界或下界不能保证最值存在。"
+            ],
+            "conditions": "极值点的局部概念不等同于这里的全局最值。"
+          },
+          {
+            "id": "attainability",
+            "title": "边界可达性",
+            "type": "性质",
+            "body": [
+              "$f(x)=x$ 在 $(0,1)$ 上值域为 $(0,1)$，边界 $0,1$ 都取不到；在 $[0,1]$ 上则分别是最小值和最大值。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "quantified",
+            "title": "量词与值域条件",
+            "type": "性质",
+            "body": [
+              "$\\forall x\\in D,f(x)\\le c$ 等价于 $f(D)\\subseteq(-\\infty,c]$；$\\exists x\\in D,f(x)\\le c$ 等价于 $f(D)\\cap(-\\infty,c]\\ne\\varnothing$。其他不等号同理。"
+            ],
+            "conditions": "$D\\ne\\varnothing$，$c$ 与量词变量无关。"
+          },
+          {
+            "id": "extremum-conditions",
+            "title": "最值存在时的转换",
+            "type": "性质",
+            "body": [
+              "对应最值存在时：恒 $f\\le c$ 用 $\\max f\\le c$；存在 $f\\le c$ 用 $\\min f\\le c$；恒 $f\\ge c$ 用 $\\min f\\ge c$；存在 $f\\ge c$ 用 $\\max f\\ge c$。严格号同样转换，但不能把未取到的边界直接当作最值。"
+            ],
+            "conditions": "可行集合非空，且所用的对应全局最值存在。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "没有最大值也能求参",
+            "prompt": "$x\\in(0,1)$，使 $x<c$ 恒成立的 $c$ 是多少？",
+            "solution": [
+              "$c\\ge1$。$c=1$ 时每个 $x$ 仍严格小于 $c$；这里不能写成不存在的“最大值 $<c$”。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "resources": [
+          "quantified-horizontal-line",
+          "attainability-boundary"
+        ]
+      },
+      {
+        "id": "inequality-properties",
+        "kind": "knowledge",
+        "label": "不等式的性质",
+        "summary": "不等式的方向随运算条件变化，同乘或同除负数必须改变方向。",
+        "source": "人教 A 版必修第一册第二章",
+        "prerequisites": [
+          "real-order"
+        ],
+        "entries": [
+          {
+            "id": "order",
+            "title": "交换两端与传递",
+            "type": "性质",
+            "body": [
+              "$a>b\\iff b<a$；$a>b,b>c\\Rightarrow a>c$。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "addition",
+            "title": "同加减与同向相加",
+            "type": "性质",
+            "body": [
+              "$a>b\\iff a+c>b+c$。若 $a>b,c>d$，则 $a+c>b+d$；同向不等式不能直接相减。",
+              "需要相减时，先把 $c>d$ 化为 $-d>-c$，再与 $a>b$ 同向相加，得 $a-d>b-c$。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "multiplication",
+            "title": "乘除与方向",
+            "type": "性质",
+            "body": [
+              "$a>b,c>0\\Rightarrow ac>bc$；$a>b,c<0\\Rightarrow ac<bc$。同除也按除数符号判断，除数不能为零。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "positive-products",
+            "title": "正数的同向乘法与乘方",
+            "type": "性质",
+            "body": [
+              "$a>b>0,c>d>0\\Rightarrow ac>bd$。$a>b>0\\Rightarrow a^n>b^n$，其中 $n\\in\\mathbb N,n\\ge2$。"
+            ],
+            "conditions": "正性是本条乘法、乘方结论的前提。"
+          },
+          {
+            "id": "reciprocal",
+            "title": "同号两数取倒数",
+            "type": "性质",
+            "body": [
+              "$a>b$ 且 $ab>0$ 时，$\\frac1a<\\frac1b$，因为 $\\frac1b-\\frac1a=\\frac{a-b}{ab}>0$。异号时不能套用这一变向规则。"
+            ],
+            "conditions": "$a,b$ 同号且均不为零。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "负数乘法",
+            "prompt": "已知 $a>b>0,c<0$，比较 $\\frac{c}{a}$ 与 $\\frac{c}{b}$。",
+            "solution": [
+              "先由同号取倒数得 $\\frac{1}{a}<\\frac{1}{b}$，再同乘负数 $c$，得 $\\frac{c}{a}>\\frac{c}{b}$。"
+            ],
+            "source": "教材 2.1 例 2"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-divide-by-letter",
+            "title": "除以含字母的式子不看符号",
+            "wrong": "$mx<-x^2-4$ 两边除以 $x$，直接得 $m<-x-\\frac4x$。",
+            "why": "$x$ 的符号不确定：$x<0$ 时两边除以负数，不等号要变向。",
+            "fix": [
+              "$x>0$ 时得 $m<-x-\\frac4x$；$x<0$ 时变向，得 $m>-x-\\frac4x$。",
+              "$x=0$ 不能作除数，单独代回原式检验；$x$ 的符号不确定时分类讨论。"
+            ],
+            "see": "method-separation"
+          },
+          {
+            "id": "pitfall-divide-inequalities",
+            "title": "两个同向不等式直接相除",
+            "wrong": "由 $2<4$，$1<4$ 相除得 $\\frac21<\\frac44$。",
+            "why": "同向不等式不能相除：实际上 $\\frac21=2>1=\\frac44$。",
+            "fix": [
+              "先取倒数再相乘：$0<a<b$，$0<c<d$ 时 $\\frac1d<\\frac1c$，与 $a<b$ 同向相乘得 $\\frac ad<\\frac bc$。"
+            ],
+            "see": "inequality-properties#reciprocal"
+          }
+        ],
+        "resources": [
+          "order-flip-lines"
+        ]
+      },
+      {
+        "id": "method-complete-square",
+        "kind": "skill",
+        "label": "配方",
+        "summary": "把含 x² 和 x 的式子改写成「一个平方加一个常数」，从而看出最值、正负和顶点。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要求最值、判断正负或找顶点，看到式子里有 $x^2$ 和 $x$ 项（或 $x^2$ 与 $\\frac{1}{x^2}$ 这样成对的项）。",
+        "output": "$a(x-h)^2+k$ 这样「平方加常数」的样子。由此读出顶点 $(h,k)$：$a>0$ 时最小值是 $k$，$a<0$ 时最大值是 $k$。",
+        "conditions": "加上去的数要再减掉，式子的值才不变；原来对 $x$ 的限制（如分母不为 $0$）改写后仍要保留。",
+        "basis": [
+          "equality-properties#identity",
+          "square-nonnegative#nonnegative"
+        ],
+        "operations": [
+          {
+            "id": "recognize",
+            "title": "找出能凑平方的部分",
+            "body": [
+              "对照 $(u\\pm v)^2=u^2\\pm2uv+v^2$：$x^2$ 是 $u^2$，带 $x$ 的一次项是 $2uv$。例如 $x^2+6x$ 中 $u=x$，$2uv=6x$，所以 $v=3$。"
+            ]
+          },
+          {
+            "id": "compensate",
+            "title": "补上缺的一块，再减掉",
+            "body": [
+              "$x^2+6x$ 还缺 $v^2=9$ 才是完全平方：$x^2+6x=x^2+6x+9-9=(x+3)^2-9$。一般地，$x^2+bx=\\left(x+\\frac{b}{2}\\right)^2-\\frac{b^2}{4}$，补的是一次项系数一半的平方。",
+              "$x^2$ 前面有系数 $a$（$a\\ne0$）时，先把它从含 $x$ 的两项里提出来，再在括号里配方，见下面「先提二次项系数」的例子。",
+              "一般结果：$ax^2+bx+c=a\\left(x+\\frac{b}{2a}\\right)^2+\\frac{4ac-b^2}{4a}$。常数部分的分子 $4ac-b^2$ 正好是 $-\\Delta$，这就是判别式能判断二次式正负的原因。"
+            ]
+          },
+          {
+            "id": "check",
+            "title": "展开检查",
+            "body": [
+              "把结果展开，看是否和原式一样。例如 $(x+3)^2-9=x^2+6x+9-9=x^2+6x$。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "先提二次项系数",
+            "prompt": "将 $2x^2-4x+5$ 配方。",
+            "solution": [
+              "先从前两项提出 $2$：$2x^2-4x+5=2(x^2-2x)+5$。",
+              "括号内配方：$x^2-2x=(x-1)^2-1$，所以原式 $=2\\left[(x-1)^2-1\\right]+5=2(x-1)^2+3$。",
+              "展开检查：$2(x^2-2x+1)+3=2x^2-4x+5$。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "判断恒正",
+            "prompt": "说明 $x^2-x+1$ 对一切实数 $x$ 都是正的。",
+            "solution": [
+              "$x^2-x+1=\\left(x-\\frac12\\right)^2+\\frac34$。",
+              "平方项 $\\ge0$，所以原式 $\\ge\\frac34>0$，不用解不等式。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "倒数结构",
+            "prompt": "$x\\ne0$，把 $x^2+\\frac{1}{x^2}$ 写成「平方加常数」，并求它的最小值。",
+            "solution": [
+              "$\\left(x-\\frac{1}{x}\\right)^2=x^2-2+\\frac{1}{x^2}$，故原式 $=\\left(x-\\frac{1}{x}\\right)^2+2\\ge2$。",
+              "$x-\\frac{1}{x}=0$，即 $x=\\pm1$ 时取等，最小值是 $2$。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-negative-factor",
+            "title": "提出负号后忘记变号",
+            "wrong": "$-x^2+2x+3=-(x^2-2x)+3=-(x-1)^2-1+3=2-(x-1)^2$。",
+            "why": "括号里 $x^2-2x=(x-1)^2-1$，整个括号前面是负号，减去的 $1$ 拿出括号要变成加 $1$。",
+            "fix": [
+              "保留中括号再去括号：$-(x^2-2x)+3=-\\left[(x-1)^2-1\\right]+3=4-(x-1)^2$。",
+              "展开检查：$4-(x^2-2x+1)=-x^2+2x+3$；由此 $x=1$ 时取最大值 $4$。"
+            ]
+          },
+          {
+            "id": "pitfall-equality-outside",
+            "title": "取等的 x 不在范围里",
+            "wrong": "求 $x^2-2x$ 在 $[2,3]$ 上的最小值：$x^2-2x=(x-1)^2-1\\ge-1$，所以最小值是 $-1$。",
+            "why": "取等要 $x=1$，而 $1\\notin[2,3]$，下界 $-1$ 在区间上取不到。",
+            "fix": [
+              "配方只给出顶点 $x=1$；区间 $[2,3]$ 在顶点右侧，$(x-1)^2-1$ 在其上递增。",
+              "最小值是 $x=2$ 时的 $(2-1)^2-1=0$。"
+            ],
+            "see": "quadratic-interval-extremum"
+          }
+        ],
+        "resources": [
+          "complete-square-area"
+        ]
+      },
+      {
+        "id": "method-discriminant",
+        "kind": "method",
+        "label": "判别式法",
+        "summary": "x 取全体实数时，要二次式恒正（或恒负），就看开口方向和判别式；x² 的系数含参数时，先单独看它等于 0 的情况。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "含参数的二次式要对所有实数 $x$ 恒 $>0$（或恒 $<0$、恒 $\\ge0$、恒 $\\le0$），求参数，例如 $x^2-2x+a\\ge0$ 对一切实数 $x$ 成立，求 $a$。",
+        "output": "参数的取值范围。$x^2$ 的系数为 $0$ 和不为 $0$ 两种情况分别求出，再合在一起。",
+        "conditions": "只能用在 $x$ 取全体实数的题，$x$ 只在某个区间上时不能套判别式；不带等号的「$>0$」要 $\\Delta<0$，带等号的「$\\ge0$」才是 $\\Delta\\le0$。",
+        "steps": [
+          {
+            "id": "degree",
+            "title": "先看 x² 的系数能不能是 0",
+            "body": [
+              "$x^2$ 的系数含参数时，先把它等于 $0$ 的情况单独拿出来：这时式子变成一次式或常数，直接看是否对所有 $x$ 成立。例如 $kx^2+2kx-(k+2)<0$ 中 $k=0$ 时变成 $-2<0$，恒成立，$k=0$ 符合。",
+              "一次式 $bx+c$（$b\\ne0$）不会对所有 $x$ 恒正或恒负，遇到这种情况直接排除。"
+            ]
+          },
+          {
+            "id": "normalize",
+            "title": "移项整理成与 0 比较",
+            "body": [
+              "把不等式两边的项移到同一侧，整理成关于量词变量的二次式与 $0$ 比较，保留原来的严格或非严格不等号。",
+              "例如 $-x^2+2x+3\\le a^2-3a$ 等价于 $x^2-2x+a^2-3a-3\\ge0$，关于 $x$ 的二次项系数为 $1$。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-inequality-transform"
+              },
+              {
+                "ref": "skill-simplify"
+              }
+            ]
+          },
+          {
+            "id": "conditions",
+            "title": "写出开口和判别式的条件",
+            "body": [
+              "系数不为 $0$ 时看图像：恒 $>0$ 就是抛物线整条在 $x$ 轴上方，要开口向上且和 $x$ 轴没有交点，即 $a>0$，$\\Delta<0$。",
+              "恒 $\\ge0$ 允许碰到 $x$ 轴，即 $a>0$，$\\Delta\\le0$。开口向下时同理：恒 $<0$ 要 $a<0$，$\\Delta<0$；恒 $\\le0$ 要 $a<0$，$\\Delta\\le0$。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-quadratic-sign",
+                "when": "把「恒正、恒负」翻译成开口方向和交点个数时"
+              },
+              {
+                "ref": "skill-simplify",
+                "when": "代入系数计算并化简判别式时"
+              },
+              {
+                "ref": "skill-inequality-transform",
+                "when": "把判别式条件改写成参数的不等式时"
+              }
+            ]
+          },
+          {
+            "id": "solve",
+            "title": "解出参数",
+            "body": [
+              "算出判别式，把开口条件和判别式条件联立，取公共部分。例子中 $k\\ne0$ 时要 $k<0$ 且 $\\Delta=4k^2+4k(k+2)=8k(k+1)<0$，后者得 $-1<k<0$，与 $k<0$ 取公共部分得 $-1<k<0$。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-simplify"
+              },
+              {
+                "ref": "skill-inequality-transform"
+              },
+              {
+                "ref": "quadratic-inequality-solve",
+                "when": "参数满足的条件是一元二次不等式时"
+              }
+            ]
+          },
+          {
+            "id": "merge",
+            "title": "把各种情况合起来，检查边界",
+            "body": [
+              "每种情况的结果先和这种情况本身的前提取公共部分，再把各种情况合起来。例子中 $k=0$ 和 $-1<k<0$ 合起来是 $-1<k\\le0$。",
+              "最后把边界代回原不等式检查：$k=-1$ 时原式为 $-(x+1)^2<0$，$x=-1$ 时左边等于 $0$，不成立，所以 $k=-1$ 不取。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "带等号时边界要保留",
+            "prompt": "使 $x^2-2x+a\\ge0$ 对所有实数 $x$ 成立，求 $a$。",
+            "solution": [
+              "$x^2$ 的系数是 $1>0$，不用讨论系数为 $0$ 的情况。",
+              "$\\Delta=4-4a\\le0$，故 $a\\ge1$。",
+              "$a=1$ 时为 $(x-1)^2\\ge0$，不等式带等号，允许等于 $0$，边界 $a=1$ 要保留。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "二次项系数含参",
+            "prompt": "已知不等式 $kx^2+2kx-(k+2)<0$ 恒成立，求实数 $k$ 的取值范围。",
+            "solution": [
+              "没写 $x$ 的范围，$x$ 取全体实数；$x^2$ 的系数 $k$ 可能为 $0$，先单独讨论。",
+              "$k=0$ 时原式为 $-2<0$，对一切 $x$ 成立，$k=0$ 符合。",
+              "$k\\ne0$ 时要开口向下且与横轴不相交：$k<0$，$\\Delta=4k^2+4k(k+2)=8k(k+1)<0$，得 $-1<k<0$。",
+              "合并得 $-1<k\\le0$。边界 $k=-1$ 时原式为 $-(x+1)^2<0$，$x=-1$ 时不成立，舍去。"
+            ],
+            "source": "一元二次不等式专题 Q02",
+            "url": "/2/q02/"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-strict-boundary",
+            "title": "不带等号也取 Δ ≤ 0",
+            "wrong": "要 $x^2-2x+a>0$ 对一切实数 $x$ 成立，由 $\\Delta=4-4a\\le0$ 得 $a\\ge1$。",
+            "why": "$a=1$ 时原式为 $(x-1)^2$，在 $x=1$ 处等于 $0$，不满足 $>0$。不带等号时图像不能碰到横轴，相切也不行。",
+            "fix": [
+              "只取 $\\Delta<0$：$4-4a<0$，得 $a>1$。",
+              "把边界 $a=1$ 代回原不等式检验，确认应舍去。"
+            ]
+          },
+          {
+            "id": "pitfall-interval-discriminant",
+            "title": "x 只在区间上也套判别式",
+            "wrong": "$x\\in[1,2]$ 时要 $x^2-ax+1>0$ 恒成立，用 $\\Delta=a^2-4<0$ 得 $-2<a<2$。",
+            "why": "$\\Delta<0$ 要求整条抛物线都在横轴上方，而题目只要求 $[1,2]$ 这一段在上方；$\\Delta\\ge0$ 时零点也可能落在区间外，例如 $a=-3$ 时 $x^2+3x+1$ 在 $[1,2]$ 上恒正，被漏掉了。",
+            "fix": [
+              "$x\\in[1,2]$ 时 $x>0$，分离参数得 $a<x+\\frac1x$。",
+              "$x+\\frac1x$ 在 $[1,2]$ 上递增，最小值为 $x=1$ 时的 $2$，所以 $a<2$。"
+            ],
+            "see": "method-separation"
+          }
+        ],
+        "resources": [
+          "discriminant-positions"
+        ]
+      },
+      {
+        "id": "method-elimination",
+        "kind": "skill",
+        "label": "消元",
+        "summary": "用条件里的等式把一个字母写成另一个字母的式子，代进去，让题目只剩一个变量。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要求含 $x,y$ 的式子的最值或范围，看到题目有两个变量，还给了一个把它们连起来的等式，例如 $x,y>0$，$x+y=6$。",
+        "output": "只含一个变量的式子，以及这个变量的取值范围（由原来的「是正数」「分母不为 $0$」等条件换算出来）。接下来就能按一元的办法求最值。",
+        "conditions": "解出 $y$ 时如果要除以含 $x$ 的式子，先确认它不为 $0$；原来 $y>0$ 这类条件要换成对 $x$ 的限制，不能消掉 $y$ 就把它忘了。",
+        "basis": [
+          "equality-properties#addition",
+          "equality-properties#multiplication"
+        ],
+        "operations": [
+          {
+            "id": "isolate",
+            "title": "从等式里解出一个字母",
+            "body": [
+              "挑一个好解的字母，用等式把它写成另一个字母的式子。例如 $x+y=6$ 两边同减 $x$，得 $y=6-x$。",
+              "如果要除以含 $x$ 的式子，例如由 $y(x+2)=7-x$ 得 $y=\\frac{7-x}{x+2}$，要先确认 $x+2\\ne0$。"
+            ]
+          },
+          {
+            "id": "replace",
+            "title": "代进要求的式子",
+            "body": [
+              "把 $y=6-x$ 代入要求的式子：$xy=x(6-x)$，现在只剩 $x$ 一个变量。题目里还有别的含 $y$ 的条件时，也要一起代进去。"
+            ]
+          },
+          {
+            "id": "feasible",
+            "title": "把 y 的限制换成 x 的限制",
+            "body": [
+              "原来 $y>0$，代入得 $6-x>0$，即 $x<6$；再加上 $x>0$，所以 $0<x<6$。",
+              "求出最值后，把取到最值的 $x$ 代回去算出 $y$，检查它满足原来的全部条件。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "正数条件也要消去",
+            "prompt": "$x,y>0,x+y=6$，用 $x$ 表示 $xy$。",
+            "solution": [
+              "$y=6-x$，所以 $xy=x(6-x)$，范围是 $0<x<6$。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "消元后分离出定积",
+            "prompt": "$x,y>0$，$x+2y+xy-7=0$，求 $x+y$ 的最小值。",
+            "solution": [
+              "条件整理为 $y(x+2)=7-x$，$x+2>0$，得 $y=\\frac{7-x}{x+2}$；$y>0$ 要求 $7-x>0$，所以 $0<x<7$。",
+              "$x+y=x+\\frac{7-x}{x+2}=x+\\frac9{x+2}-1=(x+2)+\\frac9{x+2}-3\\ge2\\sqrt9-3=3$。",
+              "取等要 $x+2=3$，即 $x=1$，在 $(0,7)$ 内；回代得 $y=2$，满足原条件，最小值为 $3$。"
+            ],
+            "source": "基本不等式专题 Q16",
+            "url": "/1/q16/"
+          }
+        ],
+        "resources": [
+          "elimination-one-variable"
+        ]
+      },
+      {
+        "id": "method-interval-extremum",
+        "kind": "method",
+        "label": "区间最值法",
+        "summary": "x 只在某个区间上取值时，把「恒成立」「有解」变成函数在这个区间上的最大值或最小值和参数比较，求出参数范围。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "不等式只要求 $x$ 在某个区间上恒成立（或有解），参数在一边，另一边是关于 $x$ 的一次、二次或对勾函数，例如对所有 $x\\in[2,3]$，$(x-1)^2+2\\le m$，求 $m$。",
+        "output": "参数的取值范围，边界那个数能不能取也要写明。",
+        "conditions": "最大值、最小值要在题目给的区间上求，不能按整条图像判断；区间端点取不到时，函数值只能接近端点处的值，边界要单独代回检验。",
+        "steps": [
+          {
+            "id": "quantifier",
+            "title": "判断要区间上的最大值还是最小值",
+            "body": [
+              "「$f(x)\\le m$ 恒成立」要所有函数值都不超过 $m$，即 $f$ 在区间上的最大值 $\\le m$；「$f(x)\\le m$ 有解」只要最小值 $\\le m$。例子中要 $(x-1)^2+2$ 在 $[2,3]$ 上的最大值 $\\le m$。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-quantified-range"
+              }
+            ]
+          },
+          {
+            "id": "select",
+            "title": "按函数类型求区间上的取值范围",
+            "body": [
+              "看函数关于 $x$ 是二次函数、一次函数还是对勾函数，用对应的办法求它在区间上的取值范围。例子中 $(x-1)^2+2$ 是二次函数，对称轴 $x=1$ 在 $[2,3]$ 左边，函数在区间上递增，取值范围是 $[3,6]$。",
+              "$x^2$ 的系数含参数时，系数为 $0$ 的情况要按一次函数重新算。"
+            ],
+            "rule": "rule-interval-skill"
+          },
+          {
+            "id": "conditions",
+            "title": "用最值写出参数条件",
+            "body": [
+              "最值取得到时直接写不等式。例子中最大值 $6$ 在 $x=3$ 取到，所以 $6\\le m$，即 $m\\ge6$。",
+              "区间端点取不到、最值不存在时，用函数值能无限接近的那个边界数来比较，等号单独判断。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-inequality-transform"
+              }
+            ]
+          },
+          {
+            "id": "verify",
+            "title": "检查边界带不带等号",
+            "body": [
+              "把边界值代回原题检查。例子中 $m=6$ 时 $(x-1)^2+2\\le6$ 在 $[2,3]$ 上成立（$x=3$ 时取等），所以 $m=6$ 要保留。",
+              "按参数分过情况的，每种情况的分界点也要代回检查。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "最大值不超过 m",
+            "prompt": "对所有 $x\\in[2,3]$，要求 $(x-1)^2+2\\le m$，求 $m$。",
+            "solution": [
+              "对所有 $x$ 都要 $\\le m$，所以函数在 $[2,3]$ 上的最大值不能超过 $m$。",
+              "这是二次函数，对称轴 $x=1$ 在区间左边，函数在 $[2,3]$ 上递增，值域为 $[3,6]$。",
+              "最大值 $6$ 取得到，所以 $m\\ge6$。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "只看区间上的一段",
+            "prompt": "当 $1\\le x\\le2$ 时，$x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。",
+            "solution": [
+              "需 $f(x)=x^2+mx+4$ 在 $[1,2]$ 上的最大值 $<0$。",
+              "开口向上，区间上的最大值在离对称轴更远的端点取到，总在 $f(1)$、$f(2)$ 之中，所以只需 $f(1)<0$ 且 $f(2)<0$。",
+              "$f(1)=m+5<0$ 得 $m<-5$；$f(2)=2m+8<0$ 得 $m<-4$；取交集，$m<-5$。",
+              "也可分离参数：$x>0$，不等式化为 $m<-\\left(x+\\frac4x\\right)$；$x+\\frac4x$ 在 $[1,2]$ 上递减，右边的最小值是 $x=1$ 时的 $-5$，同样得 $m<-5$。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-whole-graph",
+            "title": "区间上恒成立却按整条图像判断",
+            "wrong": "当 $1\\le x\\le2$ 时 $x^2+mx+4<0$ 恒成立：开口向上的抛物线不可能整条在 $x$ 轴下方，于是说 $m$ 不存在。",
+            "why": "开口和判别式管的是整条图像，只适用于 $x$ 取全体实数；这里只要求 $1\\le x\\le2$，区间外有正有负不要紧。",
+            "fix": [
+              "只看区间上的一段：区间上的最大值 $<0$，即 $f(1)<0$ 且 $f(2)<0$，得 $m<-5$。"
+            ],
+            "see": "function-range-extrema#quantified"
+          }
+        ],
+        "resources": [
+          "interval-arc-only",
+          "case-merge-union"
+        ]
+      },
+      {
+        "id": "method-separation",
+        "kind": "method",
+        "label": "分离参数法",
+        "summary": "把参数单独移到不等号一边，另一边是不含参数的函数，再用这个函数的最大值或最小值求出参数范围。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "含参数的不等式要在某个范围内恒成立（或有解），并且能把参数单独移到不等号一边，例如 $x\\in[1,2]$ 时 $x^2-mx+1\\le0$ 恒成立，求 $m$。",
+        "output": "参数的取值范围，例如上面的例子得到 $m\\ge\\frac{5}{2}$。",
+        "conditions": "两边同除以含 $x$ 的式子前，先确定它的正负：是负数要变号，正负不定或会等于 $0$ 就不能直接除；最值取不到时，要单独判断等号能不能取。",
+        "steps": [
+          {
+            "id": "separate",
+            "title": "把参数单独移到一边",
+            "body": [
+              "含 $m$ 的项留在一边，其余移到另一边，再除以 $m$ 前面的式子。例如 $x^2-mx+1\\le0$ 移项得 $mx\\ge x^2+1$；$x\\in[1,2]$ 时 $x>0$，两边同除以 $x$，不等号不变：$m\\ge x+\\frac{1}{x}$。",
+              "除之前先看除数的符号：正数直接除，负数要把不等号反向，正负不定就不能直接除（见下面的错题）。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-inequality-transform"
+              },
+              {
+                "ref": "skill-equality-transform"
+              }
+            ]
+          },
+          {
+            "id": "quantifier",
+            "title": "看恒成立要用最大值还是最小值",
+            "body": [
+              "把不含 $m$ 的一边记作 $g(x)=x+\\frac{1}{x}$。$m\\ge g(x)$ 对每个 $x\\in[1,2]$ 都成立，就是 $m$ 不小于 $g(x)$ 在 $[1,2]$ 上的最大值。",
+              "记法：恒成立时，$m\\ge g(x)$ 看最大值，$m\\le g(x)$ 看最小值；有解（存在某个 $x$）时反过来，$m\\ge g(x)$ 看最小值，$m\\le g(x)$ 看最大值。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-quantified-range"
+              }
+            ]
+          },
+          {
+            "id": "range",
+            "title": "求另一边函数在区间上的最值",
+            "body": [
+              "按 $g(x)$ 的样子选算法：二次函数看对称轴，一次函数看两端，$x+\\frac{k}{x}$ 看转折点 $x=\\sqrt{k}$。",
+              "二次式也可以先配方，再利用平方的非负性与变量范围求最值；配方与根据顶点求值是可选择的不同路径。",
+              "本例 $g(x)=x+\\frac{1}{x}$ 的转折点是 $x=1$，在 $[1,2]$ 上递增，最大值是 $g(2)=\\frac{5}{2}$，在 $x=2$ 时取到。"
+            ],
+            "calls": [
+              {
+                "ref": "quadratic-interval-extremum",
+                "when": "另一边是二次函数时"
+              },
+              {
+                "ref": "skill-linear-range",
+                "when": "另一边是一次函数或常数时"
+              },
+              {
+                "ref": "skill-reciprocal-range",
+                "when": "另一边形如 $x+\\frac{k}{x}$（$k>0$）时"
+              },
+              {
+                "ref": "method-square-extremum",
+                "when": "另一边可配成常数加减平方，并能验证取等或区间边界时"
+              }
+            ]
+          },
+          {
+            "id": "restore",
+            "title": "写出参数范围，检查等号",
+            "body": [
+              "由 $m\\ge g(x)$ 恒成立得 $m\\ge\\frac{5}{2}$。验证等号：$m=\\frac{5}{2}$、$x=2$ 时 $4-5+1=0\\le0$，成立，所以等号保留。",
+              "如果移到一边的不是 $m$ 本身，而是 $m^2$、$2m-1$ 这样的式子，得到它的范围后还要再解一次关于 $m$ 的不等式。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-inequality-transform"
+              },
+              {
+                "ref": "quadratic-inequality-solve",
+                "when": "还原后的参数条件是一元二次不等式时"
+              }
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "除数符号明确",
+            "prompt": "$x\\in[1,2]$，使 $x^2-mx+1\\le0$ 恒成立，求 $m$。",
+            "solution": [
+              "$x>0$，同除 $x$ 得 $m\\ge x+\\frac{1}{x}$。",
+              "$x+\\frac{1}{x}$ 在 $[1,2]$ 上递增，最大值 $\\frac{5}{2}$ 可达。",
+              "因此 $m\\ge\\frac{5}{2}$。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-negative-divisor",
+            "title": "除以负数忘记变号",
+            "wrong": "「$\\forall x<0$，$x^2+ax+2\\ge0$」为真命题，移项得 $ax\\ge-x^2-2$，两边除以 $x$ 得 $a\\ge-x-\\frac2x$；右边在 $x\\to0$ 时无上界，于是误判 $a$ 不存在。",
+            "why": "$x<0$，两边除以负数，不等号要变向。",
+            "fix": [
+              "正确分离：$a\\le-x-\\frac2x$，记 $h(x)=-x-\\frac2x$（$x<0$）。",
+              "$-x>0$，$-\\frac2x>0$，由基本不等式 $h(x)\\ge2\\sqrt{(-x)\\cdot\\left(-\\frac2x\\right)}=2\\sqrt2$，$x=-\\sqrt2$ 时取等。",
+              "$a\\le h(x)$ 恒成立 $\\Leftrightarrow$ $a\\le2\\sqrt2$。"
+            ]
+          },
+          {
+            "id": "pitfall-unsigned-divisor",
+            "title": "除数符号不定也直接除",
+            "wrong": "$kx^2+2kx-(k+2)<0$ 对一切实数 $x$ 成立，整理成 $k(x^2+2x-1)<2$，直接除以 $x^2+2x-1$ 得 $k<\\frac2{x^2+2x-1}$。",
+            "why": "$x^2+2x-1=(x+1)^2-2$ 可正、可负、可为零，除数符号不定，不等号方向无法确定，零点处还不能除。",
+            "fix": [
+              "除数符号不定时不要直接分离。本题 $x$ 取全体实数、二次项系数含参，改用判别式法：先讨论 $k=0$，再要求 $k<0$ 且 $\\Delta<0$。",
+              "合并得 $-1<k\\le0$。"
+            ],
+            "see": "method-discriminant"
+          }
+        ],
+        "resources": [
+          "separation-horizontal-line"
+        ]
+      },
+      {
+        "id": "method-square-extremum",
+        "kind": "method",
+        "label": "配方求最值法",
+        "summary": "把要求最值的式子配方成「常数加减一个平方」，看平方在允许的范围里能不能等于 0，从而得到最大值或最小值。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "求一个式子的最大值或最小值，消元或换元后能变成只含一个字母的二次式，例如 $m,n>0$，$m+n=2$，求 $mn$ 的最大值。",
+        "output": "最大值或最小值，以及取到它时各个字母的值。",
+        "conditions": "让平方等于 $0$ 的那个值必须在允许的范围里，否则配方读出的数不是最值；平方前面是负号时，读出的是最大值而不是最小值。",
+        "steps": [
+          {
+            "id": "prepare",
+            "title": "先变成只含一个字母",
+            "body": [
+              "有等式条件就用它消掉一个字母，并写下剩下字母的范围。例如由 $m+n=2$ 得 $n=2-m$，所以 $mn=m(2-m)$；又 $n=2-m>0$，所以 $0<m<2$。",
+              "式子里反复出现同一块时，也可以把这一块设成新字母，例如 $x^4+2x^2$ 中令 $t=x^2$（$t\\ge0$），得到 $t^2+2t$。"
+            ],
+            "calls": [
+              {
+                "ref": "method-elimination",
+                "when": "有等式条件、需要减少字母时"
+              },
+              {
+                "ref": "method-substitution",
+                "when": "同一块反复出现、适合整体设新字母时"
+              }
+            ]
+          },
+          {
+            "id": "square",
+            "title": "配成「常数加减平方」",
+            "body": [
+              "$mn=m(2-m)=-m^2+2m=-(m^2-2m)=-\\left[(m-1)^2-1\\right]=1-(m-1)^2$。",
+              "展开检查：$1-(m^2-2m+1)=-m^2+2m$，和原式一样。"
+            ],
+            "calls": [
+              {
+                "ref": "method-complete-square"
+              }
+            ]
+          },
+          {
+            "id": "range",
+            "title": "看平方在范围里能不能等于 0",
+            "body": [
+              "$(m-1)^2\\ge0$，等于 $0$ 需要 $m=1$，而 $1$ 在 $0<m<2$ 里，所以能取到。",
+              "如果让平方为 $0$ 的值不在范围里（比如范围是 $2\\le m\\le3$），就不能直接读出最值，要看区间在对称轴哪一侧，用单调性求。"
+            ],
+            "calls": [
+              {
+                "ref": "quadratic-interval-extremum",
+                "when": "化成一个字母的二次函数，且这个字母有范围限制时"
+              }
+            ]
+          },
+          {
+            "id": "verify",
+            "title": "定方向，写最值，回代检查",
+            "body": [
+              "$1-(m-1)^2$ 中平方前是负号，平方越小式子越大，所以最大值是 $1$；平方前是正号时，读出的是最小值。",
+              "回代：$m=1$ 时 $n=2-1=1$，满足 $m,n>0$ 且 $m+n=2$，此时 $mn=1$，所以最大值是 $1$。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "定和求积的配方路线",
+            "prompt": "$m,n>0,m+n=2$，求 $mn$ 的最大值。",
+            "solution": [
+              "消去 $n$ 得 $mn=m(2-m)$，且 $0<m<2$。",
+              "配方得 $mn=1-(m-1)^2\\le1$。",
+              "$m=n=1$ 在原范围内，故最大值为 $1$。"
+            ],
+            "source": "基本不等式专题 Q01",
+            "url": "/1/q01/"
+          }
+        ]
+      },
+      {
+        "id": "method-substitution",
+        "kind": "skill",
+        "label": "换元",
+        "summary": "把一个碍事或反复出现的整体设成新字母，条件、要求的式子和取值范围都跟着换成新字母。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要化简式子或求最值，看到同一块反复出现，或者分母不是单个字母，例如 $\\frac{4}{x-2}$、$\\frac1{2m+1}$：把这一整块换成一个新字母，式子会简单很多。",
+        "output": "用新字母写成的条件和式子，新字母的范围（如 $t>0$），以及「新字母等于原来的哪一块」这个对应，方便最后换回去。",
+        "conditions": "新字母的范围要从原来的范围算出来，例如 $x>2$、$t=x-2$ 得 $t>0$；换回去时如果一个 $t$ 对应两个 $x$（如 $t=x^2$ 时 $x=\\pm\\sqrt t$），两个都要检查。",
+        "basis": [
+          "equality-properties#identity"
+        ],
+        "operations": [
+          {
+            "id": "define",
+            "title": "选定一整块，设成新字母",
+            "body": [
+              "写清新字母代表哪一整块。例如 $x+\\frac{4}{x-2}$ 里碍事的是分母 $x-2$，令 $t=x-2$，则 $x=t+2$。",
+              "分母不是单个字母时，常把整个分母设成新字母，如 $\\frac1{2m+1}$ 中令 $u=2m+1$。"
+            ]
+          },
+          {
+            "id": "rewrite",
+            "title": "所有地方一起换",
+            "body": [
+              "要求的式子和所有条件都要换，不能只换一处：$x+\\frac{4}{x-2}=t+\\frac4t+2$。题目还有别的含 $x$ 的条件时，也要用 $x=t+2$ 代进去。"
+            ]
+          },
+          {
+            "id": "range",
+            "title": "算出新字母的范围，最后换回去",
+            "body": [
+              "$x>2$ 时 $t=x-2>0$。求出结果后再换回：$t+\\frac4t\\ge4$，$t=2$ 时取等，对应 $x=t+2=4$。",
+              "若令 $t=x^2$，要记 $t\\ge0$；换回时 $x=\\pm\\sqrt t$，两个值都要放回原条件检查。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "一次平移换元",
+            "prompt": "$x>2$，令 $t=x-2$。",
+            "solution": [
+              "$t>0,x=t+2$。例如 $x+\\frac{4}{x-2}=t+\\frac{4}{t}+2$，取等后可由 $x=t+2$ 还原。"
+            ],
+            "source": "基本不等式专题 Q24",
+            "url": "/1/q24/"
+          },
+          {
+            "title": "两个完整分母分别换元",
+            "prompt": "正数 $m,n$ 满足 $2m+n=6$，求 $\\frac1{2m+1}+\\frac1{n+1}$ 的最小值。",
+            "solution": [
+              "令 $u=2m+1$，$v=n+1$。范围变为 $u>1$，$v>1$；条件变为 $u+v=8$；目标变为 $\\frac1u+\\frac1v$。",
+              "$\\frac1u+\\frac1v=\\frac18\\left(\\frac1u+\\frac1v\\right)(u+v)=\\frac18\\left(2+\\frac vu+\\frac uv\\right)\\ge\\frac18(2+2)=\\frac12$。",
+              "取等要 $u=v=4$，满足 $u,v>1$；还原得 $m=\\frac32$，$n=3$，满足 $2m+n=6$，最小值为 $\\frac12$。"
+            ],
+            "source": "基本不等式专题 Q12",
+            "url": "/1/q12/"
+          }
+        ],
+        "resources": [
+          "substitution-denominator"
+        ]
+      },
+      {
+        "id": "method-variable-swap",
+        "kind": "method",
+        "label": "更换主元法",
+        "summary": "题目让哪个字母在范围里变化，就把它当主角，把式子整理成关于它的一次函数，看区间两端求出另一个字母的范围。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "给出范围的字母不是要求的 $x$，例如「对所有 $m\\in[1,3]$，$(x^2-x+1)m-6<0$ 恒成立，求 $x$」，并且按这个字母整理后是一次式（或常数）。",
+        "output": "要求的那个字母的取值范围，上例中是 $x$ 的范围。",
+        "conditions": "先看清「对谁恒成立」：在给定范围里变化的字母才是主角，不能对 $x$ 用判别式；整理后的一次项系数正负不定时，区间两端都要代。",
+        "steps": [
+          {
+            "id": "roles",
+            "title": "分清谁在变、谁是要求的",
+            "body": [
+              "「对所有 $m\\in[1,3]$」说明 $m$ 在区间里变化，它是主角；$x$ 是要求的量，求解时先把它当作一个固定的数。"
+            ]
+          },
+          {
+            "id": "reorder",
+            "title": "按主角整理成一次式",
+            "body": [
+              "把含 $m$ 的项合在一起，写成「系数 $\\times m$ + 常数」。例如 $mx^2-mx-6+m$ 合并含 $m$ 的三项，得 $f(m)=(x^2-x+1)m-6$，系数是 $x^2-x+1$，常数项是 $-6$。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-simplify"
+              }
+            ]
+          },
+          {
+            "id": "quantifier",
+            "title": "看恒成立要用最大值还是最小值",
+            "body": [
+              "「$f(m)<0$ 对所有 $m\\in[1,3]$ 成立」就是 $f(m)$ 在 $[1,3]$ 上的最大值 $<0$。如果是「存在 $m$ 使 $f(m)<0$」，只要最小值 $<0$。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-quantified-range"
+              }
+            ]
+          },
+          {
+            "id": "range",
+            "title": "由系数正负找最值在哪一端",
+            "body": [
+              "一次函数在闭区间上的最值总在两端取到。本例系数 $x^2-x+1=\\left(x-\\frac{1}{2}\\right)^2+\\frac{3}{4}>0$，$f(m)$ 随 $m$ 增大而增大，最大值是 $f(3)$。",
+              "系数正负不确定时不必分类：恒成立 $f(m)<0$ 就要求两端 $f(1)<0$ 且 $f(3)<0$ 同时成立。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-linear-range"
+              }
+            ]
+          },
+          {
+            "id": "solve",
+            "title": "解出要求的字母",
+            "body": [
+              "$f(3)=3(x^2-x+1)-6<0$，化简得 $x^2-x-1<0$。两根为 $\\frac{1\\pm\\sqrt5}{2}$，开口向上，取两根之间：$\\frac{1-\\sqrt5}{2}<x<\\frac{1+\\sqrt5}{2}$。",
+              "两端都要满足时，分别解出再取交集；最后看题目是「$<$」还是「$\\le$」，决定端点要不要。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-inequality-transform"
+              },
+              {
+                "ref": "quadratic-inequality-solve",
+                "when": "得到关于要求字母的二次不等式时"
+              }
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "量词变量是 m",
+            "prompt": "对所有 $m\\in[1,3]$，$(x^2-x+1)m-6<0$，求 $x$。",
+            "solution": [
+              "看作关于 $m$ 的一次式，其系数 $x^2-x+1=\\left(x-\\frac{1}{2}\\right)^2+\\frac{3}{4}>0$。",
+              "最大值在 $m=3$ 取到，要求 $3(x^2-x+1)-6<0$。",
+              "解 $x^2-x-1<0$，得 $\\frac{1-\\sqrt5}{2}<x<\\frac{1+\\sqrt5}{2}$。"
+            ],
+            "source": "一元二次不等式专题 Q08",
+            "url": "/2/q08/"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-wrong-main-variable",
+            "title": "看到二次式就对 x 用判别式",
+            "wrong": "对 $1\\le m\\le3$，$mx^2-mx-6+m<0$ 恒成立，求 $x$：要它对一切 $x$ 成立需 $m<0$，与 $1\\le m\\le3$ 矛盾，误判 $x$ 无解。",
+            "why": "题目是对 $m\\in[1,3]$ 恒成立、求 $x$ 的范围；判别式法处理的是对全体实数 $x$ 恒成立，量词作用的字母弄反了。",
+            "fix": [
+              "把给出范围的 $m$ 当主元：$f(m)=(x^2-x+1)m-6$，固定 $x$ 时是关于 $m$ 的一次函数。",
+              "一次函数在 $[1,3]$ 上恒 $<0$ 等价于两端 $f(1)<0$ 且 $f(3)<0$，再解关于 $x$ 的不等式。"
+            ]
+          },
+          {
+            "id": "pitfall-one-endpoint",
+            "title": "斜率符号不定只看一端",
+            "wrong": "对 $a\\in[-1,1]$，$x^2+(a-4)x+4-2a>0$ 恒成立，求 $x$：整理成 $f(a)=(x-2)a+(x-2)^2$，只代 $a=-1$，由 $(x-2)(x-3)>0$ 得 $x<2$ 或 $x>3$。",
+            "why": "斜率 $x-2$ 的正负随 $x$ 变化，最小值可能在 $a=1$ 取到。例如 $x=\\frac32$ 时 $f(1)=-\\frac12\\cdot\\frac12=-\\frac14<0$，不满足。",
+            "fix": [
+              "斜率符号不定就两端都看：$f(-1)=(x-2)(x-3)>0$，得 $x<2$ 或 $x>3$；$f(1)=(x-2)(x-1)>0$，得 $x<1$ 或 $x>2$。",
+              "取交集得 $x<1$ 或 $x>3$。"
+            ]
+          }
+        ],
+        "resources": [
+          "variable-swap-endpoints"
+        ]
+      },
+      {
+        "id": "quadratic-equation",
+        "kind": "knowledge",
+        "label": "一元二次方程",
+        "summary": "用判别式判断实根情况，用求根公式或因式分解确定根，并通过根与系数关系连接表达式。",
+        "source": "人教 A 版必修第一册第二章",
+        "entries": [
+          {
+            "id": "definition",
+            "title": "定义",
+            "type": "定义",
+            "body": [
+              "$ax^2+bx+c=0$ 是一元二次方程，其中 $a,b,c\\in\\mathbb R,a\\ne0$。"
+            ],
+            "conditions": "参数使 $a=0$ 时另按一次方程或常数关系处理。"
+          },
+          {
+            "id": "discriminant",
+            "title": "判别式与实根",
+            "type": "性质",
+            "body": [
+              "令 $\\Delta=b^2-4ac$。$\\Delta>0$ 有两个不等实根；$\\Delta=0$ 有两个相等实根；$\\Delta<0$ 无实根。"
+            ],
+            "conditions": "实系数，二次项系数 $a\\ne0$。"
+          },
+          {
+            "id": "roots",
+            "title": "求根公式",
+            "type": "公式",
+            "body": [
+              "$x=\\frac{-b\\pm\\sqrt\\Delta}{2a}$。当 $a<0$ 时，带减号的形式不一定是较小根。"
+            ],
+            "conditions": "$a\\ne0,\\Delta\\ge0$。"
+          },
+          {
+            "id": "vieta",
+            "title": "根与系数及因式分解",
+            "type": "性质",
+            "body": [
+              "若 $r_1,r_2$ 为实根，则 $r_1+r_2=-\\frac{b}{a}$，$r_1r_2=\\frac{c}{a}$，且 $ax^2+bx+c=a(x-r_1)(x-r_2)$。"
+            ],
+            "conditions": "实系数，$a\\ne0,\\Delta\\ge0$。"
+          },
+          {
+            "id": "reconstruction",
+            "title": "已知和与积，两个实数是否存在",
+            "type": "性质",
+            "body": [
+              "问题：能不能找到两个实数 $u,v$，使 $u+v=s$，$uv=p$？",
+              "由根与系数关系，方程 $t^2-st+p=0$ 的两根之和正是 $s$、之积正是 $p$；反过来，满足要求的 $u,v$ 一定是这个方程的两根。所以找 $u,v$，就是解这个方程。",
+              "因此只看判别式：$s^2-4p\\ge0$ 时存在，$s^2-4p<0$ 时不存在。例如和为 $4$、积为 $5$：$16-20<0$，找不到这样的两个实数。",
+              "若题目还要求 $u,v$ 都是正数，只看判别式不够，还须 $s>0$ 且 $p>0$。例如 $s=-3,p=2$ 时 $9-8\\ge0$，两数是 $-1,-2$，都不是正数。"
+            ],
+            "conditions": "$s,p\\in\\mathbb R$。若题目限定 $u,v$ 的范围，要把两根求出来逐一检查。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "两根与系数",
+            "prompt": "解 $x^2-5x+6=0$。",
+            "solution": [
+              "分解为 $(x-2)(x-3)=0$，根为 $2,3$；和为 $5$，积为 $6$，符合根与系数关系。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "quadratic-function-properties",
+        "kind": "knowledge",
+        "label": "二次函数",
+        "summary": "二次函数的表达式、抛物线和零点共同描述函数在各处的取值。",
+        "source": "人教 A 版必修第一册第二章",
+        "aliases": [
+          "抛物线"
+        ],
+        "entries": [
+          {
+            "id": "definition",
+            "title": "定义与一般式",
+            "type": "定义",
+            "body": [
+              "$f(x)=ax^2+bx+c$，其中 $a,b,c$ 为实数，$a\\ne0$。"
+            ],
+            "conditions": "自然定义域为 $\\mathbb R$；题目可以另限区间。"
+          },
+          {
+            "id": "forms",
+            "title": "三种表达形式",
+            "type": "表达形式",
+            "body": [
+              "一般式 $ax^2+bx+c$；顶点式 $a(x-h)^2+k$，其中 $h=-\\frac{b}{2a},k=\\frac{4ac-b^2}{4a}$；若有实根 $r_1,r_2$，可写成 $a(x-r_1)(x-r_2)$。"
+            ],
+            "conditions": "实数因式分解式要求 $\\Delta=b^2-4ac\\ge0$。"
+          },
+          {
+            "id": "vertex",
+            "title": "开口、对称轴与顶点",
+            "type": "性质",
+            "body": [
+              "$a>0$ 开口向上，$a<0$ 向下。对称轴为 $x=h$，顶点是 $(h,k)$；图像关于该直线对称。$a>0$ 时 $k$ 是最小值，$a<0$ 时 $k$ 是最大值。",
+              "二次项系数含参数时，先判断它的符号：$m^2+1>0$，开口一定向上；$k$、$a^2-1$ 的符号随参数变，还可能等于 $0$。"
+            ],
+            "conditions": "实系数，$a\\ne0$；另有限定区间时保留该区间。"
+          },
+          {
+            "id": "zeros",
+            "title": "零点与横轴",
+            "type": "性质",
+            "body": [
+              "零点是使 $f(x)=0$ 的实数 $x$，不是坐标点。$\\Delta>0,=0,<0$ 分别对应两个、一个、零个不同零点。"
+            ],
+            "conditions": "实系数，$a\\ne0$，上述个数按自然定义域 $\\mathbb R$ 计；若定义域另有限制，只计入限制范围内的零点。"
+          },
+          {
+            "id": "side",
+            "title": "图像在横轴的哪一侧",
+            "type": "性质",
+            "body": [
+              "$a$ 定开口，$\\Delta$ 定与横轴的公共点个数，合起来决定整条抛物线的位置：$\\Delta<0$ 时与横轴不相交，$a>0$ 整条在横轴上方，$a<0$ 整条在下方；$\\Delta=0$ 时只在顶点处与横轴相切；$\\Delta>0$ 时穿过横轴，函数值有正有负。"
+            ],
+            "conditions": "实系数，$a\\ne0$，按全体实数 $x$ 讨论；$a=0$ 时不是二次函数，要代回原式另行判断。"
+          },
+          {
+            "id": "monotonicity",
+            "title": "单调区间",
+            "type": "性质",
+            "body": [
+              "$a>0$ 时，在 $(-\\infty,h]$ 上递减、$[h,+\\infty)$ 上递增；$a<0$ 时方向相反。"
+            ],
+            "conditions": "实系数，$a\\ne0$；另有限定区间时保留该区间。"
+          },
+          {
+            "id": "interval",
+            "title": "区间上的值域",
+            "type": "性质",
+            "body": [
+              "结合顶点是否在区间内、开口方向和端点决定值域。闭区间上比较顶点值（若在区间内）与两端点值；开端点仅作为边界候选，需检查该值是否也在内部取得。"
+            ],
+            "conditions": "实系数，$a\\ne0$；另有限定区间时保留该区间。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "读顶点式",
+            "prompt": "$f(x)=2(x-1)^2-3$ 的图像有什么特征？",
+            "solution": [
+              "开口向上，对称轴 $x=1$，顶点 $(1,-3)$。在全实数上最小值 $-3$，在 $x=1$ 取到。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-zero-leading",
+            "title": "二次项系数含参数时漏掉系数为 0",
+            "wrong": "$kx^2+2kx-2<0$ 对任意实数 $x$ 恒成立，只列 $k<0$ 且 $\\Delta=4k^2+8k<0$，得 $-2<k<0$。",
+            "why": "$k=0$ 时不再是二次函数，不能套开口和 $\\Delta$；此时原式为 $-2<0$，恒成立，被漏掉了。",
+            "fix": [
+              "先讨论 $k=0$：原式为 $-2<0$，恒成立。",
+              "$k\\ne0$ 时需 $k<0$ 且 $\\Delta=4k^2+8k<0$，得 $-2<k<0$。",
+              "合并得 $-2<k\\le0$。"
+            ],
+            "see": "quadratic-inequality#all-real"
+          },
+          {
+            "id": "pitfall-zero-leading-linear",
+            "title": "系数为 0 时退化成一次函数",
+            "wrong": "讨论 $kx^2+2x-1<0$ 恒成立时，把 $k=0$ 也当成二次函数，用开口和 $\\Delta$ 判断。",
+            "why": "$k=0$ 时原式是 $2x-1$，一次函数，$x=1$ 时等于 $1$，不会恒小于 $0$。",
+            "fix": [
+              "把 $k=0$ 代回原式单独判断：$2x-1<0$ 不恒成立，$k=0$ 舍去。",
+              "$k\\ne0$ 时需 $k<0$ 且 $\\Delta=4+4k<0$，得 $k<-1$。"
+            ],
+            "see": "quadratic-inequality#all-real"
+          }
+        ],
+        "resources": [
+          "parabola-sign-grid"
+        ]
+      },
+      {
+        "id": "quadratic-inequality-solve",
+        "kind": "method",
+        "label": "二次函数图像法",
+        "summary": "先求出二次式的根，再根据开口方向看图像哪一段在 x 轴上方、哪一段在下方，写出不等式的解集。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "一元二次不等式，例如 $x^2-5x+6>0$；含参数时，参数已经分好情况（比如已经确定 $a>0$）。",
+        "output": "不等式的解集，用区间或集合写出，例如 $(-\\infty,2)\\cup(3,+\\infty)$。",
+        "conditions": "二次项系数为负时，先两边乘 $-1$ 并把不等号反向；带等号的不等式解集要包含根，不带等号的不包含。",
+        "steps": [
+          {
+            "id": "normalize",
+            "title": "移项，让一边是 0",
+            "body": [
+              "把所有项移到左边，整理成 $ax^2+bx+c>0$（或 $<$、$\\ge$、$\\le$）的样子。例如 $x^2-5x>-6$ 移项得 $x^2-5x+6>0$。",
+              "$a<0$ 时两边乘 $-1$，不等号反向；$a$ 含参数时要看它能不能为 $0$，$a=0$ 时就成了一次不等式，要单独解。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-inequality-transform"
+              },
+              {
+                "ref": "skill-simplify"
+              }
+            ]
+          },
+          {
+            "id": "roots",
+            "title": "求出根，从小到大排好",
+            "body": [
+              "解方程 $x^2-5x+6=0$，因式分解为 $(x-2)(x-3)=0$，两根是 $2$ 和 $3$。",
+              "共三种情况：$\\Delta>0$ 有两个不同的根；$\\Delta=0$ 只有一个根，图像在顶点处碰到 $x$ 轴；$\\Delta<0$ 没有实根，图像整条在 $x$ 轴的一侧。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-solve-quadratic"
+              }
+            ]
+          },
+          {
+            "id": "signs",
+            "title": "画草图，看哪段在 x 轴上方",
+            "body": [
+              "开口向上的抛物线经过 $(2,0)$ 和 $(3,0)$：两根之外图像在 $x$ 轴上方，式子为正；两根之间在 $x$ 轴下方，式子为负。",
+              "二次项系数为正时可记成：「大于取两边，小于取中间」。"
+            ],
+            "calls": [
+              {
+                "ref": "skill-quadratic-sign"
+              }
+            ]
+          },
+          {
+            "id": "solution",
+            "title": "按不等号写出解集",
+            "body": [
+              "$x^2-5x+6>0$ 要式子为正，取两根之外；不带等号，根 $2$、$3$ 不取，解集为 $(-\\infty,2)\\cup(3,+\\infty)$。",
+              "如果是 $\\ge0$，根也要包含进去：$(-\\infty,2]\\cup[3,+\\infty)$。题目对 $x$ 另有限制时（如分母不为 $0$、$x>0$），最后再和它取交集。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "取两根之间还是两根之外",
+            "prompt": "解 $x^2-5x+6>0$。",
+            "solution": [
+              "两根为 $2,3$，开口向上。",
+              "两根之外图像在 $x$ 轴上方；不带等号，两根本身不取。",
+              "解集为 $(-\\infty,2)\\cup(3,+\\infty)$。"
+            ],
+            "source": "教材 2.3 例 1"
+          },
+          {
+            "title": "没有实根：直接看整条图像",
+            "prompt": "解 $x^2+x+1>0$ 与 $x^2+x+1<0$。",
+            "solution": [
+              "$\\Delta=1-4=-3<0$，开口向上，图像全在 $x$ 轴上方，$x^2+x+1$ 恒正。",
+              "所以 $x^2+x+1>0$ 的解集为 $\\mathbb R$，$x^2+x+1<0$ 无解。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-negative-leading",
+            "title": "开口向下时乘 −1 忘了变号",
+            "wrong": "解 $-x^2+2x+3>0$：化成 $x^2-2x-3>0$，得 $x<-1$ 或 $x>3$。",
+            "why": "两边同乘 $-1$，不等号要反向；「大于取两边」只对二次项系数为正的式子成立。",
+            "fix": [
+              "两边同乘 $-1$ 并变号：$x^2-2x-3<0$，即 $(x+1)(x-3)<0$。",
+              "小于取中间：解集为 $-1<x<3$。"
+            ],
+            "see": "inequality-properties#multiplication"
+          },
+          {
+            "id": "pitfall-double-root",
+            "title": "Δ = 0 时漏掉或多算顶点",
+            "wrong": "$x^2-2x+1\\le0$ 没有两个不同的根，于是说无解。",
+            "why": "$\\Delta=0$ 时图像只在顶点 $x=1$ 处碰到 $x$ 轴，这一点的值为 $0$，满足「$\\le0$」。",
+            "fix": [
+              "$x^2-2x+1=(x-1)^2\\le0$ 只有 $x=1$，解集为 $\\{1\\}$。",
+              "同理 $(x-1)^2<0$ 无解，$(x-1)^2>0$ 的解集是 $x\\ne1$，不能写成 $\\mathbb R$。"
+            ],
+            "see": "quadratic-inequality#signs"
+          },
+          {
+            "id": "pitfall-premise",
+            "title": "解出参数后忘了和前提取交集",
+            "wrong": "已知 $a>0$，由 $a^2-3a-4\\ge0$ 得 $a\\le-1$ 或 $a\\ge4$，直接作为答案。",
+            "why": "二次不等式只解出了满足这一条件的 $a$，题目原有的前提 $a>0$ 还没用上，$a\\le-1$ 与它矛盾。",
+            "fix": [
+              "$a^2-3a-4=(a-4)(a+1)\\ge0$，得 $a\\le-1$ 或 $a\\ge4$。",
+              "与前提 $a>0$ 取交集，答案为 $a\\ge4$。"
+            ],
+            "see": "method-parameter-quadratic-cases#merge"
+          }
+        ],
+        "resources": [
+          "quadratic-sign-reading"
+        ]
+      },
+      {
+        "id": "quadratic-inequality",
+        "kind": "knowledge",
+        "label": "一元二次不等式",
+        "summary": "二次不等式的解集由二次式的符号决定；图像在横轴上方或下方对应不同解集。",
+        "source": "人教 A 版必修第一册第二章",
+        "prerequisites": [
+          "quadratic-function-properties",
+          "quadratic-equation"
+        ],
+        "entries": [
+          {
+            "id": "definition",
+            "title": "定义与解集",
+            "type": "定义",
+            "body": [
+              "$ax^2+bx+c>0$、$<0$、$\\ge0$ 或 $\\le0$ 的全部解组成解集，其中 $a\\ne0$。"
+            ],
+            "conditions": "实系数，二次项系数 $a\\ne0$。若题目限定了 $x$ 的范围，解集只取这个范围内的部分。"
+          },
+          {
+            "id": "signs",
+            "title": "开口与根决定符号",
+            "type": "性质",
+            "body": [
+              "判断 $f(x)=ax^2+bx+c$ 的值是正是负，只要知道两件事：开口方向，即 $a$ 的正负；抛物线与 $x$ 轴的交点，即方程 $f(x)=0$ 的实根。",
+              "有两个不等实根 $r_1<r_2$：两根之间（$r_1<x<r_2$），$f(x)$ 与 $a$ 符号相反；两根之外（$x<r_1$ 或 $x>r_2$），$f(x)$ 与 $a$ 符号相同。以 $a>0$ 为例，抛物线开口向上，只有夹在两根之间的那一段在 $x$ 轴下方。",
+              "两根相等，记为 $r$：$f(r)=0$，其余所有 $x$ 都使 $f(x)$ 与 $a$ 符号相同，因为抛物线只在顶点碰到 $x$ 轴。",
+              "没有实根：抛物线不碰 $x$ 轴，所有 $x$ 都使 $f(x)$ 与 $a$ 符号相同。",
+              "例如 $f(x)=x^2-x-2=(x+1)(x-2)$，$a=1>0$，两根为 $-1,2$：$-1<x<2$ 时 $f(x)<0$；$x<-1$ 或 $x>2$ 时 $f(x)>0$。"
+            ],
+            "conditions": "实系数，二次项系数 $a\\ne0$。若题目限定了 $x$ 的范围，只取这个范围内的部分。"
+          },
+          {
+            "id": "endpoints",
+            "title": "带不带等号：根是否在解集里",
+            "type": "性质",
+            "body": [
+              "不等号带等号（$\\ge$、$\\le$）时，方程 $f(x)=0$ 的根要放进解集；不带等号（$>$、$<$）时，根不放进解集。例如 $x^2-1\\le0$ 的解集是 $[-1,1]$，$x^2-1<0$ 的解集是 $(-1,1)$。"
+            ],
+            "conditions": "实系数，二次项系数 $a\\ne0$。若题目限定了 $x$ 的范围，解集只取这个范围内的部分。"
+          },
+          {
+            "id": "all-real",
+            "title": "全实数上的符号条件",
+            "type": "性质",
+            "body": [
+              "$f(x)>0$ 对所有实数成立等价于 $a>0,\\Delta<0$；$f(x)\\ge0$ 等价于 $a>0,\\Delta\\le0$。恒负与恒非正分别为 $a<0,\\Delta<0$ 与 $a<0,\\Delta\\le0$。"
+            ],
+            "conditions": "仅用于 $a\\ne0$ 且研究范围是全部实数；$a=0$ 需单独处理。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "重根不是两个端点",
+            "prompt": "求 $(x-1)^2>0$ 与 $(x-1)^2\\ge0$ 的解集。",
+            "solution": [
+              "前者为 $\\mathbb R\\setminus\\{1\\}$，后者为 $\\mathbb R$。在重根处是否允许等号决定差别。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "quadratic-interval-extremum",
+        "kind": "skill",
+        "label": "求二次函数在区间上的最值与值域",
+        "summary": "看开口方向和对称轴落在区间的哪一边，找出最大值、最小值在哪里取，再检查端点取不取得到。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "给了一个二次函数和一段区间，求它在这段区间上的最大值、最小值或值域，例如求 $x^2-2x$ 在 $[-1,2]$ 上的值域。系数或区间里带参数也一样。",
+        "output": "函数在这段区间上的值域，有没有最大值、最小值，以及它们在哪个 $x$ 处取到。",
+        "conditions": "开区间的端点取不到，端点值不能直接当最值；区间可以伸到无穷。$x^2$ 前的系数含参数时，先单独看它等于 $0$ 的情况，这时是一次函数或常数。",
+        "basis": [
+          "quadratic-function-properties#vertex",
+          "quadratic-function-properties#interval",
+          "function-range-extrema#attainability"
+        ],
+        "operations": [
+          {
+            "id": "vertex",
+            "title": "找对称轴，看它在区间哪边",
+            "body": [
+              "对称轴是 $x=-\\frac{b}{2a}$。例如 $f(x)=x^2-2x$ 的对称轴是 $x=1$，落在区间 $[-1,2]$ 里面。",
+              "对称轴只有三种位置：在区间左边、在区间里、在区间右边。"
+            ]
+          },
+          {
+            "id": "bounds",
+            "title": "按开口和对称轴位置找最值",
+            "body": [
+              "开口向上时，最小值：对称轴在区间左边取左端点，在区间里取顶点，在区间右边取右端点。最大值在离对称轴更远的那个端点取，也就是拿对称轴和区间中点比；对称轴恰在中点时两端值相等。开口向下时最大、最小对调。",
+              "例中开口向上，最小值是顶点值 $f(1)=-1$；左端点 $-1$ 离对称轴 $2$，比右端点 $2$ 远，最大值是 $f(-1)=3$，值域为 $[-1,3]$。",
+              "区间伸到无穷时，开口向上那一侧无限升高，开口向下那一侧无限降低。带参数时，按对称轴在区间左边、里面、右边分情况讨论。"
+            ]
+          },
+          {
+            "id": "attained",
+            "title": "检查端点取不取得到",
+            "body": [
+              "闭区间的端点和区间内的顶点都取得到；开区间的端点取不到，那一侧的值只能无限接近。",
+              "开端点的值如果在区间里别的地方取得到，仍算最值。例如 $x^2-2x$ 在 $[-1,3)$ 上，$f(3)=3$ 取不到，但 $f(-1)=3$ 取得到，最大值仍是 $3$。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "顶点在区间外",
+            "prompt": "求 $(x-1)^2+2$ 在 $[2,3]$ 上的值域。",
+            "solution": [
+              "顶点横坐标 $1$ 在左侧，函数递增，端点值为 $3,6$，值域为 $[3,6]$。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "半无限区间",
+            "prompt": "求 $x^2+2x$ 在 $(0,+\\infty)$ 上的取值范围。",
+            "solution": [
+              "对称轴 $x=-1$ 在区间左侧，开口向上，函数在区间上递增。",
+              "朝 $+\\infty$ 一侧图像无限升高，没有上端；下端 $f(0)=0$ 取不到。",
+              "取值范围为 $(0,+\\infty)$，既没有最大值也没有最小值。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "二次项系数含参数",
+            "prompt": "求 $f(x)=mx^2-mx-1$ 在 $[2,3]$ 上的最大值。",
+            "solution": [
+              "$m=0$ 时 $f(x)=-1$ 是常函数，最大值为 $-1$。",
+              "$m\\ne0$ 时对称轴 $x=\\frac12$ 固定，在区间左侧，开口随 $m$ 的符号变化。",
+              "$m>0$ 时开口向上，在 $[2,3]$ 上递增，最大值 $f(3)=6m-1$。",
+              "$m<0$ 时开口向下，在 $[2,3]$ 上递减，最大值 $f(2)=2m-1$。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "pitfalls": [
+          {
+            "id": "pitfall-open-endpoint",
+            "title": "开区间上把端点值当成最值",
+            "wrong": "$f(x)=x^2-2x$ 在 $(0,3)$ 上，离对称轴更远的是右端点，于是说最大值是 $f(3)=3$。",
+            "why": "$x=3$ 不在区间内，$3$ 取不到，只能无限接近；而顶点 $x=1$ 在开区间里，顶点值仍取得到。",
+            "fix": [
+              "最小值 $f(1)=-1$，取得到；上端 $f(3)=3$ 取不到。",
+              "取值范围为 $[-1,3)$，没有最大值。"
+            ],
+            "see": "function-range-extrema#attainability"
+          }
+        ],
+        "resources": [
+          "parabola-axis-drag"
+        ]
+      },
+      {
+        "id": "quantifiers",
+        "kind": "knowledge",
+        "label": "全称量词与存在量词",
+        "summary": "先明确“对谁、在哪个范围内”，再区分全部满足与至少一次满足。",
+        "source": "人教 A 版必修第一册 1.5",
+        "aliases": [
+          "恒成立",
+          "存在成立",
+          "任意",
+          "有解"
+        ],
+        "entries": [
+          {
+            "id": "universal",
+            "title": "全称量词",
+            "type": "性质",
+            "body": [
+              "$\\forall x\\in D,P(x)$ 表示 $D$ 中每一个 $x$ 都满足命题 $P(x)$。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "existential",
+            "title": "存在量词",
+            "type": "性质",
+            "body": [
+              "$\\exists x\\in D,P(x)$ 表示 $D$ 中至少有一个 $x$ 满足 $P(x)$；不等式在该范围内“有解”也是这一要求。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "roles",
+            "title": "分清量词变量和要求的量",
+            "type": "性质",
+            "body": [
+              "题中跟在「对所有」「存在」后面、在给定范围里变动的字母，叫量词变量；题目最后要求范围的字母，是要求的量。两者要按题意分，不能按字母习惯分。",
+              "例如「对所有 $m\\in[1,3]$，$(x^2-x+1)m-6<0$ 恒成立，求 $x$ 的范围」：$m$ 是量词变量，$x$ 是要求的量。不能因为习惯把 $x$ 当自变量，就把左边看成 $x$ 的二次函数。",
+              "应把左边看成 $m$ 的一次函数。因为 $x^2-x+1>0$，它随 $m$ 增大而增大，只需 $m=3$ 时成立：$3(x^2-x+1)-6<0$，即 $x^2-x-1<0$，得 $\\frac{1-\\sqrt5}{2}<x<\\frac{1+\\sqrt5}{2}$。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "domain",
+            "title": "量词的取值范围",
+            "type": "性质",
+            "body": [
+              "$\\forall x\\in D$、$\\exists x\\in D$ 里的 $D$ 是变量允许取值的范围。它可以是一个区间，如 $x\\in[1,3]$；也可以由几个条件一起规定，如满足 $x>0,y>0,x+y=1$ 的全部 $(x,y)$。",
+              "把「对所有 $x\\in D$，$f(x)>c$」改成「$f(x)$ 在 $D$ 上的最小值大于 $c$」之前，先确认 $D$ 里至少有一个可取的值。范围含参数时尤其要注意：范围写成 $[a,2]$，就要先有 $a\\le2$。",
+              "$D$ 是空集时没有最小值可谈，要直接按意思判断：「对所有 $x\\in D$ 都成立」自动为真，因为找不到不成立的 $x$；「存在 $x\\in D$ 使之成立」一定为假，因为一个 $x$ 也没有。"
+            ],
+            "conditions": "变量均为实数。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "两个不同的要求",
+            "prompt": "$x\\in[0,2]$ 时，比较“所有 $x$ 都满足 $x<c$”与“存在 $x$ 满足 $x<c$”。",
+            "solution": [
+              "前者要求 $c>2$；后者只要求 $c>0$。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "rule-quadratic-method",
+        "kind": "judgment_rule",
+        "label": "含参一元二次不等式的选法判断",
+        "summary": "遇到含参数的一元二次不等式，先看清「哪个字母在什么范围里变化」，再挑能用的方法，常常不止一种方法可用。",
+        "source": "人教 A 版必修第一册第二章",
+        "subtype": "method_selection",
+        "input": "一道含参数的二次不等式题该用哪种方法：判别式法、区间最值法、分离参数法，还是更换主元法。",
+        "output": "每种方法在这道题里能不能用；能用的往往不止一种，挑最顺手的做。",
+        "conditions": "先看清在范围里变化的是哪个字母，范围是全体实数还是某个区间；全体实数时优先用判别式法；二次项系数含参数时，系数为 $0$ 的情况要单独讨论。",
+        "branches": [
+          {
+            "id": "discriminant",
+            "title": "对全体实数 x 恒成立",
+            "condition": "要求对所有实数 $x$ 成立，式子关于 $x$ 是二次的；二次项系数含参数时，先单独看系数为 $0$ 的情况。",
+            "target": "method-discriminant"
+          },
+          {
+            "id": "interval",
+            "title": "在给定区间上研究最值",
+            "condition": "$x$ 在给定区间内取值，区间可以是有限区间、半无限区间或全体实数 $\\mathbb R$；能求出相关函数在该范围上的最大值、最小值（二次函数、一次函数或对勾函数），最值取不到时要单独看等号。$x$ 取全体实数时，判别式法通常更直接，优先用判别式法。",
+            "target": "method-interval-extremum"
+          },
+          {
+            "id": "separation",
+            "title": "参数能单独移到一边",
+            "condition": "$x$ 在题目给定的范围里取值（常见是某个区间，全体实数也可以）；能把参数（或含参数的式子）移到不等号一边，另一边只含 $x$，并且能求出这一边在该范围上的最大值或最小值。除以含 $x$ 的式子之前，要能确定它在这个范围上的正负。",
+            "target": "method-separation"
+          },
+          {
+            "id": "swap",
+            "title": "给出范围的字母不是 x",
+            "condition": "给出范围的是参数（如 $m\\in[1,3]$），要求的却是 $x$；把式子按这个参数整理后是一次式或常数，就看区间两端。",
+            "target": "method-variable-swap"
+          }
+        ],
+        "examples": [
+          {
+            "title": "多种方法同时适用",
+            "prompt": "使 $x^2-2x+a\\ge0$ 对所有实数 $x$ 成立，求 $a$。",
+            "solution": [
+              "$x$ 取全体实数，二次项系数是 $1$，可以用判别式法：$\\Delta=4-4a\\le0$，得 $a\\ge1$。",
+              "也可以分离参数：$a\\ge2x-x^2$ 恒成立，而 $2x-x^2=1-(x-1)^2$ 的最大值是 $1$，同样得 $a\\ge1$。",
+              "两种方法都能用，挑顺手的即可；一种方法能用，不代表别的方法就不能用。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "skill-equality-transform",
+        "kind": "skill",
+        "label": "等式变形与推导",
+        "summary": "用两边同加减、同乘除等办法整理等式，并分清每一步能不能倒推回去。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "手里有一个等式，想把它整理成需要的样子，例如由 $x+y=3$ 写出 $y$，或者从 $y(x+2)=7-x$ 解出 $y$。",
+        "output": "整理好的新等式，连同它需要的条件（如 $x\\ne-2$），并且清楚新等式和原等式能不能互相推出。",
+        "conditions": "两边同除一个式子前，先确认它不为 $0$；两边平方或同乘可能为 $0$ 的式子后，会多出原来没有的解，算完要代回原式检查。",
+        "basis": [
+          "equality-properties#addition",
+          "equality-properties#multiplication",
+          "equality-properties#identity"
+        ],
+        "operations": [
+          {
+            "id": "choose",
+            "title": "想好要做哪一步",
+            "body": [
+              "先看目标：要把谁单独留在一边。例如要从 $y(x+2)=7-x$ 解出 $y$，要做的就是两边同除以 $x+2$。"
+            ]
+          },
+          {
+            "id": "check",
+            "title": "检查能不能倒推回去",
+            "body": [
+              "两边同加减同一个式子，随时能加减回去，新旧等式互相推出。两边同除 $x+2$ 必须 $x+2\\ne0$：本例若 $x=-2$，原式变成 $0=9$，不成立，所以 $x\\ne-2$，可以放心除。",
+              "两边同乘可能为 $0$ 的式子，或者两边平方，只能从原式推出新式，倒推不回去。例如 $x=2$ 平方得 $x^2=4$，但 $x^2=4$ 还包括 $x=-2$。"
+            ]
+          },
+          {
+            "id": "record",
+            "title": "写下结果和它的条件",
+            "body": [
+              "结果连同条件一起写：$y=\\frac{7-x}{x+2}$，$x\\ne-2$。",
+              "原来的其他限制也要带上。例如还知道 $x,y>0$，由 $y>0$ 得 $7-x>0$，所以 $0<x<7$。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "条件整理",
+            "prompt": "由 $x+y=3$ 表示 $y$。",
+            "solution": [
+              "同减 $x$ 得 $y=3-x$，与原等式等价；若还知 $x,y>0$，需保留 $0<x<3$。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "skill-inequality-transform",
+        "kind": "skill",
+        "label": "不等式变形与推导",
+        "summary": "对不等式两边加减、乘除或取倒数时，先看乘除的数是正是负，再决定不等号要不要改方向。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要把一个不等式变形：两边同乘（除）一个数或含字母的式子、移项、取倒数，或者想由已知的不等式推出新的不等式。",
+        "output": "一个方向正确的新不等式；如果乘除的式子含字母，还要写清每种情况，例如「$a>0$ 时 $x>\\frac{2}{a}$」。",
+        "conditions": "两边同乘或同除负数，不等号要改方向；乘除的式子正负不确定时，先分 $>0$、$<0$、$=0$ 讨论；取倒数前确认两边都是正数（或都是负数）。",
+        "basis": [
+          "inequality-properties#addition",
+          "inequality-properties#multiplication",
+          "inequality-properties#reciprocal",
+          "real-order#difference"
+        ],
+        "operations": [
+          {
+            "id": "sign",
+            "title": "先看乘除的数是正是负",
+            "body": [
+              "动手前先看要乘（除）的是正数、负数还是 $0$。含字母时不要默认它是正的，例如解 $ax>2$ 要两边除以 $a$，就得分 $a>0$、$a<0$、$a=0$ 三种情况。",
+              "$a=0$ 时原式变成 $0>2$，不成立，没有解；除以 $0$ 本身也不允许。"
+            ]
+          },
+          {
+            "id": "transform",
+            "title": "按规则变形，定好方向",
+            "body": [
+              "两边同加（减）同一个数，方向不变；同乘（除）正数，方向不变；同乘（除）负数，方向改变。例如 $-2x<6$ 两边除以 $-2$，得 $x>-3$。",
+              "接着上面的 $ax>2$：$a>0$ 时 $x>\\frac{2}{a}$；$a<0$ 时 $x<\\frac{2}{a}$。"
+            ]
+          },
+          {
+            "id": "reciprocal",
+            "title": "取倒数前确认两边符号相同",
+            "body": [
+              "$A>B>0$ 时 $\\frac{1}{A}<\\frac{1}{B}$，例如 $3>2$ 得 $\\frac{1}{3}<\\frac{1}{2}$。两边都是负数时也要改方向：$-2>-3$ 得 $-\\frac{1}{2}<-\\frac{1}{3}$。",
+              "两边符号相反时不能照搬改方向：$2>-3$，倒数是 $\\frac{1}{2}>-\\frac{1}{3}$，因为正数的倒数仍是正数，负数的倒数仍是负数，直接按正负比较就行。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "取倒数还原目标",
+            "prompt": "$F>0$ 且 $\\frac{1}{F}\\ge2$，能得什么？",
+            "solution": [
+              "$\\frac{1}{F}$ 和 $2$ 都是正数，取倒数改方向，得 $F\\le\\frac{1}{2}$。只有 $\\frac{1}{F}=2$ 真的能取到时，才能说 $F$ 的最大值是 $\\frac{1}{2}$。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "resources": [
+          "reciprocal-linked-lines"
+        ]
+      },
+      {
+        "id": "skill-linear-range",
+        "kind": "skill",
+        "label": "求一次函数及常函数在区间上的最值与值域",
+        "summary": "看 y = ax + b 的斜率 a 是正、负还是 0，把区间端点代进去，读出值域和最大、最小值。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要求 $ax+b$ 在某个区间上的取值范围或最值；常见于分离参数之后，不等号另一边剩下一个一次式（或常数）。",
+        "output": "函数在这个区间上的值域，以及最大值、最小值和取到它们的 $x$；端点取不到的那一侧，就没有对应的最值。",
+        "conditions": "开区间的端点代进去得到的值取不到，值域那一侧也要写成开的；$a$ 含字母、正负不确定时，要分 $a>0$、$a<0$、$a=0$ 讨论。",
+        "basis": [
+          "linear-interval-extremum#monotonicity",
+          "linear-interval-extremum#interval",
+          "function-range-extrema#attainability"
+        ],
+        "operations": [
+          {
+            "id": "slope",
+            "title": "看斜率的正负",
+            "body": [
+              "$a>0$ 时函数递增，$a<0$ 时递减，$a=0$ 时就是常数 $b$。例如 $-2x+3$ 的 $a=-2<0$，在 $(1,4]$ 上递减。"
+            ]
+          },
+          {
+            "id": "range",
+            "title": "把端点代进去，保留开闭",
+            "body": [
+              "递增时左端点给最小值、右端点给最大值；递减时反过来。端点是闭的，对应的值取得到；是开的，取不到。",
+              "例如 $-2x+3$ 在 $(1,4]$ 上：$x=4$ 得 $-5$，能取到；$x=1$ 得 $1$，但 $1$ 不在区间里，这个值取不到。所以值域是 $[-5,1)$，最小值 $-5$，没有最大值。",
+              "区间一端是无穷时，函数值朝那边无限增大或减小，例如 $-2x+3$ 在 $[0,+\\infty)$ 上的值域是 $(-\\infty,3]$。"
+            ]
+          },
+          {
+            "id": "constant",
+            "title": "斜率为 0 时直接写常数",
+            "body": [
+              "$a=0$ 时函数就是 $y=b$，值域是 $\\{b\\}$，最大值和最小值都是 $b$，即使区间是开的也一样。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "下降直线",
+            "prompt": "求 $-2x+3$ 在 $(1,4]$ 上的值域。",
+            "solution": [
+              "函数递减，$x=4$ 得 $-5$ 可取，靠近 $1$ 时趋近 $1$ 不取，值域为 $[-5,1)$。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "skill-quadratic-sign",
+        "kind": "skill",
+        "label": "根据开口与零点判断二次式的正负",
+        "summary": "知道二次函数开口朝上还是朝下、和 x 轴交在哪里，就能说出 x 在哪些范围时式子为正、为零、为负。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要解一元二次不等式，或判断二次式 $ax^2+bx+c$ 什么时候大于 $0$、小于 $0$，看到根已经求出（或知道没有实根）、$a$ 的正负也清楚。例如解 $x^2-5x+6\\le0$，已经得到根 $2$ 和 $3$，开口向上。",
+        "output": "三部分：使式子为正的 $x$ 的范围、使它为零的 $x$（就是根）、使它为负的 $x$ 的范围。对照不等号，就能直接写出解集。",
+        "conditions": "先确认 $a\\ne0$，否则不是二次式；两根相等或没有实根时，不能照搬「两根之间、两根之外」的分法，这时除了根以外，式子处处和 $a$ 符号相同。",
+        "basis": [
+          "quadratic-inequality#signs",
+          "quadratic-function-properties#zeros",
+          "quadratic-inequality#all-real",
+          "quadratic-equation#discriminant"
+        ],
+        "operations": [
+          {
+            "id": "partition",
+            "title": "按零点划分数轴",
+            "body": [
+              "两个不等零点把数轴分成三段；两根相等时只有一个零点，把数轴分成两段；没有零点时整条数轴一起看。"
+            ]
+          },
+          {
+            "id": "signs",
+            "title": "用开口判定符号",
+            "body": [
+              "有两个不等实根时，两根之间 $f(x)$ 与 $a$ 符号相反，两根之外与 $a$ 符号相同；以 $a>0$ 为例，两根之间为负，两根之外为正。两根相等或没有实根时，除零点外 $f(x)$ 处处与 $a$ 符号相同。"
+            ]
+          },
+          {
+            "id": "zeros",
+            "title": "单独记下零点",
+            "body": [
+              "零点处 $f(x)=0$。不等号是 $>$ 或 $<$ 时，零点不在解集里；是 $\\ge$ 或 $\\le$ 时，要把零点加进去。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "从根到符号",
+            "prompt": "$f(x)=x^2-5x+6$ 的零点是 $2,3$，判断符号。",
+            "solution": [
+              "开口向上：$x<2$ 或 $x>3$ 时正，$2<x<3$ 时负，$x=2,3$ 时零。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "resources": [
+          "quadratic-sign-chart"
+        ]
+      },
+      {
+        "id": "skill-quantified-range",
+        "kind": "skill",
+        "label": "将恒成立与存在成立转化为值域或最值条件",
+        "summary": "把「对所有 x 都成立」「存在 x 使之成立」翻译成函数的值域或最大值、最小值要满足的条件。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要求常数（或参数）的范围，看到「对任意 $x$ 恒成立」或「存在 $x$ 使……成立」，而且这个常数已经单独放在不等号一边，例如 $x\\in[1,2]$ 时 $x^2<c$ 恒成立，求 $c$。",
+        "output": "一个只含 $c$（或参数）的不等式，例如「$c$ 大于 $x^2$ 在 $[1,2]$ 上的最大值 $4$」，解出来就是答案。",
+        "conditions": "恒成立看最不利的值，存在成立看最有利的值：要求 $c>$ 函数值时，恒成立看最大值，存在成立看最小值；最大值或最小值取不到时，要单独判断等号能不能取。",
+        "basis": [
+          "quantifiers#universal",
+          "quantifiers#existential",
+          "function-range-extrema#quantified",
+          "function-range-extrema#extremum-conditions"
+        ],
+        "operations": [
+          {
+            "id": "roles",
+            "title": "分清是恒成立还是存在成立",
+            "body": [
+              "恒成立：范围里每一个 $x$ 都要满足；存在成立：只要找到一个 $x$ 满足就行。例如 $x\\in[1,2]$ 时，「$x^2<c$ 恒成立」要求每个 $x$ 都有 $x^2<c$，「存在 $x$ 使 $x^2<c$」只要有一个就够。"
+            ]
+          },
+          {
+            "id": "range",
+            "title": "求出函数值的范围",
+            "body": [
+              "先求不含 $c$ 的那一边在给定范围上的值域。例子中 $x^2$ 在 $[1,2]$ 上递增，值域是 $[1,4]$。",
+              "于是恒成立就是「值域里每个数都 $<c$」，存在成立就是「值域里至少有一个数 $<c$」。"
+            ]
+          },
+          {
+            "id": "extrema",
+            "title": "用最值写条件，看端点取不取得到",
+            "body": [
+              "每个数都 $<c$，只要最大的那个 $<c$：$c>4$。至少一个数 $<c$，只要最小的那个 $<c$：$c>1$。",
+              "最值取不到时要小心等号。例如 $x\\in[1,2)$ 时值域是 $[1,4)$，$4$ 取不到，所以 $x^2<c$ 恒成立只要 $c\\ge4$。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "恒成立与存在成立",
+            "prompt": "$x\\in[1,2]$，$x^2<c$ 恒成立或存在成立分别要求什么？",
+            "solution": [
+              "值域为 $[1,4]$。恒成立要求 $c>4$，存在成立要求 $c>1$。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "skill-reciprocal-range",
+        "kind": "skill",
+        "label": "求对勾函数在区间上的最值与值域",
+        "summary": "以 ±√k 为分界看对勾函数的增减，比较端点和转折点的函数值，得到它在区间上的值域和最值。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要求 $x+\\frac{k}{x}$（$k>0$）在某个区间上的取值范围或最值，例如求 $x+\\frac{4}{x}$ 在 $[1,3]$ 上的值域；常见于分离参数之后，不等号另一边剩下这样的式子。",
+        "output": "函数在区间上的值域，以及最大值、最小值和在哪个 $x$ 取到。",
+        "conditions": "$x$ 不能取 $0$，区间同时含正数和负数时要拆成两段分别算；转折点 $\\pm\\sqrt{k}$ 不在区间里时，最值在端点处取，不能直接用 $2\\sqrt{k}$。",
+        "basis": [
+          "reciprocal-sum-function#monotonicity",
+          "reciprocal-sum-function#range",
+          "function-range-extrema#attainability"
+        ],
+        "operations": [
+          {
+            "id": "domain",
+            "title": "去掉 0，找出转折点",
+            "body": [
+              "$x=0$ 不能取，区间跨过 $0$ 就拆成正、负两段。转折点是 $x=\\pm\\sqrt{k}$：正半轴上 $(0,\\sqrt{k}]$ 递减、$[\\sqrt{k},+\\infty)$ 递增；负半轴上 $(-\\infty,-\\sqrt{k}]$ 递增、$[-\\sqrt{k},0)$ 递减。",
+              "例如 $x+\\frac{4}{x}$ 的转折点是 $x=\\pm2$，其中 $x=2$ 落在 $[1,3]$ 里。"
+            ]
+          },
+          {
+            "id": "bounds",
+            "title": "算转折点和端点的值，比大小",
+            "body": [
+              "转折点 $\\sqrt{k}$ 在区间里时，最小值是 $x=\\sqrt{k}$ 处的 $2\\sqrt{k}$，最大值在两个端点中较大的那个。例子中 $x=2$ 时值为 $4$；$x=1$ 时为 $5$，$x=3$ 时为 $\\frac{13}{3}$，所以最小值 $4$，最大值 $5$。",
+              "转折点不在区间里时，函数在区间上只增或只减，直接用端点。开区间的端点值取不到。"
+            ]
+          },
+          {
+            "id": "merge",
+            "title": "各段合起来，中间不要补上",
+            "body": [
+              "区间拆成两段时，各段值域取并集。例如 $x+\\frac{4}{x}$ 在 $[-3,-1]\\cup[1,3]$ 上：负半段值域是 $[-5,-4]$，正半段是 $[4,5]$，合起来是 $[-5,-4]\\cup[4,5]$，中间的 $(-4,4)$ 取不到。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "区间包含最低点",
+            "prompt": "求 $x+\\frac{4}{x}$ 在 $[1,3]$ 上的值域。",
+            "solution": [
+              "转折点 $x=2$ 取最小值 $4$；端点值为 $5$ 和 $\\frac{13}{3}$，最大值 $5$，值域为 $[4,5]$。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "resources": [
+          "reciprocal-window-range",
+          "reciprocal-split-range"
+        ]
+      },
+      {
+        "id": "skill-simplify",
+        "kind": "skill",
+        "label": "代数式化简",
+        "summary": "把式子展开、合并同类项或约分，变成更简单、值不变的样子，方便下一步比较或求解。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "式子里有括号相乘、同类项没合并，或者分子分母有公因式，下一步要比较大小、解方程或求最值，得先把它理清楚。",
+        "output": "一个更短、和原式值相同的式子，例如 $(x+2)(x+3)-(x+1)(x+4)$ 化成 $2$；原来对 $x$ 的限制照样写上。",
+        "conditions": "减去一个括号时，括号里每一项都要变号；约分以后，原来让分母为 $0$ 的 $x$ 仍然要排除。",
+        "basis": [
+          "equality-properties#identity"
+        ],
+        "operations": [
+          {
+            "id": "expand",
+            "title": "展开括号，合并同类项",
+            "body": [
+              "用乘法分配律把括号乘开，再把字母和次数都相同的项的系数相加。例如 $(x+2)(x+3)=x^2+5x+6$，$(x+1)(x+4)=x^2+5x+4$。",
+              "相减时先给第二个式子整体加括号：$(x^2+5x+6)-(x^2+5x+4)=x^2+5x+6-x^2-5x-4=2$。"
+            ]
+          },
+          {
+            "id": "domain",
+            "title": "约分后保留原来的限制",
+            "body": [
+              "约掉公因式不会让原来不能取的 $x$ 变得能取。例如 $\\frac{x^2-1}{x-1}=x+1$ 只在 $x\\ne1$ 时成立，化简后也要写上 $x\\ne1$。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "比较前的化简",
+            "prompt": "化简 $(x+2)(x+3)-(x+1)(x+4)$。",
+            "solution": [
+              "展开后为 $(x^2+5x+6)-(x^2+5x+4)=2$。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "skill-solve-quadratic",
+        "kind": "skill",
+        "label": "求解一元二次方程",
+        "summary": "把方程整理成 ax² + bx + c = 0，先用判别式看有几个实根，再用因式分解或求根公式求出它们。",
+        "source": "人教 A 版必修第一册第二章",
+        "input": "要解形如 $ax^2+bx+c=0$ 的方程，或者解二次不等式、找二次函数的零点时，需要先求出根。",
+        "output": "方程有几个实根（两个不等、两个相等或没有），以及每个根的具体值，按从小到大排好。",
+        "conditions": "先确认 $x^2$ 的系数不为 $0$，它含参数时要单独讨论等于 $0$ 的情况；系数含参数时，求出的根只在当前讨论的参数范围内成立。",
+        "basis": [
+          "quadratic-equation#discriminant",
+          "quadratic-equation#roots",
+          "quadratic-equation#vieta"
+        ],
+        "operations": [
+          {
+            "id": "normalize",
+            "title": "移项整理，看 x² 的系数",
+            "body": [
+              "把所有项移到一边，写成 $ax^2+bx+c=0$。例如 $x^2=2x-3$ 整理成 $x^2-2x+3=0$。$a=0$ 时它是一次方程，不能用下面的方法。"
+            ]
+          },
+          {
+            "id": "roots",
+            "title": "能分解就分解，不能就算判别式",
+            "body": [
+              "能看出因式分解就直接分：$x^2-5x+6=(x-2)(x-3)=0$，得 $x=2$ 或 $x=3$。",
+              "看不出就算 $\\Delta=b^2-4ac$：$\\Delta>0$ 有两个不等实根，$\\Delta=0$ 有两个相等实根，$\\Delta<0$ 没有实根。有根时用 $x=\\frac{-b\\pm\\sqrt{\\Delta}}{2a}$。例如 $x^2-2x+3=0$ 的 $\\Delta=4-12=-8<0$，没有实根。"
+            ]
+          },
+          {
+            "id": "verify",
+            "title": "代回检查，排好大小",
+            "body": [
+              "把根代回原方程看是否等于 $0$，例如 $2^2-5\\times2+6=0$。",
+              "根里含参数时，要按参数范围说清哪个根小：$(x-1)(x-m)=0$ 的两根是 $1$ 和 $m$，$m>1$ 时较小的是 $1$，$m<1$ 时较小的是 $m$，$m=1$ 时两根相等。"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "title": "无实根的分支",
+            "prompt": "求 $x^2-2x+3=0$ 的实根。",
+            "solution": [
+              "$\\Delta=4-12=-8<0$，故无实根。"
+            ],
+            "source": "本页说明例"
+          }
+        ]
+      },
+      {
+        "id": "square-nonnegative",
+        "kind": "knowledge",
+        "label": "平方的非负性",
+        "summary": "任何实数的平方非负，等于零恰好要求原数为零；由此可以比较二次表达式。",
+        "source": "人教 A 版必修第一册第二章",
+        "entries": [
+          {
+            "id": "nonnegative",
+            "title": "平方非负",
+            "type": "性质",
+            "body": [
+              "$u^2\\ge0$，等号当且仅当 $u=0$。"
+            ],
+            "conditions": "变量均为实数。"
+          },
+          {
+            "id": "two-squares",
+            "title": "两平方和与两倍积",
+            "type": "性质",
+            "body": [
+              "$u^2+v^2-2uv=(u-v)^2\\ge0$，所以 $u^2+v^2\\ge2uv$，等号当且仅当 $u=v$。"
+            ],
+            "conditions": "$u,v\\in\\mathbb R$，不要求为正。"
+          },
+          {
+            "id": "sum-product",
+            "title": "和与积的可行性",
+            "type": "性质",
+            "body": [
+              "$(u+v)^2-4uv=(u-v)^2\\ge0$。若记 $s=u+v,p=uv$，则 $s^2\\ge4p$。"
+            ],
+            "conditions": "变量均为实数。"
+          }
+        ],
+        "examples": [
+          {
+            "title": "负数也适用",
+            "prompt": "取 $u=-2,v=-3$，检验 $u^2+v^2\\ge2uv$。",
+            "solution": [
+              "$13\\ge12$，两边之差为 $(-2+3)^2=1$。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "分式平方",
+            "prompt": "说明 $x^2+\\frac{1}{x^2}\\ge2$ 的条件。",
+            "solution": [
+              "$x\\ne0$ 时，原式 $=\\left(x-\\frac{1}{x}\\right)^2+2\\ge2$，等号在 $x=\\pm1$ 成立。"
+            ],
+            "source": "本页说明例"
+          }
+        ],
+        "resources": [
+          "square-area"
+        ]
+      },
+      {
+        "id": "type-amgm-quantified",
+        "kind": "problem_type",
+        "label": "应用基本不等式的恒成立与存在成立问题",
+        "summary": "不等式要对所有取值（或某个取值）成立，求参数范围；参数另一边式子的最值用基本不等式求，再看最值取不取得到。",
+        "source": "人教 A 版必修第一册第二章",
+        "sample": "已知 $x,y>0$，$(x-1)(y-2)=2$。若 $3x+2y>m$ 对所有满足条件的 $x,y$ 都成立，求 $m$ 的取值范围。",
+        "features": [
+          {
+            "cue": "有「恒成立」「对所有……都成立」或「存在……使得成立」这样的话，要求的是参数的范围。",
+            "example": "「$3x+2y>m$ 对所有满足条件的 $x,y$ 都成立」，求 $m$ 的取值范围。"
+          },
+          {
+            "cue": "参数能单独放在不等号一边，另一边的式子需要求最小值或最大值。",
+            "example": "$m$ 已经单独在右边，「对所有都成立」就是要 $3x+2y$ 的最小值比 $m$ 大。"
+          },
+          {
+            "cue": "这个最值能用基本不等式求：能凑出两个正数，它们的积或和是定值。",
+            "example": "令 $u=x-1$，$v=y-2$，可以推出都是正数且 $uv=2$；$3x+2y=3u+2v+7$，而 $3u\\cdot2v=12$ 是定值。"
+          },
+          {
+            "cue": "最后要看最值取不取得到、不等号带不带等号，决定参数范围的端点要不要。",
+            "example": "最小值 $7+4\\sqrt3$ 取得到，题目又是严格的 $>$，所以 $m<7+4\\sqrt3$，端点不要。"
+          }
+        ],
+        "confuse": [
+          {
+            "text": "只有正数条件、直接求最值，没有「恒成立」也没有参数",
+            "ref": "type-sum-product-extremum"
+          },
+          {
+            "text": "也是恒成立求参数，但另一边是二次式（如 $x^2-2x+3\\ge m$），最值靠配方或看图像",
+            "ref": "type-quantified-quadratic"
+          }
+        ],
+        "knowledge": [
+          "amgm-formula",
+          "quantifiers",
+          "function-range-extrema"
+        ],
+        "methods": [
+          "method-amgm-parameter"
+        ],
+        "rules": [],
+        "examples": [
+          {
+            "title": "子方法返回最小值，外层完成求参",
+            "prompt": "$x,y>0,(x-1)(y-2)=2$，使 $3x+2y>m$ 对全部可行 $(x,y)$ 成立，求 $m$。",
+            "solution": [
+              "由 $x(y-2)=y>0$ 得 $y>2$，再得 $x>1$。令 $u=x-1>0,v=y-2>0$，有 $uv=2$。",
+              "基本不等式法计算 $F=7+3u+2v\\ge7+2\\sqrt{6uv}=7+4\\sqrt3$。",
+              "当 $3u=2v$，即 $u=\\frac{2}{\\sqrt3},v=\\sqrt3$ 时取等且满足原约束。子方法返回最小值与可达性。",
+              "外层根据严格恒大于 $m$ 的要求，得 $m<7+4\\sqrt3$。"
+            ],
+            "source": "补充练习第 2 页第 2 题"
+          }
+        ]
+      },
+      {
+        "id": "type-parameter-quadratic-solve",
+        "kind": "problem_type",
+        "label": "含参数的一元二次不等式求解问题",
+        "summary": "二次不等式的系数里有参数，按参数的不同情况分别写出 x 的解集。",
+        "source": "人教 A 版必修第一册第二章",
+        "sample": "解关于 $x$ 的不等式 $x^2-5ax-6a^2>0$，其中 $a\\ne0$。",
+        "features": [
+          {
+            "cue": "要解的是关于 $x$ 的二次不等式，但系数里还有另一个字母（参数）。",
+            "example": "$x^2-5ax-6a^2>0$ 里有参数 $a$。"
+          },
+          {
+            "cue": "要求的是 $x$ 的解集，答案按参数的不同取值分别写。",
+            "example": "$a>0$ 时解为 $x<-a$ 或 $x>6a$；$a<0$ 时解为 $x<6a$ 或 $x>-a$。"
+          },
+          {
+            "cue": "参数会影响二次项系数是不是 $0$、开口方向、有没有实根，或两根谁大谁小；两根大小始终确定时就不用分类。",
+            "example": "两根是 $6a$ 和 $-a$，$a$ 的正负决定哪个根大，所以要分 $a>0$、$a<0$ 两种情况。"
+          }
+        ],
+        "confuse": [
+          {
+            "text": "系数全是具体的数，没有参数",
+            "ref": "type-quadratic-solve"
+          },
+          {
+            "text": "不等式要对所有 $x$ 都成立，求的是参数的范围",
+            "ref": "type-quantified-quadratic"
+          },
+          {
+            "text": "已知解集，反过来求参数",
+            "ref": "type-solution-parameters"
+          }
+        ],
+        "knowledge": [
+          "quadratic-inequality",
+          "quadratic-equation",
+          "quadratic-function-properties"
+        ],
+        "methods": [
+          "method-parameter-quadratic-cases"
+        ],
+        "rules": [],
+        "examples": [
+          {
+            "title": "参数影响根的次序",
+            "prompt": "解 $x^2-5ax-6a^2>0$，其中 $a\\ne0$。",
+            "solution": [
+              "分解为 $(x-6a)(x+a)>0$，两根是 $6a,-a$。",
+              "$a>0$ 时 $-a<6a$，解为 $x<-a$ 或 $x>6a$。",
+              "$a<0$ 时 $6a<-a$，解为 $x<6a$ 或 $x>-a$。原题排除了 $a=0$。"
+            ],
+            "source": "补充练习第 1 页第 4(3) 题"
+          },
+          {
+            "title": "不必分类的情况",
+            "prompt": "解 $x^2-(2m+1)x+m^2+m<0$。",
+            "solution": [
+              "分解为 $(x-m)(x-m-1)<0$，两根始终满足 $m<m+1$，可统一写成 $m<x<m+1$。"
+            ],
+            "source": "补充练习第 2 页第 4(3) 题"
+          }
+        ]
+      },
+      {
+        "id": "type-quadratic-solve",
+        "kind": "problem_type",
+        "label": "不含参数的一元二次不等式求解问题",
+        "summary": "系数都是具体的数，解一元二次不等式，写出 x 的全部解。",
+        "source": "人教 A 版必修第一册第二章",
+        "sample": "解不等式 $x^2-5x+6>0$。",
+        "features": [
+          {
+            "cue": "移项整理后，是一个二次式和 $0$ 比较大小。",
+            "example": "$x^2-5x+6>0$，左边是二次式，右边是 $0$。"
+          },
+          {
+            "cue": "系数都是具体的数，二次项系数不是 $0$，没有参数。",
+            "example": "系数 $1$、$-5$、$6$ 都是确定的数。"
+          },
+          {
+            "cue": "要求的是 $x$ 的全部解，写成区间或集合，注意不等号带不带等号。",
+            "example": "严格的 $>$，两根 $2$、$3$ 不在解集里，答案是 $(-\\infty,2)\\cup(3,+\\infty)$。"
+          }
+        ],
+        "confuse": [
+          {
+            "text": "系数里有参数，要按参数分情况",
+            "ref": "type-parameter-quadratic-solve"
+          },
+          {
+            "text": "不等号一边是分式，分母里含 $x$",
+            "ref": "type-rational-inequality"
+          }
+        ],
+        "knowledge": [
+          "quadratic-inequality",
+          "quadratic-equation",
+          "quadratic-function-properties"
+        ],
+        "methods": [
+          "quadratic-inequality-solve"
+        ],
+        "rules": [],
+        "examples": [
+          {
+            "title": "根间还是根外",
+            "prompt": "解 $x^2-5x+6>0$。",
+            "solution": [
+              "两根为 $2,3$，开口向上。",
+              "图像在根外位于横轴上方，严格号不含零点。",
+              "解集为 $(-\\infty,2)\\cup(3,+\\infty)$。"
+            ],
+            "source": "教材 2.3 例 1"
+          }
+        ]
+      },
+      {
+        "id": "type-quantified-quadratic",
+        "kind": "problem_type",
+        "label": "含参一元二次不等式的恒成立与存在成立问题",
+        "summary": "在给定范围内，二次不等式要对所有取值都成立（或至少一个取值成立），求参数的范围。",
+        "source": "人教 A 版必修第一册第二章",
+        "sample": "若对所有 $x\\in[2,3]$，都有 $(x-1)^2+2\\le m$，求 $m$ 的取值范围。",
+        "features": [
+          {
+            "cue": "有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围。",
+            "example": "「对所有 $x\\in[2,3]$」：变量是 $x$，范围是 $[2,3]$。"
+          },
+          {
+            "cue": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。",
+            "example": "$(x-1)^2+2$ 是二次式，要求的是 $m$。"
+          },
+          {
+            "cue": "通常转化成二次函数在这个范围上的最大值或最小值，再和参数比较。",
+            "example": "对所有 $x$ 都 $\\le m$，就是最大值不超过 $m$：$[2,3]$ 上最大值是 $6$，所以 $m\\ge6$。"
+          },
+          {
+            "cue": "先看清「对所有」后面的变量是谁，它不一定是 $x$。",
+            "example": "本例是 $x$；如果写成「对所有 $m\\in[1,3]$」，就要把 $m$ 当变量、把 $x$ 当参数。"
+          }
+        ],
+        "confuse": [
+          {
+            "text": "没有「对所有」，只要求出 $x$ 的解集，系数里有参数",
+            "ref": "type-parameter-quadratic-solve"
+          },
+          {
+            "text": "也是恒成立求参数，但另一边要用基本不等式求最值",
+            "ref": "type-amgm-quantified"
+          }
+        ],
+        "knowledge": [
+          "quadratic-inequality",
+          "quadratic-function-properties",
+          "quantifiers",
+          "function-range-extrema"
+        ],
+        "methods": [],
+        "rules": [
+          "rule-quadratic-method"
+        ],
+        "examples": [
+          {
+            "title": "选择二次函数求值技能",
+            "prompt": "对所有 $x\\in[2,3]$，要求 $(x-1)^2+2\\le m$，求 $m$。",
+            "solution": [
+              "全称且比较方向为“小于等于”，需要函数最大值不超过 $m$。",
+              "规则选择二次函数区间求值技能，算得值域 $[3,6]$。",
+              "最大值 $6$ 可达，参数范围 $m\\ge6$。"
+            ],
+            "source": "本页说明例"
+          },
+          {
+            "title": "量词变量是 m",
+            "prompt": "对所有 $m\\in[1,3]$，$(x^2-x+1)m-6<0$，求 $x$。",
+            "solution": [
+              "看作关于 $m$ 的一次式，其系数 $x^2-x+1=\\left(x-\\frac{1}{2}\\right)^2+\\frac{3}{4}>0$。",
+              "最大值在 $m=3$ 取到，要求 $3(x^2-x+1)-6<0$。",
+              "解 $x^2-x-1<0$，得 $\\frac{1-\\sqrt5}{2}<x<\\frac{1+\\sqrt5}{2}$。"
+            ],
+            "source": "一元二次不等式专题 Q08",
+            "url": "/2/q08/"
+          }
+        ]
+      },
+      {
+        "id": "type-rational-inequality",
+        "kind": "problem_type",
+        "label": "一元分式不等式求解问题",
+        "summary": "解分母含 x 的不等式，写出全部解，别忘了分母不能为 0。",
+        "source": "人教 A 版必修第一册第二章",
+        "sample": "解不等式 $\\frac{2-x}{3x+1}\\ge1$。",
+        "features": [
+          {
+            "cue": "不等式里有分式，分母里含 $x$。",
+            "example": "分母 $3x+1$ 含 $x$。"
+          },
+          {
+            "cue": "移项通分后，能变成一个分式和 $0$ 比较。",
+            "example": "$\\frac{2-x}{3x+1}-1=\\frac{1-4x}{3x+1}\\ge0$。"
+          },
+          {
+            "cue": "要求的是 $x$ 的全部解，最后要去掉使分母为 $0$ 的值。",
+            "example": "$x=-\\frac13$ 时分母为 $0$，所以答案是 $\\left(-\\frac13,\\frac14\\right]$，左端点不要。"
+          }
+        ],
+        "confuse": [
+          {
+            "text": "分母是常数、不含 $x$，其实是普通的二次不等式",
+            "ref": "type-quadratic-solve"
+          }
+        ],
+        "knowledge": [
+          "inequality-properties",
+          "quadratic-inequality"
+        ],
+        "methods": [
+          "method-rational-inequality"
+        ],
+        "rules": [],
+        "examples": [
+          {
+            "title": "一端包含、一端排除",
+            "prompt": "解 $\\frac{2-x}{3x+1}\\ge1$。",
+            "solution": [
+              "定义域要求 $x\\ne-\\frac{1}{3}$；移项通分为 $\\frac{1-4x}{3x+1}\\ge0$。",
+              "同乘分母平方得到 $(1-4x)(3x+1)\\ge0$，其解为 $\\left[-\\frac{1}{3},\\frac{1}{4}\\right]$。",
+              "排除原分母零点，最终为 $\\left(-\\frac{1}{3},\\frac{1}{4}\\right]$。"
+            ],
+            "source": "补充练习第 1 页第 4(2) 题"
+          }
+        ]
+      },
+      {
+        "id": "type-solution-parameters",
+        "kind": "problem_type",
+        "label": "由一元二次不等式的解集求参数",
+        "summary": "已知二次不等式的解集，反过来求式子里的系数或参数。",
+        "source": "人教 A 版必修第一册第二章",
+        "sample": "已知不等式 $x^2+ax+b<0$ 的解集是 $(1,2)$，求 $a,b$。",
+        "features": [
+          {
+            "cue": "题目直接给出了不等式的解集。",
+            "example": "「解集是 $(1,2)$」。"
+          },
+          {
+            "cue": "不等式里有待求的系数或参数，要求的就是它们。",
+            "example": "求 $x^2+ax+b<0$ 里的 $a,b$。"
+          },
+          {
+            "cue": "解集的端点就是对应方程的根；解集在两根之间还是之外，能看出开口方向。",
+            "example": "$1,2$ 是 $x^2+ax+b=0$ 的两根；$<0$ 的解集在两根之间，说明开口向上。"
+          },
+          {
+            "cue": "求出参数后，要代回去检查解集是不是完全一样。",
+            "example": "$a=-3$，$b=2$ 时不等式是 $(x-1)(x-2)<0$，解集正是 $(1,2)$。"
+          }
+        ],
+        "confuse": [
+          {
+            "text": "反过来：给出参数，求 $x$ 的解集",
+            "ref": "type-parameter-quadratic-solve"
+          },
+          {
+            "text": "给的是「恒成立」，不是具体的解集",
+            "ref": "type-quantified-quadratic"
+          }
+        ],
+        "knowledge": [
+          "quadratic-inequality",
+          "quadratic-equation",
+          "quadratic-function-properties"
+        ],
+        "methods": [
+          "method-solution-inverse"
+        ],
+        "rules": [],
+        "examples": [
+          {
+            "title": "反推后再验证",
+            "prompt": "$x^2+ax+b<0$ 的解集为 $(1,2)$，求 $a,b$。",
+            "solution": [
+              "根是 $1,2$，开口向上；根与系数关系给出 $a=-3,b=2$。",
+              "代回为 $(x-1)(x-2)<0$，解集恰为 $(1,2)$。"
+            ],
+            "source": "补充练习第 1 页第 1 题"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "id": "method-complete-square|uses|equality-properties",
+        "from": "method-complete-square",
+        "to": "equality-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "identity"
+          }
+        ]
+      },
+      {
+        "id": "method-complete-square|uses|square-nonnegative",
+        "from": "method-complete-square",
+        "to": "square-nonnegative",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "nonnegative"
+          }
+        ]
+      },
+      {
+        "id": "method-discriminant|calls|quadratic-inequality-solve",
+        "from": "method-discriminant",
+        "to": "quadratic-inequality-solve",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "solve",
+            "when": "参数满足的条件是一元二次不等式时"
+          }
+        ]
+      },
+      {
+        "id": "method-discriminant|calls|skill-inequality-transform",
+        "from": "method-discriminant",
+        "to": "skill-inequality-transform",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "normalize",
+            "when": ""
+          },
+          {
+            "step": "conditions",
+            "when": "把判别式条件改写成参数的不等式时"
+          },
+          {
+            "step": "solve",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-discriminant|calls|skill-quadratic-sign",
+        "from": "method-discriminant",
+        "to": "skill-quadratic-sign",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "conditions",
+            "when": "把「恒正、恒负」翻译成开口方向和交点个数时"
+          }
+        ]
+      },
+      {
+        "id": "method-discriminant|calls|skill-simplify",
+        "from": "method-discriminant",
+        "to": "skill-simplify",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "normalize",
+            "when": ""
+          },
+          {
+            "step": "conditions",
+            "when": "代入系数计算并化简判别式时"
+          },
+          {
+            "step": "solve",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-elimination|uses|equality-properties",
+        "from": "method-elimination",
+        "to": "equality-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "addition"
+          },
+          {
+            "entry": "multiplication"
+          }
+        ]
+      },
+      {
+        "id": "method-interval-extremum|calls|skill-inequality-transform",
+        "from": "method-interval-extremum",
+        "to": "skill-inequality-transform",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "conditions",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-interval-extremum|calls|skill-quantified-range",
+        "from": "method-interval-extremum",
+        "to": "skill-quantified-range",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "quantifier",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|method-square-extremum",
+        "from": "method-separation",
+        "to": "method-square-extremum",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "range",
+            "when": "另一边可配成常数加减平方，并能验证取等或区间边界时"
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|quadratic-inequality-solve",
+        "from": "method-separation",
+        "to": "quadratic-inequality-solve",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "restore",
+            "when": "还原后的参数条件是一元二次不等式时"
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|quadratic-interval-extremum",
+        "from": "method-separation",
+        "to": "quadratic-interval-extremum",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "range",
+            "when": "另一边是二次函数时"
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|skill-equality-transform",
+        "from": "method-separation",
+        "to": "skill-equality-transform",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "separate",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|skill-inequality-transform",
+        "from": "method-separation",
+        "to": "skill-inequality-transform",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "separate",
+            "when": ""
+          },
+          {
+            "step": "restore",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|skill-linear-range",
+        "from": "method-separation",
+        "to": "skill-linear-range",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "range",
+            "when": "另一边是一次函数或常数时"
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|skill-quantified-range",
+        "from": "method-separation",
+        "to": "skill-quantified-range",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "quantifier",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-separation|calls|skill-reciprocal-range",
+        "from": "method-separation",
+        "to": "skill-reciprocal-range",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "range",
+            "when": "另一边形如 $x+\\frac{k}{x}$（$k>0$）时"
+          }
+        ]
+      },
+      {
+        "id": "method-square-extremum|calls|method-complete-square",
+        "from": "method-square-extremum",
+        "to": "method-complete-square",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "square",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-square-extremum|calls|method-elimination",
+        "from": "method-square-extremum",
+        "to": "method-elimination",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "prepare",
+            "when": "有等式条件、需要减少字母时"
+          }
+        ]
+      },
+      {
+        "id": "method-square-extremum|calls|method-substitution",
+        "from": "method-square-extremum",
+        "to": "method-substitution",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "prepare",
+            "when": "同一块反复出现、适合整体设新字母时"
+          }
+        ]
+      },
+      {
+        "id": "method-square-extremum|calls|quadratic-interval-extremum",
+        "from": "method-square-extremum",
+        "to": "quadratic-interval-extremum",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "range",
+            "when": "化成一个字母的二次函数，且这个字母有范围限制时"
+          }
+        ]
+      },
+      {
+        "id": "method-substitution|uses|equality-properties",
+        "from": "method-substitution",
+        "to": "equality-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "identity"
+          }
+        ]
+      },
+      {
+        "id": "method-variable-swap|calls|quadratic-inequality-solve",
+        "from": "method-variable-swap",
+        "to": "quadratic-inequality-solve",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "solve",
+            "when": "得到关于要求字母的二次不等式时"
+          }
+        ]
+      },
+      {
+        "id": "method-variable-swap|calls|skill-inequality-transform",
+        "from": "method-variable-swap",
+        "to": "skill-inequality-transform",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "solve",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-variable-swap|calls|skill-linear-range",
+        "from": "method-variable-swap",
+        "to": "skill-linear-range",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "range",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-variable-swap|calls|skill-quantified-range",
+        "from": "method-variable-swap",
+        "to": "skill-quantified-range",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "quantifier",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "method-variable-swap|calls|skill-simplify",
+        "from": "method-variable-swap",
+        "to": "skill-simplify",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "reorder",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "quadratic-equation|prerequisite|quadratic-inequality",
+        "from": "quadratic-equation",
+        "to": "quadratic-inequality",
+        "type": "prerequisite",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "quadratic-function-properties|prerequisite|quadratic-inequality",
+        "from": "quadratic-function-properties",
+        "to": "quadratic-inequality",
+        "type": "prerequisite",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "quadratic-inequality-solve|calls|skill-inequality-transform",
+        "from": "quadratic-inequality-solve",
+        "to": "skill-inequality-transform",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "normalize",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "quadratic-inequality-solve|calls|skill-quadratic-sign",
+        "from": "quadratic-inequality-solve",
+        "to": "skill-quadratic-sign",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "signs",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "quadratic-inequality-solve|calls|skill-simplify",
+        "from": "quadratic-inequality-solve",
+        "to": "skill-simplify",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "normalize",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "quadratic-inequality-solve|calls|skill-solve-quadratic",
+        "from": "quadratic-inequality-solve",
+        "to": "skill-solve-quadratic",
+        "type": "calls",
+        "occurrences": [
+          {
+            "step": "roots",
+            "when": ""
+          }
+        ]
+      },
+      {
+        "id": "quadratic-interval-extremum|uses|function-range-extrema",
+        "from": "quadratic-interval-extremum",
+        "to": "function-range-extrema",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "attainability"
+          }
+        ]
+      },
+      {
+        "id": "quadratic-interval-extremum|uses|quadratic-function-properties",
+        "from": "quadratic-interval-extremum",
+        "to": "quadratic-function-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "vertex"
+          },
+          {
+            "entry": "interval"
+          }
+        ]
+      },
+      {
+        "id": "rule-quadratic-method|selects|method-discriminant",
+        "from": "rule-quadratic-method",
+        "to": "method-discriminant",
+        "type": "selects",
+        "occurrences": [
+          {
+            "branch": "discriminant",
+            "condition": "要求对所有实数 $x$ 成立，式子关于 $x$ 是二次的；二次项系数含参数时，先单独看系数为 $0$ 的情况。"
+          }
+        ]
+      },
+      {
+        "id": "rule-quadratic-method|selects|method-interval-extremum",
+        "from": "rule-quadratic-method",
+        "to": "method-interval-extremum",
+        "type": "selects",
+        "occurrences": [
+          {
+            "branch": "interval",
+            "condition": "$x$ 在给定区间内取值，区间可以是有限区间、半无限区间或全体实数 $\\mathbb R$；能求出相关函数在该范围上的最大值、最小值（二次函数、一次函数或对勾函数），最值取不到时要单独看等号。$x$ 取全体实数时，判别式法通常更直接，优先用判别式法。"
+          }
+        ]
+      },
+      {
+        "id": "rule-quadratic-method|selects|method-separation",
+        "from": "rule-quadratic-method",
+        "to": "method-separation",
+        "type": "selects",
+        "occurrences": [
+          {
+            "branch": "separation",
+            "condition": "$x$ 在题目给定的范围里取值（常见是某个区间，全体实数也可以）；能把参数（或含参数的式子）移到不等号一边，另一边只含 $x$，并且能求出这一边在该范围上的最大值或最小值。除以含 $x$ 的式子之前，要能确定它在这个范围上的正负。"
+          }
+        ]
+      },
+      {
+        "id": "rule-quadratic-method|selects|method-variable-swap",
+        "from": "rule-quadratic-method",
+        "to": "method-variable-swap",
+        "type": "selects",
+        "occurrences": [
+          {
+            "branch": "swap",
+            "condition": "给出范围的是参数（如 $m\\in[1,3]$），要求的却是 $x$；把式子按这个参数整理后是一次式或常数，就看区间两端。"
+          }
+        ]
+      },
+      {
+        "id": "skill-equality-transform|uses|equality-properties",
+        "from": "skill-equality-transform",
+        "to": "equality-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "addition"
+          },
+          {
+            "entry": "multiplication"
+          },
+          {
+            "entry": "identity"
+          }
+        ]
+      },
+      {
+        "id": "skill-inequality-transform|uses|inequality-properties",
+        "from": "skill-inequality-transform",
+        "to": "inequality-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "addition"
+          },
+          {
+            "entry": "multiplication"
+          },
+          {
+            "entry": "reciprocal"
+          }
+        ]
+      },
+      {
+        "id": "skill-linear-range|uses|function-range-extrema",
+        "from": "skill-linear-range",
+        "to": "function-range-extrema",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "attainability"
+          }
+        ]
+      },
+      {
+        "id": "skill-quadratic-sign|uses|quadratic-equation",
+        "from": "skill-quadratic-sign",
+        "to": "quadratic-equation",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "discriminant"
+          }
+        ]
+      },
+      {
+        "id": "skill-quadratic-sign|uses|quadratic-function-properties",
+        "from": "skill-quadratic-sign",
+        "to": "quadratic-function-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "zeros"
+          }
+        ]
+      },
+      {
+        "id": "skill-quadratic-sign|uses|quadratic-inequality",
+        "from": "skill-quadratic-sign",
+        "to": "quadratic-inequality",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "signs"
+          },
+          {
+            "entry": "all-real"
+          }
+        ]
+      },
+      {
+        "id": "skill-quantified-range|uses|function-range-extrema",
+        "from": "skill-quantified-range",
+        "to": "function-range-extrema",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "quantified"
+          },
+          {
+            "entry": "extremum-conditions"
+          }
+        ]
+      },
+      {
+        "id": "skill-quantified-range|uses|quantifiers",
+        "from": "skill-quantified-range",
+        "to": "quantifiers",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "universal"
+          },
+          {
+            "entry": "existential"
+          }
+        ]
+      },
+      {
+        "id": "skill-reciprocal-range|uses|function-range-extrema",
+        "from": "skill-reciprocal-range",
+        "to": "function-range-extrema",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "attainability"
+          }
+        ]
+      },
+      {
+        "id": "skill-simplify|uses|equality-properties",
+        "from": "skill-simplify",
+        "to": "equality-properties",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "identity"
+          }
+        ]
+      },
+      {
+        "id": "skill-solve-quadratic|uses|quadratic-equation",
+        "from": "skill-solve-quadratic",
+        "to": "quadratic-equation",
+        "type": "uses",
+        "occurrences": [
+          {
+            "entry": "discriminant"
+          },
+          {
+            "entry": "roots"
+          },
+          {
+            "entry": "vieta"
+          }
+        ]
+      },
+      {
+        "id": "type-amgm-quantified|involves|function-range-extrema",
+        "from": "type-amgm-quantified",
+        "to": "function-range-extrema",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-amgm-quantified|involves|quantifiers",
+        "from": "type-amgm-quantified",
+        "to": "quantifiers",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-parameter-quadratic-solve|involves|quadratic-equation",
+        "from": "type-parameter-quadratic-solve",
+        "to": "quadratic-equation",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-parameter-quadratic-solve|involves|quadratic-function-properties",
+        "from": "type-parameter-quadratic-solve",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-parameter-quadratic-solve|involves|quadratic-inequality",
+        "from": "type-parameter-quadratic-solve",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quadratic-solve|candidate|quadratic-inequality-solve",
+        "from": "type-quadratic-solve",
+        "to": "quadratic-inequality-solve",
+        "type": "candidate",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quadratic-solve|involves|quadratic-equation",
+        "from": "type-quadratic-solve",
+        "to": "quadratic-equation",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quadratic-solve|involves|quadratic-function-properties",
+        "from": "type-quadratic-solve",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quadratic-solve|involves|quadratic-inequality",
+        "from": "type-quadratic-solve",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quantified-quadratic|involves|function-range-extrema",
+        "from": "type-quantified-quadratic",
+        "to": "function-range-extrema",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quantified-quadratic|involves|quadratic-function-properties",
+        "from": "type-quantified-quadratic",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quantified-quadratic|involves|quadratic-inequality",
+        "from": "type-quantified-quadratic",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quantified-quadratic|involves|quantifiers",
+        "from": "type-quantified-quadratic",
+        "to": "quantifiers",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-quantified-quadratic|method_rule|rule-quadratic-method",
+        "from": "type-quantified-quadratic",
+        "to": "rule-quadratic-method",
+        "type": "method_rule",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-rational-inequality|involves|inequality-properties",
+        "from": "type-rational-inequality",
+        "to": "inequality-properties",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-rational-inequality|involves|quadratic-inequality",
+        "from": "type-rational-inequality",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-solution-parameters|involves|quadratic-equation",
+        "from": "type-solution-parameters",
+        "to": "quadratic-equation",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-solution-parameters|involves|quadratic-function-properties",
+        "from": "type-solution-parameters",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      },
+      {
+        "id": "type-solution-parameters|involves|quadratic-inequality",
+        "from": "type-solution-parameters",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+          {}
+        ]
+      }
+    ],
+    "layout": {
+      "positions": {
+        "quadratic-inequality": {
+          "x": 36,
+          "y": 420,
+          "lines": [
+            "一元二次不等式"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "quantifiers": {
+          "x": 36,
+          "y": 472,
+          "lines": [
+            "全称量词与存在量词"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "type-rational-inequality": {
+          "x": 360,
+          "y": 276,
+          "lines": [
+            "一元分式不等式求解问题"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "type-quadratic-solve": {
+          "x": 360,
+          "y": 328,
+          "lines": [
+            "不含参数的一元二次不等式",
+            "求解问题"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "type-parameter-quadratic-solve": {
+          "x": 360,
+          "y": 396,
+          "lines": [
+            "含参数的一元二次不等式求",
+            "解问题"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "type-solution-parameters": {
+          "x": 360,
+          "y": 464,
+          "lines": [
+            "由一元二次不等式的解集求",
+            "参数"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "type-quantified-quadratic": {
+          "x": 360,
+          "y": 532,
+          "lines": [
+            "含参一元二次不等式的恒成",
+            "立与存在成立问题"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "type-amgm-quantified": {
+          "x": 360,
+          "y": 600,
+          "lines": [
+            "应用基本不等式的恒成立与",
+            "存在成立问题"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "rule-quadratic-method": {
+          "x": 684,
+          "y": 438,
+          "lines": [
+            "含参一元二次不等式的选法",
+            "判断"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "method-discriminant": {
+          "x": 1008,
+          "y": 368,
+          "lines": [
+            "判别式法"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "method-variable-swap": {
+          "x": 1008,
+          "y": 420,
+          "lines": [
+            "更换主元法"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "method-interval-extremum": {
+          "x": 1008,
+          "y": 472,
+          "lines": [
+            "区间最值法"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "method-separation": {
+          "x": 1008,
+          "y": 524,
+          "lines": [
+            "分离参数法"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "method-substitution": {
+          "x": 1332,
+          "y": 68,
+          "lines": [
+            "换元"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "method-elimination": {
+          "x": 1332,
+          "y": 120,
+          "lines": [
+            "消元"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "method-complete-square": {
+          "x": 1332,
+          "y": 172,
+          "lines": [
+            "配方"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "skill-simplify": {
+          "x": 1332,
+          "y": 224,
+          "lines": [
+            "代数式化简"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "quadratic-inequality-solve": {
+          "x": 1332,
+          "y": 276,
+          "lines": [
+            "二次函数图像法"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "skill-quadratic-sign": {
+          "x": 1332,
+          "y": 328,
+          "lines": [
+            "根据开口与零点判断二次式",
+            "的正负"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "skill-equality-transform": {
+          "x": 1332,
+          "y": 396,
+          "lines": [
+            "等式变形与推导"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "skill-inequality-transform": {
+          "x": 1332,
+          "y": 448,
+          "lines": [
+            "不等式变形与推导"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "skill-solve-quadratic": {
+          "x": 1332,
+          "y": 500,
+          "lines": [
+            "求解一元二次方程"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "skill-quantified-range": {
+          "x": 1332,
+          "y": 552,
+          "lines": [
+            "将恒成立与存在成立转化为",
+            "值域或最值条件"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "skill-linear-range": {
+          "x": 1332,
+          "y": 620,
+          "lines": [
+            "求一次函数及常函数在区间",
+            "上的最值与值域"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "quadratic-interval-extremum": {
+          "x": 1332,
+          "y": 688,
+          "lines": [
+            "求二次函数在区间上的最值",
+            "与值域"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "method-square-extremum": {
+          "x": 1332,
+          "y": 756,
+          "lines": [
+            "配方求最值法"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "skill-reciprocal-range": {
+          "x": 1332,
+          "y": 808,
+          "lines": [
+            "求对勾函数在区间上的最值",
+            "与值域"
+          ],
+          "w": 196,
+          "h": 56
+        },
+        "equality-properties": {
+          "x": 1656,
+          "y": 316,
+          "lines": [
+            "等式的性质"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "square-nonnegative": {
+          "x": 1656,
+          "y": 368,
+          "lines": [
+            "平方的非负性"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "inequality-properties": {
+          "x": 1656,
+          "y": 420,
+          "lines": [
+            "不等式的性质"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "quadratic-equation": {
+          "x": 1656,
+          "y": 472,
+          "lines": [
+            "一元二次方程"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "quadratic-function-properties": {
+          "x": 1656,
+          "y": 524,
+          "lines": [
+            "二次函数"
+          ],
+          "w": 196,
+          "h": 40
+        },
+        "function-range-extrema": {
+          "x": 1656,
+          "y": 576,
+          "lines": [
+            "函数的值域与最值"
+          ],
+          "w": 196,
+          "h": 40
+        }
+      },
+      "width": 1888,
+      "height": 900,
+      "routing": "lanes",
+      "implicit": [],
+      "bands": [
+        {
+          "label": "知识线索",
+          "count": 2,
+          "x": 18,
+          "y": 18,
+          "w": 232,
+          "h": 864
+        },
+        {
+          "label": "题型",
+          "count": 6,
+          "x": 342,
+          "y": 18,
+          "w": 232,
+          "h": 864
+        },
+        {
+          "label": "选法判断",
+          "count": 1,
+          "x": 666,
+          "y": 18,
+          "w": 232,
+          "h": 864
+        },
+        {
+          "label": "方法",
+          "count": 4,
+          "x": 990,
+          "y": 18,
+          "w": 232,
+          "h": 864
+        },
+        {
+          "label": "技能与子方法",
+          "count": 14,
+          "x": 1314,
+          "y": 18,
+          "w": 232,
+          "h": 864
+        },
+        {
+          "label": "数学依据",
+          "count": 6,
+          "x": 1638,
+          "y": 18,
+          "w": 232,
+          "h": 864
+        }
+      ],
+      "frames": [],
+      "labels": [],
+      "notes": []
+    }
+  },
+  "provenance": {
+    "judgments": "authored",
+    "queries": "computed",
+    "compilerVersion": "02b9dbcc24eb5e40ea23f9232f7eabf1e9e0dace1c06cda21a5cea482a9ec4c0"
+  }
+}

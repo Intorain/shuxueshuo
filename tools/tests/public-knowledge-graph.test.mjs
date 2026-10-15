@@ -208,8 +208,11 @@ test('rendered HTML is complete, pre-renders math and links every entry, step an
   assert.ok(method.includes('id="quantifier"')&&method.includes('id="parameter"'));
   const rule=a.outputs.get('rule-quadratic-method/index.html');
   assert.match(rule,/data-graph-locate href="\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-3&view=solution&node=rule-quadratic-method/);
-  const script=a.outputs.get('chapters/compulsory-1-ch2/index.html').match(/src="(\/knowledge\/assets\/[^\"]+\/graph.mjs)"/)[1];
-  assert.ok(a.outputs.has(script.replace('/knowledge/','')));
+  assert.match(a.outputs.get('chapters/compulsory-1-ch2/index.html'),/src="\/assets\/knowledge-next\/graph.mjs"/);
+  const assets=new Set([...a.outputs.values(),...a.compatibility.values()].flatMap(body=>[...body.matchAll(/\/assets\/knowledge-next\/[\w.-]+\.(?:mjs|css)/g)].map(m=>m[0])));
+  assert.ok(assets.size>5);
+  for (const asset of assets) assert.ok((await fs.stat(path.join(repoRoot,'site',asset))).isFile(),asset);
+  assert.ok(![...a.outputs.keys()].some(name=>name.startsWith('assets/')));
 });
 
 test('detail pages: position chain, two-sided relations, compact method path, method choice, organisation redirects',async()=>{
@@ -266,7 +269,7 @@ test('detail pages: position chain, two-sided relations, compact method path, me
   assert.equal(outputs.get('type-sum-product-extremum/index.html').match(/class="choose-when"><strong>适合什么题：/g).length,4);
   assert.match(outputs.get('section-2-2/index.html'), /"redirectHref":"\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"/);
   assert.match(outputs.get('section-2-2/index.html'), /<noscript><meta http-equiv="refresh" content="0;url=\/knowledge\/chapters\/compulsory-1-ch2\/\?scope=section-2-2"><\/noscript>/);
-  assert.match(outputs.get('section-2-2/index.html'), /src="\/knowledge\/assets\/[a-f0-9]+\/learning.mjs"/);
+  assert.match(outputs.get('section-2-2/index.html'), /src="\/assets\/knowledge-next\/learning.mjs"/);
   assert.match(outputs.get('chapter-functions/index.html'), /"redirectHref":"\/knowledge\/chapters\/compulsory-1-ch3\/"/);
   assert.match(outputs.get('textbook-pep-a-compulsory-1/index.html'), /"redirectHref":"\/knowledge\/"/);
   for(const [file,html] of outputs)if(file.endsWith('.html'))assert.ok(!/href="\/knowledge\/(section-|chapter-|textbook-)/.test(html),file);

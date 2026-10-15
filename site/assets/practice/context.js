@@ -120,5 +120,5 @@
     next.attempts = next.attempts.filter(item => item.id !== next.attempt_id).concat(attempt(next, lesson));
     return next;
   }
-  globalThis.PracticeContext = {create, apply, freshState, done, position, reconcile, slotCount, confirmedPair};
+  globalThis.PracticeContext = {create, apply, freshState, done, position, reconcile, slotCount, confirmedPair, validate};
 })();

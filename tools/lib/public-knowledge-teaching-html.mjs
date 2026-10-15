@@ -5,7 +5,7 @@ import { branches, previewHref } from '../../site/assets/knowledge-next/teaching
 
 const textHtml = (text) => renderText(text, { legacy: true });
 
-export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render, version) {
+export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render) {
   const outputs = new Map(),
     byId = new Map(nodes.map((n) => [n.id, n]));
   const link = (ref) => {
@@ -36,8 +36,7 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
     shell(
       title,
       `<main id="main" class="workspace teaching-page"><section class="hero"><p class="eyebrow" data-teaching-mode>教学关联</p><h1>${h(title)}</h1><p data-preview-notice>本页用于查看教学关联；可进入正式练习或无记录预览。</p><nav><a href="/knowledge/">知识图谱</a> · <a href="/knowledge/topics/">专题与迁移审阅</a></nav></section>${body}</main>`,
-      version,
-      `<link rel="stylesheet" href="/knowledge/assets/${version}/teaching.css">`
+      `<link rel="stylesheet" href="/assets/knowledge-next/teaching.css">`
     );
   const index = teaching.topics
     .map(
@@ -187,7 +186,7 @@ export function teachingOutputs(teaching, nodes, manifest, resourceHtml, render,
     'teaching/manifest.json',
     JSON.stringify({
       schemaVersion: 1,
-      module: `/knowledge/assets/${version}/practice-preview.mjs`,
+      module: '/assets/knowledge-next/practice-preview.mjs',
       counts: teaching.counts
     }) + '\n'
   );

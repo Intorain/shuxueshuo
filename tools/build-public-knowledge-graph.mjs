@@ -62,28 +62,17 @@ export async function generate(root = repoRoot) {
   // Detection eligibility is private API state, never inferred from public IDs.
   manifest.drills=[];
   const release=(await exportRows(root,{nodes,edges,manifest,teaching}))._meta;
-  const assetDir=path.join(root,'site/assets/knowledge-next');
-  const assetNames=(await fs.readdir(assetDir)).filter(n=>/\.(mjs|css)$/.test(n)).sort();
-  const modeSource = await fs.readFile(path.join(root, 'site/assets/practice/learning-mode.mjs'), 'utf8');
-  const hash=createHash('sha256');
-  for (const f of assetNames) hash.update(await fs.readFile(path.join(assetDir,f)));
-  hash.update(modeSource);
-  const version=hash.digest('hex').slice(0,12);
-  const render=makeRenderer(nodes,edges,manifest,version,city,homes,chapters);
+  // Pages load scripts and styles straight from site/assets/knowledge-next. Those
+  // are served no-cache, so editing a module never rewrites the generated pages.
+  const render=makeRenderer(nodes,edges,manifest,city,homes,chapters);
   const graph={schemaVersion:1,defaultScope:manifest.defaultScope,chapters,nodes:nodes.map(n=>({id:n.id,kind:n.kind,subtype:n.subtype,label:n.label,summary:n.summary,aliases:n.aliases || [],...(homes.has(n.id)?{home:homes.get(n.id)}:{}),...(n.kind==='method'?{steps:n.steps.map(s=>({id:s.id,title:s.title,calls:(s.calls || []).map(c=>c.ref),...(s.rule?{rule:s.rule}:{})}))}:{})})),edges};
   const outputs=new Map([
     ['index.html',render.overview()],['nodes/index.html',render.list()],['3d/index.html',render.tower()],
     ['graph.json',JSON.stringify(graph,null,2)+'\n'],['city.json',JSON.stringify(city,null,2)+'\n'],
   ]);
   for (const c of chapters.filter(c=>c.recorded)) outputs.set(`chapters/${c.id}/index.html`,render.chapter(c));
-  // A versioned directory also versions all relative ES module imports.
-  for (const f of assetNames) {
-    const source = await fs.readFile(path.join(assetDir, f), 'utf8');
-    outputs.set(`assets/${version}/${f}`, source.replaceAll('../practice/learning-mode.mjs', './learning-mode.mjs'));
-  }
-  outputs.set(`assets/${version}/learning-mode.mjs`, modeSource);
   for (const n of nodes) outputs.set(`${n.id}/index.html`,render.detail(n,resourceHtml));
-  for (const [file,body] of teachingOutputs(teaching,nodes,manifest,resourceHtml,render,version)) outputs.set(file,body);
+  for (const [file,body] of teachingOutputs(teaching,nodes,manifest,resourceHtml,render)) outputs.set(file,body);
   outputs.set('teaching/version.json',JSON.stringify(release,null,2)+'\n');
   outputs.set('teaching/problems.json', JSON.stringify({
     content_version: release.content_version,
@@ -96,14 +85,14 @@ export async function generate(root = repoRoot) {
   for (const [name,body] of outputs) if (/^teaching\/problems\/.+\.json$/.test(name)) {
     outputs.set(name,JSON.stringify({...JSON.parse(body),content_version:release.content_version},null,2)+'\n');
   }
-  for (const [name, body] of legacyNodeOutputs(teaching.migration, nodes, version)) outputs.set(name, body);
+  for (const [name, body] of legacyNodeOutputs(teaching.migration, nodes)) outputs.set(name, body);
   // Bind personal state to the HTML that was actually opened. Fetching the
   // latest version file would let an old tab accept a newer publication.
   for (const [name, body] of outputs) if (name.endsWith('.html')) {
     if (!body.includes('</head>')) throw Error(`页面缺少 head：${name}`);
     outputs.set(name, body.replace('</head>', `<meta name="knowledge-content-version" content="${release.content_version}"></head>`));
   }
-  const compatibility = new Map([...outputs.keys()].filter(name => name.endsWith('/index.html') || name === 'index.html').map(name => [name, redirectPage(`/knowledge/${name.replace(/index\.html$/, '')}`, version)]));
+  const compatibility = new Map([...outputs.keys()].filter(name => name.endsWith('/index.html') || name === 'index.html').map(name => [name, redirectPage(`/knowledge/${name.replace(/index\.html$/, '')}`)]));
   for (const files of [outputs, compatibility]) files.set('manifest.json',JSON.stringify({contentVersion:release.content_version,generator:'tools/build-public-knowledge-graph.mjs',schemaVersion:1,nodeCounts:manifest.expectedCounts,files:[...files.keys(), 'manifest.json'].sort()},null,2)+'\n');
   return {outputs,compatibility,nodes,edges,manifest,teaching};
 }

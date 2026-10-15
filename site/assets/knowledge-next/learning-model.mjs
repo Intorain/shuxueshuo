@@ -36,7 +36,7 @@ export async function renderLearningMath(root) {
   mathReady ||= (async () => {
     if (!window.katex) await import('/assets/practice/vendor/katex-0.18.9/katex.min.js');
     if (!window.renderMathInElement) await import('/assets/practice/vendor/katex-0.18.9/auto-render.min.js');
-    if (!window.PracticeMath) await import('/assets/practice/math-text.js?v=1');
+    if (!window.PracticeMath) await import('/assets/practice/math-text.js');
   })().catch(error => { mathReady = null; throw error; });
   await mathReady;
   root.querySelectorAll('[data-math-text]').forEach(el => window.PracticeMath.render(el, el.textContent));

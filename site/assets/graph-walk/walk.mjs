@@ -1,0 +1,949 @@
+import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState} from './walk-state.mjs';
+import {createWalkGraph, nodeHref} from './walk-graph.mjs?v=20261015-view-tabs';
+
+const BUNDLE_URL = '/data/graph-walk/quadratic-always-q01.json';
+const REPLAY_INDEX_URL = '/data/graph-walk/replays/index.json';
+const PRACTICE_PAGE = '/2/q01/';
+const GRAPH_MODE_KEY = 'gw-graph-mode';
+const $ = selector => document.querySelector(selector);
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const narrow = matchMedia('(max-width: 959px)');
+const copyAnswer = answer => Array.isArray(answer) ? [...answer] : answer;
+let bundle, state, studentState, graph, graphView;
+let draft = null, draftKey = '', selectedSlot = null, submitted = null, busy = false;
+let actor = 'student', replay = null, replayPosition = 0, replayTimer = null, replayPlaying = false, replayTicket = 0, loadTicket = 0;
+let replayEntries = [], replayIndexLoaded = false, replayNotice = null, focusBeforeGraph = null, commitTimer = null;
+let graphMode = readGraphMode(), webglFailed = false;
+let preview = null, previewTimer = null, story = null, replayStatuses = {replay: null, values: []};
+
+function readGraphMode() {
+  // Phones always open in 3D: its camera follows the current step, which a small screen needs.
+  if (narrow.matches) return '3d';
+  try { return localStorage.getItem(GRAPH_MODE_KEY) === '2d' ? '2d' : '3d'; } catch { return '3d'; }
+}
+
+async function createGraph() {
+  const host = $('#gw-graph'), onSwitch = () => void switchGraphMode();
+  if (graphMode === '3d' && !webglFailed) {
+    try {
+      const {createWalkGraph3D} = await import('./walk-graph-3d.mjs?v=20261015-view-tabs');
+      return await createWalkGraph3D(host, graphView, {onSelect: selectNode, onSwitch});
+    } catch (error) {
+      webglFailed = true;
+      console.warn('三维图谱不可用，已改用平面图。', error);
+    }
+  }
+  return createWalkGraph(host, graphView, {onSelect: selectNode, onSwitch: webglFailed ? null : onSwitch});
+}
+
+async function switchGraphMode() {
+  graphMode = graphMode === '3d' ? '2d' : '3d';
+  try { localStorage.setItem(GRAPH_MODE_KEY, graphMode); } catch { /* private mode keeps the choice for this page only */ }
+  graph?.destroy(); graph = null;
+  graph = await createGraph();
+  mountCaption(); renderGraph();
+  $('#gw-graph [data-graph-action="switch"]')?.focus();
+}
+
+function renderMath(root) {
+  for (const label of root.querySelectorAll('[data-math-text]:not([data-math-rendered])')) {
+    PracticeMath.render(label, label.textContent);
+    label.dataset.mathRendered = 'true';
+  }
+}
+
+function template(id, uid) {
+  if (!id) return '';
+  const html = bundle.templates[id];
+  if (typeof html !== 'string') throw new Error(`缺少步骤模板：${id}`);
+  return html.replace(/\{\{uid\}\}/g, escapeHTML(uid));
+}
+
+function hydrate(root) {
+  for (const host of root.querySelectorAll('[data-quadratic-graph]:not([data-graph-rendered])')) {
+    host.innerHTML = PracticeComponents.quadraticGraph(JSON.parse(host.dataset.quadraticGraph));
+    host.dataset.graphRendered = 'true';
+  }
+  renderMath(root);
+}
+
+const activeRunId = () => state.run?.id || 'intro';
+const decisionKey = decision => `${activeRunId()}:${decision.id}`;
+const optionsOf = component => component.options || [];
+
+function emptyAnswer(decision) {
+  const component = decision.interaction;
+  if (component.type === 'choice') return null;
+  if (component.type === 'multi') return [];
+  if (component.type === 'plane') return ['', '', ''];
+  if (component.type === 'grid') return ['', ''];
+  return Array(component.slots?.length ?? component.slot_labels?.length ?? 2).fill('');
+}
+
+const covers = (method, x, y) => method.cells.some(cell => cell[0] === x && cell[1] === y);
+
+/* A plane answer is [x, y, method]: the cell the problem sits in, then one method covering it. */
+function planeChoice(decision, answer) {
+  const {x, y, methods} = decision.interaction;
+  const [valueX, valueY, value] = Array.isArray(answer) ? answer : [];
+  return {
+    optionX: x.options.find(option => option.value === valueX),
+    optionY: y.options.find(option => option.value === valueY),
+    method: methods.find(method => method.value === value),
+    here: methods.filter(method => covers(method, valueX, valueY)),
+  };
+}
+
+const zoneAt = (component, x, y) => component.zones.find(zone => covers(zone, x, y));
+
+/* A grid answer is [x, y]: one cell of a map whose zones name what that cell means. */
+function gridChoice(decision, answer) {
+  const {x, y} = decision.interaction;
+  const [valueX, valueY] = Array.isArray(answer) ? answer : [];
+  const optionX = x.options.find(option => option.value === valueX);
+  const optionY = y.options.find(option => option.value === valueY);
+  return {optionX, optionY, zone: optionX && optionY ? zoneAt(decision.interaction, valueX, valueY) : null};
+}
+
+function ready(decision) {
+  if (decision.interaction.type === 'choice') return draft != null;
+  if (decision.interaction.type === 'multi') return draft.length > 0;
+  return draft.length > 0 && draft.every(value => value !== '');
+}
+
+function projectDraft(decision, answer) {
+  const empty = emptyAnswer(decision);
+  if (decision.interaction.type === 'choice') return typeof answer === 'string' ? answer : empty;
+  if (!Array.isArray(answer)) return empty;
+  if (decision.interaction.type === 'multi') return answer.filter(value => typeof value === 'string');
+  return empty.map((_, index) => typeof answer[index] === 'string' ? answer[index] : '');
+}
+
+function ensureDraft(decision) {
+  const key = decisionKey(decision);
+  if (key !== draftKey) {
+    draftKey = key; draft = emptyAnswer(decision); selectedSlot = null;
+    if (actor === 'student') submitted = null;
+  }
+  // Failed recorded actions can have any input shape. Only the display draft is normalized.
+  if (actor === 'replay' && submitted?.decision === decision.id) draft = projectDraft(decision, submitted.answer);
+}
+
+function choiceLabel(component, answer, index = 0) {
+  const options = component.slots?.[index]?.options || optionsOf(component);
+  return options.find(option => option.value === answer)?.label || component.term_labels?.[answer] || answer;
+}
+
+function answerSummary(decision, answer) {
+  if (decision.interaction.type === 'grid') {
+    const {optionX, optionY, zone} = gridChoice(decision, answer);
+    return zone ? `${zone.label}（${optionX.label}，${optionY.label}）` : '';
+  }
+  if (decision.interaction.type === 'plane') {
+    const {optionX, optionY, method} = planeChoice(decision, answer);
+    return [optionX && `${decision.interaction.x.label}${optionX.label}`, optionY && `${decision.interaction.y.label}${optionY.label}`, method?.label].filter(Boolean).join('；');
+  }
+  const values = Array.isArray(answer) ? answer : [answer];
+  return values.map((value, index) => choiceLabel(decision.interaction, value, index)).filter(Boolean).join('；');
+}
+
+function resultText(result) {
+  if (typeof result === 'string') return result;
+  return result.text || result.label || result.expression || result.math || '';
+}
+
+function decisionById(id, route) {
+  return bundle.intro.find(decision => decision.id === id) || bundle.routes[route]?.steps.find(decision => decision.id === id);
+}
+const anyDecision = id => bundle.intro.find(decision => decision.id === id) ||
+  Object.values(bundle.routes).flatMap(route => route.steps).find(decision => decision.id === id);
+
+/* A completed checklist reads as "what was asked → what was decided", one row per item. */
+function checklistAnswerHTML(decision, answer) {
+  const rows = decision.interaction.slots.map((slot, index) => `<div><dt data-math-text>${escapeHTML(slot.label)}</dt><dd data-math-text>${escapeHTML(choiceLabel(decision.interaction, answer?.[index], index))}</dd></div>`);
+  return `<dl class="gw-answer-rows">${rows.join('')}</dl>`;
+}
+
+/* Axes cross in the middle: x options run left → right, y options top → bottom, one cell per quadrant.
+   Completed cards reuse the same figure read-only, with the chosen cell marked. */
+function axesHTML(decision, answer, cells, interactive) {
+  const {x, y, title} = decision.interaction;
+  const end = (option, side) => `<span class="gw-plane-end" data-end="${side}"><b>${escapeHTML(option.label)}</b><small data-math-text>${escapeHTML(option.note || '')}</small></span>`;
+  const role = interactive ? `role="group" aria-label="${escapeHTML(title || '坐标图')}"`
+    : `role="img" aria-label="${escapeHTML(answerSummary(decision, answer).replace(/\$/g, ''))}"`;
+  return `<div class="gw-plane${interactive ? '' : ' is-static'}" ${role}><div class="gw-plane-top"><p class="gw-plane-ylabel" data-math-text>${escapeHTML(y.label)}</p>${end(y.options[0], 'top')}</div><div class="gw-plane-field"><span class="gw-plane-axis" data-axis="x"></span><span class="gw-plane-axis" data-axis="y"></span>${cells.join('')}${end(x.options[0], 'left')}${end(x.options[1], 'right')}</div><div class="gw-plane-bottom"><span></span>${end(y.options[1], 'bottom')}<p class="gw-plane-xlabel" data-math-text>${escapeHTML(x.label)}</p></div></div>`;
+}
+
+/* The method plane: each quadrant lists the methods covering it; the answer adds one of them. */
+function planeHTML(decision, answer, interactive = true) {
+  const {x, y, methods} = decision.interaction;
+  const [valueX, valueY, value] = Array.isArray(answer) ? answer : [];
+  const cells = y.options.flatMap(row => x.options.map(column => {
+    const here = methods.filter(method => covers(method, column.value, row.value));
+    const selected = column.value === valueX && row.value === valueY;
+    const tags = here.map(method => `<span class="gw-plane-tag" data-method="${escapeHTML(method.value)}"${selected && method.value === value ? ' data-chosen' : ''}>${escapeHTML(method.label)}</span>`).join('');
+    const content = tags + (selected ? '<span class="gw-plane-pin" aria-hidden="true">本题</span>' : '');
+    if (!interactive) return `<div class="gw-plane-cell" data-selected="${selected}">${content}</div>`;
+    const name = `横轴${column.label}，纵轴${row.label}；可用：${here.map(method => method.label).join('、')}`;
+    return `<button type="button" class="gw-plane-cell" data-plane-cell="${escapeHTML(`${column.value}|${row.value}`)}" data-selected="${selected}" aria-pressed="${selected}" aria-label="${escapeHTML(name)}">${content}</button>`;
+  }));
+  const plane = axesHTML(decision, answer, cells, interactive);
+  if (!interactive) return plane;
+  const {here} = planeChoice(decision, answer);
+  const picker = valueX && valueY
+    ? `<div class="gw-plane-methods" role="group" aria-label="这一格能用的方法"><p>这一格能用的方法，选一种开始解：</p><div>${here.map(method => `<button type="button" data-plane-method="${escapeHTML(method.value)}" data-method="${escapeHTML(method.value)}" aria-pressed="${method.value === value}">${escapeHTML(method.label)}${method.route ? '' : '<small>本 Demo 未展开</small>'}</button>`).join('')}</div></div>`
+    : '<p class="gw-plane-hint">先在坐标图里点一格。</p>';
+  return plane + picker;
+}
+
+/* A zone map on the same crossed axes: every quadrant names what that cell means, the answer pins one. */
+function gridHTML(decision, answer, interactive = true) {
+  const component = decision.interaction;
+  const [valueX, valueY] = Array.isArray(answer) ? answer : [];
+  const cells = component.y.options.flatMap(row => component.x.options.map(column => {
+    const zone = zoneAt(component, column.value, row.value);
+    const selected = column.value === valueX && row.value === valueY;
+    const content = `<span class="gw-plane-tag" data-zone="${escapeHTML(zone.value)}"${selected ? ' data-chosen' : ''}>${escapeHTML(zone.label)}</span>${selected ? '<span class="gw-plane-pin" aria-hidden="true">本题</span>' : ''}`;
+    if (!interactive) return `<div class="gw-plane-cell" data-selected="${selected}">${content}</div>`;
+    const name = `横轴${column.label}，纵轴${row.label}：${zone.label}`;
+    return `<button type="button" class="gw-plane-cell" data-grid-cell="${escapeHTML(`${column.value}|${row.value}`)}" data-selected="${selected}" aria-pressed="${selected}" aria-label="${escapeHTML(name)}">${content}</button>`;
+  }));
+  return axesHTML(decision, answer, cells, interactive);
+}
+
+function completedHTML(record, number, runId, route) {
+  const decision = decisionById(record.decision, route);
+  if (!decision) return '';
+  const uid = `gw-${runId}-${decision.id}`;
+  // A grid keeps its map as the record; only the page's collapsible derivation is borrowed from the display.
+  const derivation = () => decision.display ? /<details[\s\S]*<\/details>/.exec(template(decision.display, uid))?.[0] || '' : '';
+  const body = decision.interaction.type === 'grid' ? gridHTML(decision, record.answer, false) + derivation()
+    : decision.display ? template(decision.display, uid)
+    : decision.interaction.type === 'checklist' ? checklistAnswerHTML(decision, record.answer)
+    : decision.interaction.type === 'plane' ? planeHTML(decision, record.answer, false)
+    : `<p class="gw-answer" data-math-text>${escapeHTML(answerSummary(decision, record.answer))}</p>`;
+  const results = !decision.display ? (record.results || []).map(resultText).filter(Boolean).map(text => `<p class="gw-result" data-math-text>${escapeHTML(text)}</p>`).join('') : '';
+  return `<details class="gw-completed" data-completed-decision="${escapeHTML(decision.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(decision.title || decision.question)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${body}${results}</div></details>`;
+}
+
+// Graph options carry no visible formula unless they set a name: the student has to read the picture.
+function graphOptionsHTML(decision) {
+  const component = decision.interaction, multi = component.type === 'multi';
+  const uid = `gw-${activeRunId()}-${decision.id}`;
+  return `<div class="gw-graph-options" role="group" aria-label="${escapeHTML(decision.title || decision.question)}">${optionsOf(component).map(option => {
+    const selected = multi ? draft.includes(option.value) : draft === option.value;
+    const pick = multi ? `data-multi="${escapeHTML(option.value)}"` : `data-choice="${escapeHTML(component.field)}" data-value="${escapeHTML(option.value)}"`;
+    const graph = JSON.stringify({...option.graph, uid: `${uid}-${option.value}`});
+    return `<button type="button" ${pick} aria-pressed="${selected}" aria-label="${escapeHTML(option.label)}"><span class="gw-checkbox" aria-hidden="true">${selected ? '✓' : ''}</span><span class="gw-graph-option-figure" data-quadratic-graph="${escapeHTML(graph)}"></span>${option.name ? `<span class="gw-graph-option-name">${escapeHTML(option.name)}</span>` : ''}</button>`;
+  }).join('')}</div>`;
+}
+
+function interactionHTML(decision) {
+  const component = decision.interaction;
+  const board = template(decision.board, `gw-${activeRunId()}-${decision.id}-active`);
+  if (['choice', 'multi'].includes(component.type) && optionsOf(component).some(option => option.graph)) return board + graphOptionsHTML(decision);
+  if (component.type === 'choice') return board + PracticeComponents.choices(component, draft, decision.title || decision.question);
+  if (component.type === 'plane') return board + planeHTML(decision, draft);
+  if (component.type === 'grid') return board + gridHTML(decision, draft);
+  if (component.type === 'multi') {
+    return `<div class="gw-multi" role="group" aria-label="${escapeHTML(decision.title || decision.question)}">${optionsOf(component).map(option => `<button type="button" data-multi="${escapeHTML(option.value)}" aria-pressed="${draft.includes(option.value)}"><span class="gw-checkbox" aria-hidden="true">${draft.includes(option.value) ? '✓' : ''}</span><span data-math-text>${escapeHTML(option.label)}</span></button>`).join('')}</div>`;
+  }
+  if (component.type === 'checklist') {
+    // A draft only marks a selection. Correctness and authored feedback wait for submission.
+    const slots = component.slots.map(row => ({...row, options: row.options.map(({note, ...option}) => option)}));
+    return PracticeComponents.checklist({component: {...component, slots}, pair: draft, board});
+  }
+  if (component.type === 'fill') {
+    const content = PracticeComponents.fill({board, slotLabels: component.slot_labels,
+      slot: index => PracticeComponents.slot({stage: 0, index, value: draft[index],
+        label: component.term_labels?.[draft[index]], title: component.slot_labels?.[index] || `第 ${index + 1} 项`,
+        shape: component.slot_shapes?.[index]})});
+    const picker = selectedSlot == null ? '' : `<div class="gw-token-panel" role="group" aria-label="${escapeHTML(component.slot_labels?.[selectedSlot] || '选择填空值')}"><p>${escapeHTML(component.slot_labels?.[selectedSlot] || '填入数学项')}</p><div>${component.terms.map(value => `<button type="button" data-token="${escapeHTML(value)}" aria-pressed="${draft[selectedSlot] === value}"><span data-math-text>${escapeHTML(component.term_labels?.[value] || value)}</span></button>`).join('')}</div><button type="button" class="gw-token-close">收起选项</button></div>`;
+    return content + picker;
+  }
+  throw new Error(`暂不支持的交互：${component.type}`);
+}
+
+function attemptedCalculation(decision) {
+  if (!submitted || state.lastFeedback?.status !== 'wrong' || !decision.attempt_calculations || !Array.isArray(submitted.answer)) return '';
+  const answers = submitted.answer;
+  const id = answers.length === 1 ? decision.attempt_calculations[answers[0]] : decision.attempt_calculations[answers[0]]?.[answers[1]];
+  return id ? template(id, `gw-${activeRunId()}-${decision.id}-attempt`) : '';
+}
+
+function feedbackHTML() {
+  const feedback = state.lastFeedback;
+  if (!feedback || (!submitted && actor !== 'replay')) return '';
+  const label = {wrong: '再想一想', uncovered: '有效思路 · 本 Demo 未展开', passed: '这一步已确认'}[feedback.status] || '提示';
+  const href = feedback.href?.startsWith('/knowledge/') ? `<a href="${escapeHTML(feedback.href)}" target="_blank" rel="noopener">查看这条思路 ↗</a>` : '';
+  return `<div class="gw-feedback" data-status="${escapeHTML(feedback.status)}" role="status"><strong>${label}</strong><p data-math-text>${escapeHTML(feedback.message || '')}</p>${href}</div>`;
+}
+
+/* The previous step carried into the active card: its results, or its answer when it produced none. */
+function carryHTML() {
+  const records = [...(state.introCompleted || []), ...(state.run?.completed || [])];
+  const record = records.at(-1), decision = record && anyDecision(record.decision);
+  if (!decision) return '';
+  const results = (record.results || []).map(resultText).filter(Boolean);
+  const lines = results.length ? results : [carrySummary(decision, record.answer)].filter(Boolean);
+  if (!lines.length) return '';
+  return `<div class="gw-carry"><p class="gw-carry-label">接第 ${records.length} 步 · ${escapeHTML(decision.title || '')}</p>${lines.map(text => `<p data-math-text>${escapeHTML(text)}</p>`).join('')}</div>`;
+}
+
+function carrySummary(decision, answer) {
+  if (decision.interaction.type !== 'plane') return answerSummary(decision, answer);
+  const {optionX, optionY, method} = planeChoice(decision, answer);
+  return method ? `选用${method.label}（${[optionX?.note, optionY?.note].filter(Boolean).join('；')}）` : '';
+}
+
+function renderInteraction(decision, {focus} = {}) {
+  const host = $('#gw-active');
+  if (!host) return;
+  ensureDraft(decision);
+  const disabled = actor === 'replay';
+  const number = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0) + 1;
+  host.innerHTML = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(decision.title || '当前判断')}</h2><span class="status">进行中</span></header>${carryHTML()}<p class="question" data-math-text>${escapeHTML(decision.question)}</p><div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`;
+  for (const button of host.querySelectorAll('[data-slot]')) {
+    const expanded = Number(button.dataset.slot) === selectedSlot;
+    button.setAttribute('aria-expanded', String(expanded));
+    button.setAttribute('aria-haspopup', 'false');
+  }
+  hydrate(host);
+  if (focus) host.querySelector(focus)?.focus({preventScroll: true});
+}
+
+function describeBasis(ref) {
+  const raw = typeof ref === 'string' ? ref : ref.ref || ref.id;
+  const [id, entry] = raw.split('#');
+  const node = graphView.nodes.find(item => item.id === id);
+  const item = (node?.entries || node?.items || []).find(value => value.id === entry);
+  return {id: raw, ref: raw, label: entry ? `${node?.label || id} · ${item?.title || item?.label || entry}` : node?.label || id};
+}
+
+function selectNode(node, view) {
+  const panel = $('#gw-selection');
+  const actual = (view?.calls || []).filter(call => call.ref === node.id || call.method === node.id);
+  const note = actual.length ? `本路线已记录 ${actual.length} 次相关调用。` : '这是本题子图中的关联对象；候选不代表已经调用。';
+  panel.hidden = false;
+  panel.innerHTML = `<button type="button" class="gw-selection-close" data-selection-close aria-label="关闭节点详情">×</button><h3>${escapeHTML(node.label || node.id)}</h3><p>${escapeHTML(note)}</p><a href="${nodeHref(node)}" target="_blank" rel="noopener">查看公共节点详情 ↗</a>`;
+}
+
+function callStepTitle(call) {
+  const method = graphView.nodes.find(node => node.id === call.method);
+  return method?.steps?.find(step => step.id === call.step)?.title || call.step;
+}
+
+/* Graph state plus every node the walk has reached or offered so far, for the 3D growth view. */
+function viewFor(shown) {
+  const view = graphState(bundle, shown);
+  const seen = new Set(Object.keys(view.nodes).filter(id => view.nodes[id] !== 'idle'));
+  for (const run of [{completed: shown.introCompleted}, ...(shown.archives || []), shown.run]) {
+    for (const record of run.completed || []) for (const id of anyDecision(record.decision)?.candidateNodes || []) seen.add(id);
+  }
+  for (const id of view.archivedEdges) { const [from, , to] = id.split('|'); seen.add(from); seen.add(to); }
+  view.seen = [...seen];
+  return view;
+}
+
+const passedEvents = () => state.events.filter(event => event.status === 'passed');
+const timelineNow = () => actor === 'replay' ? replayPosition : passedEvents().length;
+
+function studentStateAt(count) {
+  let next = createState(bundle);
+  for (const event of passedEvents().slice(0, count)) {
+    next = event.kind === 'switch_route' ? switchRoute(bundle, next, event.route) : submitAnswer(bundle, next, event.action);
+  }
+  return next;
+}
+
+function timelinePoints() {
+  if (actor === 'replay') {
+    if (!replay) return [];
+    if (replayStatuses.replay !== replay) {
+      let values = [];
+      try { values = replayState(bundle, replay).events.map(event => event.status); } catch { /* chips fall back to neutral dots */ }
+      replayStatuses = {replay, values};
+    }
+    return [{label: '起点', status: ''}, ...replay.actions.map((action, index) => ({status: replayStatuses.values[index] || '',
+      label: action?.switch_route ? `换用${bundle.routes[action.switch_route]?.label || action.switch_route}` : anyDecision(action?.decision)?.title || action?.decision}))];
+  }
+  return [{label: '起点', status: ''}, ...passedEvents().map(event => ({status: 'passed',
+    label: event.kind === 'switch_route' ? `换用${bundle.routes[event.route]?.label || event.route}` : anyDecision(event.action.decision)?.title || event.action.decision}))];
+}
+
+/* Model reasons are free text and often write formulas bare, like a^2-3a-4≥0. Wrap each bare run in $…$ so it
+   renders like the authored steps; runs already inside $…$ and plain words are left alone. */
+const MATH_RUN = /[-+(A-Za-z0-9Δ≤≥≠<>=∈][A-Za-z0-9Δℝ^_()+\-*/=<>≤≥≠∈.,]*/g;
+const MATH_SYMBOLS = {'≤': '\\le ', '≥': '\\ge ', '≠': '\\ne ', 'Δ': '\\Delta ', '∈': '\\in ', 'ℝ': '\\mathbb R', '*': '\\cdot '};
+function mathText(text) {
+  return String(text ?? '').split(/(\$[^$]+\$)/).map((part, index) => index % 2 ? part : part.replace(MATH_RUN, run => {
+    const tail = /[.,]+$/.exec(run)?.[0] || '', body = run.slice(0, run.length - tail.length);
+    const letters = /[A-Za-zΔ]/.test(body), operators = /[\^_=<>≤≥≠∈+\-*/()]/.test(body);
+    // Variables are single letters; a longer word (AI, real/free) is prose or an option value, not a formula.
+    const word = /^[A-Za-z]{2,}$/.test(body) || /[A-Za-z]{3,}/.test(body.replace(/_[A-Za-z]+/g, ''));
+    if (!body || word || (!letters && !(operators && /\d/.test(body)))) return run;
+    const latex = body.replace(/_([A-Za-z]{2,})/g, '_{\\mathrm{$1}}').replace(/[≤≥≠Δ∈ℝ*]/g, symbol => MATH_SYMBOLS[symbol]).trim();
+    return `$${latex}$${tail}`;
+  })).join('');
+}
+
+function captionFor(shown, view, index) {
+  const current = currentDecision(bundle, shown);
+  const route = bundle.routes[shown.run?.route];
+  const next = current ? `下一步 · ${current.title}` : shown.done ? `${route?.label || '本'}路线完成` : '';
+  if (actor === 'replay') {
+    if (!replay) return {kicker: 'AI 回放', text: '选择一条回放，看 AI 怎样一步步走过这张图谱。', next: ''};
+    const action = replay.actions[index - 1];
+    if (!action) return {kicker: 'AI 回放 · 起点', text: `从题目出发：AI 将逐步找出线索、判断题型、选择方法。${replayPlaying ? '' : '点下方 ▶ 开始播放。'}`, next};
+    if (action.switch_route) {
+      return {kicker: 'AI · 换一种方法', status: 'passed', next,
+        text: `再用${bundle.routes[action.switch_route]?.label || action.switch_route}做一遍，和刚才的方法对照。`};
+    }
+    const decision = anyDecision(action.decision), feedback = shown.lastFeedback || {};
+    const verdict = {passed: '通过', wrong: '答错', uncovered: '有效思路 · 未展开'}[feedback.status];
+    return {kicker: `AI · ${decision?.title || action.decision}${verdict ? ` · ${verdict}` : ''}`, status: feedback.status,
+      text: mathText(action.reason) || (decision ? answerSummary(decision, action.answer) : ''), next: feedback.status === 'passed' ? next : feedback.message || next};
+  }
+  const prefix = preview ? `回看 T${index} · ` : '';
+  if (!preview && shown.lastFeedback && shown.lastFeedback.status !== 'passed') {
+    return {kicker: '再想一想', text: shown.lastFeedback.message || '', next, status: shown.lastFeedback.status};
+  }
+  const log = view.logs?.at(-1);
+  const text = typeof log === 'string' ? log : log?.text || '';
+  if (!text) return {kicker: `${prefix}起点`, text: '从题目出发：先逐句读懂题目，图谱会随着解题一步步长出来。', next};
+  const match = /^([^：]{2,6})：(.+)$/s.exec(text);
+  return {kicker: prefix + (match ? match[1] : '这一步'), text: match ? match[2] : text, next, status: 'passed'};
+}
+
+function ensureStory() {
+  if (story) return story;
+  const caption = document.createElement('div');
+  caption.className = 'gw-caption';
+  caption.toggleAttribute('data-stage-overlay', true);
+  caption.innerHTML = '<p class="gw-caption-kicker"></p><p class="gw-caption-text"></p><p class="gw-caption-next"></p>';
+  const timeline = document.createElement('div');
+  timeline.className = 'gw-timeline';
+  timeline.innerHTML = '<button type="button" class="gw-timeline-play" aria-label="播放解题过程">▶</button><ol aria-label="解题时间轴，选择一步回看图谱"></ol>';
+  $('#gw-graph').after(caption, timeline);
+  timeline.addEventListener('click', event => {
+    if (event.target.closest('.gw-timeline-play')) { togglePlay(); return; }
+    const button = event.target.closest('[data-time]');
+    if (button && !button.disabled) goToTime(Number(button.dataset.time));
+  });
+  timeline.querySelector('ol').addEventListener('keydown', event => {
+    const step = {ArrowLeft: -1, ArrowRight: 1}[event.key];
+    const buttons = [...timeline.querySelectorAll('[data-time]:not(:disabled)')];
+    const index = buttons.indexOf(document.activeElement);
+    if (!step || index < 0 || !buttons[index + step]) return;
+    event.preventDefault();
+    goToTime(Number(buttons[index + step].dataset.time));
+  });
+  story = {caption, timeline};
+  mountDock();
+  return story;
+}
+
+/* Logs, basis and calls collapse into one row of chips under the timeline; one opens at a time. */
+function mountDock() {
+  const panel = $('#gw-graph-panel'), log = panel.querySelector('.gw-log-panel');
+  const [used, calls] = panel.querySelectorAll('details.gw-used');
+  const dock = document.createElement('div');
+  dock.className = 'gw-panel-dock';
+  $('#gw-log-history summary').innerHTML = '过程记录 <span id="gw-logs-count">0</span>';
+  used.querySelector('summary').innerHTML = '用到的依据 <span id="gw-used-count">0</span>';
+  calls.querySelector('summary').innerHTML = '调用记录 <span id="gw-calls-count">0</span>';
+  log.before(dock);
+  dock.append(log, used, calls);
+  dock.addEventListener('toggle', event => {
+    if (!event.target.open) return;
+    for (const item of dock.querySelectorAll('details[open]')) if (item !== event.target) item.open = false;
+  }, true);
+  document.addEventListener('pointerdown', event => {
+    if (!dock.contains(event.target)) for (const item of dock.querySelectorAll('details[open]')) item.open = false;
+  });
+  panel.addEventListener('click', event => {
+    if (event.target.closest('[data-selection-close]')) $('#gw-selection').hidden = true;
+  });
+}
+
+/* Over the 3D stage the caption reads as a subtitle; with the SVG graph it sits under the graph. */
+function mountCaption() {
+  const {caption, timeline} = ensureStory();
+  $('#gw-graph-panel').dataset.mode = graph?.stage ? '3d' : '2d';
+  if (graph?.stage) graph.stage.append(caption);
+  else timeline.before(caption);
+}
+
+function updatePlayButton() {
+  if (!story) return;
+  const playing = actor === 'replay' ? replayPlaying : Boolean(previewTimer);
+  const button = story.timeline.querySelector('.gw-timeline-play');
+  button.textContent = playing ? '❚❚' : '▶';
+  button.setAttribute('aria-label', playing ? '暂停播放' : '播放解题过程');
+  button.disabled = actor === 'replay' ? !replay : busy || timelineNow() === 0;
+}
+
+function renderStory(shown, view) {
+  const {caption, timeline} = ensureStory();
+  const now = timelineNow(), index = preview ? preview.index : now;
+  const text = captionFor(shown, view, index);
+  const key = JSON.stringify(text);
+  if (key !== caption.dataset.key) {
+    caption.dataset.key = key;
+    caption.dataset.status = text.status || '';
+    caption.querySelector('.gw-caption-kicker').textContent = text.kicker;
+    const body = caption.querySelector('.gw-caption-text');
+    body.textContent = text.text;
+    body.removeAttribute('data-math-rendered');
+    body.setAttribute('data-math-text', '');
+    caption.querySelector('.gw-caption-next').textContent = text.next;
+    renderMath(caption);
+    if (!reduced.matches) caption.animate([{opacity: 0, transform: 'translateY(12px)'}, {opacity: 1, transform: 'none'}], {duration: 480, easing: 'cubic-bezier(.2,.7,.2,1)'});
+  }
+  const list = timelinePoints().map((point, time) => ({...point, time, future: time > now}));
+  const current = actor === 'student' ? currentDecision(bundle, state) : null;
+  if (current) list.push({label: current.title, time: -1, status: 'next', future: true});
+  const ol = timeline.querySelector('ol');
+  const focused = ol.contains(document.activeElement) ? document.activeElement.dataset.time : null;
+  ol.innerHTML = list.map(point => `<li><button type="button" data-time="${point.time}" data-status="${point.status}"${point.time === -1 ? ' disabled' : ''}${point.time === index ? ' aria-current="step"' : ''}${point.future ? ' class="is-future"' : ''}><b>${point.time === -1 ? '下一步' : `T${point.time}`}</b><span>${escapeHTML(point.label)}</span></button></li>`).join('');
+  if (focused != null) ol.querySelector(`[data-time="${CSS.escape(focused)}"]`)?.focus({preventScroll: true});
+  scrollTimeline();
+  updatePlayButton();
+}
+
+function scrollTimeline(behavior = reduced.matches ? 'auto' : 'smooth') {
+  const ol = story?.timeline.querySelector('ol'), active = ol?.querySelector('[aria-current]');
+  if (active) ol.scrollTo({left: active.offsetLeft - (ol.clientWidth - active.offsetWidth) / 2, behavior});
+}
+
+function showPreview(index) {
+  preview = index >= timelineNow() ? null : {index, state: studentStateAt(index)};
+  renderGraph();
+}
+function stopPreview() { clearTimeout(previewTimer); previewTimer = null; }
+
+function goToTime(index) {
+  if (actor === 'replay') {
+    if (!replay) return;
+    stopReplay();
+    try { applyReplayPosition(index); } catch (error) { notifyReplay(error.message); }
+    story?.timeline.querySelector(`[data-time="${index}"]`)?.focus({preventScroll: true});
+    return;
+  }
+  if (busy) return;
+  stopPreview(); showPreview(index);
+  story?.timeline.querySelector(`[data-time="${index}"]`)?.focus({preventScroll: true});
+}
+
+/* Play the walk from T0: the AI replay advances its own record; a student's own path is replayed on the graph only. */
+function togglePlay() {
+  if (actor === 'replay') {
+    if (!replay) return;
+    if (replayPlaying) { stopReplay(); return; }
+    if (replayPosition >= replay.actions.length) applyReplayPosition(0);
+    playReplay();
+    return;
+  }
+  if (previewTimer) { stopPreview(); updatePlayButton(); return; }
+  const end = timelineNow();
+  if (!end || busy) return;
+  let index = 0;
+  const step = () => {
+    previewTimer = index >= end ? null : setTimeout(step, reduced.matches ? 900 : 1700);
+    showPreview(index++);
+  };
+  step();
+}
+
+function renderGraph() {
+  const shown = preview?.state || state;
+  const view = viewFor(shown);
+  renderStory(shown, view);
+  graph?.render(view);
+  const logs = (view.logs || []).map(log => typeof log === 'string' ? log : log.text || log.message || log.log || '');
+  const logHTML = values => values.map(log => `<li data-math-text>${escapeHTML(log)}</li>`).join('');
+  $('#gw-logs').innerHTML = logHTML(logs.slice(-3));
+  $('#gw-log-history').hidden = !logs.length;
+  $('#gw-log-history ol').innerHTML = logHTML(logs);
+  $('#gw-logs-count').textContent = String(logs.length);
+  $('#gw-calls-count').textContent = String(view.calls?.length || 0);
+  const basis = [...new Set((view.usedBasis || []).map(ref => typeof ref === 'string' ? ref : ref.ref || ref.id))].map(describeBasis);
+  $('#gw-used-count').textContent = String(basis.length);
+  $('#gw-used').innerHTML = basis.length ? basis.map(node => `<li><a href="${nodeHref(node)}" target="_blank" rel="noopener">${escapeHTML(node.label)}</a></li>`).join('') : '<li>确认步骤后，这里显示实际用到的依据。</li>';
+  const name = id => graphView.nodes.find(node => node.id === id)?.label || id;
+  $('#gw-calls').innerHTML = view.calls?.length ? view.calls.map(call => `<li><span>${escapeHTML(name(call.method))} · ${escapeHTML(callStepTitle(call))}</span><strong>调用 ${escapeHTML(name(call.ref))}</strong></li>`).join('') : '<li>尚未发生方法或技能调用。</li>';
+  const current = currentDecision(bundle, state);
+  $('#gw-path').textContent = [state.run?.route ? bundle.routes[state.run.route].label : '从读题开始', current?.title || (state.done ? '完成本路线' : '')].filter(Boolean).join(' › ');
+  hydrate($('#gw-graph-panel'));
+  return view;
+}
+
+function render({focus = false, scroll = focus} = {}) {
+  stopPreview(); preview = null;
+  const open = new Set([...$('#gw-steps').querySelectorAll('details[open]')].map(item => item.dataset.completedDecision));
+  const current = currentDecision(bundle, state);
+  const introCount = state.introCompleted?.length || 0;
+  const intro = (state.introCompleted || []).map((record, index) => completedHTML(record, index + 1, 'intro', null)).join('');
+  const completed = (state.run?.completed || []).map((record, index) => completedHTML(record, introCount + index + 1, activeRunId(), state.run.route)).join('');
+  // The AI's cards appear only as it submits: a step it has not reached yet stays a one-line placeholder.
+  const shown = current && (actor === 'student' || submitted?.decision === current.id);
+  const pending = actor === 'replay' && !shown ? replayPendingHTML(current) : '';
+  $('#gw-steps').innerHTML = intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending);
+  const lastCompleted = [...(state.introCompleted || []), ...(state.run?.completed || [])].at(-1)?.decision;
+  $('#gw-steps').querySelectorAll('details[data-completed-decision]').forEach(item => { item.open = open.has(item.dataset.completedDecision) || item.dataset.completedDecision === lastCompleted; });
+  if (shown) renderInteraction(current);
+  const archives = state.archives?.filter(run => run.route) || [];
+  $('#gw-completion').innerHTML = state.done ? completionHTML(archives) : '';
+  $('#gw-undo').disabled = actor !== 'student' || busy || !(state.introCompleted?.length || state.run?.completed?.length || state.run?.route);
+  const completedCount = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0);
+  $('#gw-progress').textContent = `${completedCount} 个步骤已确认${actor === 'replay' ? ` · AI 回放 ${replayPosition} / ${replay?.actions.length || 0}` : ''}`;
+  hydrate($('#gw-steps')); hydrate($('#gw-completion'));
+  renderGraph();
+  const target = $('#gw-current-title') || $('#gw-completion h2');
+  if (target && focus) { target.tabIndex = -1; target.focus({preventScroll: true}); }
+  if (scroll) revealStep();
+}
+
+function revealStep(behavior = reduced.matches ? 'auto' : 'smooth') {
+  const anchor = $('#gw-active') || $('#gw-completion .gw-completion') || [...$('#gw-steps').querySelectorAll('details[data-completed-decision]')].at(-1);
+  if (!anchor) return;
+  if (!isPlayer()) { anchor.scrollIntoView({block: 'start', behavior}); return; }
+  // In the phone player the steps live in a bottom sheet; scroll only the sheet, never the page under the graph.
+  const lesson = $('.gw-lesson'), head = lesson.querySelector('.gw-sheet-head')?.offsetHeight || 0;
+  lesson.scrollTo({top: lesson.scrollTop + anchor.getBoundingClientRect().top - lesson.getBoundingClientRect().top - head - 8, behavior});
+}
+
+/* On a phone, watching the AI is a player: the graph fills the screen and the step cards wait in a bottom sheet.
+   Doing it yourself keeps the cards on the page with a small live graph pinned above them. */
+const isPlayer = () => narrow.matches && actor === 'replay';
+
+function toggleSteps(open = !document.body.classList.contains('gw-sheet-open')) {
+  document.body.classList.toggle('gw-sheet-open', open);
+  $('#gw-open-steps')?.setAttribute('aria-expanded', String(open));
+  if (open) requestAnimationFrame(() => revealStep('auto'));
+}
+
+function mountPlayer() {
+  if ($('.gw-sheet-head')) return;
+  const panel = $('#gw-graph-panel'), lesson = $('.gw-lesson');
+  const problem = document.createElement('p');
+  problem.className = 'gw-player-problem';
+  PracticeMath.render(problem, bundle.problem.text);
+  panel.querySelector('.gw-graph-heading').after(problem);
+  const exit = document.createElement('button');
+  exit.type = 'button'; exit.id = 'gw-player-exit'; exit.textContent = '换我来做';
+  exit.addEventListener('click', () => { if (!busy) chooseActor('student'); });
+  $('#gw-close-graph').before(exit);
+  const steps = document.createElement('button');
+  steps.type = 'button'; steps.id = 'gw-open-steps'; steps.textContent = '步骤详情';
+  steps.setAttribute('aria-controls', 'gw-steps'); steps.setAttribute('aria-expanded', 'false');
+  steps.addEventListener('click', () => toggleSteps());
+  panel.querySelector('.gw-panel-dock').prepend(steps);
+  const head = document.createElement('div');
+  head.className = 'gw-sheet-head';
+  head.innerHTML = '<strong>解题步骤</strong><button type="button" data-close-steps>回到图谱</button>';
+  head.querySelector('button').addEventListener('click', () => toggleSteps(false));
+  lesson.prepend(head);
+  document.addEventListener('pointerdown', event => {
+    if (document.body.classList.contains('gw-sheet-open') && !lesson.contains(event.target) && !event.target.closest('#gw-open-steps')) toggleSteps(false);
+  });
+  // The pinned mini graph ignores pointers itself, so a tap on it lands on the panel and opens the full graph.
+  panel.addEventListener('click', event => {
+    if (event.target === panel && narrow.matches && actor === 'student' && !panel.classList.contains('is-open')) openGraph();
+  });
+}
+
+function replayPendingHTML(current) {
+  if (replayNotice) return `<p class="gw-ai-status" role="status">${escapeHTML(replayNotice.text)}${replayNotice.retry ? ' <button type="button" id="gw-replay-retry">重新读取</button>' : ''}</p>`;
+  if (!replay || !current) return '';
+  const text = replayPlaying ? `AI 正在看：${current.title}` : `下一步：${current.title} · 点图谱下方 ▶ 继续`;
+  return `<p class="gw-ai-status${replayPlaying ? ' is-thinking' : ''}" role="status"><span class="gw-ai-dot" aria-hidden="true"></span>${escapeHTML(text)}</p>`;
+}
+
+function notifyReplay(text, retry = false) {
+  replayNotice = text ? {text, retry} : null;
+  if (actor === 'replay' && bundle) render();
+}
+
+function completionHTML(archives) {
+  const route = bundle.routes[state.run?.route], {answer, back} = bundle.completion;
+  const walked = [...new Set([...archives.map(run => run.route), route?.id])].map(id => bundle.routes[id]).filter(Boolean);
+  const others = actor === 'student' ? Object.values(bundle.routes).filter(item => item.id !== route?.id) : [];
+  const takeaways = walked.length > 1
+    ? `<ul class="gw-completion-takeaways">${walked.map(item => `<li data-math-text><b>${escapeHTML(item.label)}</b>　${escapeHTML(item.takeaway)}</li>`).join('')}</ul>`
+    : route?.takeaway ? `<p data-math-text>${escapeHTML(route.takeaway)}</p>` : '';
+  return `<section class="gw-completion"><h2>${escapeHTML(walked.map(item => item.label).join(' · '))} · 完成</h2>`
+    + `<div class="gw-completion-answer" data-math-text>${escapeHTML(answer)}</div>`
+    + takeaways
+    + `<div class="gw-toolbar">${others.map(item => `<button type="button" data-route="${escapeHTML(item.id)}">再用${escapeHTML(item.label)}做一遍</button>`).join('')}<a class="gw-completion-back" href="${escapeHTML(back.href)}">${escapeHTML(back.label)}</a></div></section>`;
+}
+
+function changeDraft(action) {
+  const decision = currentDecision(bundle, state);
+  if (!decision || actor !== 'student' || busy) return;
+  ensureDraft(decision); submitted = null;
+  action(decision);
+  renderInteraction(decision);
+}
+
+function submit() {
+  const decision = currentDecision(bundle, state);
+  if (!decision || actor !== 'student' || busy || !ready(decision)) return;
+  const answer = copyAnswer(draft);
+  stopPreview(); preview = null;
+  state = submitAnswer(bundle, state, {decision: decision.id, answer}); studentState = state;
+  submitted = {decision: decision.id, answer};
+  const feedback = state.lastFeedback;
+  $('#gw-announcement').textContent = feedback?.message || (feedback?.status === 'passed' ? '已确认，进入下一步。' : '请再想一想。');
+  if (feedback?.status !== 'passed') { renderInteraction(decision); renderGraph(); return; }
+  busy = true;
+  $('#gw-submit').disabled = true;
+  renderGraph();
+  clearTimeout(commitTimer);
+  commitTimer = setTimeout(() => { busy = false; draftKey = ''; render({focus: true}); }, reduced.matches ? 0 : 350);
+}
+
+function stopReplay() {
+  clearTimeout(replayTimer); replayTimer = null;
+  const was = replayPlaying; replayPlaying = false;
+  if (was && actor === 'replay' && replay) render(); else updatePlayButton();
+}
+
+function applyReplayPosition(next) {
+  replayPosition = next;
+  state = replayState(bundle, replay, replayPosition);
+  const action = replay.actions[replayPosition - 1];
+  submitted = action?.decision ? {decision: action.decision, answer: action.answer} : null;
+  draftKey = ''; render({scroll: replayPosition > 0});
+  const feedback = state.lastFeedback;
+  $('#gw-announcement').textContent = feedback?.message || `回放第 ${replayPosition} 次提交`;
+}
+
+function playReplay() {
+  if (!replay || replayPosition >= replay.actions.length) return;
+  function advance() {
+    if (actor !== 'replay') return;
+    replayPlaying = replayPosition + 1 < replay.actions.length;
+    try { applyReplayPosition(replayPosition + 1); }
+    catch (error) { stopReplay(); notifyReplay(`回放无法继续：${error.message}`); return; }
+    replayTimer = replayPlaying ? setTimeout(advance, state.lastFeedback?.status === 'wrong' ? 2200 : 1500) : null;
+    updatePlayButton();
+  }
+  advance();
+}
+
+async function readJSON(url) {
+  const response = await fetch(url, {cache: 'no-store'});
+  if (!response.ok) throw new Error(`读取失败（${response.status}）`);
+  return response.json();
+}
+
+/* The problem restatement is authored once, on the practice page; borrow it so both pages read the same. */
+async function loadMeaning() {
+  const card = $('.gw-lesson .problem-card');
+  if (card.querySelector('.meaning-panel')) return;
+  try {
+    const response = await fetch(PRACTICE_PAGE, {cache: 'no-store'});
+    if (!response.ok) return;
+    const panel = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('.meaning-panel');
+    if (!panel || card.querySelector('.meaning-panel')) return;
+    card.append(document.importNode(panel, true));
+    renderMath(card);
+  } catch { /* the original text alone is still complete */ }
+}
+
+/* Once the problem card scrolls away, a compact copy pins to the top of the lesson column.
+   The dock has no height, so showing it never shifts the steps underneath. */
+function mountProblemBar() {
+  const lesson = $('.gw-lesson'), card = lesson.querySelector('.problem-card');
+  if (lesson.querySelector('.gw-problem-dock')) return;
+  const dock = document.createElement('div');
+  dock.className = 'gw-problem-dock';
+  dock.setAttribute('aria-hidden', 'true');
+  dock.innerHTML = '<div class="gw-problem-bar"><span class="gw-problem-bar-label">原题</span><span class="gw-problem-bar-text"></span></div>';
+  lesson.prepend(dock);
+  const bar = dock.firstElementChild;
+  PracticeMath.render(bar.querySelector('.gw-problem-bar-text'), bundle.problem.text);
+  new ResizeObserver(() => lesson.style.setProperty('--gw-bar-h', `${bar.offsetHeight}px`)).observe(bar);
+  new IntersectionObserver(([entry]) => dock.classList.toggle('is-shown', !entry.isIntersecting)).observe(card);
+}
+
+async function loadReplay(path, autoplay = true) {
+  stopReplay();
+  const ticket = ++replayTicket;
+  replay = null;
+  if (!path) return;
+  notifyReplay('正在读取 AI 解题记录…');
+  try {
+    const url = new URL(path, new URL(REPLAY_INDEX_URL, location.origin));
+    if (url.origin !== location.origin || !url.pathname.startsWith('/data/graph-walk/replays/')) throw new Error('回放地址不属于本 Demo。');
+    const value = await readJSON(url.href);
+    if (ticket !== replayTicket || actor !== 'replay') return;
+    if (value.bundleVersion !== bundle.bundleVersion || value.problemId !== bundle.problemId) throw new Error('回放与当前题目版本不同，请重新生成同版回放。');
+    if (!Array.isArray(value.actions)) throw new Error('回放没有有效的作答记录。');
+    replay = value; replayPosition = 0; replayNotice = null;
+    applyReplayPosition(0);
+    if (autoplay) playReplay();
+  } catch (error) {
+    if (ticket !== replayTicket) return;
+    notifyReplay(error.message, true);
+  }
+}
+
+async function loadReplayIndex(autoplay = true) {
+  const ticket = replayTicket;
+  notifyReplay('正在读取 AI 解题记录…');
+  try {
+    const index = await readJSON(REPLAY_INDEX_URL);
+    if (ticket !== replayTicket || actor !== 'replay') return;
+    replayEntries = index.bundleVersion === bundle.bundleVersion ? index.replays || [] : []; replayIndexLoaded = true;
+    if (replayEntries.length) {
+      await loadReplay(replayEntries[0].path, autoplay);
+    }
+    else notifyReplay('当前版本的 AI 解题还没录制，可以先自己做。');
+  } catch (error) {
+    if (ticket !== replayTicket) return;
+    notifyReplay(`暂时不能读取 AI 解题：${error.message}`, true);
+  }
+}
+
+/* Switching away drops an in-flight read (its ticket goes stale), so coming back must read again
+   whatever was missing: the index, or just the replay file the index points to. */
+function ensureReplay(autoplay = true) {
+  if (replayIndexLoaded && replayEntries.length) void loadReplay(replayEntries[0].path, autoplay);
+  else void loadReplayIndex(autoplay);
+}
+
+function chooseActor(next, {autoplay = true} = {}) {
+  stopReplay(); ++replayTicket; actor = next;
+  if ($('#gw-graph-panel').classList.contains('is-open')) closeGraph();
+  document.body.dataset.actor = next; toggleSteps(false);
+  $('#gw-student').setAttribute('aria-pressed', String(next === 'student'));
+  $('#gw-ai').setAttribute('aria-pressed', String(next === 'replay'));
+  draftKey = ''; submitted = null;
+  state = next === 'student' ? studentState : createState(bundle);
+  if (next === 'replay' && replay) {
+    try { applyReplayPosition(replayPosition); } catch (error) { notifyReplay(error.message); return; }
+    if (autoplay) playReplay();
+    return;
+  }
+  render();
+  if (next === 'replay') ensureReplay(autoplay);
+}
+
+function closeGraph() {
+  $('#gw-graph-panel').classList.remove('is-open');
+  $('#gw-graph-panel').removeAttribute('role'); $('#gw-graph-panel').removeAttribute('aria-modal');
+  $('#gw-open-graph').setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('gw-modal-open');
+  $('.gw-lesson').inert = false;
+  focusBeforeGraph?.focus({preventScroll: true}); focusBeforeGraph = null;
+}
+
+function openGraph() {
+  if (!narrow.matches) return;
+  focusBeforeGraph = document.activeElement;
+  $('#gw-graph-panel').classList.add('is-open');
+  $('#gw-graph-panel').setAttribute('role', 'dialog'); $('#gw-graph-panel').setAttribute('aria-modal', 'true');
+  $('#gw-open-graph').setAttribute('aria-expanded', 'true');
+  document.body.classList.add('gw-modal-open'); $('.gw-lesson').inert = true;
+  $('#gw-close-graph').focus(); requestAnimationFrame(() => { graph?.focus(); scrollTimeline('auto'); });
+}
+
+async function load() {
+  const ticket = ++loadTicket;
+  $('#gw-loading').hidden = false; $('#gw-error').hidden = true;
+  try {
+    const value = await readJSON(BUNDLE_URL);
+    if (ticket !== loadTicket) return;
+    if (!value.bundleVersion || !value.templates || !value.intro?.length || !value.routes || !value.graph) throw new Error('Demo 快照不完整，请重新构建后重试。');
+    bundle = value; graphView = bundle.graph;
+    studentState = state = createState(bundle);
+    PracticeMath.render($('#gw-problem'), bundle.problem.text);
+    mountProblemBar();
+    void loadMeaning();
+    $('#gw-version').textContent = `版本 ${bundle.bundleVersion.slice(0, 12)} · 公共图谱 ${bundle.graphVersion.slice(0, 12)}`;
+    graph?.destroy(); graph = null;
+    $('#gw-ready').hidden = false;
+    graph = await createGraph();
+    if (ticket !== loadTicket) return;
+    mountCaption(); mountPlayer();
+    // A phone opens on the AI player, paused at the start; the visitor presses ▶ to watch.
+    if (narrow.matches) chooseActor('replay', {autoplay: false}); else render();
+  } catch (error) {
+    if (ticket !== loadTicket) return;
+    $('#gw-error p').textContent = `暂时无法打开演示：${error.message}`;
+    $('#gw-error').hidden = false;
+  } finally { if (ticket === loadTicket) $('#gw-loading').hidden = true; }
+}
+
+function bind() {
+  $('#gw-ai').textContent = '看 AI 解题';
+  document.body.dataset.actor = actor;
+  $('#gw-open-graph span:last-child').textContent = '展开图谱 ⤢';
+  $('#gw-reset').innerHTML = '<span aria-hidden="true">↺</span> 重新练习';
+  $('#gw-retry').addEventListener('click', load);
+  $('#gw-steps').addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (button?.id === 'gw-replay-retry') { ensureReplay(); return; }
+    if (!button || actor !== 'student' || busy) return;
+    if (button.id === 'gw-submit') { submit(); return; }
+    const focus = button.dataset.choice != null ? `[data-choice][data-value="${CSS.escape(button.dataset.value)}"]`
+      : button.dataset.pairAnswer != null ? `[data-pair-answer="${button.dataset.pairAnswer}"][data-value="${CSS.escape(button.dataset.value)}"]`
+      : button.dataset.multi != null ? `[data-multi="${CSS.escape(button.dataset.multi)}"]`
+        : button.dataset.planeCell != null ? `[data-plane-cell="${CSS.escape(button.dataset.planeCell)}"]`
+        : button.dataset.gridCell != null ? `[data-grid-cell="${CSS.escape(button.dataset.gridCell)}"]`
+          : button.dataset.planeMethod != null ? `[data-plane-method="${CSS.escape(button.dataset.planeMethod)}"]` : null;
+    if (button.hasAttribute('data-choice')) changeDraft(() => { draft = button.dataset.value; });
+    else if (button.hasAttribute('data-pair-answer')) changeDraft(() => { draft[Number(button.dataset.pairAnswer)] = button.dataset.value; });
+    else if (button.hasAttribute('data-multi')) changeDraft(() => { const value = button.dataset.multi; draft = draft.includes(value) ? draft.filter(item => item !== value) : [...draft, value]; });
+    else if (button.hasAttribute('data-plane-cell')) changeDraft(decision => {
+      const [x, y] = button.dataset.planeCell.split('|');
+      const kept = decision.interaction.methods.find(method => method.value === draft[2]);
+      draft = [x, y, kept && covers(kept, x, y) ? draft[2] : ''];
+    });
+    else if (button.hasAttribute('data-plane-method')) changeDraft(() => { draft[2] = button.dataset.planeMethod; });
+    else if (button.hasAttribute('data-grid-cell')) changeDraft(() => { draft = button.dataset.gridCell.split('|'); });
+    else if (button.hasAttribute('data-slot')) changeDraft(() => { selectedSlot = Number(button.dataset.slot); });
+    else if (button.hasAttribute('data-token')) {
+      const slot = selectedSlot;
+      if (slot != null) changeDraft(() => { draft[slot] = button.dataset.token; selectedSlot = null; });
+      $('#gw-active')?.querySelector(`[data-slot="${slot}"]`)?.focus({preventScroll: true});
+    } else if (button.classList.contains('gw-token-close')) changeDraft(() => { selectedSlot = null; });
+    if (focus) $('#gw-active')?.querySelector(focus)?.focus({preventScroll: true});
+    else if (button.hasAttribute('data-slot')) $('#gw-active [data-token]')?.focus({preventScroll: true});
+  });
+  $('#gw-completion').addEventListener('click', event => {
+    const button = event.target.closest('[data-route]');
+    if (!button || actor !== 'student' || busy) return;
+    state = switchRoute(bundle, state, button.dataset.route); studentState = state;
+    draftKey = ''; submitted = null; render({focus: true});
+  });
+  $('#gw-undo').addEventListener('click', () => {
+    if (busy || actor !== 'student') return;
+    state = undo(bundle, state); studentState = state; draftKey = ''; submitted = null; render({focus: true});
+  });
+  $('#gw-reset').addEventListener('click', () => {
+    clearTimeout(commitTimer); busy = false; stopReplay(); ++replayTicket;
+    studentState = createState(bundle); replayPosition = 0; chooseActor('student');
+  });
+  $('#gw-student').addEventListener('click', () => { if (!busy) chooseActor('student'); });
+  $('#gw-ai').addEventListener('click', () => { if (!busy) chooseActor('replay'); });
+  $('#gw-open-graph').addEventListener('click', openGraph);
+  $('#gw-close-graph').addEventListener('click', closeGraph);
+  narrow.addEventListener('change', () => { if (!narrow.matches) { closeGraph(); toggleSteps(false); } });
+  document.addEventListener('keydown', event => {
+    if (!$('#gw-graph-panel').classList.contains('is-open')) return;
+    if (event.key === 'Escape') { event.preventDefault(); closeGraph(); }
+    if (event.key !== 'Tab') return;
+    const focusable = [...$('#gw-graph-panel').querySelectorAll('button,a[href],summary,[tabindex="0"]')].filter(node => node.getClientRects().length);
+    const first = focusable[0], last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  });
+}
+
+if (document.readyState === 'loading') await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, {once: true}));
+bind();
+await load();

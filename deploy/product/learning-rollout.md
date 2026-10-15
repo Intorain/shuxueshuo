@@ -110,12 +110,12 @@ git -C "$SITE_REPO" merge --ff-only "$REV"
 
 ## 静态资源与缓存
 
-`git pull` 直接替换仓库 `site/`，不保留上一版 `knowledge/assets/<hash>/`。已打开的旧页面引用旧哈希资源时会 404，刷新即可；
+`git pull` 直接替换仓库 `site/`。页面引用的脚本、样式都是固定地址（知识图谱用 `/assets/knowledge-next/`，题页用 `/assets/practice/`），不带版本号；已打开的旧页面在 `git pull` 后懒加载到的是新模块，出现异常刷新即可。
 旧页面与新 API 的内容版本不一致时停止写入学习记录。仅页面、样式或图片变化（教学内容版本不变）直接 `git pull`，不需要发布包。
 
-主站 Nginx 与本地网站对 HTML、关联 JSON 和普通资源设置 `Cache-Control: no-cache`；`knowledge/assets/<12 位内容哈希>/`（包括兼容路径 `knowledge-next/assets/`）成功响应及 304 设置一年 `immutable` 缓存，错误响应不长期缓存。API 保留自身的缓存策略。Nginx 配置变化时复制到 `/etc/nginx/conf.d/` 后 `nginx -t` 并 reload。
+主站 Nginx 与本地网站对全部静态文件设置 `Cache-Control: no-cache`，浏览器每次凭 ETag / Last-Modified 协商，未变化时得到 304。因此改共享脚本或样式只改它本身，不需要改引用它的页面。API 保留自身的缓存策略。Nginx 配置变化时复制到 `/etc/nginx/conf.d/` 后 `nginx -t` 并 reload。
 
-`/knowledge-next/` 的服务器重定向保留查询参数，不依赖 JavaScript，哈希资源目录不参与跳转。生成的跳转页另有 `noscript` 下的 `meta refresh`；正常启用 JavaScript 时继续保留查询参数、锚点及图谱上下文。纯静态托管或直接访问旧节点别名页且禁用 JavaScript 时，HTML 只能跳到预设目标（含预设条目），不能动态转发任意当前查询参数。
+`/knowledge-next/` 的服务器重定向保留查询参数，不依赖 JavaScript。生成的跳转页另有 `noscript` 下的 `meta refresh`；正常启用 JavaScript 时继续保留查询参数、锚点及图谱上下文。纯静态托管或直接访问旧节点别名页且禁用 JavaScript 时，HTML 只能跳到预设目标（含预设条目），不能动态转发任意当前查询参数。
 
 `publish-learning` 在服务器仅允许当前版本的幂等重发，版本升级统一走 `deploy`。
 

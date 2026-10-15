@@ -31,7 +31,7 @@ test('no-script fallback keeps the fixed destination and never races script navi
   const target = '/knowledge/method-homogeneous/?scope=section-2-2&preview=1#degree';
   const fallback = noScriptRedirect(target);
   assert.equal(fallback, '<noscript><meta http-equiv="refresh" content="0;url=/knowledge/method-homogeneous/?scope=section-2-2&amp;preview=1#degree"></noscript>');
-  assert.ok(redirectPage(target, 'fixture').includes(fallback));
+  assert.ok(redirectPage(target).includes(fallback));
   for (const [name, html] of outputs) {
     if (!name.endsWith('.html')) continue;
     const config = html.match(/<script id="(?:compat-config|node-page-config)" type="application\/json">(.*?)<\/script>/s);

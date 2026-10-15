@@ -113,7 +113,7 @@ const source = await fs.readFile(repoRoot + '/site/assets/knowledge-next/practic
 const module = new vm.SourceTextModule(source, {
   context: scope,
   initializeImportMeta: (meta) => {
-    meta.url = 'http://localhost/knowledge/assets/test/practice-preview.mjs';
+    meta.url = 'http://localhost/assets/knowledge-next/practice-preview.mjs';
   }
 });
 await module.link(

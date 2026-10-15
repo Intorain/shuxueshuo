@@ -7,7 +7,6 @@ Install/migrate it first (see docs/site-login-local-testing.md).
 
 import argparse
 import os
-import re
 import secrets
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
@@ -65,11 +64,7 @@ class SiteStaticFiles(StaticFiles):
         except HTTPException as error:
             error.headers = {**(error.headers or {}), 'Cache-Control': 'no-cache'}
             raise
-        hashed = re.match(r'^knowledge(?:-next)?/assets/[0-9a-f]{12}/', path)
-        response.headers['Cache-Control'] = (
-            'public, max-age=31536000, immutable'
-            if hashed and response.status_code in (200, 206, 304) else 'no-cache'
-        )
+        response.headers['Cache-Control'] = 'no-cache'
         return response
 
 

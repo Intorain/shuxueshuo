@@ -1,0 +1,1038 @@
+{
+  "schemaVersion": 1,
+  "problemId": "quadratic-always-q01",
+  "page": "/2/q01/",
+  "notation": "site/data/math-notation-v1/quadratic-always/q01.json",
+  "intro": [
+    {
+      "id": "D1",
+      "title": "读题",
+      "question": "这道题在说什么？",
+      "results": [
+        "合起来：关于 $x$ 的二次不等式对所有实数 $x$ 都成立，求参数 $a$ 的取值范围。"
+      ],
+      "query": {
+        "op": "reverse",
+        "relation": "involves",
+        "from": [
+          "quantifiers",
+          "quadratic-inequality"
+        ]
+      },
+      "interaction": {
+        "type": "checklist",
+        "title": "逐句读题",
+        "slots": [
+          {
+            "label": "“对任意实数 $x$ 恒成立”",
+            "options": [
+              {
+                "value": "every",
+                "label": "所有实数 $x$ 都要满足"
+              },
+              {
+                "value": "some",
+                "label": "找到一个 $x$ 满足就行"
+              },
+              {
+                "value": "zero",
+                "label": "只要 $x=0$ 时成立"
+              }
+            ]
+          },
+          {
+            "label": "“$-x^2+2x+3\\le a^2-3a$”",
+            "options": [
+              {
+                "value": "quadratic-in-x",
+                "label": "关于 $x$ 的一元二次不等式，$a$ 看作常数"
+              },
+              {
+                "value": "equation-in-a",
+                "label": "关于 $a$ 的方程"
+              },
+              {
+                "value": "linear",
+                "label": "一元一次不等式"
+              }
+            ]
+          },
+          {
+            "label": "“求实数 $a$ 的取值范围”",
+            "options": [
+              {
+                "value": "parameter-range",
+                "label": "求参数 $a$ 能取哪些值"
+              },
+              {
+                "value": "solve-x",
+                "label": "解出 $x$ 的取值范围"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_answer": {
+        "terms": [
+          "every",
+          "quadratic-in-x",
+          "parameter-range"
+        ]
+      },
+      "feedback": {
+        "terms": "再读一遍：“任意”是每一个 $x$ 都要满足；不等式里 $x$ 的最高次数是 $2$，$a$ 只是参数；题目要的是 $a$ 的范围，不是 $x$ 的解集。"
+      },
+      "submit_label": "读懂了，看图谱怎么走"
+    },
+    {
+      "id": "D2",
+      "title": "确定题型",
+      "question": "哪一个题型最直接描述本题的条件与求解目标？",
+      "query": {
+        "op": "rank_types",
+        "from": "D1",
+        "withConfuse": true
+      },
+      "interaction": {
+        "type": "choice",
+        "field": "problem_type"
+      },
+      "expected_answer": {
+        "one_of": [
+          "type-quantified-quadratic"
+        ]
+      },
+      "feedback": {
+        "answer": "本题对所有 $x$ 成立，求的是参数 $a$ 的范围；并非给定参数后求 $x$ 的解集。"
+      },
+      "verdicts": {
+        "type-quantified-quadratic": {
+          "value": "fit",
+          "message": "这是直接描述本题的主要任务。"
+        },
+        "type-parameter-quadratic-solve": {
+          "value": "unfit",
+          "message": "该任务讨论参数取值后求 $x$ 的解集，与本题目标不同。"
+        },
+        "type-amgm-quantified": {
+          "value": "fit",
+          "implemented": false,
+          "message": "这是一条需要额外变形的有效替代思路，本 Demo 暂未提供交互：写成 $3+x(2-x)$，在 $0<x<2$ 用基本不等式，其余范围判断乘积符号。"
+        }
+      },
+      "submit_label": "确认题型"
+    },
+    {
+      "id": "D3",
+      "title": "选择解题方法",
+      "question": "本题落在哪一格？",
+      "query": {
+        "op": "method_rule",
+        "from": "type-quantified-quadratic"
+      },
+      "interaction": {
+        "type": "plane",
+        "title": "方法坐标图",
+        "x": {
+          "label": "$x$ 取全体实数吗？",
+          "options": [
+            {
+              "value": "interval",
+              "label": "否",
+              "note": "$x$ 在某个区间内"
+            },
+            {
+              "value": "real",
+              "label": "是",
+              "note": "$x\\in\\mathbb R$"
+            }
+          ]
+        },
+        "y": {
+          "label": "参数有给定范围吗？",
+          "options": [
+            {
+              "value": "given",
+              "label": "有",
+              "note": "如 $m\\in[1,3]$，求 $x$"
+            },
+            {
+              "value": "free",
+              "label": "没有",
+              "note": "要求的就是参数"
+            }
+          ]
+        },
+        "coverage": {
+          "discriminant": [
+            [
+              "real",
+              "free"
+            ]
+          ],
+          "interval": [
+            [
+              "interval",
+              "free"
+            ]
+          ],
+          "separation": [
+            [
+              "interval",
+              "free"
+            ],
+            [
+              "real",
+              "free"
+            ]
+          ],
+          "swap": [
+            [
+              "interval",
+              "given"
+            ],
+            [
+              "real",
+              "given"
+            ]
+          ]
+        }
+      },
+      "expected_answer": {
+        "cell": [
+          "real",
+          "free"
+        ]
+      },
+      "verdicts": {
+        "discriminant": {
+          "value": "fit",
+          "message": "对所有实数 $x$ 成立，关于 $x$ 的二次项系数为 $-1$，确定非零。"
+        },
+        "interval": {
+          "value": "superseded",
+          "message": "$\\mathbb R$ 也是区间，区间最值法在数学上可行；但 $x$ 取全体实数时判别式法更直接，区间最值法留给 $x$ 在某个区间内的题。"
+        },
+        "separation": {
+          "value": "fit",
+          "message": "参数式 $a^2-3a$ 已在一边，另一边只含 $x$，无需除以含变量的式子。"
+        },
+        "swap": {
+          "value": "not_triggered",
+          "message": "更换主元用于参数有给定范围、要求 $x$ 的题；本题要求的是参数 $a$。"
+        }
+      },
+      "feedback": {
+        "x": "再看横轴：“对任意实数 $x$”说明 $x$ 取遍全体实数，不是某个区间。",
+        "y": "再看纵轴：题目没有给出 $a$ 的范围，$a$ 的范围正是要求的。",
+        "method": "这种方法不在这一格里，请从这一格列出的方法中选一种。"
+      },
+      "submit_label": "用这种方法解题"
+    }
+  ],
+  "routes": {
+    "discriminant": {
+      "id": "discriminant",
+      "method": "method-discriminant",
+      "takeaway": "图像不低于横轴 $\\Leftrightarrow$ $\\Delta\\le0$；两个端点取等也成立。",
+      "branch": "discriminant",
+      "omit": [
+        "d_basis"
+      ],
+      "steps": [
+        {
+          "id": "d_rewrite",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "normalize"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "normalize",
+                "ref": "skill-inequality-transform",
+                "usedBasis": [
+                  "inequality-properties#addition"
+                ]
+              },
+              {
+                "method": "method-discriminant",
+                "step": "normalize",
+                "ref": "skill-simplify",
+                "usedBasis": [
+                  "equality-properties#identity"
+                ]
+              }
+            ],
+            "results": [
+              "记 $g(x)=x^2-2x+a^2-3a-3$，则 $g(x)\\ge0$ 对任意 $x\\in\\mathbb R$ 成立。"
+            ],
+            "log": "执行结果：整理为关于 $x$ 的二次式恒非负。"
+          }
+        },
+        {
+          "id": "d_position",
+          "present": {
+            "question": "$g(x)$ 开口向上。哪些图像能让 $g(x)\\ge0$ 对所有实数 $x$ 成立？选出全部。",
+            "interaction": {
+              "type": "multi",
+              "options": [
+                {
+                  "value": "touch",
+                  "name": "相切",
+                  "label": "相切：图像与横轴只有一个公共点",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1,
+                      0
+                    ],
+                    "bounds": [
+                      -1.2,
+                      3.2,
+                      -2.2,
+                      3.6
+                    ],
+                    "xTicks": [],
+                    "variable": "x",
+                    "title": "二次函数图像",
+                    "description": "图像与横轴相切于一点。",
+                    "showVertex": false,
+                    "points": [
+                      {
+                        "x": 1
+                      }
+                    ]
+                  }
+                },
+                {
+                  "value": "cross",
+                  "name": "穿过",
+                  "label": "穿过：图像与横轴有两个公共点",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1,
+                      -1.2
+                    ],
+                    "bounds": [
+                      -1.2,
+                      3.2,
+                      -2.2,
+                      3.6
+                    ],
+                    "xTicks": [],
+                    "variable": "x",
+                    "title": "二次函数图像",
+                    "description": "图像穿过横轴，与横轴有两个公共点。",
+                    "showVertex": false
+                  }
+                },
+                {
+                  "value": "apart",
+                  "name": "不相交",
+                  "label": "不相交：图像与横轴没有公共点",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1,
+                      1
+                    ],
+                    "bounds": [
+                      -1.2,
+                      3.2,
+                      -2.2,
+                      3.6
+                    ],
+                    "xTicks": [],
+                    "variable": "x",
+                    "title": "二次函数图像",
+                    "description": "图像与横轴没有公共点。",
+                    "showVertex": false
+                  }
+                }
+              ]
+            },
+            "expected_answer": {
+              "required": [
+                "touch",
+                "apart"
+              ],
+              "allowed": [
+                "touch",
+                "apart"
+              ]
+            },
+            "feedback": {
+              "answer": "$\\ge0$ 允许函数值等于零，但不允许负值。逐个看：图像有没有落到横轴下方的部分？"
+            }
+          },
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "conditions"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-function-properties#zeros",
+                  "quadratic-inequality#all-real"
+                ]
+              }
+            ],
+            "results": [],
+            "log": "执行结果：图像不能低于横轴，允许与横轴相切。"
+          }
+        },
+        {
+          "id": "d_delta",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "conditions"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-equation#discriminant",
+                  "quadratic-inequality#all-real"
+                ]
+              },
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-simplify",
+                "usedBasis": [
+                  "equality-properties#identity"
+                ]
+              },
+              {
+                "method": "method-discriminant",
+                "step": "conditions",
+                "ref": "skill-inequality-transform",
+                "usedBasis": [
+                  "inequality-properties#multiplication"
+                ]
+              }
+            ],
+            "results": [
+              "$\\Delta=4-4(a^2-3a-3)\\le0$，即 $a^2-3a-4\\ge0$。"
+            ],
+            "log": "执行结果：开口向上且恒非负，建立并化简判别式条件。"
+          }
+        },
+        {
+          "id": "d_range",
+          "present": {
+            "question": "把 $a^2-3a-4\\ge0$ 看成关于 $a$ 的一元二次不等式，记 $h(a)=a^2-3a-4$。哪张图在横轴上标对了 $a$ 的范围？",
+            "interaction": {
+              "type": "choice",
+              "field": "d_range",
+              "options": [
+                {
+                  "value": "inside",
+                  "label": "$-1\\le a\\le4$",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1.5,
+                      -6.25
+                    ],
+                    "bounds": [
+                      -2.5,
+                      5.5,
+                      -7.5,
+                      7.5
+                    ],
+                    "xTicks": [
+                      [
+                        -1.75,
+                        "−1"
+                      ],
+                      [
+                        4.6,
+                        "4"
+                      ]
+                    ],
+                    "variable": "a",
+                    "title": "h(a) 的图像",
+                    "description": "横轴上标出两根之间，含端点。",
+                    "showVertex": false,
+                    "solution": {
+                      "intervals": [
+                        [
+                          -1,
+                          4
+                        ]
+                      ],
+                      "closed": true
+                    }
+                  }
+                },
+                {
+                  "value": "open",
+                  "label": "$a<-1$ 或 $a>4$",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1.5,
+                      -6.25
+                    ],
+                    "bounds": [
+                      -2.5,
+                      5.5,
+                      -7.5,
+                      7.5
+                    ],
+                    "xTicks": [
+                      [
+                        -1.75,
+                        "−1"
+                      ],
+                      [
+                        4.6,
+                        "4"
+                      ]
+                    ],
+                    "variable": "a",
+                    "title": "h(a) 的图像",
+                    "description": "横轴上标出两根外侧，不含端点。",
+                    "showVertex": false,
+                    "solution": {
+                      "intervals": [
+                        [
+                          null,
+                          -1
+                        ],
+                        [
+                          4,
+                          null
+                        ]
+                      ],
+                      "closed": false
+                    }
+                  }
+                },
+                {
+                  "value": "outside",
+                  "label": "$a\\le-1$ 或 $a\\ge4$",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1.5,
+                      -6.25
+                    ],
+                    "bounds": [
+                      -2.5,
+                      5.5,
+                      -7.5,
+                      7.5
+                    ],
+                    "xTicks": [
+                      [
+                        -1.75,
+                        "−1"
+                      ],
+                      [
+                        4.6,
+                        "4"
+                      ]
+                    ],
+                    "variable": "a",
+                    "title": "h(a) 的图像",
+                    "description": "横轴上标出两根外侧，含端点。",
+                    "showVertex": false,
+                    "solution": {
+                      "intervals": [
+                        [
+                          null,
+                          -1
+                        ],
+                        [
+                          4,
+                          null
+                        ]
+                      ],
+                      "closed": true
+                    }
+                  }
+                }
+              ]
+            },
+            "feedback": {
+              "answer": "$h(a)\\ge0$ 就是图像在横轴上方或横轴上。看哪几段 $a$ 对应的图像不在横轴下方；端点处 $h(a)=0$，要不要算进去？"
+            }
+          },
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "solve"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-discriminant",
+                "step": "solve",
+                "ref": "quadratic-inequality-solve",
+                "usedBasis": []
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "roots",
+                "ref": "skill-solve-quadratic",
+                "usedBasis": [
+                  "quadratic-equation#roots"
+                ]
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "signs",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-inequality#signs"
+                ]
+              }
+            ],
+            "results": [
+              "$(a+1)(a-4)\\ge0$，得 $a\\le-1$ 或 $a\\ge4$。"
+            ],
+            "log": "执行结果：调用二次函数图像法求参数的解集。"
+          }
+        },
+        {
+          "id": "d_boundary",
+          "templateSteps": [
+            {
+              "method": "method-discriminant",
+              "step": "merge"
+            }
+          ],
+          "effects": {
+            "calls": [],
+            "results": [
+              "$a=-1$ 或 $a=4$ 时，原不等式等价于 $(x-1)^2\\ge0$，均成立。",
+              "答案：$a\\in(-\\infty,-1]\\cup[4,+\\infty)$。"
+            ],
+            "log": "执行结果：两端代回原式均成立，保留两个边界。"
+          }
+        }
+      ]
+    },
+    "extremum": {
+      "id": "extremum",
+      "method": "method-separation",
+      "takeaway": "$a^2-3a$ 不低于 $-x^2+2x+3$ 的最大值 $4$；两个端点取等也成立。",
+      "branch": "separation",
+      "steps": [
+        {
+          "id": "e_basis",
+          "present": {
+            "question": "分离参数法能直接用吗？在适用地图上点出本题所在的一格。",
+            "interaction": {
+              "type": "grid",
+              "title": "分离参数法适用地图",
+              "x": {
+                "label": "参数能单独放到一边吗？",
+                "options": [
+                  {
+                    "value": "tangled",
+                    "label": "分不开",
+                    "note": "$a$ 与 $x$ 缠在一起"
+                  },
+                  {
+                    "value": "separable",
+                    "label": "能分离",
+                    "note": "含移项后分离"
+                  }
+                ]
+              },
+              "y": {
+                "label": "要除以含 $x$ 的式子吗？",
+                "options": [
+                  {
+                    "value": "division",
+                    "label": "要除",
+                    "note": "除式的符号决定不等号方向"
+                  },
+                  {
+                    "value": "no_division",
+                    "label": "不用除",
+                    "note": "只需移项"
+                  }
+                ]
+              },
+              "zones": [
+                {
+                  "value": "direct",
+                  "label": "直接比较最值",
+                  "cells": [
+                    [
+                      "separable",
+                      "no_division"
+                    ]
+                  ]
+                },
+                {
+                  "value": "flip",
+                  "label": "先定符号再除",
+                  "cells": [
+                    [
+                      "separable",
+                      "division"
+                    ]
+                  ]
+                },
+                {
+                  "value": "unfit",
+                  "label": "不适用",
+                  "cells": [
+                    [
+                      "tangled",
+                      "division"
+                    ],
+                    [
+                      "tangled",
+                      "no_division"
+                    ]
+                  ]
+                }
+              ]
+            },
+            "expected_answer": {
+              "cell": [
+                "separable",
+                "no_division"
+              ]
+            },
+            "feedback": {
+              "x": "再看横轴：原不等式里，含 $a$ 的项和含 $x$ 的项现在各在哪一边？",
+              "y": "再看纵轴：要把 $a$ 单独留在一边，需要除以含 $x$ 的式子吗？"
+            }
+          },
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "separate"
+            }
+          ],
+          "effects": {
+            "calls": [],
+            "results": [
+              "记 $f(x)=-x^2+2x+3$，$c=a^2-3a$，则 $f(x)\\le c$ 对任意 $x\\in\\mathbb R$ 成立。"
+            ],
+            "log": "作答判断：原式已经分离，本步未调用变形技能。"
+          },
+          "skippedCalls": [
+            {
+              "method": "method-separation",
+              "step": "separate",
+              "ref": "skill-inequality-transform",
+              "usedBasis": []
+            },
+            {
+              "method": "method-separation",
+              "step": "separate",
+              "ref": "skill-equality-transform",
+              "usedBasis": []
+            }
+          ]
+        },
+        {
+          "id": "e_condition",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "quantifier"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-separation",
+                "step": "quantifier",
+                "ref": "skill-quantified-range",
+                "usedBasis": [
+                  "quantifiers#universal",
+                  "function-range-extrema#quantified"
+                ]
+              }
+            ],
+            "results": [
+              "$a^2-3a\\ge\\max_{x\\in\\mathbb R}(-x^2+2x+3)$。"
+            ],
+            "log": "执行结果：恒成立且函数值不超过参数式，要比较最大值。"
+          }
+        },
+        {
+          "id": "e_extremum",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "range"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-separation",
+                "step": "range",
+                "ref": "method-square-extremum",
+                "usedBasis": []
+              },
+              {
+                "method": "method-square-extremum",
+                "step": "square",
+                "ref": "method-complete-square",
+                "usedBasis": [
+                  "equality-properties#identity",
+                  "square-nonnegative#nonnegative"
+                ]
+              }
+            ],
+            "results": [
+              "$-x^2+2x+3=4-(x-1)^2\\le4$，$x=1$ 时取等。"
+            ],
+            "log": "执行结果：调用配方求最值法及配方技能；平方非负且可取零，最大值为 4。"
+          },
+          "skippedCalls": [
+            {
+              "method": "method-square-extremum",
+              "step": "prepare",
+              "ref": "method-elimination",
+              "usedBasis": []
+            },
+            {
+              "method": "method-square-extremum",
+              "step": "prepare",
+              "ref": "method-substitution",
+              "usedBasis": []
+            },
+            {
+              "method": "method-square-extremum",
+              "step": "range",
+              "ref": "quadratic-interval-extremum",
+              "usedBasis": []
+            }
+          ]
+        },
+        {
+          "id": "e_range",
+          "present": {
+            "question": "由 $a^2-3a\\ge4$ 得 $a^2-3a-4\\ge0$，记 $h(a)=a^2-3a-4$。哪张图在横轴上标对了 $a$ 的范围？",
+            "interaction": {
+              "type": "choice",
+              "field": "e_range",
+              "options": [
+                {
+                  "value": "inside",
+                  "label": "$-1\\le a\\le4$",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1.5,
+                      -6.25
+                    ],
+                    "bounds": [
+                      -2.5,
+                      5.5,
+                      -7.5,
+                      7.5
+                    ],
+                    "xTicks": [
+                      [
+                        -1.75,
+                        "−1"
+                      ],
+                      [
+                        4.6,
+                        "4"
+                      ]
+                    ],
+                    "variable": "a",
+                    "title": "h(a) 的图像",
+                    "description": "横轴上标出两根之间，含端点。",
+                    "showVertex": false,
+                    "solution": {
+                      "intervals": [
+                        [
+                          -1,
+                          4
+                        ]
+                      ],
+                      "closed": true
+                    }
+                  }
+                },
+                {
+                  "value": "open",
+                  "label": "$a<-1$ 或 $a>4$",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1.5,
+                      -6.25
+                    ],
+                    "bounds": [
+                      -2.5,
+                      5.5,
+                      -7.5,
+                      7.5
+                    ],
+                    "xTicks": [
+                      [
+                        -1.75,
+                        "−1"
+                      ],
+                      [
+                        4.6,
+                        "4"
+                      ]
+                    ],
+                    "variable": "a",
+                    "title": "h(a) 的图像",
+                    "description": "横轴上标出两根外侧，不含端点。",
+                    "showVertex": false,
+                    "solution": {
+                      "intervals": [
+                        [
+                          null,
+                          -1
+                        ],
+                        [
+                          4,
+                          null
+                        ]
+                      ],
+                      "closed": false
+                    }
+                  }
+                },
+                {
+                  "value": "outside",
+                  "label": "$a\\le-1$ 或 $a\\ge4$",
+                  "graph": {
+                    "coefficient": 1,
+                    "vertex": [
+                      1.5,
+                      -6.25
+                    ],
+                    "bounds": [
+                      -2.5,
+                      5.5,
+                      -7.5,
+                      7.5
+                    ],
+                    "xTicks": [
+                      [
+                        -1.75,
+                        "−1"
+                      ],
+                      [
+                        4.6,
+                        "4"
+                      ]
+                    ],
+                    "variable": "a",
+                    "title": "h(a) 的图像",
+                    "description": "横轴上标出两根外侧，含端点。",
+                    "showVertex": false,
+                    "solution": {
+                      "intervals": [
+                        [
+                          null,
+                          -1
+                        ],
+                        [
+                          4,
+                          null
+                        ]
+                      ],
+                      "closed": true
+                    }
+                  }
+                }
+              ]
+            },
+            "feedback": {
+              "answer": "$h(a)\\ge0$ 就是图像在横轴上方或横轴上。看哪几段 $a$ 对应的图像不在横轴下方；端点处 $h(a)=0$，要不要算进去？"
+            }
+          },
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "restore"
+            }
+          ],
+          "effects": {
+            "calls": [
+              {
+                "method": "method-separation",
+                "step": "restore",
+                "ref": "quadratic-inequality-solve",
+                "usedBasis": []
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "roots",
+                "ref": "skill-solve-quadratic",
+                "usedBasis": [
+                  "quadratic-equation#roots"
+                ]
+              },
+              {
+                "method": "quadratic-inequality-solve",
+                "step": "signs",
+                "ref": "skill-quadratic-sign",
+                "usedBasis": [
+                  "quadratic-inequality#signs"
+                ]
+              }
+            ],
+            "results": [
+              "$a^2-3a\\ge4$，所以 $a\\le-1$ 或 $a\\ge4$。"
+            ],
+            "log": "执行结果：还原为关于 $a$ 的二次不等式并求解。"
+          }
+        },
+        {
+          "id": "e_boundary",
+          "templateSteps": [
+            {
+              "method": "method-separation",
+              "step": "restore"
+            }
+          ],
+          "effects": {
+            "calls": [],
+            "results": [
+              "$a=-1$ 或 $a=4$ 时 $a^2-3a=4$，正好等于函数最大值。",
+              "答案：$a\\in(-\\infty,-1]\\cup[4,+\\infty)$。"
+            ],
+            "log": "执行结果：最大值可达且原题允许等号，两端均保留。"
+          }
+        }
+      ]
+    }
+  },
+  "completion": {
+    "answer": "$a\\in(-\\infty,-1]\\cup[4,+\\infty)$",
+    "back": {
+      "href": "/2/",
+      "label": "返回恒成立题库"
+    }
+  }
+}

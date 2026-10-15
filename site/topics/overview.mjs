@@ -1,4 +1,4 @@
-import {bindModeLinks} from '/assets/practice/learning-mode.mjs?v=1';
+import {bindModeLinks} from '/assets/practice/learning-mode.mjs';
 
 bindModeLinks(document, location.href);
 try {

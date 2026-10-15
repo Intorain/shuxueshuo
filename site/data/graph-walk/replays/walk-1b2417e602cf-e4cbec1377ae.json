@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "bundleVersion": "1b2417e602cfbbb45d00c37f5eec8492beefc5d7b688e7c318c15647d33366c4",
+  "problemId": "quadratic-always-q01",
+  "routes": [
+    "discriminant",
+    "extremum"
+  ],
+  "actions": [
+    {
+      "decision": "D1",
+      "answer": [
+        "every",
+        "quadratic-in-x",
+        "parameter-range"
+      ],
+      "reason": "任意实数表示每个 $x$ 都要满足不等式。把 $a$ 固定后，式子关于 $x$ 是二次的，题目要求的是参数 $a$ 的取值范围。"
+    },
+    {
+      "decision": "D2",
+      "answer": "type-quantified-quadratic",
+      "reason": "题目要求二次不等式对所有实数 $x$ 成立，并据此求参数范围，所以属于含参一元二次不等式的恒成立问题。"
+    },
+    {
+      "decision": "D3",
+      "answer": [
+        "real",
+        "free",
+        "discriminant"
+      ],
+      "reason": "$x$ 的范围是全体实数，$a$ 的范围待求。先用判别式法：移项后得到开口向上的二次式，再判断它是否始终非负。"
+    },
+    {
+      "decision": "d_rewrite",
+      "answer": "nonnegative",
+      "reason": "用右边减左边，原不等式等价于 $a^2-3a-(-x^2+2x+3)\\ge0$，即 $x^2-2x+a^2-3a-3\\ge0$。"
+    },
+    {
+      "decision": "d_position",
+      "answer": [
+        "touch",
+        "apart"
+      ],
+      "reason": "开口向上的抛物线若与横轴相切，最低点为 $0$；若没有交点，则整条曲线在横轴上方。若有两个交点，两根之间会出现负值。"
+    },
+    {
+      "decision": "d_delta",
+      "answer": "le",
+      "reason": "相切对应 $\\Delta=0$，不相交对应 $\\Delta<0$，合起来就是 $\\Delta\\le0$。原题允许取等号，所以相切情形不能漏掉。"
+    },
+    {
+      "decision": "d_range",
+      "answer": "outside",
+      "reason": "因式分解得 $(a-4)(a+1)\\ge0$。二次项系数为正，非负部分在两根外侧，并包含根，所以 $a\\le-1$ 或 $a\\ge4$。"
+    },
+    {
+      "decision": "d_boundary",
+      "answer": [
+        "holds",
+        "holds"
+      ],
+      "reason": "$a=-1$ 和 $a=4$ 时都有 $a^2-3a=4$，原不等式等价于 $(x-1)^2\\ge0$，对每个实数 $x$ 都成立，两个端点都保留。"
+    },
+    {
+      "switch_route": "extremum"
+    },
+    {
+      "decision": "e_basis",
+      "answer": [
+        "separable",
+        "no_division"
+      ],
+      "reason": "右侧 $a^2-3a$ 只含参数，左侧 $-x^2+2x+3$ 只含 $x$，已经分离；不需要除以含 $x$ 的式子，可以直接比较最值。"
+    },
+    {
+      "decision": "e_condition",
+      "answer": "max",
+      "reason": "常数 $c$ 要不小于每一个函数值，就必须且只需不小于 $f(x)$ 在全体实数上的最大值。只检查某一个 $x$ 不够。"
+    },
+    {
+      "decision": "e_extremum",
+      "answer": [
+        "4",
+        "1"
+      ],
+      "reason": "配方得 $-x^2+2x+3=4-(x-1)^2$。平方非负，因此最大值为 $4$，且在 $x=1$ 时确实能取到。"
+    },
+    {
+      "decision": "e_range",
+      "answer": "outside",
+      "reason": "$a^2-3a\\ge4$ 等价于 $(a-4)(a+1)\\ge0$，解为 $a\\le-1$ 或 $a\\ge4$，与判别式法一致。"
+    },
+    {
+      "decision": "e_boundary",
+      "answer": [
+        "holds",
+        "holds"
+      ],
+      "reason": "两端点都使 $a^2-3a=4$，而 $4-(x-1)^2\\le4$ 对所有实数 $x$ 成立，故两个端点都保留。最终 $a\\in(-\\infty,-1]\\cup[4,+\\infty)$。"
+    }
+  ],
+  "status": "completed"
+}

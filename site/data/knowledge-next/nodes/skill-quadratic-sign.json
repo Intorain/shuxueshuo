@@ -10,7 +10,8 @@
   "basis": [
     "quadratic-inequality#signs",
     "quadratic-function-properties#zeros",
-    "quadratic-inequality#all-real"
+    "quadratic-inequality#all-real",
+    "quadratic-equation#discriminant"
   ],
   "operations": [
     {

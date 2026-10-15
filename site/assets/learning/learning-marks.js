@@ -1,10 +1,10 @@
-import {LearningMark, emptyMark, presentation} from './mark-state.js?v=1';
-import {isPreview, modeHref} from '../practice/learning-mode.mjs?v=1';
+import {LearningMark, emptyMark, presentation} from './mark-state.js';
+import {isPreview, modeHref} from '../practice/learning-mode.mjs';
 
 async function initializeMarks() {
   if (isPreview(location.search)) return;
   const css = document.createElement('link');
-  css.rel = 'stylesheet'; css.href = new URL('./learning-marks.css?v=1', import.meta.url).href;
+  css.rel = 'stylesheet'; css.href = new URL('./learning-marks.css', import.meta.url).href;
   document.head.append(css);
   await import('../auth/site-auth.js?v=4');
   await window.SiteAuth?.ready;

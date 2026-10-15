@@ -42,6 +42,7 @@
       "title": "求另一边函数在区间上的最值",
       "body": [
         "按 $g(x)$ 的样子选算法：二次函数看对称轴，一次函数看两端，$x+\\frac{k}{x}$ 看转折点 $x=\\sqrt{k}$。",
+        "二次式也可以先配方，再利用平方的非负性与变量范围求最值；配方与根据顶点求值是可选择的不同路径。",
         "本例 $g(x)=x+\\frac{1}{x}$ 的转折点是 $x=1$，在 $[1,2]$ 上递增，最大值是 $g(2)=\\frac{5}{2}$，在 $x=2$ 时取到。"
       ],
       "calls": [
@@ -56,6 +57,10 @@
         {
           "ref": "skill-reciprocal-range",
           "when": "另一边形如 $x+\\frac{k}{x}$（$k>0$）时"
+        },
+        {
+          "ref": "method-square-extremum",
+          "when": "另一边可配成常数加减平方，并能验证取等或区间边界时"
         }
       ]
     },
@@ -69,6 +74,10 @@
       "calls": [
         {
           "ref": "skill-inequality-transform"
+        },
+        {
+          "ref": "quadratic-inequality-solve",
+          "when": "还原后的参数条件是一元二次不等式时"
         }
       ]
     }

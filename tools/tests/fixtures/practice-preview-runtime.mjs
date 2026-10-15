@@ -126,17 +126,17 @@ for (const signedIn of [false, true])
         return {
           ok: fetchOk,
           status: fetchOk ? 200 : 503,
-          json: async () => ({ module: '/knowledge/assets/abc123/practice-preview.mjs' })
+          json: async () => ({ module: '/assets/knowledge-next/practice-preview.mjs' })
         };
       }
     });
     const importModuleDynamically = async (spec) => {
       imports.push(spec);
-      if (spec.endsWith('learning-mode.mjs?v=1')) {
+      if (spec.endsWith('learning-mode.mjs')) {
         const modes = new vm.SyntheticModule(['bindModeLinks'], function () {this.setExport('bindModeLinks', () => {});}, {context:sandbox});
         await modes.link(() => {}); await modes.evaluate(); return modes;
       }
-      assert.match(spec, /^\/knowledge\/assets\/[a-f0-9]+\/practice-preview\.mjs/);
+      assert.match(spec, /^\/assets\/knowledge-next\/practice-preview\.mjs/);
       const module = new vm.SyntheticModule(
         ['createPreview'],
         function () {

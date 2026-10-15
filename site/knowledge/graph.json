@@ -416,10 +416,20 @@
           "calls": []
         },
         {
+          "id": "normalize",
+          "title": "移项整理成与 0 比较",
+          "calls": [
+            "skill-inequality-transform",
+            "skill-simplify"
+          ]
+        },
+        {
           "id": "conditions",
           "title": "写出开口和判别式的条件",
           "calls": [
-            "skill-quadratic-sign"
+            "skill-quadratic-sign",
+            "skill-simplify",
+            "skill-inequality-transform"
           ]
         },
         {
@@ -648,14 +658,16 @@
           "calls": [
             "quadratic-interval-extremum",
             "skill-linear-range",
-            "skill-reciprocal-range"
+            "skill-reciprocal-range",
+            "method-square-extremum"
           ]
         },
         {
           "id": "restore",
           "title": "写出参数范围，检查等号",
           "calls": [
-            "skill-inequality-transform"
+            "skill-inequality-transform",
+            "quadratic-inequality-solve"
           ]
         }
       ]
@@ -1451,6 +1463,14 @@
       "type": "calls",
       "occurrences": [
         {
+          "step": "normalize",
+          "when": ""
+        },
+        {
+          "step": "conditions",
+          "when": "把判别式条件改写成参数的不等式时"
+        },
+        {
           "step": "solve",
           "when": ""
         }
@@ -1474,6 +1494,14 @@
       "to": "skill-simplify",
       "type": "calls",
       "occurrences": [
+        {
+          "step": "normalize",
+          "when": ""
+        },
+        {
+          "step": "conditions",
+          "when": "代入系数计算并化简判别式时"
+        },
         {
           "step": "solve",
           "when": ""
@@ -1705,6 +1733,30 @@
         {
           "step": "normalize",
           "when": ""
+        }
+      ]
+    },
+    {
+      "id": "method-separation|calls|method-square-extremum",
+      "from": "method-separation",
+      "to": "method-square-extremum",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "range",
+          "when": "另一边可配成常数加减平方，并能验证取等或区间边界时"
+        }
+      ]
+    },
+    {
+      "id": "method-separation|calls|quadratic-inequality-solve",
+      "from": "method-separation",
+      "to": "quadratic-inequality-solve",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "restore",
+          "when": "还原后的参数条件是一元二次不等式时"
         }
       ]
     },
@@ -2213,7 +2265,7 @@
       "occurrences": [
         {
           "branch": "interval",
-          "condition": "$x$ 只在某个区间里取值，并且能求出相关函数在这个区间上的最大值、最小值（二次函数、一次函数或对勾函数）；最值取不到时要单独看等号。"
+          "condition": "$x$ 在给定区间内取值，区间可以是有限区间、半无限区间或全体实数 $\\mathbb R$；能求出相关函数在该范围上的最大值、最小值（二次函数、一次函数或对勾函数），最值取不到时要单独看等号。$x$ 取全体实数时，判别式法通常更直接，优先用判别式法。"
         }
       ]
     },
@@ -2944,6 +2996,17 @@
         },
         {
           "entry": "interval"
+        }
+      ]
+    },
+    {
+      "id": "skill-quadratic-sign|uses|quadratic-equation",
+      "from": "skill-quadratic-sign",
+      "to": "quadratic-equation",
+      "type": "uses",
+      "occurrences": [
+        {
+          "entry": "discriminant"
         }
       ]
     },

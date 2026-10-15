@@ -168,8 +168,8 @@ export async function createWalkGraph3D(host, graph, {onSelect = () => {}, onSwi
   const controlsBar = document.createElement('div');
   controlsBar.className = 'gw-graph-controls';
   controlsBar.innerHTML = '<button type="button" data-graph-action="out" aria-label="缩小图谱">−</button><button type="button" data-graph-action="in" aria-label="放大图谱">＋</button><button type="button" data-graph-action="current">回到当前</button><button type="button" data-graph-action="fit">查看全图</button>'
-    + '<button type="button" aria-pressed="true" aria-label="三维图">3D</button>'
-    + (onSwitch ? '<button type="button" data-graph-action="switch" aria-pressed="false" aria-label="切换为平面图">平面图</button>' : '');
+    + '<span class="gw-mode-switch" role="group" aria-label="图谱视图"><button type="button" aria-pressed="true" aria-label="三维图">3D</button>'
+    + (onSwitch ? '<button type="button" data-graph-action="switch" aria-pressed="false" aria-label="切换为平面图">平面图</button>' : '') + '</span>';
   const stage = document.createElement('div');
   stage.className = 'gw3-stage';
   stage.tabIndex = 0;

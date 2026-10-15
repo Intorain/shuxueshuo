@@ -130,10 +130,11 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const controls = document.createElement('div');
   controls.className = 'gw-graph-controls';
-  controls.innerHTML = '<button type="button" data-graph-action="out" aria-label="缩小图谱">−</button><button type="button" data-graph-action="in" aria-label="放大图谱">＋</button><button type="button" data-graph-action="fit">全景</button>'
+  controls.innerHTML = '<button type="button" data-graph-action="out" aria-label="缩小图谱">−</button><button type="button" data-graph-action="in" aria-label="放大图谱">＋</button>'
+    + '<span class="gw-mode-switch" role="group" aria-label="图谱视图">'
     + (onSwitch ? '<button type="button" data-graph-action="switch" aria-pressed="false" aria-label="切换为三维图">3D</button>' : '')
-    + '<button type="button" aria-pressed="true" aria-label="平面图">平面图</button>';
-  const svg = element('svg', {class: 'gw-svg', role: 'group', tabindex: 0, 'aria-label': '解题关系图，显示全景。方向键移动，加减键缩放，0 回到全景。节点可用 Tab 选择。'});
+    + '<button type="button" aria-pressed="true" aria-label="平面图">平面图</button></span>';
+  const svg = element('svg', {class: 'gw-svg', role: 'group', tabindex: 0, 'aria-label': '解题关系图，显示全景。方向键移动，加减键缩放，0 或双击空白处回到全景。节点可用 Tab 选择。'});
   const defs = element('defs');
   const marker = element('marker', {id: 'gw-arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse'});
   marker.append(element('path', {d: 'M0 0 10 5 0 10z', fill: 'context-stroke'}));
@@ -254,9 +255,9 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
     const action = event.target.closest('[data-graph-action]')?.dataset.graphAction;
     if (action === 'in') zoom(1.25);
     if (action === 'out') zoom(.8);
-    if (action === 'fit') fit();
     if (action === 'switch') onSwitch?.();
   });
+  svg.addEventListener('dblclick', event => { if (!event.target.closest('.gw-node')) fit(); });
   svg.addEventListener('wheel', event => {
     event.preventDefault();
     const box = svg.getBoundingClientRect();

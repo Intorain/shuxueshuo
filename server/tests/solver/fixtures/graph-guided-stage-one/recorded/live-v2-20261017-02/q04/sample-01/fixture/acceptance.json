@@ -1,0 +1,32 @@
+{
+  "schema_version": "graph-stage-one-acceptance/v4",
+  "source_kind": "synthetic-rendered",
+  "goals": [
+    {
+      "target_ref": "/root/goals/0",
+      "required_goal": {
+        "kind": "find_range",
+        "symbol": "m"
+      },
+      "required_quantifier": "∀",
+      "required_bound_variable": "x",
+      "required_domain": "[1,2]",
+      "required_features": [
+        "quantifier",
+        "bound_vars",
+        "free_vars",
+        "goal",
+        "domain",
+        "domain_kind",
+        "relation",
+        "normal_form",
+        "degree_in_bound",
+        "degree_in_goal",
+        "leading_coeff_in_bound",
+        "coefficients",
+        "range_var_is_principal"
+      ]
+    }
+  ],
+  "notes": []
+}

@@ -66,6 +66,8 @@ class Canonical:
             raise NotationError("semantic.depth_limit")
         kind = ast[0]
         expr = lambda x: self.expr(x, depth + 1)
+        if kind == "infinity":
+            raise NotationError("semantic.infinity_outside_interval")
         if kind == "number":
             return scalar_expression(ast[1])
         if kind == "certified_cut_ratio":
@@ -193,13 +195,30 @@ class Canonical:
         if kind == "tuple":
             return ["tuple", *[self.math(x) for x in ast[1:]]]
         if kind == "interval":
-            return [kind, ast[1], ast[2], self.math(ast[3]), self.math(ast[4])]
+            if ast[3] == ["infinity", -1] and ast[4] == ["infinity", 1]:
+                return ["real"]  # (-∞,+∞) and ℝ are the same domain.
+            return [
+                kind,
+                ast[1],
+                ast[2],
+                *[
+                    self.tree(x) if x[0] == "infinity" else self.math(x)
+                    for x in ast[3:]
+                ],
+            ]
         return [self.tree(v) if isinstance(v, list) else v for v in ast]
 
     def fact(self, ast):
         kind = ast[0]
-        if kind in ("default_domain", "definition_prose"):
+        if kind == "definition_prose":
             return ["and"]
+        if kind == "default_domain" or (kind == "∈" and self.tree(ast[2]) == ["real"]):
+            # x∈ℝ and x∈(-∞,+∞) only restate a real variable's domain. For any
+            # other expression (sqrt(a-2), 1/0) membership adds its own
+            # well-definedness requirement and must stay a condition.
+            if ast[1][0] in ("ref", "bound"):
+                return ["and"]
+            return ["∈", self.tree(ast[1]), ["real"]]
         if kind == "role":
             # Moving tags are optional extraction hints, fixed remains a constraint.
             return (
@@ -331,6 +350,19 @@ def compare(expected, actual):
         NotationValidator().validate(expected),
         NotationValidator().validate(actual),
     )
+    return compare_reports(left, right)
+
+
+def compare_roots(expected, actual):
+    """Compare mathematical scopes independently of an extraction schema."""
+    return compare_reports(
+        NotationValidator().validate_root(expected),
+        NotationValidator().validate_root(actual),
+    )
+
+
+def compare_reports(left, right):
+    """Compare validated reports using the existing conservative proof engine."""
     if not left.ok or not right.ok:
         return {
             "ok": False,

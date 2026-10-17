@@ -1,0 +1,14 @@
+{
+  "original_text": "已知 $y=ax^2-(a+1)x+1$，若对任意 $-1\\le a\\le1$，$y>0$ 恒成立，求 $x$ 的取值范围。",
+  "root": {
+    "facts": [
+      "∀a∈[-1,1]: a*x^2-(a+1)*x+1 > 0"
+    ],
+    "goals": [
+      {
+        "kind": "find_range",
+        "symbol": "x"
+      }
+    ]
+  }
+}

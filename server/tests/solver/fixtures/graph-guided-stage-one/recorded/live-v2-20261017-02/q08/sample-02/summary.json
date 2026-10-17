@@ -1,0 +1,44 @@
+{
+  "case_id": "q08",
+  "sample_id": 2,
+  "passed": true,
+  "status": "reviewed_candidate",
+  "source_kind": "synthetic-rendered",
+  "source_reviewed": true,
+  "human_review": "pending",
+  "elapsed_seconds": 6.471,
+  "historical_live": null,
+  "implementation_unchanged": true,
+  "frozen_implementation": "79bb668169292b46679aca97995188ed74cb8ddf240bbde24a311ad75e78598b",
+  "semantic_calls": 2,
+  "content_calls": 1,
+  "review_calls": 1,
+  "network_attempts": 2,
+  "file_api_calls": 0,
+  "stages": {
+    "extract": {
+      "calls": 1,
+      "file_api_calls": 0,
+      "seconds": 3.315,
+      "input_tokens": 6874,
+      "output_tokens": 593,
+      "reasoning_tokens": 498,
+      "visible_output_tokens": 95,
+      "usage_available": true
+    },
+    "review": {
+      "calls": 1,
+      "file_api_calls": 0,
+      "seconds": 3.065,
+      "input_tokens": 4606,
+      "output_tokens": 533,
+      "reasoning_tokens": 522,
+      "visible_output_tokens": 11,
+      "usage_available": true
+    }
+  },
+  "repair_calls": 0,
+  "first_passed": true,
+  "postprocess_seconds": 0.043,
+  "timing_notes": "Wall time includes transport and provider work; provider queue and model execution time are unavailable separately."
+}

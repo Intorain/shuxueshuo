@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。",
+    "actual": "已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": false,
+  "source_review_required": false,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "e944f044465d2261b8489401f7a98545d3ada8a8cdc2a455fa43fcb6714681d7",
+      "source.png": "6864dc60a5ef774aae45d497cc9bffb3f718a133bce1000443fb94564add8370",
+      "source-manifest.json": "ca6cfa578c1efdec699ab4510eee15f6b56fb1e4ec4aff154ad0e1e540b4626e",
+      "notation.gold.json": "2298eb6e1b805f5f15e1bd6b80612d427c77a6f95646105ce615c58da8f4d4a2",
+      "features.gold.json": "65380ae332eb45ac83d313b167fe83595bda15ec76c03dbd6ff32f2b7d0bc467",
+      "acceptance.json": "8cb5a0961631cea97ccc7aea13e7518d5ef523194f7f3e0c6469d387b2b02722"
+    }
+  },
+  "measurement": "Independent gold evaluation before repair; not an image-review claim."
+}

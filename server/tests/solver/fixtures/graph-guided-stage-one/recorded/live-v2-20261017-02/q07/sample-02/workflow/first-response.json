@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 724,
+      "prompt_tokens": 6874,
+      "total_tokens": 7598,
+      "prompt_cache_hit_tokens": 6656,
+      "prompt_cache_miss_tokens": 218
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 173,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-db9ab7bb-f214-43f3-ac7c-16c77a30949c",
+        "sha256": "51489ca588fc7a7f91b60afbf602022e3b18e2ca54cf212e78a6387d42c4d1ae",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 42217,
+        "expires_at": 1792228442,
+        "uploaded_at": 1792142042.817868
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "51489ca588fc7a7f91b60afbf602022e3b18e2ca54cf212e78a6387d42c4d1ae",
+        "file_id": "file-api-db9ab7bb-f214-43f3-ac7c-16c77a30949c",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 4085,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 724,
+          "prompt_tokens": 6874,
+          "total_tokens": 7598,
+          "completion_tokens_details": {
+            "reasoning_tokens": 635
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 6656
+          },
+          "prompt_cache_hit_tokens": 6656,
+          "prompt_cache_miss_tokens": 218
+        },
+        "raw_payload": {
+          "id": "0b962ef9-a0f9-4bb7-b28f-7800b328937b",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 724,
+            "prompt_tokens": 6874,
+            "total_tokens": 7598,
+            "completion_tokens_details": {
+              "reasoning_tokens": 635
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 6656
+            },
+            "prompt_cache_hit_tokens": 6656,
+            "prompt_cache_miss_tokens": 218
+          },
+          "created": 1792203719,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+                "reasoning_content": "我们需要回答。需要提取题意，不求解。图片文字：∀x∈{x | 2≤x≤3}, 不等式 m x^2 - m x -1 <0 恒成立，求实数 m 的取值范围。\n\n需要输出 JSON 符合 schema。original_text 完整题干。root facts 放全称条件：∀x∈[2,3]: m*x^2 - m*x -1 <0。goals find_range symbol m。definitions 可能没有。uncertainties 无。注意集合描述区间转等价区间 [2,3]。量词变量 x 范围 [2,3]。目标 find_range m。不要输出答案。根 root 标签可省略。JSON 反斜杠：∀ 可直接 Unicode，∈, ℝ等。数学字符串中 m*x^2 - m*x -1 < 0。量词格式 \"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\" 可以。注意不要额外条件 m? 不补。goal kind find_range symbol m。\n\noriginal_text 保留：∀x ∈ {x | 2 ≤ x ≤ 3}，不等式 m x² - m x -1 <0 恒成立，求实数 m 的取值范围。可 LaTeX 用 $...$。需 \"公式用 $…$ 包围\" 在 original_text 中。完整题干：$\\forall x \\in \\{x \\mid 2 \\le x \\le 3\\}$，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。这里反斜杠 JSON 中需 \\\\。输出 JSON 字符串中 LaTeX 反斜杠需转义。比如 \"\\\\forall x \\\\in \\\\{x \\\\mid 2 \\\\le x \\\\le 3\\\\}\"。注意大括号不需要转义? JSON 字符串可以包含 { } 无需转义。LaTeX \\{ \\} 需要反斜杠，JSON 写 \\\\{。但简单可以用 Unicode：∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx -1 <0$ 恒成立，求实数 m 的取值范围。公式用 $…$。可以。original_text 包含题面变量。可写 \"∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。\" 这足够了。root facts 数学字符串 \"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\"。goals [{\"kind\":\"find_range\",\"symbol\":\"m\"}]。JSON。\n\n需要不要输出契约外字段。uncertainties 可空或省略。Schema root required? root properties optional? required original_text root only。root no required fields? We can include facts/goals. definitions omitted. children omitted. uncertainties omitted. Good.\n\nEnsure only JSON object.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 4086
+  },
+  "raw_payload": {
+    "id": "0b962ef9-a0f9-4bb7-b28f-7800b328937b",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要回答。需要提取题意，不求解。图片文字：∀x∈{x | 2≤x≤3}, 不等式 m x^2 - m x -1 <0 恒成立，求实数 m 的取值范围。\n\n需要输出 JSON 符合 schema。original_text 完整题干。root facts 放全称条件：∀x∈[2,3]: m*x^2 - m*x -1 <0。goals find_range symbol m。definitions 可能没有。uncertainties 无。注意集合描述区间转等价区间 [2,3]。量词变量 x 范围 [2,3]。目标 find_range m。不要输出答案。根 root 标签可省略。JSON 反斜杠：∀ 可直接 Unicode，∈, ℝ等。数学字符串中 m*x^2 - m*x -1 < 0。量词格式 \"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\" 可以。注意不要额外条件 m? 不补。goal kind find_range symbol m。\n\noriginal_text 保留：∀x ∈ {x | 2 ≤ x ≤ 3}，不等式 m x² - m x -1 <0 恒成立，求实数 m 的取值范围。可 LaTeX 用 $...$。需 \"公式用 $…$ 包围\" 在 original_text 中。完整题干：$\\forall x \\in \\{x \\mid 2 \\le x \\le 3\\}$，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。这里反斜杠 JSON 中需 \\\\。输出 JSON 字符串中 LaTeX 反斜杠需转义。比如 \"\\\\forall x \\\\in \\\\{x \\\\mid 2 \\\\le x \\\\le 3\\\\}\"。注意大括号不需要转义? JSON 字符串可以包含 { } 无需转义。LaTeX \\{ \\} 需要反斜杠，JSON 写 \\\\{。但简单可以用 Unicode：∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx -1 <0$ 恒成立，求实数 m 的取值范围。公式用 $…$。可以。original_text 包含题面变量。可写 \"∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。\" 这足够了。root facts 数学字符串 \"∀x∈[2,3]: m*x^2 - m*x - 1 < 0\"。goals [{\"kind\":\"find_range\",\"symbol\":\"m\"}]。JSON。\n\n需要不要输出契约外字段。uncertainties 可空或省略。Schema root required? root properties optional? required original_text root only。root no required fields? We can include facts/goals. definitions omitted. children omitted. uncertainties omitted. Good.\n\nEnsure only JSON object."
+        }
+      }
+    ],
+    "created": 1792203719,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 724,
+      "prompt_tokens": 6874,
+      "total_tokens": 7598,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 635,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 6656
+      },
+      "prompt_cache_hit_tokens": 6656,
+      "prompt_cache_miss_tokens": 218
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 4.088
+}

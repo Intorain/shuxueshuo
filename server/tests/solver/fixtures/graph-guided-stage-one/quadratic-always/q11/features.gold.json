@@ -1,0 +1,209 @@
+{
+  "schema_version": "graph-stage-one-feature-expectations/v2",
+  "comparison": "semantic_subset",
+  "authored_basis": "Independent algebra from the original sub-questions; function definitions expanded inside each quantified relation; all inequalities oriented to >0 or >=0. No extraction output used. Sub-question (1) has no quantifier, so its structural features are unknown.",
+  "features": [
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "goal",
+      "status": "known",
+      "value": {
+        "kind": "find_range",
+        "symbol": "x"
+      }
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "quantifier",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "bound_vars",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "free_vars",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "domain",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "domain_kind",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "relation",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "normal_form",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "degree_in_bound",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "degree_in_goal",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "leading_coeff_in_bound",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "coefficients",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "feature_id": "range_var_is_principal",
+      "status": "unknown"
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "quantifier",
+      "status": "known",
+      "value": "∀"
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "bound_vars",
+      "status": "known",
+      "value": [
+        "x"
+      ]
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "free_vars",
+      "status": "known",
+      "value": [
+        "m"
+      ]
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "goal",
+      "status": "known",
+      "value": {
+        "kind": "find_range",
+        "symbol": "m"
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "domain",
+      "status": "known",
+      "value": {
+        "expression": "[1,3]",
+        "lower": "1",
+        "upper": "3",
+        "left_closed": true,
+        "right_closed": true,
+        "bounded": true
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "domain_kind",
+      "status": "known",
+      "value": "bounded_interval"
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "relation",
+      "status": "known",
+      "value": {
+        "operator": "<",
+        "strict": true,
+        "lhs": "m*x^2-m*x-1",
+        "rhs": "5-m"
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "normal_form",
+      "status": "known",
+      "value": {
+        "expression": "-m*x^2+m*x-m+6",
+        "operator": ">",
+        "rhs": "0",
+        "variable": "x"
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "degree_in_bound",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "degree": 2,
+        "degree_kind": "upper_bound"
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "degree_in_goal",
+      "status": "known",
+      "value": {
+        "variable": "m",
+        "degree": 1
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "leading_coeff_in_bound",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "expression": "-m",
+        "contains_parameters": true,
+        "may_be_zero": true
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "coefficients",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "items": [
+          {
+            "power": 2,
+            "expression": "-m",
+            "contains_parameters": true
+          },
+          {
+            "power": 1,
+            "expression": "m",
+            "contains_parameters": true
+          },
+          {
+            "power": 0,
+            "expression": "6-m",
+            "contains_parameters": true
+          }
+        ]
+      }
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "feature_id": "range_var_is_principal",
+      "status": "known",
+      "value": true
+    }
+  ]
+}

@@ -30,7 +30,16 @@ def frozen_files():
     """Bind file identities and bytes without binding the checkout location."""
     package = Path(__file__).resolve().parent
     implementation = [
-        *(p for p in package.glob("*.py") if p.name not in {"runtime_binding.py", "runtime_lowering.py", "compact_planner_input.py"}),
+        *(
+            p
+            for p in package.glob("*.py")
+            if p.name
+            not in {
+                "runtime_binding.py",
+                "runtime_lowering.py",
+                "compact_planner_input.py",
+            }
+        ),
         package.parent / "solver/extraction/multimodal_provider.py",
         package.parent / "solver/extraction/deepseek_files.py",
     ]
@@ -46,18 +55,80 @@ def frozen_files():
     }
 
 
-def run_workflow(request, provider, output, registry, *, problem_id, budget=None,
-                 storage=None, initial_candidate=None, mode="extract", source_hash=None):
-    if mode not in ("extract", "review", "validate") or (mode != "extract" and initial_candidate is None):
+class MathNotationWorkflowContract:
+    """The existing contract remains the default for every production caller."""
+
+    def validate_request(self, request, registry, mode):
+        if request.contract_version != CONTRACT or request.contract_schema != schema():
+            raise WorkflowStop("workflow.unsupported_or_stale_contract")
+        try:
+            if mode != "validate":
+                review_family_context(registry)
+        except ReviewFamilyCatalogError as exc:
+            raise WorkflowStop(str(exc)) from exc
+
+    def schema(self):
+        return schema()
+
+    def frozen_files(self):
+        return frozen_files()
+
+    def parse(self, raw, *, problem_id, source_hash, registry, store):
+        return parse_candidate(
+            raw,
+            problem_id=problem_id,
+            source_sha256=source_hash,
+            registry_snapshot=revision(registry),
+            registered_families=[f["family_id"] for f in registry],
+            store=store,
+        )
+
+    def request_for(self, *args, **kwargs):
+        return request_for(*args, **kwargs)
+
+    def validate_review(self, raw, candidate):
+        return validate_review(raw, candidate)
+
+    def invalid_review_feedback(self):
+        """Legacy contracts stop immediately on a malformed source review."""
+        return
+
+    def diagnose(self, parsed, candidate):
+        return diagnose(parsed, candidate)
+
+    def review_diagnostics(self, review, candidate):
+        return review_diagnostics(review, candidate)
+
+    def repair_diagnostics(self, current, proposed, diagnostics):
+        return []
+
+    def result_fields(self, current):
+        return {"match_status": current.get("match_status") if current else None}
+
+    def continuation_fields(self, current):
+        return {"unmatched": bool(current and current["match_status"] == "unmatched")}
+
+
+def run_workflow(
+    request,
+    provider,
+    output,
+    registry,
+    *,
+    problem_id,
+    budget=None,
+    storage=None,
+    initial_candidate=None,
+    mode="extract",
+    source_hash=None,
+    contract_adapter=None,
+):
+    if mode not in ("extract", "review", "validate") or (
+        mode != "extract" and initial_candidate is None
+    ):
         raise WorkflowStop("workflow.invalid_mode")
-    if request.contract_version != CONTRACT or request.contract_schema != schema():
-        raise WorkflowStop("workflow.unsupported_or_stale_contract")
-    # A new family needs source-review guidance before any paid workflow call.
-    try:
-        if mode != 'validate':
-            review_family_context(registry)
-    except ReviewFamilyCatalogError as exc:
-        raise WorkflowStop(str(exc)) from exc
+    contract = contract_adapter or MathNotationWorkflowContract()
+    contract.validate_request(request, registry, mode)
     budget = budget or Budget()
     storage = storage or FileWorkflowStorage(output)
     prepared = provider.prepare_request(request)
@@ -72,17 +143,41 @@ def run_workflow(request, provider, output, registry, *, problem_id, budget=None
         "problem_id": problem_id,
         "images": [i.artifact.sha256 for i in prepared.images],
         "registry": revision(registry),
-        "files": frozen_files(),
+        "files": contract.frozen_files(),
         "mode": mode,
-        "initial_candidate": revision(initial_candidate) if initial_candidate is not None else None,
+        "initial_candidate": revision(initial_candidate)
+        if initial_candidate is not None
+        else None,
         "source_hash": source_hash or prepared.evidence_pack.source_revision_hash,
     }
     # Concurrency/stale-input failures occur before any shared result mutation.
     with storage.ledger(binding, budget) as ledger:
-        return _run(prepared, provider, storage, registry, problem_id, ledger, budget, initial_candidate, mode)
+        return _run(
+            prepared,
+            provider,
+            storage,
+            registry,
+            problem_id,
+            ledger,
+            budget,
+            initial_candidate,
+            mode,
+            contract,
+        )
 
 
-def _run(request, provider, storage, registry, problem_id, ledger, budget, initial_candidate, mode):
+def _run(
+    request,
+    provider,
+    storage,
+    registry,
+    problem_id,
+    ledger,
+    budget,
+    initial_candidate,
+    mode,
+    contract,
+):
     current, parsed, first = None, None, None
     stage, diagnostics, feedback = "extract", [], []
     source_status, source_reviewed, status = "not_reviewed", False, "in_progress"
@@ -91,41 +186,49 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
     store = storage.artifacts
 
     def parse(raw):
-        return parse_candidate(
+        return contract.parse(
             raw,
             problem_id=problem_id,
-            source_sha256=ledger.binding['source_hash'],
-            registry_snapshot=revision(registry),
-            registered_families=[f["family_id"] for f in registry],
+            source_hash=ledger.binding["source_hash"],
+            registry=registry,
             store=store,
         )
 
     try:
-        if initial_candidate is not None and mode != 'extract':
+        if initial_candidate is not None and mode != "extract":
             import json
+
             current = first = initial_candidate
             parsed = parse(json.dumps(current, ensure_ascii=False))
             seen.add(revision(current))
-            diagnostics = [*uncertainty_diagnostics(current), *diagnose(parsed, current)]
-            if mode == 'validate':
-                status = 'validated_candidate' if not diagnostics else 'needs_confirmation' if any(
-                    d['action'] == 'needs_confirmation' for d in diagnostics) else 'invalid_candidate'
-            elif any(d['action'] == 'needs_confirmation' for d in diagnostics):
-                status = 'needs_confirmation'
+            diagnostics = [
+                *uncertainty_diagnostics(current),
+                *contract.diagnose(parsed, current),
+            ]
+            if mode == "validate":
+                status = (
+                    "validated_candidate"
+                    if not diagnostics
+                    else "needs_confirmation"
+                    if any(d["action"] == "needs_confirmation" for d in diagnostics)
+                    else "invalid_candidate"
+                )
+            elif any(d["action"] == "needs_confirmation" for d in diagnostics):
+                status = "needs_confirmation"
             elif diagnostics:
-                stage = 'repair'
+                stage = "repair"
             else:
-                stage = 'review'
+                stage = "review"
         while True:
-            if status != 'in_progress':
+            if status != "in_progress":
                 break
             storage.guard()
-            if frozen_files() != ledger.binding["files"]:
+            if contract.frozen_files() != ledger.binding["files"]:
                 raise WorkflowStop("workflow.stale_binding")
             outgoing = (
                 request
                 if stage == "extract"
-                else request_for(
+                else contract.request_for(
                     request,
                     stage,
                     current,
@@ -149,10 +252,10 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
                 first_response = response
                 storage.save("first-response.json", response)
             if stage == "review":
-                if response["finish_reason"] != "stop":
-                    raise WorkflowStop("review.invalid_response")
                 try:
-                    review = validate_review(response["text"], current)
+                    if response["finish_reason"] != "stop":
+                        raise ValueError("review.invalid_finish_reason")
+                    review = contract.validate_review(response["text"], current)
                 except (
                     ValueError,
                     KeyError,
@@ -160,7 +263,20 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
                     RecursionError,
                     ValidationError,
                 ) as exc:
-                    raise WorkflowStop("review.invalid_response") from exc
+                    event["review_validation"] = {
+                        "ok": False,
+                        "code": "review.invalid_response",
+                        "error_type": type(exc).__name__,
+                    }
+                    review_feedback = contract.invalid_review_feedback()
+                    if review_feedback is None:
+                        raise WorkflowStop("review.invalid_response") from exc
+                    # A format retry reviews the same immutable candidate; it
+                    # cannot adopt a candidate smuggled into the bad response.
+                    source_status, source_reviewed = "invalid_response", False
+                    feedback = review_feedback
+                    event["review_retry_feedback"] = feedback
+                    continue
                 last_review = {"revision": base_revision, **review}
                 event["review"] = last_review
                 storage.save("latest-review.json", last_review)
@@ -169,7 +285,7 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
                     source_reviewed = True
                     status = "reviewed_candidate"
                     break
-                diagnostics = review_diagnostics(review, current)
+                diagnostics = contract.review_diagnostics(review, current)
                 event["diagnostics"] = diagnostics
                 if any(d["action"] == "needs_confirmation" for d in diagnostics):
                     status = "needs_confirmation"
@@ -186,7 +302,7 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
                     truncated = strict_json(response["text"])
                 except (ValueError, RecursionError):
                     truncated = None
-                if Draft202012Validator(schema()).is_valid(truncated):
+                if Draft202012Validator(contract.schema()).is_valid(truncated):
                     event["parse"] = parse(response["text"])
                     storage.proposed(truncated, event["parse"], ledger.position)
                 if current is None:
@@ -211,15 +327,23 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
                 first = proposed
                 storage.save("first-parsed.json", proposed_parse)
             event["parse"] = proposed_parse
-            shape_valid = Draft202012Validator(schema()).is_valid(proposed)
+            shape_valid = Draft202012Validator(contract.schema()).is_valid(proposed)
             if not shape_valid:
-                new_diagnostics = diagnose(proposed_parse, proposed)
+                new_diagnostics = contract.diagnose(proposed_parse, proposed)
                 if current is None:
                     diagnostics = new_diagnostics
                 feedback = new_diagnostics
                 stage = "repair"
                 continue
             storage.proposed(proposed, proposed_parse, ledger.position)
+            if stage == "repair" and current is not None:
+                repair_issues = contract.repair_diagnostics(
+                    current, proposed, diagnostics
+                )
+                if repair_issues:
+                    event["repair_rejected"] = repair_issues
+                    feedback = repair_issues
+                    continue
             exact = revision(proposed)
             if exact in seen:
                 raise WorkflowStop("workflow.oscillation")
@@ -241,7 +365,7 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
                 )
                 event["diagnostics"] = diagnostics
                 break
-            diagnostics = [*source_diagnostics, *diagnose(parsed, current)]
+            diagnostics = [*source_diagnostics, *contract.diagnose(parsed, current)]
             event["diagnostics"] = diagnostics
             # A code gap is an unsupported or unprovable construct, not a
             # candidate-edit request. With no repair authority for it, asking
@@ -249,8 +373,7 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
             # and can incorrectly turn a deterministic code gap into a repair
             # loop.
             if diagnostics and all(
-                diagnostic.get("action") == "code_gap"
-                for diagnostic in diagnostics
+                diagnostic.get("action") == "code_gap" for diagnostic in diagnostics
             ):
                 status = "code_gap"
                 break
@@ -277,11 +400,11 @@ def _run(request, provider, storage, registry, problem_id, ledger, budget, initi
         "source_status": source_status,
         "source_reviewed": source_reviewed,
         "parse_status": "valid" if parsed and parsed["contract_valid"] else "invalid",
-        "match_status": current.get("match_status") if current else None,
+        **contract.result_fields(current),
         "continuation": {
             "blocked": status != "reviewed_candidate",
             "reason": status,
-            "unmatched": bool(current and current["match_status"] == "unmatched"),
+            **contract.continuation_fields(current),
         },
         "diagnostics": diagnostics,
         "budget": asdict(budget),

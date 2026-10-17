@@ -1,0 +1,150 @@
+{
+  "text": "{\"status\": \"confirmed\", \"findings\": []}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 206,
+      "prompt_tokens": 4585,
+      "total_tokens": 4791,
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 745
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 39,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-review/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-ebf4aabe-919b-4e6f-9ac1-41c342b3135f",
+        "sha256": "b654581491506dd9d30c17ac3ecedfcd73444692e162a005e155a63dd64af32f",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 38295,
+        "expires_at": 1792228421,
+        "uploaded_at": 1792142021.702441
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "b654581491506dd9d30c17ac3ecedfcd73444692e162a005e155a63dd64af32f",
+        "file_id": "file-api-ebf4aabe-919b-4e6f-9ac1-41c342b3135f",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 1639,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 206,
+          "prompt_tokens": 4585,
+          "total_tokens": 4791,
+          "completion_tokens_details": {
+            "reasoning_tokens": 193
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 3840
+          },
+          "prompt_cache_hit_tokens": 3840,
+          "prompt_cache_miss_tokens": 745
+        },
+        "raw_payload": {
+          "id": "466960d7-d03b-4758-8179-2443ecafbd64",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 206,
+            "prompt_tokens": 4585,
+            "total_tokens": 4791,
+            "completion_tokens_details": {
+              "reasoning_tokens": 193
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 3840
+            },
+            "prompt_cache_hit_tokens": 3840,
+            "prompt_cache_miss_tokens": 745
+          },
+          "created": 1792203709,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"status\": \"confirmed\", \"findings\": []}",
+                "reasoning_content": "We need answer JSON status/findings only. Need compare candidate root math to original image. Original: 当 1≤x≤2 时，不等式 x^2+mx+4<0 恒成立，求实数 m 的取值范围。 Candidate facts: ∀x∈[1,2]: x^2+m*x+4<0. Goals find_range m. This seems correct. original_text matches exactly-ish. Need check \"恒成立\" quantifier x range, yes [1,2], strict inequality. m real? goal find_range symbol m likely real by \"实数m\". Candidate original_text has $1 \\le x \\le 2$, $x^2+mx+4<0$, \"实数 m\". Good. No missing figure. status confirmed findings []. Ensure no issue: They omitted \"实数\" in root? Goal find_range symbol m presumably real; okay. original_text includes. Need only JSON.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 1641
+  },
+  "raw_payload": {
+    "id": "466960d7-d03b-4758-8179-2443ecafbd64",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"status\": \"confirmed\", \"findings\": []}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "We need answer JSON status/findings only. Need compare candidate root math to original image. Original: 当 1≤x≤2 时，不等式 x^2+mx+4<0 恒成立，求实数 m 的取值范围。 Candidate facts: ∀x∈[1,2]: x^2+m*x+4<0. Goals find_range m. This seems correct. original_text matches exactly-ish. Need check \"恒成立\" quantifier x range, yes [1,2], strict inequality. m real? goal find_range symbol m likely real by \"实数m\". Candidate original_text has $1 \\le x \\le 2$, $x^2+mx+4<0$, \"实数 m\". Good. No missing figure. status confirmed findings []. Ensure no issue: They omitted \"实数\" in root? Goal find_range symbol m presumably real; okay. original_text includes. Need only JSON."
+        }
+      }
+    ],
+    "created": 1792203709,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 206,
+      "prompt_tokens": 4585,
+      "total_tokens": 4791,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 193,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 3840
+      },
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 745
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 1.644
+}

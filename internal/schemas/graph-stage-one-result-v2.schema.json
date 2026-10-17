@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-one-result/v2",
+  "type": "object",
+  "required": [
+    "contract",
+    "run_id",
+    "candidate",
+    "features",
+    "statuses"
+  ],
+  "properties": {
+    "contract": {
+      "const": "graph-stage-one-result/v2"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "candidate": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "features": {
+      "type": "array"
+    },
+    "statuses": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true
+}

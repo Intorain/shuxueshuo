@@ -37,6 +37,10 @@ REPAIRABLE = frozenset(
         "type.fact_must_be_relation",
         "type.point_collection",
         "type.interval_endpoint",
+        # These are malformed uses of supported interval endpoints, not
+        # requests to add extended-real scalar arithmetic.
+        "type.closed_infinite_endpoint",
+        "type.infinite_endpoint_direction",
     }
 )
 

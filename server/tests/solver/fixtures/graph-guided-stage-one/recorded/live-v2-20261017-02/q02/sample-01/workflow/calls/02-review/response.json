@@ -1,0 +1,150 @@
+{
+  "text": "{\"status\":\"confirmed\",\"findings\":[]}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 138,
+      "prompt_tokens": 4490,
+      "total_tokens": 4628,
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 650
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 36,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-review/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-7becd41b-1946-4f9f-bb39-9a2c40deef88",
+        "sha256": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 35973,
+        "expires_at": 1792228363,
+        "uploaded_at": 1792141963.358988
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+        "file_id": "file-api-7becd41b-1946-4f9f-bb39-9a2c40deef88",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 1313,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 138,
+          "prompt_tokens": 4490,
+          "total_tokens": 4628,
+          "completion_tokens_details": {
+            "reasoning_tokens": 127
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 3840
+          },
+          "prompt_cache_hit_tokens": 3840,
+          "prompt_cache_miss_tokens": 650
+        },
+        "raw_payload": {
+          "id": "55a23f58-1b8e-40d9-babd-ea9907b914ef",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 138,
+            "prompt_tokens": 4490,
+            "total_tokens": 4628,
+            "completion_tokens_details": {
+              "reasoning_tokens": 127
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 3840
+            },
+            "prompt_cache_hit_tokens": 3840,
+            "prompt_cache_miss_tokens": 650
+          },
+          "created": 1792203700,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+                "reasoning_content": "我们需要核验。题图：已知不等式 kx^2+2kx-(k+2)<0 恒成立，求实数 k 的取值范围。Candidate root facts: ∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0, goal find_range k. original_text 与图一致。需要注意是否量词变量唯一自由变量 x，实数域默认合理。没有其他条件。确认。不能只读转录，需要看图。图公式 kx²+2kx-(k+2)<0。候选表达式完全一致。无需报告。status confirmed findings []。",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 1314
+  },
+  "raw_payload": {
+    "id": "55a23f58-1b8e-40d9-babd-ea9907b914ef",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要核验。题图：已知不等式 kx^2+2kx-(k+2)<0 恒成立，求实数 k 的取值范围。Candidate root facts: ∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0, goal find_range k. original_text 与图一致。需要注意是否量词变量唯一自由变量 x，实数域默认合理。没有其他条件。确认。不能只读转录，需要看图。图公式 kx²+2kx-(k+2)<0。候选表达式完全一致。无需报告。status confirmed findings []。"
+        }
+      }
+    ],
+    "created": 1792203700,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 138,
+      "prompt_tokens": 4490,
+      "total_tokens": 4628,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 127,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 3840
+      },
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 650
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 1.316
+}

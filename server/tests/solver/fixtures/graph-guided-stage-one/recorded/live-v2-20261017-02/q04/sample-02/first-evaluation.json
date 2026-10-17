@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "当 $1\\le x\\le2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。",
+    "actual": "当 $1 \\le x \\le 2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": false,
+  "source_review_required": false,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "2b526c5ece4b1d133d691194a17acf963870623bb4d831098664f3fac11b24db",
+      "source.png": "b654581491506dd9d30c17ac3ecedfcd73444692e162a005e155a63dd64af32f",
+      "source-manifest.json": "91ca893b71e211b818d23145611ac3f34201373d4b185425c03c3ea0d69306be",
+      "notation.gold.json": "ad001fe9106408673e71a90f8d71e1c71efbfb31ca4660367d4fd4ba82afebb4",
+      "features.gold.json": "2463fb3a670654fd1627f5737a7720e2f45dbe7ba22a9c94d6380b295e51d0d2",
+      "acceptance.json": "22b1bc339221fc3186aa96c6d93ce0eeeb4dd58ed4a4fa488ae964fe155a5811"
+    }
+  },
+  "measurement": "Independent gold evaluation before repair; not an image-review claim."
+}

@@ -1,0 +1,1107 @@
+{
+  "schema_version": "problem-math-workflow/v1",
+  "candidate_only": true,
+  "solver_ready": false,
+  "status": "reviewed_candidate",
+  "source_status": "confirmed",
+  "source_reviewed": true,
+  "parse_status": "valid",
+  "output_contract": "graph-problem-extraction/v2",
+  "continuation": {
+    "blocked": false,
+    "reason": "reviewed_candidate"
+  },
+  "diagnostics": [],
+  "budget": {
+    "content": 3,
+    "review": 3,
+    "semantic": 6,
+    "network": 12
+  },
+  "semantic_calls": 2,
+  "content_calls": 1,
+  "review_calls": 1,
+  "network_attempts": 2,
+  "network_reserved": 2,
+  "file_api_calls": 0,
+  "first_candidate": {
+    "original_text": "已知函数 $y=mx^2-mx-6+m$，若对于 $1≤m≤3$，$y<0$ 恒成立，求实数 $x$ 的取值范围。",
+    "root": {
+      "facts": [
+        "∀m∈[1,3]: m*x^2-m*x-6+m < 0"
+      ],
+      "goals": [
+        {
+          "kind": "find_range",
+          "symbol": "x"
+        }
+      ],
+      "uncertainties": []
+    }
+  },
+  "candidate": {
+    "original_text": "已知函数 $y=mx^2-mx-6+m$，若对于 $1≤m≤3$，$y<0$ 恒成立，求实数 $x$ 的取值范围。",
+    "root": {
+      "facts": [
+        "∀m∈[1,3]: m*x^2-m*x-6+m < 0"
+      ],
+      "goals": [
+        {
+          "kind": "find_range",
+          "symbol": "x"
+        }
+      ],
+      "uncertainties": []
+    }
+  },
+  "parsed": {
+    "contract": "graph-problem-extraction/v2",
+    "contract_valid": true,
+    "reports": {
+      "ir": {
+        "ok": true,
+        "issues": [],
+        "defaults": [
+          {
+            "ref": "r:scalar:x",
+            "domain": "real",
+            "origin": "code_default"
+          }
+        ],
+        "objects": [
+          {
+            "ref": "r:scalar:x",
+            "name": "x",
+            "kind": "scalar",
+            "scope": "r"
+          }
+        ],
+        "well_definedness_obligations": [],
+        "coordinate_bindings": [],
+        "object_bindings": [],
+        "normalization_proofs": [],
+        "normalization_report": {
+          "version": "semantic-equivalence/v1",
+          "ruleset_hash": "1cc78a3e65c127a29519a6464a7820c7ab107a73b33b111b5a45f9a780c71ed9",
+          "initial_facts": [
+            {
+              "scope": "r",
+              "index": 0,
+              "fact": [
+                "quantifier",
+                "∀",
+                "quantified_0",
+                [
+                  "interval",
+                  true,
+                  true,
+                  [
+                    "number",
+                    "1"
+                  ],
+                  [
+                    "number",
+                    "3"
+                  ]
+                ],
+                [
+                  "<",
+                  [
+                    "+",
+                    [
+                      "-",
+                      [
+                        "-",
+                        [
+                          "*",
+                          [
+                            "bound",
+                            "quantified_0"
+                          ],
+                          [
+                            "^",
+                            [
+                              "ref",
+                              "r:scalar:x",
+                              "scalar"
+                            ],
+                            [
+                              "number",
+                              "2"
+                            ]
+                          ]
+                        ],
+                        [
+                          "*",
+                          [
+                            "bound",
+                            "quantified_0"
+                          ],
+                          [
+                            "ref",
+                            "r:scalar:x",
+                            "scalar"
+                          ]
+                        ]
+                      ],
+                      [
+                        "number",
+                        "6"
+                      ]
+                    ],
+                    [
+                      "bound",
+                      "quantified_0"
+                    ]
+                  ],
+                  [
+                    "number",
+                    "0"
+                  ]
+                ]
+              ]
+            }
+          ],
+          "canonical_facts": [
+            {
+              "scope": "r",
+              "index": 0,
+              "fact": [
+                "quantifier",
+                "∀",
+                "quantified_0",
+                [
+                  "interval",
+                  true,
+                  true,
+                  [
+                    "number",
+                    "1"
+                  ],
+                  [
+                    "number",
+                    "3"
+                  ]
+                ],
+                [
+                  "<",
+                  [
+                    "+",
+                    [
+                      "-",
+                      [
+                        "-",
+                        [
+                          "*",
+                          [
+                            "bound",
+                            "quantified_0"
+                          ],
+                          [
+                            "^",
+                            [
+                              "ref",
+                              "r:scalar:x",
+                              "scalar"
+                            ],
+                            [
+                              "number",
+                              "2"
+                            ]
+                          ]
+                        ],
+                        [
+                          "*",
+                          [
+                            "bound",
+                            "quantified_0"
+                          ],
+                          [
+                            "ref",
+                            "r:scalar:x",
+                            "scalar"
+                          ]
+                        ]
+                      ],
+                      [
+                        "number",
+                        "6"
+                      ]
+                    ],
+                    [
+                      "bound",
+                      "quantified_0"
+                    ]
+                  ],
+                  [
+                    "number",
+                    "0"
+                  ]
+                ]
+              ]
+            }
+          ],
+          "derived_facts": [],
+          "proofs": [],
+          "blocked": []
+        }
+      },
+      "scope_policy": {
+        "ok": true,
+        "diagnostics": []
+      }
+    },
+    "revision": "5c88ed55dd5eef0ac7fb1f33659898c8bb3b1aac16d6996aa8d82a91a6ed0445",
+    "canonical": {
+      "root": {
+        "facts": [
+          [
+            [
+              "quantifier",
+              "∀",
+              [
+                "interval",
+                true,
+                true,
+                "Integer(1)",
+                "Integer(3)"
+              ],
+              [
+                [
+                  [
+                    "relation",
+                    "<",
+                    "Add(Mul(Pow(Symbol('n_5e2df328e717dd6b0f6ff229af1539dcbbf0e495d04e3172d460960bd2447cd8', real=True), Integer(2)), Symbol('n_eea58a61977e052df34b873f210d383011ae3dc4fd6ff31adadb2c4d1cfe535d', real=True)), Mul(Integer(-1), Symbol('n_5e2df328e717dd6b0f6ff229af1539dcbbf0e495d04e3172d460960bd2447cd8', real=True), Symbol('n_eea58a61977e052df34b873f210d383011ae3dc4fd6ff31adadb2c4d1cfe535d', real=True)), Symbol('n_eea58a61977e052df34b873f210d383011ae3dc4fd6ff31adadb2c4d1cfe535d', real=True), Integer(-6))"
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ],
+        "goals": [
+          {
+            "kind": "find_range",
+            "target": "Symbol('n_5e2df328e717dd6b0f6ff229af1539dcbbf0e495d04e3172d460960bd2447cd8', real=True)"
+          }
+        ],
+        "uncertainties": [],
+        "children": []
+      },
+      "well_definedness": []
+    },
+    "compiled": {
+      "root": {
+        "scope": "r",
+        "facts": [
+          [
+            "quantifier",
+            "∀",
+            "quantified_0",
+            [
+              "interval",
+              true,
+              true,
+              [
+                "number",
+                "1"
+              ],
+              [
+                "number",
+                "3"
+              ]
+            ],
+            [
+              "<",
+              [
+                "+",
+                [
+                  "-",
+                  [
+                    "-",
+                    [
+                      "*",
+                      [
+                        "bound",
+                        "quantified_0"
+                      ],
+                      [
+                        "^",
+                        [
+                          "ref",
+                          "r:scalar:x",
+                          "scalar"
+                        ],
+                        [
+                          "number",
+                          "2"
+                        ]
+                      ]
+                    ],
+                    [
+                      "*",
+                      [
+                        "bound",
+                        "quantified_0"
+                      ],
+                      [
+                        "ref",
+                        "r:scalar:x",
+                        "scalar"
+                      ]
+                    ]
+                  ],
+                  [
+                    "number",
+                    "6"
+                  ]
+                ],
+                [
+                  "bound",
+                  "quantified_0"
+                ]
+              ],
+              [
+                "number",
+                "0"
+              ]
+            ]
+          ]
+        ],
+        "goals": [
+          {
+            "kind": "find_range",
+            "target": [
+              "ref",
+              "r:scalar:x",
+              "scalar"
+            ]
+          }
+        ],
+        "uncertainties": [],
+        "children": []
+      },
+      "objects": [
+        {
+          "ref": "r:scalar:x",
+          "name": "x",
+          "kind": "scalar",
+          "scope": "r"
+        }
+      ],
+      "source_locations": {
+        "[\"quantifier\",\"∀\",\"quantified_0\",[\"interval\",true,true,[\"number\",\"1\"],[\"number\",\"3\"]],[\"<\",[\"+\",[\"-\",[\"-\",[\"*\",[\"bound\",\"quantified_0\"],[\"^\",[\"ref\",\"r:scalar:x\",\"scalar\"],[\"number\",\"2\"]]],[\"*\",[\"bound\",\"quantified_0\"],[\"ref\",\"r:scalar:x\",\"scalar\"]]],[\"number\",\"6\"]],[\"bound\",\"quantified_0\"]],[\"number\",\"0\"]]]": {
+          "path": "r.facts[0]",
+          "source": "∀m∈[1,3]: m*x^2-m*x-6+m < 0"
+        }
+      },
+      "normalization_report": {
+        "version": "semantic-equivalence/v1",
+        "ruleset_hash": "1cc78a3e65c127a29519a6464a7820c7ab107a73b33b111b5a45f9a780c71ed9",
+        "initial_facts": [
+          {
+            "scope": "r",
+            "index": 0,
+            "fact": [
+              "quantifier",
+              "∀",
+              "quantified_0",
+              [
+                "interval",
+                true,
+                true,
+                [
+                  "number",
+                  "1"
+                ],
+                [
+                  "number",
+                  "3"
+                ]
+              ],
+              [
+                "<",
+                [
+                  "+",
+                  [
+                    "-",
+                    [
+                      "-",
+                      [
+                        "*",
+                        [
+                          "bound",
+                          "quantified_0"
+                        ],
+                        [
+                          "^",
+                          [
+                            "ref",
+                            "r:scalar:x",
+                            "scalar"
+                          ],
+                          [
+                            "number",
+                            "2"
+                          ]
+                        ]
+                      ],
+                      [
+                        "*",
+                        [
+                          "bound",
+                          "quantified_0"
+                        ],
+                        [
+                          "ref",
+                          "r:scalar:x",
+                          "scalar"
+                        ]
+                      ]
+                    ],
+                    [
+                      "number",
+                      "6"
+                    ]
+                  ],
+                  [
+                    "bound",
+                    "quantified_0"
+                  ]
+                ],
+                [
+                  "number",
+                  "0"
+                ]
+              ]
+            ]
+          }
+        ],
+        "canonical_facts": [
+          {
+            "scope": "r",
+            "index": 0,
+            "fact": [
+              "quantifier",
+              "∀",
+              "quantified_0",
+              [
+                "interval",
+                true,
+                true,
+                [
+                  "number",
+                  "1"
+                ],
+                [
+                  "number",
+                  "3"
+                ]
+              ],
+              [
+                "<",
+                [
+                  "+",
+                  [
+                    "-",
+                    [
+                      "-",
+                      [
+                        "*",
+                        [
+                          "bound",
+                          "quantified_0"
+                        ],
+                        [
+                          "^",
+                          [
+                            "ref",
+                            "r:scalar:x",
+                            "scalar"
+                          ],
+                          [
+                            "number",
+                            "2"
+                          ]
+                        ]
+                      ],
+                      [
+                        "*",
+                        [
+                          "bound",
+                          "quantified_0"
+                        ],
+                        [
+                          "ref",
+                          "r:scalar:x",
+                          "scalar"
+                        ]
+                      ]
+                    ],
+                    [
+                      "number",
+                      "6"
+                    ]
+                  ],
+                  [
+                    "bound",
+                    "quantified_0"
+                  ]
+                ],
+                [
+                  "number",
+                  "0"
+                ]
+              ]
+            ]
+          }
+        ],
+        "derived_facts": [],
+        "proofs": [],
+        "blocked": []
+      }
+    },
+    "binding": {
+      "problem_id": "q08",
+      "source_sha256": "21a9a345b44e3478f22582e6f8093cf4cc73f4d1f0d11052c3c1cac866b02688"
+    }
+  },
+  "first_finish_reason": "stop",
+  "review": {
+    "revision": "5c88ed55dd5eef0ac7fb1f33659898c8bb3b1aac16d6996aa8d82a91a6ed0445",
+    "status": "confirmed",
+    "findings": []
+  },
+  "events": [
+    {
+      "call": 1,
+      "stage": "extract",
+      "base_revision": null,
+      "diagnostics": [],
+      "adopted": true,
+      "parse": {
+        "contract": "graph-problem-extraction/v2",
+        "contract_valid": true,
+        "reports": {
+          "ir": {
+            "ok": true,
+            "issues": [],
+            "defaults": [
+              {
+                "ref": "r:scalar:x",
+                "domain": "real",
+                "origin": "code_default"
+              }
+            ],
+            "objects": [
+              {
+                "ref": "r:scalar:x",
+                "name": "x",
+                "kind": "scalar",
+                "scope": "r"
+              }
+            ],
+            "well_definedness_obligations": [],
+            "coordinate_bindings": [],
+            "object_bindings": [],
+            "normalization_proofs": [],
+            "normalization_report": {
+              "version": "semantic-equivalence/v1",
+              "ruleset_hash": "1cc78a3e65c127a29519a6464a7820c7ab107a73b33b111b5a45f9a780c71ed9",
+              "initial_facts": [
+                {
+                  "scope": "r",
+                  "index": 0,
+                  "fact": [
+                    "quantifier",
+                    "∀",
+                    "quantified_0",
+                    [
+                      "interval",
+                      true,
+                      true,
+                      [
+                        "number",
+                        "1"
+                      ],
+                      [
+                        "number",
+                        "3"
+                      ]
+                    ],
+                    [
+                      "<",
+                      [
+                        "+",
+                        [
+                          "-",
+                          [
+                            "-",
+                            [
+                              "*",
+                              [
+                                "bound",
+                                "quantified_0"
+                              ],
+                              [
+                                "^",
+                                [
+                                  "ref",
+                                  "r:scalar:x",
+                                  "scalar"
+                                ],
+                                [
+                                  "number",
+                                  "2"
+                                ]
+                              ]
+                            ],
+                            [
+                              "*",
+                              [
+                                "bound",
+                                "quantified_0"
+                              ],
+                              [
+                                "ref",
+                                "r:scalar:x",
+                                "scalar"
+                              ]
+                            ]
+                          ],
+                          [
+                            "number",
+                            "6"
+                          ]
+                        ],
+                        [
+                          "bound",
+                          "quantified_0"
+                        ]
+                      ],
+                      [
+                        "number",
+                        "0"
+                      ]
+                    ]
+                  ]
+                }
+              ],
+              "canonical_facts": [
+                {
+                  "scope": "r",
+                  "index": 0,
+                  "fact": [
+                    "quantifier",
+                    "∀",
+                    "quantified_0",
+                    [
+                      "interval",
+                      true,
+                      true,
+                      [
+                        "number",
+                        "1"
+                      ],
+                      [
+                        "number",
+                        "3"
+                      ]
+                    ],
+                    [
+                      "<",
+                      [
+                        "+",
+                        [
+                          "-",
+                          [
+                            "-",
+                            [
+                              "*",
+                              [
+                                "bound",
+                                "quantified_0"
+                              ],
+                              [
+                                "^",
+                                [
+                                  "ref",
+                                  "r:scalar:x",
+                                  "scalar"
+                                ],
+                                [
+                                  "number",
+                                  "2"
+                                ]
+                              ]
+                            ],
+                            [
+                              "*",
+                              [
+                                "bound",
+                                "quantified_0"
+                              ],
+                              [
+                                "ref",
+                                "r:scalar:x",
+                                "scalar"
+                              ]
+                            ]
+                          ],
+                          [
+                            "number",
+                            "6"
+                          ]
+                        ],
+                        [
+                          "bound",
+                          "quantified_0"
+                        ]
+                      ],
+                      [
+                        "number",
+                        "0"
+                      ]
+                    ]
+                  ]
+                }
+              ],
+              "derived_facts": [],
+              "proofs": [],
+              "blocked": []
+            }
+          },
+          "scope_policy": {
+            "ok": true,
+            "diagnostics": []
+          }
+        },
+        "revision": "5c88ed55dd5eef0ac7fb1f33659898c8bb3b1aac16d6996aa8d82a91a6ed0445",
+        "canonical": {
+          "root": {
+            "facts": [
+              [
+                [
+                  "quantifier",
+                  "∀",
+                  [
+                    "interval",
+                    true,
+                    true,
+                    "Integer(1)",
+                    "Integer(3)"
+                  ],
+                  [
+                    [
+                      [
+                        "relation",
+                        "<",
+                        "Add(Mul(Pow(Symbol('n_5e2df328e717dd6b0f6ff229af1539dcbbf0e495d04e3172d460960bd2447cd8', real=True), Integer(2)), Symbol('n_eea58a61977e052df34b873f210d383011ae3dc4fd6ff31adadb2c4d1cfe535d', real=True)), Mul(Integer(-1), Symbol('n_5e2df328e717dd6b0f6ff229af1539dcbbf0e495d04e3172d460960bd2447cd8', real=True), Symbol('n_eea58a61977e052df34b873f210d383011ae3dc4fd6ff31adadb2c4d1cfe535d', real=True)), Symbol('n_eea58a61977e052df34b873f210d383011ae3dc4fd6ff31adadb2c4d1cfe535d', real=True), Integer(-6))"
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ],
+            "goals": [
+              {
+                "kind": "find_range",
+                "target": "Symbol('n_5e2df328e717dd6b0f6ff229af1539dcbbf0e495d04e3172d460960bd2447cd8', real=True)"
+              }
+            ],
+            "uncertainties": [],
+            "children": []
+          },
+          "well_definedness": []
+        },
+        "compiled": {
+          "root": {
+            "scope": "r",
+            "facts": [
+              [
+                "quantifier",
+                "∀",
+                "quantified_0",
+                [
+                  "interval",
+                  true,
+                  true,
+                  [
+                    "number",
+                    "1"
+                  ],
+                  [
+                    "number",
+                    "3"
+                  ]
+                ],
+                [
+                  "<",
+                  [
+                    "+",
+                    [
+                      "-",
+                      [
+                        "-",
+                        [
+                          "*",
+                          [
+                            "bound",
+                            "quantified_0"
+                          ],
+                          [
+                            "^",
+                            [
+                              "ref",
+                              "r:scalar:x",
+                              "scalar"
+                            ],
+                            [
+                              "number",
+                              "2"
+                            ]
+                          ]
+                        ],
+                        [
+                          "*",
+                          [
+                            "bound",
+                            "quantified_0"
+                          ],
+                          [
+                            "ref",
+                            "r:scalar:x",
+                            "scalar"
+                          ]
+                        ]
+                      ],
+                      [
+                        "number",
+                        "6"
+                      ]
+                    ],
+                    [
+                      "bound",
+                      "quantified_0"
+                    ]
+                  ],
+                  [
+                    "number",
+                    "0"
+                  ]
+                ]
+              ]
+            ],
+            "goals": [
+              {
+                "kind": "find_range",
+                "target": [
+                  "ref",
+                  "r:scalar:x",
+                  "scalar"
+                ]
+              }
+            ],
+            "uncertainties": [],
+            "children": []
+          },
+          "objects": [
+            {
+              "ref": "r:scalar:x",
+              "name": "x",
+              "kind": "scalar",
+              "scope": "r"
+            }
+          ],
+          "source_locations": {
+            "[\"quantifier\",\"∀\",\"quantified_0\",[\"interval\",true,true,[\"number\",\"1\"],[\"number\",\"3\"]],[\"<\",[\"+\",[\"-\",[\"-\",[\"*\",[\"bound\",\"quantified_0\"],[\"^\",[\"ref\",\"r:scalar:x\",\"scalar\"],[\"number\",\"2\"]]],[\"*\",[\"bound\",\"quantified_0\"],[\"ref\",\"r:scalar:x\",\"scalar\"]]],[\"number\",\"6\"]],[\"bound\",\"quantified_0\"]],[\"number\",\"0\"]]]": {
+              "path": "r.facts[0]",
+              "source": "∀m∈[1,3]: m*x^2-m*x-6+m < 0"
+            }
+          },
+          "normalization_report": {
+            "version": "semantic-equivalence/v1",
+            "ruleset_hash": "1cc78a3e65c127a29519a6464a7820c7ab107a73b33b111b5a45f9a780c71ed9",
+            "initial_facts": [
+              {
+                "scope": "r",
+                "index": 0,
+                "fact": [
+                  "quantifier",
+                  "∀",
+                  "quantified_0",
+                  [
+                    "interval",
+                    true,
+                    true,
+                    [
+                      "number",
+                      "1"
+                    ],
+                    [
+                      "number",
+                      "3"
+                    ]
+                  ],
+                  [
+                    "<",
+                    [
+                      "+",
+                      [
+                        "-",
+                        [
+                          "-",
+                          [
+                            "*",
+                            [
+                              "bound",
+                              "quantified_0"
+                            ],
+                            [
+                              "^",
+                              [
+                                "ref",
+                                "r:scalar:x",
+                                "scalar"
+                              ],
+                              [
+                                "number",
+                                "2"
+                              ]
+                            ]
+                          ],
+                          [
+                            "*",
+                            [
+                              "bound",
+                              "quantified_0"
+                            ],
+                            [
+                              "ref",
+                              "r:scalar:x",
+                              "scalar"
+                            ]
+                          ]
+                        ],
+                        [
+                          "number",
+                          "6"
+                        ]
+                      ],
+                      [
+                        "bound",
+                        "quantified_0"
+                      ]
+                    ],
+                    [
+                      "number",
+                      "0"
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "canonical_facts": [
+              {
+                "scope": "r",
+                "index": 0,
+                "fact": [
+                  "quantifier",
+                  "∀",
+                  "quantified_0",
+                  [
+                    "interval",
+                    true,
+                    true,
+                    [
+                      "number",
+                      "1"
+                    ],
+                    [
+                      "number",
+                      "3"
+                    ]
+                  ],
+                  [
+                    "<",
+                    [
+                      "+",
+                      [
+                        "-",
+                        [
+                          "-",
+                          [
+                            "*",
+                            [
+                              "bound",
+                              "quantified_0"
+                            ],
+                            [
+                              "^",
+                              [
+                                "ref",
+                                "r:scalar:x",
+                                "scalar"
+                              ],
+                              [
+                                "number",
+                                "2"
+                              ]
+                            ]
+                          ],
+                          [
+                            "*",
+                            [
+                              "bound",
+                              "quantified_0"
+                            ],
+                            [
+                              "ref",
+                              "r:scalar:x",
+                              "scalar"
+                            ]
+                          ]
+                        ],
+                        [
+                          "number",
+                          "6"
+                        ]
+                      ],
+                      [
+                        "bound",
+                        "quantified_0"
+                      ]
+                    ],
+                    [
+                      "number",
+                      "0"
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "derived_facts": [],
+            "proofs": [],
+            "blocked": []
+          }
+        },
+        "binding": {
+          "problem_id": "q08",
+          "source_sha256": "21a9a345b44e3478f22582e6f8093cf4cc73f4d1f0d11052c3c1cac866b02688"
+        }
+      },
+      "revision": "5c88ed55dd5eef0ac7fb1f33659898c8bb3b1aac16d6996aa8d82a91a6ed0445"
+    },
+    {
+      "call": 2,
+      "stage": "review",
+      "base_revision": "5c88ed55dd5eef0ac7fb1f33659898c8bb3b1aac16d6996aa8d82a91a6ed0445",
+      "diagnostics": [],
+      "adopted": false,
+      "review": {
+        "revision": "5c88ed55dd5eef0ac7fb1f33659898c8bb3b1aac16d6996aa8d82a91a6ed0445",
+        "status": "confirmed",
+        "findings": []
+      }
+    }
+  ]
+}

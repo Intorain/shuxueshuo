@@ -20,7 +20,7 @@ def node(kind, *args):
 
 
 TOKEN = re.compile(
-    r"\s*(?:(\d+(?:\.\d+)?)|([A-Za-z\u0370-\u03ff][A-Za-z0-9_\u0370-\u03ff]*)|(<=|>=|!=|\*\*|[+*/^=<>−\-(),{}\[\]:∈∩∧∨∀∃ℝ∠△°⟂∥√]))"
+    r"\s*(?:(\d+(?:\.\d+)?)|([A-Za-z\u0370-\u03ff][A-Za-z0-9_\u0370-\u03ff]*)|(<=|>=|!=|\*\*|[+*/^=<>−\-(),{}\[\]:∈∩∧∨∀∃ℝ∞∠△°⟂∥√]))"
 )
 PREC = {
     "∨": 5,
@@ -175,7 +175,13 @@ class Parser:
             raise NotationError("notation.depth_limit")
         token = self.take()
         if token in ("+", "-"):
-            left = self.make("neg", self.expr(60)) if token == "-" else self.expr(60)
+            operand = self.expr(60)
+            if operand[0] == "infinity":
+                left = self.make(
+                    "infinity", -operand[1] if token == "-" else operand[1]
+                )
+            else:
+                left = self.make("neg", operand) if token == "-" else operand
         elif token == "√":
             # √ takes a number or an explicitly delimited expression. In
             # √2*AB the radical covers 2, never the following product.
@@ -239,6 +245,10 @@ class Parser:
             left = self.make("number", token)
         elif token == "ℝ":
             left = self.make("real")
+        elif token == "∞":
+            # An endpoint token, never a scalar constant. The binder checks
+            # its context and the type checker checks endpoint openness.
+            left = self.make("infinity", 1)
         elif re.fullmatch(r"[A-Za-z\u0370-\u03ff][A-Za-z0-9_\u0370-\u03ff]*", token):
             if self.peek() == "(":
                 self.take()

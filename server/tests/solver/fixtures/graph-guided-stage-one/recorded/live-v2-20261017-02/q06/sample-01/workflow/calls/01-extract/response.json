@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"“$∀x<0，x^2+ax+2≥0$”为真命题，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}],\"uncertainties\":[]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 633,
+      "prompt_tokens": 6780,
+      "total_tokens": 7413,
+      "prompt_cache_hit_tokens": 6272,
+      "prompt_cache_miss_tokens": 508
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 168,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-cdc72087-d12c-4a2e-b2e4-bc5574c0b3bb",
+        "sha256": "6813a0db04c3615deb674eec59a149f1a4348c12db459b0b844cdfad2b6f026d",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 32302,
+        "expires_at": 1792228356,
+        "uploaded_at": 1792141956.286449
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "6813a0db04c3615deb674eec59a149f1a4348c12db459b0b844cdfad2b6f026d",
+        "file_id": "file-api-cdc72087-d12c-4a2e-b2e4-bc5574c0b3bb",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 3307,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 633,
+          "prompt_tokens": 6780,
+          "total_tokens": 7413,
+          "completion_tokens_details": {
+            "reasoning_tokens": 552
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 6272
+          },
+          "prompt_cache_hit_tokens": 6272,
+          "prompt_cache_miss_tokens": 508
+        },
+        "raw_payload": {
+          "id": "645c1cd4-aca2-4a80-b61a-de60925cecfb",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 633,
+            "prompt_tokens": 6780,
+            "total_tokens": 7413,
+            "completion_tokens_details": {
+              "reasoning_tokens": 552
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 6272
+            },
+            "prompt_cache_hit_tokens": 6272,
+            "prompt_cache_miss_tokens": 508
+          },
+          "created": 1792203713,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"“$∀x<0，x^2+ax+2≥0$”为真命题，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}],\"uncertainties\":[]}}",
+                "reasoning_content": "我们需要回答 JSON。需要提取题干，root facts/goals。图片文字：“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。需要转录完整。公式用$…$。JSON反斜杠要双写。需要注意受控表达式：∀x∈(-∞,0): x^2+a*x+2 ≥ 0。题面写∀x<0，范围 x<0 可写 x∈(-∞,0)。目标 find_range symbol a。不能输出答案。uncertainties空。original_text 保留引号和中文。需要符合 schema。root label可省略。definitions可省略。facts包含量词关系。goals [{\"kind\":\"find_range\",\"symbol\":\"a\"}]。注意JSON中LaTeX反斜杠要转义：∀不是反斜杠。x^2+a*x+2。原文字符串中的 LaTeX 若有 \\forall 不用，直接用 ∀。没有反斜杠。original_text 可以：“\\“∀x<0，x^2+ax+2≥0\\”为真命题，求实数 \\(a\\) 的取值范围。” 需要 JSON 字符串里双引号转义。公式用$…$包围。可能 original_text: “$∀x<0，x^2+ax+2≥0$”为真命题，求实数$a$的取值范围。但中文引号不是转义。可写 \"$∀x<0，x^2+ax+2≥0$\"为真命题，求实数 $a$ 的取值范围。需要引号？题干有中文引号，保留。JSON 中中文双引号没问题。用英文双引号包裹字符串，内部中文引号可以。公式内乘号题面是 ax，保留题面变量邻接，数学候选用受控要写 a*x。original_text 可保留 ax。公式用 $…$。好。\n\nfacts: \"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"。注意量词域 (-∞,0) 开区间。准确。goal find_range a。无小问，不 children。uncertainties 省略或空数组？schema可省略。最好输出 uncertainties: []? 可？required original_text,root; root properties not required任何? root只需对象。输出简洁。需要确保 $ 内文本有∀x<0，中文逗号？受控事实用英文逗号? 用 \"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"。好的。\n\n最终 JSON。",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 3309
+  },
+  "raw_payload": {
+    "id": "645c1cd4-aca2-4a80-b61a-de60925cecfb",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"“$∀x<0，x^2+ax+2≥0$”为真命题，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}],\"uncertainties\":[]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要回答 JSON。需要提取题干，root facts/goals。图片文字：“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。需要转录完整。公式用$…$。JSON反斜杠要双写。需要注意受控表达式：∀x∈(-∞,0): x^2+a*x+2 ≥ 0。题面写∀x<0，范围 x<0 可写 x∈(-∞,0)。目标 find_range symbol a。不能输出答案。uncertainties空。original_text 保留引号和中文。需要符合 schema。root label可省略。definitions可省略。facts包含量词关系。goals [{\"kind\":\"find_range\",\"symbol\":\"a\"}]。注意JSON中LaTeX反斜杠要转义：∀不是反斜杠。x^2+a*x+2。原文字符串中的 LaTeX 若有 \\forall 不用，直接用 ∀。没有反斜杠。original_text 可以：“\\“∀x<0，x^2+ax+2≥0\\”为真命题，求实数 \\(a\\) 的取值范围。” 需要 JSON 字符串里双引号转义。公式用$…$包围。可能 original_text: “$∀x<0，x^2+ax+2≥0$”为真命题，求实数$a$的取值范围。但中文引号不是转义。可写 \"$∀x<0，x^2+ax+2≥0$\"为真命题，求实数 $a$ 的取值范围。需要引号？题干有中文引号，保留。JSON 中中文双引号没问题。用英文双引号包裹字符串，内部中文引号可以。公式内乘号题面是 ax，保留题面变量邻接，数学候选用受控要写 a*x。original_text 可保留 ax。公式用 $…$。好。\n\nfacts: \"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"。注意量词域 (-∞,0) 开区间。准确。goal find_range a。无小问，不 children。uncertainties 省略或空数组？schema可省略。最好输出 uncertainties: []? 可？required original_text,root; root properties not required任何? root只需对象。输出简洁。需要确保 $ 内文本有∀x<0，中文逗号？受控事实用英文逗号? 用 \"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"。好的。\n\n最终 JSON。"
+        }
+      }
+    ],
+    "created": 1792203713,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 633,
+      "prompt_tokens": 6780,
+      "total_tokens": 7413,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 552,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 6272
+      },
+      "prompt_cache_hit_tokens": 6272,
+      "prompt_cache_miss_tokens": 508
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 3.311
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": "graph-stage-one-acceptance/v4",
+  "source_kind": "authored-rendered",
+  "goals": [
+    {
+      "target_ref": "/root/children/0/goals/0",
+      "required_goal": {
+        "kind": "find_range",
+        "symbol": "a"
+      },
+      "required_quantifier": "∀",
+      "required_bound_variable": "x",
+      "required_domain": "ℝ",
+      "required_features": [
+        "quantifier",
+        "bound_vars",
+        "free_vars",
+        "goal",
+        "domain",
+        "domain_kind",
+        "relation",
+        "normal_form",
+        "degree_in_bound",
+        "degree_in_goal",
+        "leading_coeff_in_bound",
+        "coefficients",
+        "range_var_is_principal"
+      ]
+    },
+    {
+      "target_ref": "/root/children/1/goals/0",
+      "required_goal": {
+        "kind": "find_range",
+        "symbol": "a"
+      },
+      "required_quantifier": "∃",
+      "required_bound_variable": "x",
+      "required_domain": "[1,2]",
+      "required_features": [
+        "quantifier",
+        "bound_vars",
+        "free_vars",
+        "goal",
+        "domain",
+        "domain_kind",
+        "relation",
+        "normal_form",
+        "degree_in_bound",
+        "degree_in_goal",
+        "leading_coeff_in_bound",
+        "coefficients",
+        "range_var_is_principal"
+      ]
+    }
+  ],
+  "notes": [
+    "Sub-questions share f and a in root; each quantifier belongs to its own sub-question."
+  ]
+}

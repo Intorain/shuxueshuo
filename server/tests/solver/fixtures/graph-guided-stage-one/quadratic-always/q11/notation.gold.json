@@ -1,0 +1,38 @@
+{
+  "original_text": "已知函数 $f(x)=mx^2-mx-1$。\n（1）当 $m=1$ 时，解不等式 $f(x)<0$；\n（2）若对任意 $x\\in[1,3]$，$f(x)<-m+5$ 恒成立，求实数 $m$ 的取值范围。",
+  "root": {
+    "definitions": [
+      "f(x)=m*x^2-m*x-1"
+    ],
+    "facts": [
+      "m∈ℝ"
+    ],
+    "children": [
+      {
+        "label": "（1）",
+        "facts": [
+          "m=1",
+          "f(x) < 0"
+        ],
+        "goals": [
+          {
+            "kind": "find_range",
+            "symbol": "x"
+          }
+        ]
+      },
+      {
+        "label": "（2）",
+        "facts": [
+          "∀x∈[1,3]: f(x) < -m+5"
+        ],
+        "goals": [
+          {
+            "kind": "find_range",
+            "symbol": "m"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "original_text": "若不等式 $-x^2+2x+3 \\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。",
+  "root": {
+    "facts": [
+      "∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a"
+    ],
+    "goals": [
+      {
+        "kind": "find_range",
+        "symbol": "a"
+      }
+    ]
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"若不等式 $-x^2+2x+3 \\\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 295,
+      "prompt_tokens": 6874,
+      "total_tokens": 7169,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6874
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 170,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-bc8661b1-7f34-406d-9eed-eb5deea277df",
+        "sha256": "1b2d865e561dbf240e3e6f8f2e935e1c391a1e4e0b04e27c0ff3e29c8427f790",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 40658,
+        "expires_at": 1792228195,
+        "uploaded_at": 1792141795.0496168
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "1b2d865e561dbf240e3e6f8f2e935e1c391a1e4e0b04e27c0ff3e29c8427f790",
+        "file_id": "file-api-bc8661b1-7f34-406d-9eed-eb5deea277df",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 2188,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 295,
+          "prompt_tokens": 6874,
+          "total_tokens": 7169,
+          "completion_tokens_details": {
+            "reasoning_tokens": 207
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 6874
+        },
+        "raw_payload": {
+          "id": "78d11e41-85c0-4383-8ed6-8a32e6504940",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 295,
+            "prompt_tokens": 6874,
+            "total_tokens": 7169,
+            "completion_tokens_details": {
+              "reasoning_tokens": 207
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 6874
+          },
+          "created": 1792203697,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"若不等式 $-x^2+2x+3 \\\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}]}}",
+                "reasoning_content": "我们需要回答 JSON。需要从图片提取题目。图片文字：\"若不等式 -x^2+2x+3 ≤ a^2-3a 对任意实数 x 恒成立，求实数 a 的取值范围。\" 需要构建 root facts 包含 ∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a ？ 目标 find_range symbol a。 original_text 完整。 需要注意题目说“对任意实数 x 恒成立”，量词变量 x 范围 ℝ。 facts 可写 ∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a。 goals find_range a。 没有小问。 No uncertainties. 输出 JSON。 Ensure backslashes none. Use math strings. 可以是 \"-x^2+2*x+3 ≤ a^2-3*a\" 在 forall。 变量 a maybe 实数。目标 symbol \"a\". original_text include exact. Let's produce.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 2189
+  },
+  "raw_payload": {
+    "id": "78d11e41-85c0-4383-8ed6-8a32e6504940",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"若不等式 $-x^2+2x+3 \\\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要回答 JSON。需要从图片提取题目。图片文字：\"若不等式 -x^2+2x+3 ≤ a^2-3a 对任意实数 x 恒成立，求实数 a 的取值范围。\" 需要构建 root facts 包含 ∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a ？ 目标 find_range symbol a。 original_text 完整。 需要注意题目说“对任意实数 x 恒成立”，量词变量 x 范围 ℝ。 facts 可写 ∀x∈ℝ: -x^2+2*x+3 ≤ a^2-3*a。 goals find_range a。 没有小问。 No uncertainties. 输出 JSON。 Ensure backslashes none. Use math strings. 可以是 \"-x^2+2*x+3 ≤ a^2-3*a\" 在 forall。 变量 a maybe 实数。目标 symbol \"a\". original_text include exact. Let's produce."
+        }
+      }
+    ],
+    "created": 1792203697,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 295,
+      "prompt_tokens": 6874,
+      "total_tokens": 7169,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 207,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6874
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 2.192
+}

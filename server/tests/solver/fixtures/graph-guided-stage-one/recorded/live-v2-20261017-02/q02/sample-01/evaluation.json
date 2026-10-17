@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "已知不等式 $kx^2+2kx-(k+2)<0$ 恒成立，求实数 $k$ 的取值范围。",
+    "actual": "已知不等式 $kx^2 + 2kx - (k + 2) < 0$ 恒成立，求实数 $k$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": true,
+  "source_review_required": true,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "a041624869f7731e475b8604b5ace276936af96571536c19b4647198d0546ca4",
+      "source.png": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+      "source-manifest.json": "6cda0e037c83f5308a2ecb29f19f98e7e9cafbf0135fa15aeec2cf36a80b3902",
+      "notation.gold.json": "a9af8a97ac9e16b10344cbac4606118b0d5dbc142324a2a5434b45477dbbf592",
+      "features.gold.json": "db83377a19a38f868ab0d1353f6392c62d0d06088debc74570ab1b074442c9d2",
+      "acceptance.json": "c783ac3ef8f9682847ad523d0d0e7d5dffaf6fde33fbac9145ce2c505a5db87b"
+    }
+  }
+}

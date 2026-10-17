@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "已知 $y=ax^2-(a+1)x+1$，若对任意 $-1\\le a\\le1$，$y>0$ 恒成立，求 $x$ 的取值范围。",
+    "actual": "已知 $y=ax^2-(a+1)x+1$，若对任意 $-1≤a≤1$，$y>0$ 恒成立，求 $x$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": false,
+  "source_review_required": false,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "b3218297b515f35fc33a9d76cd20894b5e1ac46246459a1a229e527507891716",
+      "source.png": "bdf74fe371a619240ca431f2ff55539acb6270fddba001f04503c843c5833159",
+      "source-manifest.json": "279a813dd48cd8a1c82738036d7686e0e27f8e14f14b57fc87a26f6372ad0a4a",
+      "notation.gold.json": "304eaa1ff675d4aa585d0049b50bf9d4e301dd4a9bdcd1cb0b47123392d1b72e",
+      "features.gold.json": "d46354bc14731aaa07194d85c48f047efe5ea86c9ddf4af948858a67770d8b28",
+      "acceptance.json": "6280c09d8669b9ba398fd94e471b69e4672132d79bd6a672f51cfac77e346765"
+    }
+  },
+  "measurement": "Independent gold evaluation before repair; not an image-review claim."
+}

@@ -68,6 +68,11 @@ def resource_owner(path):
     # Site services (AI tutor dialogue, SMS login, learning marks) never feed the review pipeline.
     if path.startswith(tuple(f'server/shuxueshuo_server/{name}/' for name in ('tutor_demo', 'auth', 'learning'))):
         return None, False
+    # The graph-guided lesson pipeline freezes its own inputs per batch and never feeds review stages.
+    if path.startswith('server/shuxueshuo_server/graph_lesson/') or (
+        path.startswith(('internal/llm-prompts/', 'internal/schemas/')) and Path(path).name.startswith('graph-')
+    ):
+        return None, False
     if path.startswith('server/shuxueshuo_server/problem_understanding/'):
         if Path(path).stem in {'runtime_binding', 'runtime_lowering', 'compact_planner_input'}:
             return 'projection', False

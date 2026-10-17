@@ -1,0 +1,34 @@
+{
+  "original_text": "已知函数 $f(x)=x^2-2ax+3$。\n（1）若对任意 $x∈ℝ$，$f(x)≥0$ 恒成立，求实数 $a$ 的取值范围；\n（2）若存在 $x∈[1,2]$，使得 $f(x)<0$ 成立，求实数 $a$ 的取值范围。",
+  "root": {
+    "definitions": [
+      "f(x) = x^2-2*a*x+3"
+    ],
+    "children": [
+      {
+        "label": "（1）",
+        "facts": [
+          "∀x∈ℝ: f(x) ≥ 0"
+        ],
+        "goals": [
+          {
+            "kind": "find_range",
+            "symbol": "a"
+          }
+        ]
+      },
+      {
+        "label": "（2）",
+        "facts": [
+          "∃x∈[1,2]: f(x) < 0"
+        ],
+        "goals": [
+          {
+            "kind": "find_range",
+            "symbol": "a"
+          }
+        ]
+      }
+    ]
+  }
+}

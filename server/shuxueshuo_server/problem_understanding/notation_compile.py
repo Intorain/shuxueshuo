@@ -8,9 +8,9 @@ from dataclasses import field as dc_field
 from jsonschema import Draft202012Validator
 
 from .identity import encoded
+from .normalization_report import from_normalization
 from .notation_contract import schema
 from .notation_parser import BUILTINS, NotationError, definition, node, parse
-from .normalization_report import from_normalization
 
 ARITY = {
     "sqrt": 1,
@@ -80,6 +80,9 @@ class Report:
     semantic_normalization: dict = dc_field(default_factory=dict)
     normalization_report: dict = dc_field(default_factory=dict)
     source_locations: dict = dc_field(default_factory=dict)
+    # Per-scope bound facts in source order. Unlike source_locations, equal
+    # bound ASTs in sibling scopes keep separate entries.
+    scope_facts: dict = dc_field(default_factory=dict)
 
     def record_intersections(self, ast, path, source):
         if ast[0] == "point_intersection_definition":
@@ -202,7 +205,11 @@ def _mentions_point_letter(ast, letter):
         name = ast[1]
         if name == letter:
             return True
-        if isinstance(name, str) and re.fullmatch(r"[A-Z]{2,}", name) and letter in name:
+        if (
+            isinstance(name, str)
+            and re.fullmatch(r"[A-Z]{2,}", name)
+            and letter in name
+        ):
             return True
     return any(_mentions_point_letter(child, letter) for child in children(ast))
 
@@ -213,9 +220,14 @@ def _coordinate_frame_signal(ast):
     kind = ast[0]
     if kind == "curve_definition":
         return True
-    if kind in ("name", "axis_constant") and len(ast) == 2 and ast[1] in (
-        "x_axis",
-        "y_axis",
+    if (
+        kind in ("name", "axis_constant")
+        and len(ast) == 2
+        and ast[1]
+        in (
+            "x_axis",
+            "y_axis",
+        )
     ):
         return True
     if kind == "call" and len(ast) >= 2 and ast[1] in ("x", "y"):
@@ -396,7 +408,7 @@ class Scope:
             return node(
                 "point_intersection_definition", *[bind(p) for p in intersection]
             )
-        if kind in ("number", "real", "definition_prose"):
+        if kind in ("number", "real", "infinity", "definition_prose"):
             return ast
         if kind == "name":
             name = ast[1]
@@ -497,6 +509,12 @@ class Scope:
             return node("call", name, *[bind(p) for p in args])
         if kind == "∈" and ast[2][0] == "real":
             return node("default_domain", bind(ast[1]), "real")
+        if kind == "∈" and ast[2][0] == "tuple":
+            return node(
+                "∈",
+                bind(ast[1]),
+                node("interval", False, False, *[bind(x) for x in ast[2][1:]]),
+            )
         if kind == "interval":
             return node(kind, ast[1], ast[2], bind(ast[3]), bind(ast[4]))
         return node(kind, *[bind(p) for p in ast[1:]])
@@ -514,11 +532,22 @@ def typecheck(ast):
         return "boolean"
     if kind in ("number", "bound"):
         return "scalar"
+    if kind == "infinity":
+        return "infinite_endpoint"
     if kind == "ref":
         return ast[2]
     if kind in ("real", "interval"):
-        if kind == "interval" and any(typecheck(x) != "scalar" for x in ast[3:]):
-            raise NotationError("type.interval_endpoint")
+        if kind == "interval":
+            if len(ast) != 5:
+                raise NotationError("type.interval_endpoint")
+            for index, endpoint in enumerate(ast[3:]):
+                if endpoint[0] == "infinity":
+                    if ast[index + 1]:
+                        raise NotationError("type.closed_infinite_endpoint")
+                    if endpoint[1] != (-1 if index == 0 else 1):
+                        raise NotationError("type.infinite_endpoint_direction")
+                elif typecheck(endpoint) != "scalar":
+                    raise NotationError("type.interval_endpoint")
         return "domain"
     if kind == "axis_constant":
         return "locus"
@@ -623,6 +652,8 @@ def typecheck(ast):
         return "boolean"
     a, b = map(typecheck, ast[1:])
     if kind in ("=", "!=", "<", "<=", ">", ">="):
+        if "infinite_endpoint" in (a, b):
+            raise NotationError("type.infinity_outside_interval")
         compatible = (
             a == b
             or {a, b} <= {"scalar", "length", "angle", "area"}
@@ -656,9 +687,28 @@ def typecheck(ast):
 
 class NotationValidator:
     def validate(self, payload):
+        """Validate the original extraction envelope, including its family fields."""
+        return self._validate(payload, schema())
+
+    def validate_root(self, root):
+        """Compile a mathematical scope without an extraction-envelope contract.
+
+        The scope schema and mathematical compiler remain shared with validate;
+        no synthetic family classification is inserted for newer callers.
+        """
+        root_schema = {
+            "$defs": schema()["$defs"],
+            "type": "object",
+            "required": ["root"],
+            "additionalProperties": False,
+            "properties": {"root": {"$ref": "#/$defs/Scope"}},
+        }
+        return self._validate({"root": root}, root_schema)
+
+    def _validate(self, payload, contract):
         report = Report()
         try:
-            errors = list(Draft202012Validator(schema()).iter_errors(payload))
+            errors = list(Draft202012Validator(contract).iter_errors(payload))
             if errors:
                 report.issues = [
                     {
@@ -758,6 +808,9 @@ class NotationValidator:
                 elif value_type != "boolean":
                     raise NotationError("type.fact_must_be_relation")
                 compiled.append(value)
+                report.scope_facts.setdefault(path, []).append(
+                    {"value": value, "path": location, "source": text}
+                )
                 # Keep the original LLM-facing expression attached to the
                 # bound AST.  Normalization may derive internal facts from
                 # this AST, but must be able to report the source JSON path

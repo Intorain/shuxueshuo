@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}],\"uncertainties\":[]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 937,
+      "prompt_tokens": 6874,
+      "total_tokens": 7811,
+      "prompt_cache_hit_tokens": 6656,
+      "prompt_cache_miss_tokens": 218
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 185,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-d6446e02-5ad2-474a-9696-268f892f79a0",
+        "sha256": "6864dc60a5ef774aae45d497cc9bffb3f718a133bce1000443fb94564add8370",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 36351,
+        "expires_at": 1792228310,
+        "uploaded_at": 1792141910.274944
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "6864dc60a5ef774aae45d497cc9bffb3f718a133bce1000443fb94564add8370",
+        "file_id": "file-api-d6446e02-5ad2-474a-9696-268f892f79a0",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 4951,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 937,
+          "prompt_tokens": 6874,
+          "total_tokens": 7811,
+          "completion_tokens_details": {
+            "reasoning_tokens": 845
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 6656
+          },
+          "prompt_cache_hit_tokens": 6656,
+          "prompt_cache_miss_tokens": 218
+        },
+        "raw_payload": {
+          "id": "cb360eec-95f3-4e20-837b-351bbe1a42cb",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 937,
+            "prompt_tokens": 6874,
+            "total_tokens": 7811,
+            "completion_tokens_details": {
+              "reasoning_tokens": 845
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 6656
+            },
+            "prompt_cache_hit_tokens": 6656,
+            "prompt_cache_miss_tokens": 218
+          },
+          "created": 1792203702,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}],\"uncertainties\":[]}}",
+                "reasoning_content": "我们需要回答用户。需要从图片提取题意，不求解。只输出 JSON 符合 schema。需要仔细转录图片：已知不等式 \\((a^2-1)x^2-(a-1)x-1<0\\) 恒成立，求实数 \\(a\\) 的取值范围。图片换行到“取值范\\n围。” 需要输出 original_text 完整题干。root 结构：没有小问。需要把恒成立转为量词关系。题面“已知不等式 ... <0 恒成立，求实数 a 的取值范围”。变量 x 是唯一自由变量除待求 a；未写范围取实数域。因此 facts 中应放 ∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0。注意乘法显式 *。也许 (a^2-1)*x^2 是独立变量？ a是参数，写 (a^2-1)*x^2。减号等。goals find_range symbol a。definitions 可省略。uncertainties 空。original_text 用 LaTeX 或 Unicode 均可。需要 JSON 转义反斜杠：如果使用 LaTeX，在 JSON 字符串中反斜杠必须 \\\\。用户明确公式用 $…$ 包围，JSON 中反斜杠写成 \\\\。original_text 可以简洁使用 $...$。需要保留完整题干、公式、量词措辞、不等号严格性。可以写 \"已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。\" 注意换行可不用。original_text 中公式中反斜杠少。建议不用 LaTeX 反斜杠，直接用 Unicode 和普通符号即可，避免转义。受控 facts 用 catalog 字符串：\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"。需要星号。因为 a^2-1 整体乘以 x^2 写 (a^2-1)*x^2。减 (a-1)*x。目标是 {\"kind\":\"find_range\",\"symbol\":\"a\"}。root 的 label 可省略。children 省略。uncertainties 空数组可省略？Schema 可省略；但为完整可包含空数组？只能输出契约字段，uncertainties 是字段。可以输出空。root 必须有 facts/goals? properties 不要求，但需要 goals 和 facts 至少。definitions 可省略。输出 JSON 对象仅 original_text 和 root。root facts [\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"], goals [{\"kind\":\"find_range\",\"symbol\":\"a\"}]。是否需要 facts 把不等式作为“恒成立”量词？是的。注意题面“恒成立”未写量词变量但除a外唯一自由变量x，范围ℝ。很好。\n\n需要严格只输出 JSON，不解释。用中文，无 markdown。确保 JSON 字符串中 ∀、ℝ 有效 UTF-8。可以保留空格。字段名称正确。根对象没有额外字段。original_text 包含全角逗号，句号。可以使用 \\(...\\)? 用户说公式用 $…$ 包围，不使用 \\( \\)。所以 original_text 用 $...$。里面 ^ 没问题。需要 JSON 字符串没有反斜杠。用 \"(a^2-1)x^2-(a-1)x-1<0\" 可以，里面没有反斜杠。很好。 facts 也使用 ^ 和 *。注意 x^2 在字符串；fine。\n\n需要检查是否“不等式 ... <0 恒成立”语义：∀x∈ℝ: ... < 0。对。没有小问。goals 只求 a 范围，不填解出的范围。uncertainties 可空。直接输出。",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 4952
+  },
+  "raw_payload": {
+    "id": "cb360eec-95f3-4e20-837b-351bbe1a42cb",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}],\"uncertainties\":[]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要回答用户。需要从图片提取题意，不求解。只输出 JSON 符合 schema。需要仔细转录图片：已知不等式 \\((a^2-1)x^2-(a-1)x-1<0\\) 恒成立，求实数 \\(a\\) 的取值范围。图片换行到“取值范\\n围。” 需要输出 original_text 完整题干。root 结构：没有小问。需要把恒成立转为量词关系。题面“已知不等式 ... <0 恒成立，求实数 a 的取值范围”。变量 x 是唯一自由变量除待求 a；未写范围取实数域。因此 facts 中应放 ∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0。注意乘法显式 *。也许 (a^2-1)*x^2 是独立变量？ a是参数，写 (a^2-1)*x^2。减号等。goals find_range symbol a。definitions 可省略。uncertainties 空。original_text 用 LaTeX 或 Unicode 均可。需要 JSON 转义反斜杠：如果使用 LaTeX，在 JSON 字符串中反斜杠必须 \\\\。用户明确公式用 $…$ 包围，JSON 中反斜杠写成 \\\\。original_text 可以简洁使用 $...$。需要保留完整题干、公式、量词措辞、不等号严格性。可以写 \"已知不等式 $(a^2-1)x^2-(a-1)x-1<0$ 恒成立，求实数 $a$ 的取值范围。\" 注意换行可不用。original_text 中公式中反斜杠少。建议不用 LaTeX 反斜杠，直接用 Unicode 和普通符号即可，避免转义。受控 facts 用 catalog 字符串：\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"。需要星号。因为 a^2-1 整体乘以 x^2 写 (a^2-1)*x^2。减 (a-1)*x。目标是 {\"kind\":\"find_range\",\"symbol\":\"a\"}。root 的 label 可省略。children 省略。uncertainties 空数组可省略？Schema 可省略；但为完整可包含空数组？只能输出契约字段，uncertainties 是字段。可以输出空。root 必须有 facts/goals? properties 不要求，但需要 goals 和 facts 至少。definitions 可省略。输出 JSON 对象仅 original_text 和 root。root facts [\"∀x∈ℝ: (a^2-1)*x^2-(a-1)*x-1 < 0\"], goals [{\"kind\":\"find_range\",\"symbol\":\"a\"}]。是否需要 facts 把不等式作为“恒成立”量词？是的。注意题面“恒成立”未写量词变量但除a外唯一自由变量x，范围ℝ。很好。\n\n需要严格只输出 JSON，不解释。用中文，无 markdown。确保 JSON 字符串中 ∀、ℝ 有效 UTF-8。可以保留空格。字段名称正确。根对象没有额外字段。original_text 包含全角逗号，句号。可以使用 \\(...\\)? 用户说公式用 $…$ 包围，不使用 \\( \\)。所以 original_text 用 $...$。里面 ^ 没问题。需要 JSON 字符串没有反斜杠。用 \"(a^2-1)x^2-(a-1)x-1<0\" 可以，里面没有反斜杠。很好。 facts 也使用 ^ 和 *。注意 x^2 在字符串；fine。\n\n需要检查是否“不等式 ... <0 恒成立”语义：∀x∈ℝ: ... < 0。对。没有小问。goals 只求 a 范围，不填解出的范围。uncertainties 可空。直接输出。"
+        }
+      }
+    ],
+    "created": 1792203702,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 937,
+      "prompt_tokens": 6874,
+      "total_tokens": 7811,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 845,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 6656
+      },
+      "prompt_cache_hit_tokens": 6656,
+      "prompt_cache_miss_tokens": 218
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 4.955
+}

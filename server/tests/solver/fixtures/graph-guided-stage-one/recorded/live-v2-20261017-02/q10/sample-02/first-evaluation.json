@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "已知函数 $f(x)=x^2-2ax+3$。\n（1）若对任意 $x\\in\\mathbb{R}$，$f(x)\\ge0$ 恒成立，求实数 $a$ 的取值范围；\n（2）若存在 $x\\in[1,2]$，使得 $f(x)<0$ 成立，求实数 $a$ 的取值范围。",
+    "actual": "已知函数 $f(x)=x^2-2ax+3$。\n（1）若对任意 $x∈ℝ$，$f(x)≥0$ 恒成立，求实数 $a$ 的取值范围；\n（2）若存在 $x∈[1,2]$，使得 $f(x)<0$ 成立，求实数 $a$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": false,
+  "source_review_required": false,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "5c79754cfc98cced87259aa14c4a1e43d2ec9fc2cc7450691d25bd16ef13baf9",
+      "source.png": "2dc43b7a916171bdd709e9fed4c9f099ea00cb42099be204d23c8e8a6802cc94",
+      "source-manifest.json": "eba5d3142c2ce1e182cc1a562a8f1a879ec51725fbfa47c5b5a934bdb67b32fb",
+      "notation.gold.json": "004a8a63c10d2d427e2c892c7cc2a84bb177d7db1bca31b456ece3ac80902f0b",
+      "features.gold.json": "7e97d66f8a1a90f36c2c1b47588e9021ddb8b786a77cdffe3eaa543284386fcc",
+      "acceptance.json": "1f3b097d9e320ba269de6b486142ef914f466264a2d5192e21c322760d2c9386"
+    }
+  },
+  "measurement": "Independent gold evaluation before repair; not an image-review claim."
+}

@@ -1,0 +1,15 @@
+{
+  "original_text": "当 $1\\le x\\le2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。",
+  "root": {
+    "facts": [
+      "m∈ℝ",
+      "∀x∈[1,2]: x^2+m*x+4 < 0"
+    ],
+    "goals": [
+      {
+        "kind": "find_range",
+        "symbol": "m"
+      }
+    ]
+  }
+}

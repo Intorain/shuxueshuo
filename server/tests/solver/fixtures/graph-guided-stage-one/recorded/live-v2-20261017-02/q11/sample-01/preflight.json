@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "diagnostics": [],
+  "hashes": {
+    "problem.md": "7a626ed30319d5d0881302076a80f7a140183798cc32e3b5c3de489f5fcfecc9",
+    "source.png": "6d7ab2d9d20f85e8f5f104348fd708d9f4b1fbd3af7c085fcec994ac4acf5dcb",
+    "source-manifest.json": "ea5a4906ca6f26b506c9b2424e36f7194c9ad2275bd40965828e45db2c7ed1e3",
+    "notation.gold.json": "ba0ff7514e076db825327e19d3c3fbfd5b31f42b3a12783820f446205449176e",
+    "features.gold.json": "6c82d5bf02415bd3616ae1b43ef470c9c778458a596d155db07a5ee72a0c7774",
+    "acceptance.json": "d23094ca2c18b0836a1259d0c2529fa76f94e3b54c2260c1e5f7368616748e4d"
+  }
+}

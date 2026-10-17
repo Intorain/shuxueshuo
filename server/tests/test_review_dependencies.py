@@ -104,6 +104,17 @@ def test_product_persistence_is_not_a_review_math_dependency(tmp_path):
     assert before == after
 
 
+@pytest.mark.parametrize('path', [
+    'server/shuxueshuo_server/graph_lesson/stage_one/features.py',
+    'internal/llm-prompts/graph-stage-one-system.md',
+    'internal/schemas/graph-problem-extraction-v2.schema.json',
+])
+def test_graph_lesson_pipeline_is_not_a_review_dependency(tmp_path, path):
+    before = collect(tmp_path, CONFIG)
+    put(tmp_path, path, 'a=1')
+    assert collect(tmp_path, CONFIG) == before
+
+
 @pytest.mark.parametrize('field,value', [('deepseek_vision_timeout', 200), ('deepseek_vision_max_tokens', 12000), ('deepseek_vision_base_url', 'https://vision.example')])
 def test_vision_config_changes_only_extraction_fingerprint(tmp_path, field, value):
     before = collect(tmp_path, CONFIG)

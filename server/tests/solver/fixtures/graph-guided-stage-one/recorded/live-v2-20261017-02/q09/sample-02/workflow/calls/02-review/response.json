@@ -1,0 +1,150 @@
+{
+  "text": "{\"status\":\"confirmed\",\"findings\":[]}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 316,
+      "prompt_tokens": 4598,
+      "total_tokens": 4914,
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 758
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 36,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-review/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-09c73c68-7bf3-4546-b9b7-940f349a38f0",
+        "sha256": "bdf74fe371a619240ca431f2ff55539acb6270fddba001f04503c843c5833159",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 39152,
+        "expires_at": 1792228478,
+        "uploaded_at": 1792142078.03986
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "bdf74fe371a619240ca431f2ff55539acb6270fddba001f04503c843c5833159",
+        "file_id": "file-api-09c73c68-7bf3-4546-b9b7-940f349a38f0",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 2157,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 316,
+          "prompt_tokens": 4598,
+          "total_tokens": 4914,
+          "completion_tokens_details": {
+            "reasoning_tokens": 305
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 3840
+          },
+          "prompt_cache_hit_tokens": 3840,
+          "prompt_cache_miss_tokens": 758
+        },
+        "raw_payload": {
+          "id": "db656b0a-59f3-4116-86a7-6134e38f6055",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 316,
+            "prompt_tokens": 4598,
+            "total_tokens": 4914,
+            "completion_tokens_details": {
+              "reasoning_tokens": 305
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 3840
+            },
+            "prompt_cache_hit_tokens": 3840,
+            "prompt_cache_miss_tokens": 758
+          },
+          "created": 1792203731,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+                "reasoning_content": "我们需要审查候选。原图题面：已知 y = a x^2 - (a+1)x +1，若对任意 -1 ≤ a ≤ 1，y > 0 恒成立，求 x 的取值范围。\n\n候选 original_text 与原图一致（数学符号、≤等）。root facts: ∀a∈[-1,1]: a*x^2-(a+1)*x+1 > 0。goal find_range x。需要检查：题面给出 y=... 然后 y>0 恒成立，对任意 a。候选将 y 公式展开进量词内。根据说明，题面以 y=… 给出公式，再在量词范围内使用 y 的不等式，root 将公式直接展开到量词关系内是正确表示；不能要求增加 y=… 全局事实或定义。所以正确。量词变量 a 定义域 [-1,1]，x 自由变量，求范围，实数域默认。没有额外条件。符号：a*x^2 正确。注意 (a+1)*x 展开为 a*x? 候选 a*x^2-(a+1)*x+1 正确。y>0 严格。goal find_range x 对应。未指定 x 实数域，find_range 可以。original_text 正确。无小问。图像清晰可读。status confirmed findings 空。需要输出 JSON 顶层只有 status 和 findings。",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 2158
+  },
+  "raw_payload": {
+    "id": "db656b0a-59f3-4116-86a7-6134e38f6055",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要审查候选。原图题面：已知 y = a x^2 - (a+1)x +1，若对任意 -1 ≤ a ≤ 1，y > 0 恒成立，求 x 的取值范围。\n\n候选 original_text 与原图一致（数学符号、≤等）。root facts: ∀a∈[-1,1]: a*x^2-(a+1)*x+1 > 0。goal find_range x。需要检查：题面给出 y=... 然后 y>0 恒成立，对任意 a。候选将 y 公式展开进量词内。根据说明，题面以 y=… 给出公式，再在量词范围内使用 y 的不等式，root 将公式直接展开到量词关系内是正确表示；不能要求增加 y=… 全局事实或定义。所以正确。量词变量 a 定义域 [-1,1]，x 自由变量，求范围，实数域默认。没有额外条件。符号：a*x^2 正确。注意 (a+1)*x 展开为 a*x? 候选 a*x^2-(a+1)*x+1 正确。y>0 严格。goal find_range x 对应。未指定 x 实数域，find_range 可以。original_text 正确。无小问。图像清晰可读。status confirmed findings 空。需要输出 JSON 顶层只有 status 和 findings。"
+        }
+      }
+    ],
+    "created": 1792203731,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 316,
+      "prompt_tokens": 4598,
+      "total_tokens": 4914,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 305,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 3840
+      },
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 758
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 2.162
+}

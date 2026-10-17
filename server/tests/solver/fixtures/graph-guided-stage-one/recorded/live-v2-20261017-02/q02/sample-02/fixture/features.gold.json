@@ -1,0 +1,140 @@
+{
+  "schema_version": "graph-stage-one-feature-expectations/v2",
+  "comparison": "semantic_subset",
+  "authored_basis": "Independent algebra from original problem and plan section 3.2; all inequalities oriented to >0 or >=0. No extraction output used.",
+  "features": [
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "quantifier",
+      "status": "known",
+      "value": "∀"
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "bound_vars",
+      "status": "known",
+      "value": [
+        "x"
+      ]
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "free_vars",
+      "status": "known",
+      "value": [
+        "k"
+      ]
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "goal",
+      "status": "known",
+      "value": {
+        "kind": "find_range",
+        "symbol": "k"
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "domain",
+      "status": "known",
+      "value": {
+        "expression": "ℝ",
+        "lower": "-∞",
+        "upper": "∞",
+        "left_closed": false,
+        "right_closed": false,
+        "bounded": false
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "domain_kind",
+      "status": "known",
+      "value": "real"
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "relation",
+      "status": "known",
+      "value": {
+        "operator": "<",
+        "strict": true,
+        "lhs": "k*x^2+2*k*x-(k+2)",
+        "rhs": "0"
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "normal_form",
+      "status": "known",
+      "value": {
+        "expression": "-k*x^2-2*k*x+k+2",
+        "operator": ">",
+        "rhs": "0",
+        "variable": "x"
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "degree_in_bound",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "degree": 2,
+        "degree_kind": "upper_bound"
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "degree_in_goal",
+      "status": "known",
+      "value": {
+        "variable": "k",
+        "degree": 1
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "leading_coeff_in_bound",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "expression": "-k",
+        "contains_parameters": true,
+        "may_be_zero": true
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "coefficients",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "items": [
+          {
+            "power": 2,
+            "expression": "-k",
+            "contains_parameters": true
+          },
+          {
+            "power": 1,
+            "expression": "-2*k",
+            "contains_parameters": true
+          },
+          {
+            "power": 0,
+            "expression": "k+2",
+            "contains_parameters": true
+          }
+        ]
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "feature_id": "range_var_is_principal",
+      "status": "known",
+      "value": true
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"当 $1<x<2$ 时，关于 $x$ 的不等式 $x^2+mx+4>0$ 有解，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∃x∈(1,2): x^2+m*x+4>0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 236,
+      "prompt_tokens": 6874,
+      "total_tokens": 7110,
+      "prompt_cache_hit_tokens": 6272,
+      "prompt_cache_miss_tokens": 602
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 162,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-5bbbd10f-0954-4069-9a73-62b8fb156445",
+        "sha256": "64aadf9336fefd69fbd293ad5cbc56a4a77304bcfad0d10705dc82f8e69547b3",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 41008,
+        "expires_at": 1792228310,
+        "uploaded_at": 1792141910.308032
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "64aadf9336fefd69fbd293ad5cbc56a4a77304bcfad0d10705dc82f8e69547b3",
+        "file_id": "file-api-5bbbd10f-0954-4069-9a73-62b8fb156445",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 2039,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 236,
+          "prompt_tokens": 6874,
+          "total_tokens": 7110,
+          "completion_tokens_details": {
+            "reasoning_tokens": 150
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 6272
+          },
+          "prompt_cache_hit_tokens": 6272,
+          "prompt_cache_miss_tokens": 602
+        },
+        "raw_payload": {
+          "id": "6401fe23-2476-45ba-82d8-86db40ff3a42",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 236,
+            "prompt_tokens": 6874,
+            "total_tokens": 7110,
+            "completion_tokens_details": {
+              "reasoning_tokens": 150
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 6272
+            },
+            "prompt_cache_hit_tokens": 6272,
+            "prompt_cache_miss_tokens": 602
+          },
+          "created": 1792203709,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"当 $1<x<2$ 时，关于 $x$ 的不等式 $x^2+mx+4>0$ 有解，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∃x∈(1,2): x^2+m*x+4>0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+                "reasoning_content": "We need answer JSON only. Need extract. Need understand problem: \"当1<x<2时，关于x的不等式 x^2+mx+4>0有解，求实数m的取值范围。\" Need output original_text exact. root facts: ∃x∈(1,2): x^2+m*x+4>0. Goal find_range symbol m. No children. Need maybe root facts with quantifier. Since \"有解\" means exists x. Domain given 1<x<2, open interval (1,2). Root goals find_range m. original_text with LaTeX $1<x<2$ etc. Need JSON valid. No uncertainties. Ensure backslashes none. Use $m$. Let's craft.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 2041
+  },
+  "raw_payload": {
+    "id": "6401fe23-2476-45ba-82d8-86db40ff3a42",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"当 $1<x<2$ 时，关于 $x$ 的不等式 $x^2+mx+4>0$ 有解，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∃x∈(1,2): x^2+m*x+4>0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "We need answer JSON only. Need extract. Need understand problem: \"当1<x<2时，关于x的不等式 x^2+mx+4>0有解，求实数m的取值范围。\" Need output original_text exact. root facts: ∃x∈(1,2): x^2+m*x+4>0. Goal find_range symbol m. No children. Need maybe root facts with quantifier. Since \"有解\" means exists x. Domain given 1<x<2, open interval (1,2). Root goals find_range m. original_text with LaTeX $1<x<2$ etc. Need JSON valid. No uncertainties. Ensure backslashes none. Use $m$. Let's craft."
+        }
+      }
+    ],
+    "created": 1792203709,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 236,
+      "prompt_tokens": 6874,
+      "total_tokens": 7110,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 150,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 6272
+      },
+      "prompt_cache_hit_tokens": 6272,
+      "prompt_cache_miss_tokens": 602
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 2.043
+}

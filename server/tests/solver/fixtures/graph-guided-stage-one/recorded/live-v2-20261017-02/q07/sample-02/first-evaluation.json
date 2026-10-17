@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "$\\forall x\\in\\{x\\mid2\\le x\\le3\\}$，不等式 $mx^2-mx-1<0$ 恒成立，求实数 $m$ 的取值范围。",
+    "actual": "∀x∈{x | 2≤x≤3}，不等式 $mx^2 - mx - 1 < 0$ 恒成立，求实数 $m$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": false,
+  "source_review_required": false,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "c1029f0d8b4e38d2555bf4144c541008c05856c1ea7a57d88c5ec647e5385292",
+      "source.png": "51489ca588fc7a7f91b60afbf602022e3b18e2ca54cf212e78a6387d42c4d1ae",
+      "source-manifest.json": "893484395c216e4bb87393b7481ff5f48967da904f5c1c4f00ea6a80981e24c8",
+      "notation.gold.json": "22508c32c6144a45a31ad9573cbedd5b013952c535fcacfc4a525e4c4316a0c7",
+      "features.gold.json": "3e92574843c6619ef08124ed633198b871b4087301c953eb7d49385ef208d0b7",
+      "acceptance.json": "2f8a7f83b58bf895afae880d588d6c6160f8c83623c083031ceea041807b8438"
+    }
+  },
+  "measurement": "Independent gold evaluation before repair; not an image-review claim."
+}

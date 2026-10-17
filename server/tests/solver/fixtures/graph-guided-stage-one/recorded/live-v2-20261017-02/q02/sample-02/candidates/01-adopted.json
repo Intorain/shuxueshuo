@@ -1,0 +1,14 @@
+{
+  "original_text": "已知不等式 $kx^2+2kx-(k+2)<0$ 恒成立，求实数 $k$ 的取值范围。",
+  "root": {
+    "facts": [
+      "∀x∈ℝ: k*x^2+2*k*x-(k+2)<0"
+    ],
+    "goals": [
+      {
+        "kind": "find_range",
+        "symbol": "k"
+      }
+    ]
+  }
+}

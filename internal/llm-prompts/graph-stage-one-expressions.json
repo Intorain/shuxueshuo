@@ -1,0 +1,12 @@
+{
+  "version": "graph-stage-one-expressions/v2",
+  "base": "problem-math-notation-expressions.json",
+  "overrides": {
+    "domain_and_interval": {
+      "id": "domain_and_interval",
+      "syntax": "ℝ；[a,b]；(a,b)；[a,b)；(a,b]；(-∞,b)；[a,∞)",
+      "meaning": "ℝ为实数域；方括号包含端点，圆括号不包含。无穷仅可作为区间边界且必须开端点，不是普通标量或可取值。集合描述区间转成等价区间。题面只说恒成立而未写出量词变量范围时，量词域取 ℝ。",
+      "examples": ["∀t∈(-∞,5): t^2+c>0", "u∈[3,∞)"]
+    }
+  }
+}

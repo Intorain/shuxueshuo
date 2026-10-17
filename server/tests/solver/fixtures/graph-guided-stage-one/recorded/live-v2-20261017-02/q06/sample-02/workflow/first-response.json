@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。\",\"root\":{\"facts\":[\"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 392,
+      "prompt_tokens": 6780,
+      "total_tokens": 7172,
+      "prompt_cache_hit_tokens": 6528,
+      "prompt_cache_miss_tokens": 252
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 143,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-cdc72087-d12c-4a2e-b2e4-bc5574c0b3bb",
+        "sha256": "6813a0db04c3615deb674eec59a149f1a4348c12db459b0b844cdfad2b6f026d",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 32302,
+        "expires_at": 1792228356,
+        "uploaded_at": 1792141956.286449
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "6813a0db04c3615deb674eec59a149f1a4348c12db459b0b844cdfad2b6f026d",
+        "file_id": "file-api-cdc72087-d12c-4a2e-b2e4-bc5574c0b3bb",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 2705,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 392,
+          "prompt_tokens": 6780,
+          "total_tokens": 7172,
+          "completion_tokens_details": {
+            "reasoning_tokens": 321
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 6528
+          },
+          "prompt_cache_hit_tokens": 6528,
+          "prompt_cache_miss_tokens": 252
+        },
+        "raw_payload": {
+          "id": "7300ac5c-ac0a-4a48-ae21-f93cdc5beab7",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 392,
+            "prompt_tokens": 6780,
+            "total_tokens": 7172,
+            "completion_tokens_details": {
+              "reasoning_tokens": 321
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 6528
+            },
+            "prompt_cache_hit_tokens": 6528,
+            "prompt_cache_miss_tokens": 252
+          },
+          "created": 1792203713,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。\",\"root\":{\"facts\":[\"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}]}}",
+                "reasoning_content": "我们需要回答JSON only. Need extract original text and root. Need understand Chinese: “∀x<0, x^2+ax+2≥0”为真命题，求实数a的取值范围。 Need parse. Question: Given proposition “∀x<0, x^2+ax+2≥0” is true, find range of real a. Need root facts: likely ∀x∈(-∞,0): x^2+a*x+2≥0. Goal find_range symbol a. Original_text exact. Need include quotes? likely. Root definitions none. facts one. goals find_range a. uncertainties? The quantity notation ∀x<0 means x<0, domain (-∞,0). No ambiguity. Need output schema. Ensure JSON string with backslashes: ∀ maybe unicode okay. In math string, x^2+a*x+2 ≥ 0. Should use quantifier ∀x∈(-∞,0): x^2+a*x+2≥0. Need not include whole quoted proposition? facts. original_text should quote question. Need not solve.\n\nNeed be careful: \"∀x<0, ... \" is a true proposition. Does fact express condition. Yes. Root goals find_range \"a\". label? none. No children. Should include definitions? optional; omit. facts array. uncertainties empty maybe omit? Schema allows. But required only original_text root. Root properties label optional. We can include facts, goals. No extra.\n\nNeed ensure no backslash issue. Use Unicode ∀; no escape. JSON valid. final only JSON.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 2706
+  },
+  "raw_payload": {
+    "id": "7300ac5c-ac0a-4a48-ae21-f93cdc5beab7",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。\",\"root\":{\"facts\":[\"∀x∈(-∞,0): x^2+a*x+2 ≥ 0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"a\"}]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要回答JSON only. Need extract original text and root. Need understand Chinese: “∀x<0, x^2+ax+2≥0”为真命题，求实数a的取值范围。 Need parse. Question: Given proposition “∀x<0, x^2+ax+2≥0” is true, find range of real a. Need root facts: likely ∀x∈(-∞,0): x^2+a*x+2≥0. Goal find_range symbol a. Original_text exact. Need include quotes? likely. Root definitions none. facts one. goals find_range a. uncertainties? The quantity notation ∀x<0 means x<0, domain (-∞,0). No ambiguity. Need output schema. Ensure JSON string with backslashes: ∀ maybe unicode okay. In math string, x^2+a*x+2 ≥ 0. Should use quantifier ∀x∈(-∞,0): x^2+a*x+2≥0. Need not include whole quoted proposition? facts. original_text should quote question. Need not solve.\n\nNeed be careful: \"∀x<0, ... \" is a true proposition. Does fact express condition. Yes. Root goals find_range \"a\". label? none. No children. Should include definitions? optional; omit. facts array. uncertainties empty maybe omit? Schema allows. But required only original_text root. Root properties label optional. We can include facts, goals. No extra.\n\nNeed ensure no backslash issue. Use Unicode ∀; no escape. JSON valid. final only JSON."
+        }
+      }
+    ],
+    "created": 1792203713,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 392,
+      "prompt_tokens": 6780,
+      "total_tokens": 7172,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 321,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 6528
+      },
+      "prompt_cache_hit_tokens": 6528,
+      "prompt_cache_miss_tokens": 252
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 2.708
+}

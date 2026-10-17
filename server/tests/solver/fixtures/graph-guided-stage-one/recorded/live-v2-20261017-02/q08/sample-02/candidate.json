@@ -1,0 +1,15 @@
+{
+  "original_text": "已知函数 $y=mx^2-mx-6+m$，若对于 $1≤m≤3$，$y<0$ 恒成立，求实数 $x$ 的取值范围。",
+  "root": {
+    "facts": [
+      "∀m∈[1,3]: m*x^2-m*x-6+m < 0"
+    ],
+    "goals": [
+      {
+        "kind": "find_range",
+        "symbol": "x"
+      }
+    ],
+    "uncertainties": []
+  }
+}

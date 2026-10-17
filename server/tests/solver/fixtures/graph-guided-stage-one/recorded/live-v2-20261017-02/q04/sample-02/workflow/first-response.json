@@ -1,0 +1,150 @@
+{
+  "text": "{\"original_text\":\"当 $1 \\\\le x \\\\le 2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈[1,2]: x^2+m*x+4<0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 401,
+      "prompt_tokens": 6874,
+      "total_tokens": 7275,
+      "prompt_cache_hit_tokens": 6656,
+      "prompt_cache_miss_tokens": 218
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 165,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-ebf4aabe-919b-4e6f-9ac1-41c342b3135f",
+        "sha256": "b654581491506dd9d30c17ac3ecedfcd73444692e162a005e155a63dd64af32f",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 38295,
+        "expires_at": 1792228421,
+        "uploaded_at": 1792142021.702441
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "b654581491506dd9d30c17ac3ecedfcd73444692e162a005e155a63dd64af32f",
+        "file_id": "file-api-ebf4aabe-919b-4e6f-9ac1-41c342b3135f",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 2194,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 401,
+          "prompt_tokens": 6874,
+          "total_tokens": 7275,
+          "completion_tokens_details": {
+            "reasoning_tokens": 318
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 6656
+          },
+          "prompt_cache_hit_tokens": 6656,
+          "prompt_cache_miss_tokens": 218
+        },
+        "raw_payload": {
+          "id": "ae8c535a-933b-4b12-8c72-30a52142dd9e",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 401,
+            "prompt_tokens": 6874,
+            "total_tokens": 7275,
+            "completion_tokens_details": {
+              "reasoning_tokens": 318
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 6656
+            },
+            "prompt_cache_hit_tokens": 6656,
+            "prompt_cache_miss_tokens": 218
+          },
+          "created": 1792203707,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"original_text\":\"当 $1 \\\\le x \\\\le 2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈[1,2]: x^2+m*x+4<0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+                "reasoning_content": "我们需要提取题意。图片文字：当 1 ≤ x ≤ 2 时，不等式 x^2 + m x + 4 < 0 恒成立，求实数 m 的取值范围。\n\n需要输出 JSON schema。root 应包含 facts 条件，goals 求 m 范围。恒成立量词变量 x 范围 [1,2]，关系 x^2 + m*x + 4 < 0。goal find_range symbol m。\n\noriginal_text 完整转录。无需小问。uncertainties 空。\n\n注意数学字符串要用 LaTeX? 受控目录中 facts 使用数学表达式，可能可以直接写 LaTeX? 说明公式用 $…$ 包围，但 facts 里用受控数学字符串。应写 \"∀x∈[1,2]: x^2+m*x+4<0\" 还是带 $? 目录示例没有 $。definitions/facts 输出数学字符串数组，通常用受控数学表达式，可能不含 $。original_text 里公式用 $…$。root facts [\"∀x∈[1,2]: x^2+m*x+4<0\"]。goals [{\"kind\":\"find_range\",\"symbol\":\"m\"}]。\n\n检查是否 root facts 应写 \"∀x∈[1,2]: x^2 + m*x + 4 < 0\"。量词范围：1≤x≤2 即 x∈[1,2]。严格小于保留。求实数m范围，symbol m。\n\n输出 JSON only.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 2196
+  },
+  "raw_payload": {
+    "id": "ae8c535a-933b-4b12-8c72-30a52142dd9e",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"original_text\":\"当 $1 \\\\le x \\\\le 2$ 时，不等式 $x^2+mx+4<0$ 恒成立，求实数 $m$ 的取值范围。\",\"root\":{\"facts\":[\"∀x∈[1,2]: x^2+m*x+4<0\"],\"goals\":[{\"kind\":\"find_range\",\"symbol\":\"m\"}]}}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要提取题意。图片文字：当 1 ≤ x ≤ 2 时，不等式 x^2 + m x + 4 < 0 恒成立，求实数 m 的取值范围。\n\n需要输出 JSON schema。root 应包含 facts 条件，goals 求 m 范围。恒成立量词变量 x 范围 [1,2]，关系 x^2 + m*x + 4 < 0。goal find_range symbol m。\n\noriginal_text 完整转录。无需小问。uncertainties 空。\n\n注意数学字符串要用 LaTeX? 受控目录中 facts 使用数学表达式，可能可以直接写 LaTeX? 说明公式用 $…$ 包围，但 facts 里用受控数学字符串。应写 \"∀x∈[1,2]: x^2+m*x+4<0\" 还是带 $? 目录示例没有 $。definitions/facts 输出数学字符串数组，通常用受控数学表达式，可能不含 $。original_text 里公式用 $…$。root facts [\"∀x∈[1,2]: x^2+m*x+4<0\"]。goals [{\"kind\":\"find_range\",\"symbol\":\"m\"}]。\n\n检查是否 root facts 应写 \"∀x∈[1,2]: x^2 + m*x + 4 < 0\"。量词范围：1≤x≤2 即 x∈[1,2]。严格小于保留。求实数m范围，symbol m。\n\n输出 JSON only."
+        }
+      }
+    ],
+    "created": 1792203707,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 401,
+      "prompt_tokens": 6874,
+      "total_tokens": 7275,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 318,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 6656
+      },
+      "prompt_cache_hit_tokens": 6656,
+      "prompt_cache_miss_tokens": 218
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 2.198
+}

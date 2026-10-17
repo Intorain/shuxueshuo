@@ -1,0 +1,150 @@
+{
+  "text": "{\n  \"original_text\": \"已知不等式 $kx^2 + 2kx - (k + 2) < 0$ 恒成立，求实数 $k$ 的取值范围。\",\n  \"root\": {\n    \"facts\": [\n      \"∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0\"\n    ],\n    \"goals\": [\n      {\n        \"kind\": \"find_range\",\n        \"symbol\": \"k\"\n      }\n    ]\n  }\n}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 639,
+      "prompt_tokens": 6780,
+      "total_tokens": 7419,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6780
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 240,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-extraction/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-7becd41b-1946-4f9f-bb39-9a2c40deef88",
+        "sha256": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 35973,
+        "expires_at": 1792228363,
+        "uploaded_at": 1792141963.358988
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+        "file_id": "file-api-7becd41b-1946-4f9f-bb39-9a2c40deef88",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 3439,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 639,
+          "prompt_tokens": 6780,
+          "total_tokens": 7419,
+          "completion_tokens_details": {
+            "reasoning_tokens": 531
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 6780
+        },
+        "raw_payload": {
+          "id": "75d50f18-e43d-4173-bdde-80f6c0966782",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 639,
+            "prompt_tokens": 6780,
+            "total_tokens": 7419,
+            "completion_tokens_details": {
+              "reasoning_tokens": 531
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 6780
+          },
+          "created": 1792203697,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\n  \"original_text\": \"已知不等式 $kx^2 + 2kx - (k + 2) < 0$ 恒成立，求实数 $k$ 的取值范围。\",\n  \"root\": {\n    \"facts\": [\n      \"∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0\"\n    ],\n    \"goals\": [\n      {\n        \"kind\": \"find_range\",\n        \"symbol\": \"k\"\n      }\n    ]\n  }\n}",
+                "reasoning_content": "用户希望从提供的图片中提取数学题目。图片中的文字是：“已知不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立，求实数 \\(k\\) 的取值范围。”\n\n分析：\n1.  **original_text**: 转录图片中的文字。\n    “已知不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立，求实数 \\(k\\) 的取值范围。”\n2.  **root**: 题干中没有小问，全部信息放在 root 节点。\n    *   **definitions**: 无特定函数或曲线定义。\n    *   **facts**: 不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立。题面只说“恒成立”，未明确量词变量。这里题面有变量 \\(x\\) 和参数 \\(k\\)。根据“恒成立”的一般语境，量词变量应为除待求量 \\(k\\) 之外的唯一自由变量 \\(x\\)，且未写范围，默认取实数域 \\(\\mathbb{R}\\)。\n        因此，事实可以写为：\\(\\forall x \\in \\mathbb{R}: k*x^2 + 2*k*x - (k + 2) < 0\\)\n    *   **goals**: 求实数 \\(k\\) 的取值范围。目标为 `find_range`，symbol 为 \\(k\\)。\n    *   **children**: 无。\n    *   **uncertainties**: 无。\n\n构造 JSON：\n```json\n{\n  \"original_text\": \"已知不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立，求实数 \\(k\\) 的取值范围。\",\n  \"root\": {\n    \"facts\": [\n      \"∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0\"\n    ],\n    \"goals\": [\n      {\n        \"kind\": \"find_range\",\n        \"symbol\": \"k\"\n      }\n    ]\n  }\n}\n```\n再检查一遍要求：\n*   original_text 完整吗？是的。\n*   公式用 $…$ 包围？是的。\n*   root 中无 AST、特征结论或题型判断。\n*   恒成立量词处理：变量是 \\(x\\)，范围是实数域。\n*   方程展开：没有 \\(y=\\) 的情况。\n*   没有小问，不使用 children。\n*   不要输出契约以外的字段。无 uncertainty。\n一切符合要求。",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 3440
+  },
+  "raw_payload": {
+    "id": "75d50f18-e43d-4173-bdde-80f6c0966782",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\n  \"original_text\": \"已知不等式 $kx^2 + 2kx - (k + 2) < 0$ 恒成立，求实数 $k$ 的取值范围。\",\n  \"root\": {\n    \"facts\": [\n      \"∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0\"\n    ],\n    \"goals\": [\n      {\n        \"kind\": \"find_range\",\n        \"symbol\": \"k\"\n      }\n    ]\n  }\n}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "用户希望从提供的图片中提取数学题目。图片中的文字是：“已知不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立，求实数 \\(k\\) 的取值范围。”\n\n分析：\n1.  **original_text**: 转录图片中的文字。\n    “已知不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立，求实数 \\(k\\) 的取值范围。”\n2.  **root**: 题干中没有小问，全部信息放在 root 节点。\n    *   **definitions**: 无特定函数或曲线定义。\n    *   **facts**: 不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立。题面只说“恒成立”，未明确量词变量。这里题面有变量 \\(x\\) 和参数 \\(k\\)。根据“恒成立”的一般语境，量词变量应为除待求量 \\(k\\) 之外的唯一自由变量 \\(x\\)，且未写范围，默认取实数域 \\(\\mathbb{R}\\)。\n        因此，事实可以写为：\\(\\forall x \\in \\mathbb{R}: k*x^2 + 2*k*x - (k + 2) < 0\\)\n    *   **goals**: 求实数 \\(k\\) 的取值范围。目标为 `find_range`，symbol 为 \\(k\\)。\n    *   **children**: 无。\n    *   **uncertainties**: 无。\n\n构造 JSON：\n```json\n{\n  \"original_text\": \"已知不等式 \\(kx^2 + 2kx - (k + 2) < 0\\) 恒成立，求实数 \\(k\\) 的取值范围。\",\n  \"root\": {\n    \"facts\": [\n      \"∀x∈ℝ: k*x^2+2*k*x-(k+2) < 0\"\n    ],\n    \"goals\": [\n      {\n        \"kind\": \"find_range\",\n        \"symbol\": \"k\"\n      }\n    ]\n  }\n}\n```\n再检查一遍要求：\n*   original_text 完整吗？是的。\n*   公式用 $…$ 包围？是的。\n*   root 中无 AST、特征结论或题型判断。\n*   恒成立量词处理：变量是 \\(x\\)，范围是实数域。\n*   方程展开：没有 \\(y=\\) 的情况。\n*   没有小问，不使用 children。\n*   不要输出契约以外的字段。无 uncertainty。\n一切符合要求。"
+        }
+      }
+    ],
+    "created": 1792203697,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 639,
+      "prompt_tokens": 6780,
+      "total_tokens": 7419,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 531,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6780
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 3.442
+}

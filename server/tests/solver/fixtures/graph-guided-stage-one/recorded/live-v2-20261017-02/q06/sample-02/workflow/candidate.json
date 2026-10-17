@@ -1,0 +1,14 @@
+{
+  "original_text": "“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。",
+  "root": {
+    "facts": [
+      "∀x∈(-∞,0): x^2+a*x+2 ≥ 0"
+    ],
+    "goals": [
+      {
+        "kind": "find_range",
+        "symbol": "a"
+      }
+    ]
+  }
+}

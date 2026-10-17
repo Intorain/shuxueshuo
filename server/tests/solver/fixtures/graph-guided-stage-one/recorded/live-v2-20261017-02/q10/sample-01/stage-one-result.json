@@ -1,0 +1,776 @@
+{
+  "contract": "graph-stage-one-result/v2",
+  "run_id": "live-v2-20261017-02",
+  "case_id": "q10",
+  "sample_id": 1,
+  "candidate": {
+    "original_text": "已知函数 $f(x)=x^2-2ax+3$。\n（1）若对任意 $x\\in\\mathbb{R}$，$f(x)\\ge 0$ 恒成立，求实数 $a$ 的取值范围；\n（2）若存在 $x\\in[1,2]$，使得 $f(x)<0$ 成立，求实数 $a$ 的取值范围。",
+    "root": {
+      "definitions": [
+        "f(x) = x^2-2*a*x+3"
+      ],
+      "children": [
+        {
+          "label": "（1）",
+          "facts": [
+            "∀x∈ℝ: f(x) ≥ 0"
+          ],
+          "goals": [
+            {
+              "kind": "find_range",
+              "symbol": "a"
+            }
+          ]
+        },
+        {
+          "label": "（2）",
+          "facts": [
+            "∃x∈[1,2]: f(x) < 0"
+          ],
+          "goals": [
+            {
+              "kind": "find_range",
+              "symbol": "a"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "features": [
+    {
+      "feature_id": "goal",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "kind": "find_range",
+        "symbol": "a"
+      },
+      "conditions": [],
+      "dependencies": [],
+      "source_refs": [
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "quantifier",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": "∀",
+      "conditions": [],
+      "dependencies": [],
+      "source_refs": [
+        "/root/children/0/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#universal",
+        "quantifiers#existential"
+      ]
+    },
+    {
+      "feature_id": "bound_vars",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": [
+        "x"
+      ],
+      "conditions": [],
+      "dependencies": [
+        "quantifier"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "free_vars",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": [
+        "a"
+      ],
+      "conditions": [],
+      "dependencies": [
+        "quantifier",
+        "goal"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "domain",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "expression": "ℝ",
+        "lower": "-∞",
+        "upper": "∞",
+        "left_closed": false,
+        "right_closed": false,
+        "bounded": false
+      },
+      "conditions": [],
+      "dependencies": [
+        "quantifier"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#domain"
+      ]
+    },
+    {
+      "feature_id": "domain_kind",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": "real",
+      "conditions": [],
+      "dependencies": [
+        "domain"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#domain"
+      ]
+    },
+    {
+      "feature_id": "relation",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "operator": ">=",
+        "strict": false,
+        "lhs": "-2*a*x + x^2 + 3",
+        "rhs": "0"
+      },
+      "conditions": [],
+      "dependencies": [
+        "quantifier"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/definitions/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast",
+        "inlined_functions": [
+          "f"
+        ]
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-inequality#definition"
+      ]
+    },
+    {
+      "feature_id": "normal_form",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "expression": "-2*a*x + x^2 + 3",
+        "operator": ">=",
+        "rhs": "0",
+        "variable": "x"
+      },
+      "conditions": [],
+      "dependencies": [
+        "relation"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0"
+      ],
+      "calculation": {
+        "operation": "move_terms_and_expand",
+        "input_operator": ">=",
+        "flipped_sides": false
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-inequality#definition"
+      ]
+    },
+    {
+      "feature_id": "degree_in_bound",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "degree": 2,
+        "degree_kind": "exact",
+        "expression": "-2*a*x + x^2 + 3"
+      },
+      "conditions": [],
+      "dependencies": [
+        "normal_form",
+        "bound_vars"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "collect_polynomial",
+        "variable": "x",
+        "expression": "-2*a*x + x^2 + 3"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "degree_in_goal",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "a",
+        "degree": 1,
+        "degree_kind": "upper_bound",
+        "expression": "-2*a*x + x^2 + 3"
+      },
+      "conditions": [],
+      "dependencies": [
+        "normal_form",
+        "goal"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "collect_polynomial",
+        "variable": "a",
+        "expression": "-2*a*x + x^2 + 3"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "leading_coeff_in_bound",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "expression": "1",
+        "contains_parameters": false,
+        "may_be_zero": false
+      },
+      "conditions": [],
+      "dependencies": [
+        "degree_in_bound"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "leading_coefficient",
+        "expression": "-2*a*x + x^2 + 3"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "coefficients",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "expression": "-2*a*x + x^2 + 3",
+        "items": [
+          {
+            "power": 2,
+            "expression": "1",
+            "contains_parameters": false
+          },
+          {
+            "power": 1,
+            "expression": "-2*a",
+            "contains_parameters": true
+          },
+          {
+            "power": 0,
+            "expression": "3",
+            "contains_parameters": false
+          }
+        ]
+      },
+      "conditions": [],
+      "dependencies": [
+        "degree_in_bound"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "collect_coefficients"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "range_var_is_principal",
+      "scope": "/root/children/0",
+      "target_ref": "/root/children/0/goals/0",
+      "status": "known",
+      "value": true,
+      "conditions": [],
+      "dependencies": [
+        "degree_in_bound",
+        "degree_in_goal"
+      ],
+      "source_refs": [
+        "/root/children/0/facts/0",
+        "/root/children/0/goals/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "goal",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "kind": "find_range",
+        "symbol": "a"
+      },
+      "conditions": [],
+      "dependencies": [],
+      "source_refs": [
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "quantifier",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": "∃",
+      "conditions": [],
+      "dependencies": [],
+      "source_refs": [
+        "/root/children/1/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#universal",
+        "quantifiers#existential"
+      ]
+    },
+    {
+      "feature_id": "bound_vars",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": [
+        "x"
+      ],
+      "conditions": [],
+      "dependencies": [
+        "quantifier"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "free_vars",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": [
+        "a"
+      ],
+      "conditions": [],
+      "dependencies": [
+        "quantifier",
+        "goal"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    },
+    {
+      "feature_id": "domain",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "expression": "[1,2]",
+        "lower": "1",
+        "upper": "2",
+        "left_closed": true,
+        "right_closed": true,
+        "bounded": true
+      },
+      "conditions": [],
+      "dependencies": [
+        "quantifier"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#domain"
+      ]
+    },
+    {
+      "feature_id": "domain_kind",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": "bounded_interval",
+      "conditions": [],
+      "dependencies": [
+        "domain"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#domain"
+      ]
+    },
+    {
+      "feature_id": "relation",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "operator": "<",
+        "strict": true,
+        "lhs": "-2*a*x + x^2 + 3",
+        "rhs": "0"
+      },
+      "conditions": [],
+      "dependencies": [
+        "quantifier"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/definitions/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast",
+        "inlined_functions": [
+          "f"
+        ]
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-inequality#definition"
+      ]
+    },
+    {
+      "feature_id": "normal_form",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "expression": "2*a*x - x^2 - 3",
+        "operator": ">",
+        "rhs": "0",
+        "variable": "x"
+      },
+      "conditions": [],
+      "dependencies": [
+        "relation"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0"
+      ],
+      "calculation": {
+        "operation": "move_terms_and_expand",
+        "input_operator": "<",
+        "flipped_sides": true
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-inequality#definition"
+      ]
+    },
+    {
+      "feature_id": "degree_in_bound",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "degree": 2,
+        "degree_kind": "exact",
+        "expression": "2*a*x - x^2 - 3"
+      },
+      "conditions": [],
+      "dependencies": [
+        "normal_form",
+        "bound_vars"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "collect_polynomial",
+        "variable": "x",
+        "expression": "2*a*x - x^2 - 3"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "degree_in_goal",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "a",
+        "degree": 1,
+        "degree_kind": "upper_bound",
+        "expression": "2*a*x - x^2 - 3"
+      },
+      "conditions": [],
+      "dependencies": [
+        "normal_form",
+        "goal"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "collect_polynomial",
+        "variable": "a",
+        "expression": "2*a*x - x^2 - 3"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "leading_coeff_in_bound",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "expression": "-1",
+        "contains_parameters": false,
+        "may_be_zero": false
+      },
+      "conditions": [],
+      "dependencies": [
+        "degree_in_bound"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "leading_coefficient",
+        "expression": "2*a*x - x^2 - 3"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "coefficients",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": {
+        "variable": "x",
+        "expression": "2*a*x - x^2 - 3",
+        "items": [
+          {
+            "power": 2,
+            "expression": "-1",
+            "contains_parameters": false
+          },
+          {
+            "power": 1,
+            "expression": "2*a",
+            "contains_parameters": true
+          },
+          {
+            "power": 0,
+            "expression": "-3",
+            "contains_parameters": false
+          }
+        ]
+      },
+      "conditions": [],
+      "dependencies": [
+        "degree_in_bound"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "collect_coefficients"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quadratic-function-properties#definition"
+      ]
+    },
+    {
+      "feature_id": "range_var_is_principal",
+      "scope": "/root/children/1",
+      "target_ref": "/root/children/1/goals/0",
+      "status": "known",
+      "value": true,
+      "conditions": [],
+      "dependencies": [
+        "degree_in_bound",
+        "degree_in_goal"
+      ],
+      "source_refs": [
+        "/root/children/1/facts/0",
+        "/root/children/1/goals/0"
+      ],
+      "calculation": {
+        "operation": "read_bound_ast"
+      },
+      "diagnostics": [],
+      "extractor_version": "structural-polynomial/v1",
+      "knowledge_refs": [
+        "quantifiers#roles"
+      ]
+    }
+  ],
+  "statuses": {
+    "extraction": "reviewed_candidate",
+    "source_reviewed": true,
+    "features": true,
+    "evaluation": true,
+    "human_review": "pending",
+    "passed": true
+  }
+}

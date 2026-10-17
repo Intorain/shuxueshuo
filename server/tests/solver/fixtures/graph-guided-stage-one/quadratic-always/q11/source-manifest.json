@@ -1,0 +1,25 @@
+{
+  "schema_version": "graph-stage-one-source/v1",
+  "case_id": "q11",
+  "problem_sha256": "7a626ed30319d5d0881302076a80f7a140183798cc32e3b5c3de489f5fcfecc9",
+  "source_sha256": "6d7ab2d9d20f85e8f5f104348fd708d9f4b1fbd3af7c085fcec994ac4acf5dcb",
+  "render_config": {
+    "renderer": "playwright-chromium-local-katex",
+    "katex_version": "0.18.9",
+    "viewport_width": 960,
+    "device_scale_factor": 2,
+    "font_family": "STHeiti",
+    "font_size_px": 28,
+    "line_height": 1.85,
+    "padding_px": 40,
+    "background": "#ffffff",
+    "browser_version": "155.0.8059.84",
+    "katex_js_sha256": "155f6c2d673c5912e3b48f45d8830eaad18ae1953915939ceb648ea8b9c3e7e2",
+    "katex_css_sha256": "b9ce0e8ce93f0c18c4986fe1f1c3c269d921b56a69e6c97f83a507916b38aab5",
+    "render_script_sha256": "09d96b1be6b834f5e39bb1e4fa0e47a416d1ff533529f1ab21dfc223a3a1afed",
+    "font_file_sha256": "a57b0316cc0544f682b8fb9855e14ade79ae77340ef6a01ba9210e25b4c5a5b7"
+  },
+  "render_sha256": "acd04a87e3e86e0a3d3d554a37f6bb6c0db92c389dbc3a765b74c189fd3f8b3f",
+  "source_kind": "authored-rendered",
+  "input_scope": "Authored multi-part problem text in problem.md; no solutions or answers."
+}

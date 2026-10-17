@@ -1,0 +1,28 @@
+{
+  "schema_version": "graph-stage-one-source/v1",
+  "case_id": "q04",
+  "source_kind": "synthetic-rendered",
+  "source_html": "site/2/q04/index.html",
+  "selector": ".problem-card > p[data-math-text]",
+  "source_html_sha256": "eabd837daa56d4413bc8d853c03972da95a2ad29c6c1c3afb0ab954af6cebf4b",
+  "problem_sha256": "2b526c5ece4b1d133d691194a17acf963870623bb4d831098664f3fac11b24db",
+  "source_sha256": "b654581491506dd9d30c17ac3ecedfcd73444692e162a005e155a63dd64af32f",
+  "render_config": {
+    "renderer": "playwright-chromium-local-katex",
+    "katex_version": "0.18.9",
+    "viewport_width": 960,
+    "device_scale_factor": 2,
+    "font_family": "STHeiti",
+    "font_size_px": 28,
+    "line_height": 1.85,
+    "padding_px": 40,
+    "background": "#ffffff",
+    "browser_version": "155.0.8059.84",
+    "katex_js_sha256": "155f6c2d673c5912e3b48f45d8830eaad18ae1953915939ceb648ea8b9c3e7e2",
+    "katex_css_sha256": "b9ce0e8ce93f0c18c4986fe1f1c3c269d921b56a69e6c97f83a507916b38aab5",
+    "render_script_sha256": "3a94bb10e193dfd9e161fd67dc9d9ed5c3bfc5624fe06190e9ab08bc728a70b1",
+    "font_file_sha256": "a57b0316cc0544f682b8fb9855e14ade79ae77340ef6a01ba9210e25b4c5a5b7"
+  },
+  "render_sha256": "7781edca8fef80581c8ef17b3d7c2a705806d7ccba08cecf3f25ababfc0b6147",
+  "input_scope": "Only the direct original problem paragraph; no meaning panel, solutions, answers or scripts."
+}

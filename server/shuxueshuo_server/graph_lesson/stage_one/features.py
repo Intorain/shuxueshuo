@@ -1,0 +1,680 @@
+"""Auditable structural features over validated mathematical notation.
+
+This module never solves a parameter range, checks a method's applicability,
+or executes text supplied by a model. Symbolic work starts at the bound AST.
+"""
+
+import re
+from copy import deepcopy
+from dataclasses import asdict, dataclass
+
+import sympy as sp
+
+from ...problem_understanding.notation_compile import NotationValidator, children
+from ...problem_understanding.notation_parser import NotationError, parse
+from ...problem_understanding.notation_semantics import Canonical, bounded_expand
+
+SCHEMA_VERSION = "graph-stage-one-features/v1"
+EXTRACTOR_VERSION = "structural-polynomial/v1"
+
+
+@dataclass(frozen=True)
+class FeatureSpec:
+    feature_id: str
+    dependencies: tuple[str, ...]
+    output_type: str
+    knowledge_refs: tuple[str, ...]
+    student_template: str
+    category: str = "structural"
+    version: str = EXTRACTOR_VERSION
+    supported_structures: tuple[str, ...] = ("single_quantified_scalar_relation",)
+    computation_boundary: str = (
+        "bound AST, polynomial expansion and coefficient collection only"
+    )
+
+
+FEATURE_REGISTRY = (
+    FeatureSpec(
+        "quantifier",
+        (),
+        "enum",
+        ("quantifiers#universal", "quantifiers#existential"),
+        "量词为 {value}",
+    ),
+    FeatureSpec(
+        "bound_vars",
+        ("quantifier",),
+        "symbols",
+        ("quantifiers#roles",),
+        "量词变量为 {value}",
+    ),
+    FeatureSpec(
+        "free_vars",
+        ("quantifier", "goal"),
+        "symbols",
+        ("quantifiers#roles",),
+        "自由变量为 {value}",
+    ),
+    FeatureSpec("goal", (), "goal", ("quantifiers#roles",), "所求为 {value}"),
+    FeatureSpec(
+        "domain",
+        ("quantifier",),
+        "domain",
+        ("quantifiers#domain",),
+        "变量范围为 {value}",
+    ),
+    FeatureSpec(
+        "domain_kind",
+        ("domain",),
+        "enum",
+        ("quantifiers#domain",),
+        "范围类型为 {value}",
+    ),
+    FeatureSpec(
+        "relation",
+        ("quantifier",),
+        "relation",
+        ("quadratic-inequality#definition",),
+        "原关系为 {value}",
+    ),
+    FeatureSpec(
+        "normal_form",
+        ("relation",),
+        "relation",
+        ("quadratic-inequality#definition",),
+        "移项整理为 {value}",
+    ),
+    FeatureSpec(
+        "degree_in_bound",
+        ("normal_form", "bound_vars"),
+        "polynomial_degree",
+        ("quadratic-function-properties#definition",),
+        "关于量词变量的次数为 {value}",
+    ),
+    FeatureSpec(
+        "degree_in_goal",
+        ("normal_form", "goal"),
+        "polynomial_degree",
+        ("quadratic-function-properties#definition",),
+        "关于所求变量的次数为 {value}",
+    ),
+    FeatureSpec(
+        "leading_coeff_in_bound",
+        ("degree_in_bound",),
+        "coefficient",
+        ("quadratic-function-properties#definition",),
+        "首项系数为 {value}",
+    ),
+    FeatureSpec(
+        "coefficients",
+        ("degree_in_bound",),
+        "coefficients",
+        ("quadratic-function-properties#definition",),
+        "各项系数为 {value}",
+    ),
+    FeatureSpec(
+        "range_var_is_principal",
+        ("degree_in_bound", "degree_in_goal"),
+        "boolean",
+        ("quantifiers#roles",),
+        "给出范围的变量是否为二次式主元：{value}",
+    ),
+)
+_SPECS = {item.feature_id: item for item in FEATURE_REGISTRY}
+
+
+def registry():
+    """Serializable registry; method-precondition entries belong to stage three."""
+    return {
+        "schema_version": "graph-feature-registry/v1",
+        "categories": ["structural", "method_precondition"],
+        "features": [asdict(item) for item in FEATURE_REGISTRY],
+    }
+
+
+def _math(expression):
+    return sp.sstr(expression).replace("**", "^")
+
+
+def _json_path(path):
+    path = re.sub(r"^r(?=\.|$)", "/root", path)
+    path = re.sub(r"\.c(\d+)", r"/children/\1", path)
+    return re.sub(r"\[(\d+)\]", r"/\1", path.replace(".", "/"))
+
+
+def _refs(ast, kind):
+    found = [ast] if ast[0] == kind else []
+    for child in children(ast):
+        found.extend(_refs(child, kind))
+    return found
+
+
+def _is_node(value):
+    return isinstance(value, list) and bool(value) and isinstance(value[0], str)
+
+
+def _substitute(ast, argument):
+    if ast == ["bound", "function_argument"]:
+        return deepcopy(argument)
+    return [_substitute(item, argument) if _is_node(item) else item for item in ast]
+
+
+def _inline(ast, functions, used, arguments, depth=0):
+    """Replace calls of visible one-argument function definitions by their bodies.
+
+    Arguments are collected as well: a body may ignore its argument, but the
+    argument's well-definedness conditions (e.g. f(1/x)) still apply.
+    """
+    if depth > 12:
+        raise NotationError("feature.function_depth_limit")
+    if ast[0] == "function_call":
+        if len(ast) != 3 or ast[1][1] not in functions:
+            raise NotationError("feature.unsupported_function_call")
+        used.add(ast[1][1])
+        argument = _inline(ast[2], functions, used, arguments, depth + 1)
+        arguments.append(argument)
+        return _inline(
+            _substitute(functions[ast[1][1]], argument),
+            functions,
+            used,
+            arguments,
+            depth + 1,
+        )
+    return [
+        _inline(item, functions, used, arguments, depth) if _is_node(item) else item
+        for item in ast
+    ]
+
+
+def _scopes(scope, ancestors=()):
+    yield scope, ancestors
+    for child in scope["children"]:
+        yield from _scopes(child, (*ancestors, scope))
+
+
+def conjunct_quantifiers(ast):
+    """Quantifiers asserted as a fact or as a conjunct of one; never nested ones."""
+    if ast[0] == "quantifier":
+        return [ast]
+    if ast[0] == "and":
+        return [found for child in ast[1:] for found in conjunct_quantifiers(child)]
+    return []
+
+
+# Domain failures that only mean "this domain form is not modelled"; the
+# relation is still read. Any other failure makes the domain invalid or unknown.
+_REPRESENTATION_ONLY = ("feature.unsupported_",)
+
+
+class _Algebra(Canonical):
+    """Reuse bounded arithmetic, preserving readable names and obligations."""
+
+    def __init__(self, objects, bound_names):
+        super().__init__()
+        self.names = {obj["ref"]: obj["name"] for obj in objects}
+        self.bound_names = bound_names
+        self.conditions = []
+        self.values = {}
+
+    def expr(self, ast, depth=0):
+        if depth > 40:
+            raise NotationError("semantic.depth_limit")
+        if id(ast) in self.values:
+            return self.values[id(ast)]
+        kind = ast[0]
+        if kind == "ref" and ast[2] == "scalar":
+            return sp.Symbol(self.names[ast[1]], real=True)
+        if kind == "bound":
+            if ast[1] not in self.bound_names:
+                raise NotationError("feature.unsupported_bound_variable")
+            return sp.Symbol(self.bound_names[ast[1]], real=True)
+        if kind not in ("number", "+", "-", "*", "/", "^", "neg", "call"):
+            raise NotationError("feature.unsupported_scalar_structure", kind)
+        if kind == "call" and ast[1] != "sqrt":
+            raise NotationError("feature.unsupported_scalar_function", ast[1])
+        result = super().expr(ast, depth)
+        self.values[id(ast)] = result
+        if kind == "/":
+            denominator = self.expr(ast[2], depth + 1)
+            if denominator.is_zero is not False:
+                self._condition(denominator, "!=")
+        elif kind == "^" and self.expr(ast[2], depth + 1).is_negative:
+            base = self.expr(ast[1], depth + 1)
+            if base.is_zero is not False:
+                self._condition(base, "!=")
+        elif kind == "call" and ast[1] == "sqrt":
+            radicand = self.expr(ast[2], depth + 1)
+            if radicand.is_nonnegative is not True:
+                self._condition(radicand, ">=")
+        return result
+
+    def _condition(self, expression, operator):
+        if not expression.free_symbols:
+            holds = expression != 0 if operator == "!=" else expression >= 0
+            if holds is sp.false or holds is False:
+                raise NotationError("feature.undefined_expression", _math(expression))
+            if holds is sp.true or holds is True:
+                return
+        item = {
+            "expression": _math(expression),
+            "operator": operator,
+            "rhs": "0",
+            "origin": "well_definedness",
+        }
+        if item not in self.conditions:
+            self.conditions.append(item)
+
+
+def _domain(ast, algebra):
+    if ast[0] == "real":
+        return {
+            "expression": "ℝ",
+            "lower": "-∞",
+            "upper": "∞",
+            "left_closed": False,
+            "right_closed": False,
+            "bounded": False,
+        }, "real"
+    if ast[0] != "interval":
+        raise NotationError("feature.unsupported_domain")
+    ends = [
+        ("-∞" if value[1] == -1 else "∞")
+        if value[0] == "infinity"
+        else _math(algebra.expr(value))
+        for value in ast[3:]
+    ]
+    infinite = sum(value[0] == "infinity" for value in ast[3:])
+    return {
+        "expression": f"{'[' if ast[1] else '('}{ends[0]},{ends[1]}{']' if ast[2] else ')'}",
+        "lower": ends[0],
+        "upper": ends[1],
+        "left_closed": ast[1],
+        "right_closed": ast[2],
+        "bounded": infinite == 0,
+    }, {0: "bounded_interval", 1: "half_infinite_interval", 2: "real"}[infinite]
+
+
+def _polynomial(expression, variable):
+    symbol = sp.Symbol(variable, real=True)
+    poly = sp.Poly(expression, symbol)
+    if poly.is_zero:
+        degree, kind = None, "zero_polynomial"
+    else:
+        degree = int(poly.degree())
+        # Parameter-dependent coefficients may vanish; no root/sign analysis
+        # is performed here, even if SymPy could prove a stronger statement.
+        kind = "upper_bound" if poly.LC().free_symbols else "exact"
+    return poly, {
+        "variable": variable,
+        "degree": degree,
+        "degree_kind": kind,
+        "expression": _math(expression),
+    }
+
+
+def extract_features(candidate):
+    """Extract structural features, retaining failures as explicit unknowns.
+
+    Features are computed per goal. Each goal sees the facts of its own scope
+    and its ancestors, never those of sibling sub-questions. ``ok`` says the
+    input scope was valid and the extractor completed. It does not imply every
+    feature is known: downstream acceptance checks required features
+    explicitly. ``source_refs`` are JSON pointers into the candidate root.
+    """
+    report = NotationValidator().validate_root(candidate.get("root"))
+    result = {
+        "schema_version": SCHEMA_VERSION,
+        "features": [],
+        "ok": report.ok,
+        "diagnostics": [],
+    }
+    if not report.ok:
+        result["diagnostics"] = deepcopy(report.issues)
+        return result
+    goal_count = 0
+    for scope, ancestors in _scopes(report.semantic):
+        goal_count += len(scope["goals"])
+        _scope_features(report, candidate, scope, ancestors, result["features"])
+    if not goal_count:
+        result.update(
+            ok=False,
+            diagnostics=[{"code": "feature.goal_required", "path": "/root/goals"}],
+        )
+    return result
+
+
+def _scope_features(report, candidate, scope, ancestors, features):
+    objects = {obj["ref"]: obj for obj in report.objects}
+    scope_ref = _json_path(scope["scope"])
+    visible = [*ancestors, scope]
+    records = [
+        record
+        for item in visible
+        for record in report.scope_facts.get(item["scope"], [])
+    ]
+    functions, function_sources = {}, {}
+    for record in records:
+        fact = record["value"]
+        if fact[0] == "function_definition":
+            functions[fact[1][1]] = fact[2]
+            function_sources[fact[1][1]] = _json_path(record["path"])
+    quantifiers = [
+        (quantified, record)
+        for record in records
+        for quantified in conjunct_quantifiers(record["value"])
+    ]
+
+    for goal_index, goal in enumerate(scope["goals"]):
+        target_ref = f"{scope_ref}/goals/{goal_index}"
+        produced = {}
+        # Conditions found while reading the domain travel with every later
+        # feature; so does the evidence (domain and its definitions) behind them.
+        inherited = {"conditions": 0, "source_refs": [], "dependencies": []}
+
+        def add(
+            feature_id,
+            value=None,
+            *,
+            source_refs=(),
+            calculation=None,
+            conditions=(),
+            diagnostic=None,
+            _target_ref=target_ref,
+            _produced=produced,
+            _inherited=inherited,
+        ):
+            spec = _SPECS[feature_id]
+            carries = len(conditions) >= _inherited["conditions"] > 0
+            dependencies = list(spec.dependencies)
+            if carries:
+                source_refs = [*source_refs, *_inherited["source_refs"]]
+                dependencies += [d for d in _inherited["dependencies"] if d not in dependencies]
+            feature = {
+                "feature_id": feature_id,
+                "scope": scope_ref,
+                "target_ref": _target_ref,
+                "status": "unknown"
+                if diagnostic
+                else "conditional"
+                if conditions
+                else "known",
+                "value": value,
+                "conditions": deepcopy(list(conditions)),
+                "dependencies": dependencies,
+                "source_refs": sorted(set(source_refs)),
+                "calculation": calculation or {"operation": "read_bound_ast"},
+                "diagnostics": [diagnostic] if diagnostic else [],
+                "extractor_version": spec.version,
+                "knowledge_refs": list(spec.knowledge_refs),
+            }
+            _produced[feature_id] = feature
+            features.append(feature)
+
+        goal_ast = goal["target"]
+        if (
+            goal["kind"] != "find_range"
+            or goal_ast[0] != "ref"
+            or goal_ast[2] != "scalar"
+        ):
+            diagnostic = {"code": "feature.unsupported_goal", "path": target_ref}
+            for spec in FEATURE_REGISTRY:
+                add(spec.feature_id, diagnostic=diagnostic, source_refs=[target_ref])
+            continue
+        goal_name = objects[goal_ast[1]]["name"]
+        add(
+            "goal",
+            {"kind": goal["kind"], "symbol": goal_name},
+            source_refs=[target_ref],
+        )
+        if len(quantifiers) != 1:
+            diagnostic = {
+                "code": "feature.single_quantifier_required",
+                "count": len(quantifiers),
+            }
+            for spec in FEATURE_REGISTRY:
+                if spec.feature_id not in produced:
+                    add(spec.feature_id, diagnostic=diagnostic)
+            continue
+        quantified, record = quantifiers[0]
+        source_ref = _json_path(record["path"])
+        raw_quantifiers = conjunct_quantifiers(parse(record["source"]))
+        domain_used, domain_arguments, body_used, body_arguments = set(), [], set(), []
+        try:
+            if len(raw_quantifiers) != 1:
+                raise NotationError("feature.single_quantifier_required")
+            bound_name = raw_quantifiers[0][2]
+            quantified = [
+                *quantified[:3],
+                _inline(quantified[3], functions, domain_used, domain_arguments),
+                _inline(quantified[4], functions, body_used, body_arguments),
+            ]
+            # An argument the body ignores (f(t)=1, f(1/a)) still names a variable.
+            scalars = {
+                item[1]
+                for tree in (quantified, *domain_arguments, *body_arguments)
+                for item in _refs(tree, "ref")
+                if item[2] == "scalar"
+            } | {goal_ast[1]}
+            # Symbols are created from display names; distinct bindings that
+            # share a name (an outer x and a bound x) cannot be told apart.
+            names = [objects[ref]["name"] for ref in scalars]
+            if len(set(names)) != len(names) or bound_name in names:
+                raise NotationError("feature.ambiguous_variable_name")
+            algebra = _Algebra(report.objects, {quantified[2]: bound_name})
+        except (NotationError, RecursionError) as exc:
+            diagnostic = {
+                "code": getattr(exc, "code", "feature.function_inline_failed"),
+                "path": source_ref,
+            }
+            for spec in FEATURE_REGISTRY:
+                if spec.feature_id not in produced:
+                    add(
+                        spec.feature_id, diagnostic=diagnostic, source_refs=[source_ref]
+                    )
+            continue
+        def inlined_from(used):
+            names = sorted(objects[ref]["name"] for ref in used)
+            calculation = (
+                {"operation": "read_bound_ast", "inlined_functions": names}
+                if names
+                else None
+            )
+            return [function_sources[ref] for ref in sorted(used)], calculation
+
+        domain_functions, domain_calculation = inlined_from(domain_used)
+        body_functions, body_calculation = inlined_from(body_used)
+        common_sources = [source_ref, target_ref]
+        derived_sources = [*common_sources, *body_functions]
+        add("quantifier", quantified[1], source_refs=[source_ref])
+        add("bound_vars", [bound_name], source_refs=[source_ref])
+        add(
+            "free_vars",
+            sorted(set(names)),
+            source_refs=[*common_sources, *domain_functions, *body_functions],
+        )
+        try:
+            for argument in domain_arguments:
+                algebra.expr(argument)
+            domain, kind = _domain(quantified[3], algebra)
+            for feature_id, value in (("domain", domain), ("domain_kind", kind)):
+                add(
+                    feature_id,
+                    value,
+                    source_refs=[source_ref, *domain_functions],
+                    conditions=algebra.conditions,
+                    calculation=domain_calculation,
+                )
+            inherited.update(
+                conditions=len(algebra.conditions),
+                source_refs=[source_ref, *domain_functions],
+                dependencies=["domain"],
+            )
+        except (NotationError, ValueError, TypeError, ZeroDivisionError) as exc:
+            diagnostic = {
+                "code": getattr(exc, "code", "feature.domain_failed"),
+                "message": str(exc),
+            }
+            for name in ("domain", "domain_kind"):
+                add(name, diagnostic=diagnostic, source_refs=[source_ref, *domain_functions])
+            if not diagnostic["code"].startswith(_REPRESENTATION_ONLY):
+                # A domain whose endpoints cannot be evaluated as real numbers
+                # (undefined, non-real or beyond limits) leaves the statement unusable.
+                for spec in FEATURE_REGISTRY:
+                    if spec.feature_id not in produced:
+                        add(spec.feature_id, diagnostic=diagnostic, source_refs=derived_sources)
+                continue
+        try:
+            for argument in body_arguments:
+                algebra.expr(argument)
+            body = quantified[4]
+            if body[0] not in ("<", "<=", ">", ">=", "=", "!="):
+                raise NotationError("feature.single_scalar_relation_required")
+            if not _refs(body, "bound"):
+                raise NotationError(
+                    "feature.bound_variable_absent",
+                    "Expand dependent-value definitions inside the quantified relation.",
+                )
+            lhs, rhs = algebra.expr(body[1]), algebra.expr(body[2])
+            add(
+                "relation",
+                {
+                    "operator": body[0],
+                    "strict": body[0] in ("<", ">", "!="),
+                    "lhs": _math(lhs),
+                    "rhs": _math(rhs),
+                },
+                source_refs=[source_ref, *body_functions],
+                conditions=algebra.conditions,
+                calculation=body_calculation,
+            )
+            operator = {"<": ">", "<=": ">="}.get(body[0], body[0])
+            expression = bounded_expand(
+                rhs - lhs if body[0] in ("<", "<=") else lhs - rhs
+            )
+            normal = {
+                "expression": _math(expression),
+                "operator": operator,
+                "rhs": "0",
+                "variable": bound_name,
+            }
+            add(
+                "normal_form",
+                normal,
+                source_refs=[source_ref, *body_functions],
+                conditions=algebra.conditions,
+                calculation={
+                    "operation": "move_terms_and_expand",
+                    "input_operator": body[0],
+                    "flipped_sides": body[0] in ("<", "<="),
+                },
+            )
+            polynomials = {}
+            for feature_id, variable in (
+                ("degree_in_bound", bound_name),
+                ("degree_in_goal", goal_name),
+            ):
+                try:
+                    polynomial, degree = _polynomial(expression, variable)
+                    polynomials[feature_id] = (polynomial, degree)
+                    add(
+                        feature_id,
+                        degree,
+                        source_refs=derived_sources,
+                        conditions=algebra.conditions,
+                        calculation={
+                            "operation": "collect_polynomial",
+                            "variable": variable,
+                            "expression": _math(expression),
+                        },
+                    )
+                except sp.PolynomialError as exc:
+                    add(
+                        feature_id,
+                        diagnostic={
+                            "code": "feature.not_polynomial",
+                            "variable": variable,
+                            "message": str(exc),
+                        },
+                        source_refs=derived_sources,
+                    )
+            if "degree_in_bound" in polynomials:
+                polynomial, degree = polynomials["degree_in_bound"]
+                leading = polynomial.LC()
+                add(
+                    "leading_coeff_in_bound",
+                    {
+                        "variable": bound_name,
+                        "expression": _math(leading),
+                        "contains_parameters": bool(leading.free_symbols),
+                        "may_be_zero": leading == 0 or bool(leading.free_symbols),
+                    },
+                    source_refs=derived_sources,
+                    conditions=algebra.conditions,
+                    calculation={
+                        "operation": "leading_coefficient",
+                        "expression": _math(expression),
+                    },
+                )
+                items = [
+                    {
+                        "power": int(power[0]),
+                        "expression": _math(coefficient),
+                        "contains_parameters": bool(coefficient.free_symbols),
+                    }
+                    for power, coefficient in polynomial.terms()
+                ]
+                add(
+                    "coefficients",
+                    {
+                        "variable": bound_name,
+                        "expression": _math(expression),
+                        "items": items,
+                    },
+                    source_refs=derived_sources,
+                    conditions=algebra.conditions,
+                    calculation={"operation": "collect_coefficients"},
+                )
+            bound_degree = polynomials.get("degree_in_bound", (None, {}))[1].get(
+                "degree"
+            )
+            goal_degree = polynomials.get("degree_in_goal", (None, {}))[1].get("degree")
+            if bound_degree == 2:
+                add(
+                    "range_var_is_principal",
+                    True,
+                    source_refs=derived_sources,
+                    conditions=algebra.conditions,
+                )
+            elif bound_degree in (0, 1) and goal_degree == 2:
+                add(
+                    "range_var_is_principal",
+                    False,
+                    source_refs=derived_sources,
+                    conditions=algebra.conditions,
+                )
+        except (
+            NotationError,
+            ValueError,
+            TypeError,
+            RecursionError,
+            sp.PolynomialError,
+        ) as exc:
+            diagnostic = {
+                "code": getattr(exc, "code", "feature.algebra_failed"),
+                "message": str(exc),
+                "path": source_ref,
+            }
+            for spec in FEATURE_REGISTRY:
+                if spec.feature_id not in produced:
+                    add(
+                        spec.feature_id,
+                        diagnostic=diagnostic,
+                        source_refs=derived_sources,
+                    )
+        for spec in FEATURE_REGISTRY:
+            if spec.feature_id not in produced:
+                add(
+                    spec.feature_id,
+                    diagnostic={"code": "feature.unsupported_structure"},
+                    source_refs=derived_sources,
+                )

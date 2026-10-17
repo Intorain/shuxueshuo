@@ -1,0 +1,150 @@
+{
+  "text": "{\"status\":\"confirmed\",\"findings\":[]}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 308,
+      "prompt_tokens": 4479,
+      "total_tokens": 4787,
+      "prompt_cache_hit_tokens": 4224,
+      "prompt_cache_miss_tokens": 255
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 36,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-review/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-cdc72087-d12c-4a2e-b2e4-bc5574c0b3bb",
+        "sha256": "6813a0db04c3615deb674eec59a149f1a4348c12db459b0b844cdfad2b6f026d",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 32302,
+        "expires_at": 1792228356,
+        "uploaded_at": 1792141956.286449
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "6813a0db04c3615deb674eec59a149f1a4348c12db459b0b844cdfad2b6f026d",
+        "file_id": "file-api-cdc72087-d12c-4a2e-b2e4-bc5574c0b3bb",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 2131,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 308,
+          "prompt_tokens": 4479,
+          "total_tokens": 4787,
+          "completion_tokens_details": {
+            "reasoning_tokens": 297
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 4224
+          },
+          "prompt_cache_hit_tokens": 4224,
+          "prompt_cache_miss_tokens": 255
+        },
+        "raw_payload": {
+          "id": "688e60f3-2690-4932-8cc0-a5b5dba8b481",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 308,
+            "prompt_tokens": 4479,
+            "total_tokens": 4787,
+            "completion_tokens_details": {
+              "reasoning_tokens": 297
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "prompt_cache_hit_tokens": 4224,
+            "prompt_cache_miss_tokens": 255
+          },
+          "created": 1792203715,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+                "reasoning_content": "我们需要复核候选。原图题干：“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。候选 original_text 是““∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。”与图一致，标点引号可能图是全角引号？原文是“∀x < 0, x² + ax + 2 ≥ 0”为真命题，求实数a的取值范围。候选少了逗号？原图： “∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。候选有逗号？候选字符串：“∀x<0，x^2+ax+2≥0” 为真命题，... 基本一致。数学表达中 x<0 对应量词 ∀x∈(-∞,0)。注意严格性：x<0 是 (-∞,0)，正确。不等式 ≥0 正确。a*x 显式乘，正确。目标求 a 范围，正确。没有其他条件。量词变量 x 定义域 (-∞,0) 正确。没有把小问压平等。candidate root facts 唯一。code_validation notation_valid true, image_alignment_verified false 无需处理。应该 confirmed findings=[]。需要输出 JSON。注意顶层仅 status findings。完成。",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 2132
+  },
+  "raw_payload": {
+    "id": "688e60f3-2690-4932-8cc0-a5b5dba8b481",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要复核候选。原图题干：“∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。候选 original_text 是““∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。”与图一致，标点引号可能图是全角引号？原文是“∀x < 0, x² + ax + 2 ≥ 0”为真命题，求实数a的取值范围。候选少了逗号？原图： “∀x<0，x^2+ax+2≥0”为真命题，求实数a的取值范围。候选有逗号？候选字符串：“∀x<0，x^2+ax+2≥0” 为真命题，... 基本一致。数学表达中 x<0 对应量词 ∀x∈(-∞,0)。注意严格性：x<0 是 (-∞,0)，正确。不等式 ≥0 正确。a*x 显式乘，正确。目标求 a 范围，正确。没有其他条件。量词变量 x 定义域 (-∞,0) 正确。没有把小问压平等。candidate root facts 唯一。code_validation notation_valid true, image_alignment_verified false 无需处理。应该 confirmed findings=[]。需要输出 JSON。注意顶层仅 status findings。完成。"
+        }
+      }
+    ],
+    "created": 1792203715,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 308,
+      "prompt_tokens": 4479,
+      "total_tokens": 4787,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 297,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 4224
+      },
+      "prompt_cache_hit_tokens": 4224,
+      "prompt_cache_miss_tokens": 255
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 2.136
+}

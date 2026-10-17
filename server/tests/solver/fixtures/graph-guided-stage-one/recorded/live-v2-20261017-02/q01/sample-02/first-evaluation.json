@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "contract_valid": true,
+  "semantics": {
+    "ok": true,
+    "classification": "equivalent",
+    "differences": []
+  },
+  "transcription": {
+    "ok": true,
+    "expected": "若不等式 $-x^2+2x+3\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。",
+    "actual": "若不等式 $-x^2+2x+3 \\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。"
+  },
+  "acceptance": {
+    "ok": true,
+    "diagnostics": []
+  },
+  "features": {
+    "ok": true,
+    "differences": []
+  },
+  "source_reviewed": false,
+  "source_review_required": false,
+  "fixture_validation": {
+    "ok": true,
+    "diagnostics": [],
+    "hashes": {
+      "problem.md": "06e39abcff094b5b2d46e8b84cf91403668e53f0880c6a98f3744176fe11d906",
+      "source.png": "1b2d865e561dbf240e3e6f8f2e935e1c391a1e4e0b04e27c0ff3e29c8427f790",
+      "source-manifest.json": "4212eb5aa2740c59aa2d030bd835d9841c80486fe45eff4567739e1a387becf6",
+      "notation.gold.json": "3dec8626135848488f1840f50a9d3d58577925a307e55a6d4a00cc5205f7deb2",
+      "features.gold.json": "977859e7106bfa104af9609fd4ab85c1b5164ee605659dcf18660776b38c70a3",
+      "acceptance.json": "8cb5a0961631cea97ccc7aea13e7518d5ef523194f7f3e0c6469d387b2b02722"
+    }
+  },
+  "measurement": "Independent gold evaluation before repair; not an image-review claim."
+}

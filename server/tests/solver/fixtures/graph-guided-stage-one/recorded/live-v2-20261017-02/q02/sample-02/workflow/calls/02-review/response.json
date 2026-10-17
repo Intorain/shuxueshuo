@@ -1,0 +1,150 @@
+{
+  "text": "{\"status\":\"confirmed\",\"findings\":[]}",
+  "finish_reason": "stop",
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 273,
+      "prompt_tokens": 4488,
+      "total_tokens": 4761,
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 648
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 36,
+    "thinking_mode": "enabled",
+    "reasoning_effort": "low",
+    "response_format": "graph-problem-review/v2",
+    "temperature": null,
+    "max_output_tokens": 16384,
+    "timeout": 300,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "image_transport": "files",
+    "image_files": [
+      {
+        "image_id": "primary",
+        "file_id": "file-api-7becd41b-1946-4f9f-bb39-9a2c40deef88",
+        "sha256": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+        "scope": "e272824dd5798d7eaa86a53b0cd98ed0df52eb6c526d91864e81295bdb35f376",
+        "bytes": 35973,
+        "expires_at": 1792228363,
+        "uploaded_at": 1792141963.358988
+      }
+    ],
+    "file_operations": [
+      {
+        "operation": "cache_hit",
+        "sha256": "310347f1766594614592110d1bb87f23690de0629092b706b3025dcb445a4a4b",
+        "file_id": "file-api-7becd41b-1946-4f9f-bb39-9a2c40deef88",
+        "api_calls": 0
+      }
+    ],
+    "file_api_calls": 0,
+    "provider_attempts": [
+      {
+        "status": "completed",
+        "response_model": "deepseek-flash",
+        "finish_reason": "stop",
+        "error_code": null,
+        "provider_attempt": 1,
+        "latency_ms": 1940,
+        "visible_content": true,
+        "usage": {
+          "completion_tokens": 273,
+          "prompt_tokens": 4488,
+          "total_tokens": 4761,
+          "completion_tokens_details": {
+            "reasoning_tokens": 262
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 3840
+          },
+          "prompt_cache_hit_tokens": 3840,
+          "prompt_cache_miss_tokens": 648
+        },
+        "raw_payload": {
+          "id": "ec76a1a8-7a13-4510-a98b-17933bdae82e",
+          "object": "chat.completion",
+          "model": "deepseek-flash",
+          "usage": {
+            "completion_tokens": 273,
+            "prompt_tokens": 4488,
+            "total_tokens": 4761,
+            "completion_tokens_details": {
+              "reasoning_tokens": 262
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 3840
+            },
+            "prompt_cache_hit_tokens": 3840,
+            "prompt_cache_miss_tokens": 648
+          },
+          "created": 1792203704,
+          "choices": [
+            {
+              "index": 0,
+              "finish_reason": "stop",
+              "message": {
+                "role": "assistant",
+                "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+                "reasoning_content": "我们需要复核。需要判断candidate root数学题意与原图。原图文字：已知不等式 \\(kx^2+2kx-(k+2)<0\\) 恒成立，求实数 \\(k\\) 的取值范围。candidate original_text完全一致？候选: \"已知不等式 $kx^2+2kx-(k+2)<0$ 恒成立，求实数 $k$ 的取值范围。\" 是的。root facts: ∀x∈ℝ: k*x^2+2*k*x-(k+2)<0; goals find_range k。题面只说恒成立未给量词范围，按规则唯一自由变量x实数域补全允许。注意表达式 kx^2 是 k 乘 x^2，候选 k*x^2 对；2kx 为2*k*x。 (k+2) 保留。严格 <。求k范围。没问题。需要检查符号量词变量定义域严格所求变量条件遗漏。原题是否默认x为实数？恒成立通常对任意实数x。允许补全。没有分问。original_text也没问题。应该confirmed findings=[]。需要只输出JSON顶层status findings。注意用户说不能返回candidate/root/original_text。输出schema。确保 JSON object.",
+                "refusal": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "latency_ms": 1941
+  },
+  "raw_payload": {
+    "id": "ec76a1a8-7a13-4510-a98b-17933bdae82e",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"status\":\"confirmed\",\"findings\":[]}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null,
+          "reasoning_content": "我们需要复核。需要判断candidate root数学题意与原图。原图文字：已知不等式 \\(kx^2+2kx-(k+2)<0\\) 恒成立，求实数 \\(k\\) 的取值范围。candidate original_text完全一致？候选: \"已知不等式 $kx^2+2kx-(k+2)<0$ 恒成立，求实数 $k$ 的取值范围。\" 是的。root facts: ∀x∈ℝ: k*x^2+2*k*x-(k+2)<0; goals find_range k。题面只说恒成立未给量词范围，按规则唯一自由变量x实数域补全允许。注意表达式 kx^2 是 k 乘 x^2，候选 k*x^2 对；2kx 为2*k*x。 (k+2) 保留。严格 <。求k范围。没问题。需要检查符号量词变量定义域严格所求变量条件遗漏。原题是否默认x为实数？恒成立通常对任意实数x。允许补全。没有分问。original_text也没问题。应该confirmed findings=[]。需要只输出JSON顶层status findings。注意用户说不能返回candidate/root/original_text。输出schema。确保 JSON object."
+        }
+      }
+    ],
+    "created": 1792203704,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 273,
+      "prompt_tokens": 4488,
+      "total_tokens": 4761,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 262,
+        "rejected_prediction_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 3840
+      },
+      "prompt_cache_hit_tokens": 3840,
+      "prompt_cache_miss_tokens": 648
+    }
+  },
+  "network_attempts": 1,
+  "elapsed_seconds": 1.944
+}

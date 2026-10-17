@@ -368,11 +368,10 @@ def _run(
             diagnostics = [*source_diagnostics, *contract.diagnose(parsed, current)]
             event["diagnostics"] = diagnostics
             # A code gap is an unsupported or unprovable construct, not a
-            # candidate-edit request. With no repair authority for it, asking
-            # the model for another candidate only repeats the same failure
-            # and can incorrectly turn a deterministic code gap into a repair
-            # loop.
-            if diagnostics and all(
+            # candidate-edit request. Repairing the other findings cannot make
+            # the problem supported, so any code gap stops the workflow instead
+            # of spending the budget on a candidate that will still fail.
+            if any(
                 diagnostic.get("action") == "code_gap" for diagnostic in diagnostics
             ):
                 status = "code_gap"

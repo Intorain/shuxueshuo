@@ -1,0 +1,18 @@
+{
+  "page": "single-unnumbered",
+  "note": "单题截图、没有题号",
+  "width": 2000,
+  "height": 620,
+  "questions": [
+    {
+      "number": null,
+      "case": "q10",
+      "box": [
+        136,
+        169,
+        1780,
+        439
+      ]
+    }
+  ]
+}

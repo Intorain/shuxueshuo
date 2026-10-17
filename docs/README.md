@@ -37,6 +37,7 @@
 - [基本不等式章节题库首版计划](basic-inequality-practice-bank-plan.md)：`/1` 章节入口、题目与 JSON 清单、个人做题状态、登录的四阶段计划；静态入口已实现、待发布。
 - [图谱解题过程 Demo：恒成立 Q01](graph-walk-demo-q01-design.md)：学生与 LLM 共用决策协议，作答时同步展示图谱遍历、判断节点与方法模板执行；已贯通两条路线。
 - [Demo 维护与验收](graph-walk-demo-q01.md)：本地入口、构建、真实 AI 录制命令及验收结果。
+- [学生拍题学页面设计](student-problem-search-design.md)：“拍题学”学生产品层，对标作业帮的拍照搜题，但结果是 AI 陪学生把题学会；按题型开放，页面随四阶段生成链路分期开发，S5 完成后上线；讨论稿，待实施。
 - [交互题目公共运行时设计](interactive-lesson-shared-runtime-design.md)：HTML 承担学生课程，教师 JSON + Context 支撑一对一对话；Q01 已实现本地练习和发起对话时批量同步，未部署。
 
 - [错题本构建规范](mistake-book-authoring-guide.md)：原解保留、三步内容结构、错误分类、可视化、双视图浏览和新增题目检查规范。

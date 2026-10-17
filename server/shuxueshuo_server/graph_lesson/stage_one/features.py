@@ -13,6 +13,7 @@ import sympy as sp
 from ...problem_understanding.notation_compile import NotationValidator, children
 from ...problem_understanding.notation_parser import NotationError, parse
 from ...problem_understanding.notation_semantics import Canonical, bounded_expand
+from . import contracts
 
 SCHEMA_VERSION = "graph-stage-one-features/v1"
 EXTRACTOR_VERSION = "structural-polynomial/v1"
@@ -321,7 +322,9 @@ def extract_features(candidate):
     feature is known: downstream acceptance checks required features
     explicitly. ``source_refs`` are JSON pointers into the candidate root.
     """
-    report = NotationValidator().validate_root(candidate.get("root"))
+    report = NotationValidator().validate_root(
+        candidate.get("root"), contracts.schema()["$defs"]
+    )
     result = {
         "schema_version": SCHEMA_VERSION,
         "features": [],

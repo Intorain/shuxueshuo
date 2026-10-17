@@ -1,0 +1,94 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+import test from 'node:test';
+import vm from 'node:vm';
+
+const base = new URL('../../', import.meta.url);
+const require = createRequire(import.meta.url);
+const katex = require('../../site/assets/practice/vendor/katex-0.18.9/katex.min.js');
+const context = vm.createContext({
+  URLSearchParams,
+  location: {search: ''},
+  performance: {now: () => 0},
+  document: {addEventListener() {}},
+  window: {},
+});
+vm.runInContext(fs.readFileSync(new URL('site/lab/search/problem.js', base), 'utf8'), context);
+const tex = expression => context.tex(expression);
+const render = expression => katex.renderToString(tex(expression), {throwOnError: true, output: 'mathml', strict: 'ignore'});
+
+for (const [expression, expected] of [
+  ['2sqrt(4)=a', '2\\sqrt{4}=a'],
+  ['2 sqrt(4)=a', '2\\sqrt{4}=a'],
+  ['0.5\t sqrt (4)=a', '0.5\\sqrt{4}=a'],
+  ['2abs(x-1)=a', '2\\left|x-1\\right|=a'],
+  ['2 abs(x-1)=a', '2\\left|x-1\\right|=a'],
+  ['2sqrt(abs(x-1))=a', '2\\sqrt{\\left|x-1\\right|}=a'],
+  ['sqrt(2 abs(x))=a', '\\sqrt{2\\left|x\\right|}=a'],
+  ['x^2sqrt(4)=a', 'x^{2}\\sqrt{4}=a'],
+]) {
+  test(`renders the function after an implicit coefficient: ${expression}`, () => {
+    assert.equal(tex(expression), expected);
+    assert.match(render(expression), expression.includes('sqrt') ? /<msqrt>/ : /<mo[^>]*>∣<\/mo>/);
+  });
+}
+
+test('implicit coefficients have the same display as explicit multiplication', () => {
+  for (const coefficient of ['2', '0.5']) {
+    for (const operand of ['abs(x)', 'sqrt(4)', 'sum(S)', 'mod(n,3)', 'min(x,2)', 'tan(30°)', 'length(A,B)', 'x_12', 'α', '(x+1)', '∠ABC', '√4']) {
+      const explicit = `${coefficient}*${operand}`;
+      for (const separator of ['', ' ', '\t\n']) {
+        const implicit = `${coefficient}${separator}${operand}`;
+        assert.equal(tex(implicit), tex(explicit), implicit);
+        assert.doesNotThrow(() => render(implicit), implicit);
+      }
+    }
+  }
+});
+
+test('digits inside complete identifiers do not become multiplication', () => {
+  for (const [expression, expected] of [
+    ['x_12^2', 'x_{12}^{2}'], ['a1b', 'a1b'], ['f2(x)', 'f2(x)'],
+    ['a2sqrt(x)', 'a2sqrt(x)'], ['α2β', 'α2β'], ['xy', 'xy'],
+  ]) assert.equal(tex(expression), expected, expression);
+});
+
+test('normalization preserves exponent precedence and nested function arguments', () => {
+  for (const [expression, expected] of [
+    ['x **\t12', 'x^{12}'], ['x^-2^2', 'x^{-2^{2}}'], ['x^(-2)^2', 'x^{(-2)^{2}}'],
+    ['x^(2-a)', 'x^{2-a}'], ['x_12 ²', 'x_{12}^{2}'],
+    ['abs (x − 1) ≤ 2', '\\left|x-1\\right|\\le 2'],
+    ['mod(n,3)^2', '(n\\bmod 3)^{2}'],
+  ]) {
+    assert.equal(tex(expression), expected, expression);
+    assert.doesNotThrow(() => render(expression), expression);
+  }
+});
+
+test('set sums remain a single operand when multiplied or raised to a power', () => {
+  assert.equal(tex('2sum(S)'), '2\\left(S\\text{ 的元素之和}\\right)');
+  assert.equal(tex('sum(S)^2'), '\\left(S\\text{ 的元素之和}\\right)^{2}');
+  assert.match(render('sum(S)^2'), /<msup><mrow>.*<mtext>.*元素之和.*<\/mtext>.*<\/mrow><mn>2<\/mn><\/msup>/);
+  assert.doesNotThrow(() => render('mod(sum({1,2,3}),4)=2'));
+});
+
+test('multiplication after inline division cannot merge into the denominator', () => {
+  for (const [expression, expected] of [
+    ['a/2*x=b', 'a/2\\cdot x=b'],
+    ['2/3sqrt(4)=a', '2/3\\cdot \\sqrt{4}=a'],
+    ['a/(2*x)=b', 'a/(2\\cdot x)=b'],
+  ]) {
+    assert.equal(tex(expression), expected);
+    assert.match(render(expression), /<mo>⋅<\/mo>/);
+  }
+});
+
+test('the stage-one expression catalog renders with the bundled KaTeX', () => {
+  const catalog = JSON.parse(fs.readFileSync(new URL('internal/llm-prompts/problem-math-notation-expressions.json', base), 'utf8'));
+  const overlay = JSON.parse(fs.readFileSync(new URL('internal/llm-prompts/graph-stage-one-expressions.json', base), 'utf8'));
+  const entries = catalog.expressions.map(entry => overlay.overrides[entry.id] || entry).concat(overlay.additions || []);
+  for (const expression of entries.flatMap(entry => entry.examples || [])) {
+    if (!/[\u4e00-\u9fff]/.test(expression)) assert.doesNotThrow(() => render(expression), expression);
+  }
+});

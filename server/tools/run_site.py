@@ -3,6 +3,8 @@
 Run from server/: uv run python tools/run_site.py
 Uses the persistent local product instance and serves http://127.0.0.1:8779/.
 Install/migrate it first (see docs/site-login-local-testing.md).
+Student search (/lab/search/) segments pages with the local OCR interpreter;
+running stage one on a chosen question also needs RUN_LLM_INTEGRATION=1.
 """
 
 import argparse
@@ -26,6 +28,7 @@ from shuxueshuo_server.product.admin.cli import instance_lock
 from shuxueshuo_server.product.application import schema_head
 from shuxueshuo_server.product.config import REPO, Settings, write_private
 from shuxueshuo_server.product.db import engine
+from shuxueshuo_server.search.dev_api import create_search_router
 from shuxueshuo_server.tutor_demo.api import create_router
 
 
@@ -92,6 +95,7 @@ def create_local_app(settings, config):
     app = FastAPI(lifespan=lifespan)
     install_auth(app, config=config)
     app.include_router(create_router(budget=LocalModelBudget(), enable_explanation=True))
+    app.include_router(create_search_router(settings.root / "work/search"))
     app.mount("/", SiteStaticFiles(directory=REPO / "site", html=True), name="site")
     return app
 

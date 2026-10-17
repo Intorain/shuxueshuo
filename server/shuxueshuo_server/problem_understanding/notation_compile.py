@@ -10,10 +10,20 @@ from jsonschema import Draft202012Validator
 from .identity import encoded
 from .normalization_report import from_normalization
 from .notation_contract import schema
-from .notation_parser import BUILTINS, NotationError, definition, node, parse
+from .notation_parser import (
+    BUILTINS,
+    SUBSET_RELATIONS,
+    NotationError,
+    definition,
+    node,
+    parse,
+)
 
 ARITY = {
     "sqrt": 1,
+    "abs": 1,
+    "sum": 1,
+    "mod": 2,
     "tan": 1,
     "length": 2,
     "angle": 3,
@@ -48,6 +58,24 @@ POINT_ARGS = {
     "moving",
 }
 ENDPOINT_PAIR_ARGS = {"bisects", "cut_ratio"}
+SET_OPERATIONS = {"∩", "∪"}
+
+
+def value_set(ast):
+    """A literal of numbers or scalar symbols such as {a,1}; {A,B} names points."""
+    return ast[0] in ("empty_set", "set_builder") or (
+        ast[0] == "set"
+        and not all(p[0] == "name" and p[1][:1].isupper() for p in ast[1:])
+    )
+
+
+def set_operand_names(ast):
+    """Capitalized names standing as sets: the name itself or operands of ∩ / ∪."""
+    if ast[0] == "name" and ast[1][:1].isupper():
+        return [ast[1]]
+    if ast[0] in SET_OPERATIONS:
+        return [name for side in ast[1:3] for name in set_operand_names(side)]
+    return []
 
 
 def endpoint_arguments(arg):
@@ -343,6 +371,31 @@ class Scope:
             raise NotationError("binding.type_conflict", name)
         return node("ref", value["ref"], value["kind"])
 
+    def set_like(self, ast):
+        if value_set(ast):
+            return True
+        if ast[0] == "name":
+            found = self.lookup(ast[1])
+            return bool(found) and found["kind"] == "set"
+        return ast[0] in SET_OPERATIONS and any(self.set_like(p) for p in ast[1:])
+
+    def set_declarations(self, ast):
+        """A capitalized name related to a finite set by ⊆, =, ∩ or ∪ is a set,
+        including operands nested in ∩ and ∪ (A ∪ B = {1,2,3} makes A and B sets)."""
+        kind = ast[0]
+        if kind in SUBSET_RELATIONS or (
+            kind in ("=", "!=", *SET_OPERATIONS)
+            and any(self.set_like(side) for side in ast[1:3])
+        ):
+            for side in ast[1:3]:
+                for name in set_operand_names(side):
+                    self.declare(name, "set")
+        if ast[:2] == ["call", "sum"] and len(ast) == 3:
+            if ast[2][0] == "name" and ast[2][1][:1].isupper():
+                self.declare(ast[2][1], "set")
+        for child in children(ast):
+            self.set_declarations(child)
+
     def declarations(self, ast):
         kind = ast[0]
         intersection = point_intersection_pair(ast)
@@ -370,14 +423,18 @@ class Scope:
                 ):
                     self.declare(name[1], "point")
             for side in (left, right):
-                if side[0] == "set":
+                if side[0] == "set" and not value_set(side):
                     for p in side[1:]:
                         if p[0] == "name":
                             self.declare(p[1], "point")
-        if kind == "∈" and ast[1][0] == "name":
-            if ast[2][0] == "real" or ast[2][0] in ("interval", "tuple"):
+        if kind in ("∈", "∉") and ast[1][0] == "name":
+            if (
+                ast[2][0] == "real"
+                or ast[2][0] in ("interval", "tuple")
+                or self.set_like(ast[2])
+            ):
                 self.declare(ast[1][1], "scalar")
-            else:
+            elif kind == "∈":
                 self.declare(ast[1][1], "point")
         # Operator signatures establish point identity, not geometric facts.
         # Existing visible objects are reused; siblings are never searched.
@@ -408,7 +465,7 @@ class Scope:
             return node(
                 "point_intersection_definition", *[bind(p) for p in intersection]
             )
-        if kind in ("number", "real", "infinity", "definition_prose"):
+        if kind in ("number", "real", "infinity", "definition_prose", "empty_set"):
             return ast
         if kind == "name":
             name = ast[1]
@@ -441,8 +498,9 @@ class Scope:
                 self.reference(ast[1], "function"),
                 self.bind(ast[3], {ast[2]: "function_argument"}, depth + 1),
             )
-        if kind == "quantifier":
-            domain = bind(ast[3])
+        if kind in ("quantifier", "set_builder"):
+            *head, name, domain, body = ast[1:]
+            domain = bind(domain)
             if domain[0] == "tuple":
                 domain = node("interval", False, False, *domain[1:])
             if domain[0] not in ("real", "interval"):
@@ -450,10 +508,10 @@ class Scope:
             variable = f"quantified_{len(bound)}"
             return node(
                 kind,
-                ast[1],
+                *head,
                 variable,
                 domain,
-                self.bind(ast[4], {**bound, ast[2]: variable}, depth + 1),
+                self.bind(body, {**bound, name: variable}, depth + 1),
             )
         if kind == "extremum":
             body = bind(ast[3])
@@ -577,15 +635,28 @@ def typecheck(ast):
         if typecheck(ast[3]) != "domain" or typecheck(ast[4]) != "boolean":
             raise NotationError("type.quantifier")
         return "boolean"
+    if kind == "set_builder":
+        if typecheck(ast[2]) != "domain" or typecheck(ast[3]) != "boolean":
+            raise NotationError("type.set_builder")
+        return "set"
     if kind == "extremum":
         typ = typecheck(ast[3])
         if typ not in ("scalar", "length", "angle", "area"):
             raise NotationError("type.extremum")
         return typ
-    if kind in ("set", "endpoints"):
+    if kind == "empty_set":
+        return "set"
+    if kind == "set":
+        types = [typecheck(x) for x in ast[1:]]
+        if all(t == "point" for t in types):
+            return "point_set"
+        if all(t == "scalar" for t in types):
+            return "set"
+        raise NotationError("type.point_collection")
+    if kind == "endpoints":
         if any(typecheck(x) != "point" for x in ast[1:]):
             raise NotationError("type.point_collection")
-        return "point_set" if kind == "set" else "endpoints"
+        return "endpoints"
     if kind == "tuple":
         if len(ast) != 3 or any(typecheck(x) != "scalar" for x in ast[1:]):
             raise NotationError("type.coordinates")
@@ -616,6 +687,9 @@ def typecheck(ast):
             "y": "point",
             "area": "triangle",
             "sqrt": "scalar",
+            "abs": "scalar",
+            "sum": "set",
+            "mod": "scalar",
             "tan": "angle",
             "bisects": "endpoints",
             "cut_ratio": "endpoints",
@@ -632,14 +706,26 @@ def typecheck(ast):
         if any(typecheck(x) != "boolean" for x in ast[1:]):
             raise NotationError("type.logic")
         return "boolean"
-    if kind == "∩":
-        if any(typecheck(x) not in ("locus", "curve") for x in ast[1:]):
+    if kind in SET_OPERATIONS:
+        types = [typecheck(x) for x in ast[1:]]
+        if all(t == "set" for t in types):
+            return "set"
+        if kind == "∪":
+            raise NotationError("type.set_operation")
+        if any(t not in ("locus", "curve") for t in types):
             raise NotationError("type.intersection")
         return "locus"
-    if kind == "∈":
+    if kind in ("∈", "∉"):
         a, b = map(typecheck, ast[1:])
-        if (a, b) not in (("point", "locus"), ("point", "curve"), ("scalar", "domain")):
+        allowed = {("scalar", "set")}
+        if kind == "∈":
+            allowed |= {("point", "locus"), ("point", "curve"), ("scalar", "domain")}
+        if (a, b) not in allowed:
             raise NotationError("type.membership")
+        return "boolean"
+    if kind in SUBSET_RELATIONS:
+        if any(typecheck(x) != "set" for x in ast[1:]):
+            raise NotationError("type.subset")
         return "boolean"
     if kind == "neg":
         typ = typecheck(ast[1])
@@ -661,7 +747,8 @@ def typecheck(ast):
             or {a, b} == {"locus", "point_set"}
         )
         if not compatible or (
-            kind not in ("=", "!=") and a in ("point", "locus", "curve", "point_set")
+            kind not in ("=", "!=")
+            and a in ("point", "locus", "curve", "point_set", "set")
         ):
             raise NotationError("type.relation")
         return "boolean"
@@ -690,14 +777,16 @@ class NotationValidator:
         """Validate the original extraction envelope, including its family fields."""
         return self._validate(payload, schema())
 
-    def validate_root(self, root):
+    def validate_root(self, root, defs=None):
         """Compile a mathematical scope without an extraction-envelope contract.
 
-        The scope schema and mathematical compiler remain shared with validate;
-        no synthetic family classification is inserted for newer callers.
+        The mathematical compiler remains shared with validate; no synthetic
+        family classification is inserted for newer callers. ``defs`` lets a
+        newer contract (whose Scope may allow more goal kinds) check the scope
+        against its own schema instead of the frozen v1 one.
         """
         root_schema = {
-            "$defs": schema()["$defs"],
+            "$defs": defs or schema()["$defs"],
             "type": "object",
             "required": ["root"],
             "additionalProperties": False,
@@ -771,6 +860,24 @@ class NotationValidator:
                     "origin": "code_default",
                 }
             )
+        # Set names first, so a ∈ M is typed by M even when it precedes {a} ⊆ M.
+        # Repeat until nothing new is declared: A = B, B = C, C = {1,2} must not
+        # depend on fact order. Each productive pass declares a name, so it ends.
+        set_sources = [
+            ast
+            for field in ("definitions", "facts")
+            for text in source[field]
+            if isinstance(text, str) and (ast := _expression_ast(text)) is not None
+        ]
+        while True:
+            known = len(report.objects)
+            for ast in set_sources:
+                try:
+                    env.set_declarations(ast)
+                except NotationError:
+                    pass
+            if len(report.objects) == known:
+                break
         expressions = []
         for field in ("definitions", "facts"):
             for index, text in enumerate(source[field]):
@@ -842,6 +949,7 @@ class NotationValidator:
                     "find_coordinates": ("point",),
                     "find_equation": ("curve", "function"),
                     "find_range": ("scalar",),
+                    "find_count": ("set",),
                 }.get(goal["kind"], ("scalar", "length", "angle", "area"))
                 if typ not in expected:
                     raise NotationError("type.goal_target")

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f5f7f5">
+  <title>拍题学 · 数学说</title>
+  <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <link rel="stylesheet" href="search.css">
+  <link rel="stylesheet" href="problem.css">
+  <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
+  <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="problem.js" defer></script>
+</head>
+<body class="sq-page">
+  <header class="pq-bar">
+    <a class="pq-back" href="./" aria-label="返回拍题学">‹</a>
+    <strong>拍题学</strong>
+    <a class="pq-history" href="./">拍过的题</a>
+  </header>
+
+  <main class="pq-main" id="main">
+    <!-- 识别中 -->
+    <section class="pq-scan" id="pq-scan" aria-live="polite">
+      <div class="pq-photo"><img id="pq-photo" alt="你拍的题目"><span class="pq-scanline" aria-hidden="true"></span></div>
+      <ol class="pq-phases" id="pq-phases">
+        <li data-phase="0"><i></i><span>识别题目</span></li>
+        <li data-phase="1"><i></i><span>核对原图</span></li>
+        <li data-phase="2"><i></i><span>整理题意</span></li>
+      </ol>
+      <p class="pq-scan-note">通常 10 秒左右 · 离开页面也会继续识别</p>
+    </section>
+
+    <!-- 识别成功 -->
+    <section class="pq-result" id="pq-result" hidden>
+      <div class="pq-card">
+        <div class="pq-card-head">
+          <h1>原题</h1>
+          <span class="pq-verify" id="pq-verify" hidden></span>
+          <button type="button" class="pq-thumb" id="pq-thumb" aria-label="查看原图"><img id="pq-thumb-img" alt=""></button>
+        </div>
+        <div class="pq-parts" id="pq-parts" role="tablist" aria-label="小问" hidden></div>
+        <div class="pq-text" id="pq-text"></div>
+        <section class="pq-meaning" id="pq-meaning" aria-labelledby="pq-meaning-title" hidden>
+          <h2 id="pq-meaning-title">题意整理</h2>
+          <div id="pq-meaning-body"></div>
+        </section>
+        <button type="button" class="pq-misread" id="pq-misread">识别有误？</button>
+      </div>
+
+      <div class="pq-next" id="pq-next">
+        <div class="pq-next-head"><span class="pq-spin" aria-hidden="true"></span><strong id="pq-next-title">正在准备第一步：读题</strong></div>
+        <p>马上开始。你会先逐句读题，再判断这是哪一类题。</p>
+        <ol class="pq-road"><li class="is-on">读题</li><li>判断题型</li><li>选方法</li><li>解答</li></ol>
+        <p class="pq-dev">原型：后续步骤随阶段②开发接入</p>
+      </div>
+      <p class="pq-quota" id="pq-quota" hidden>已计入今天的次数，还可以拍 7 道</p>
+    </section>
+
+    <!-- 失败 -->
+    <section class="pq-fail" id="pq-fail" hidden>
+      <div class="pq-fail-photo"><img id="pq-fail-img" alt="你拍的题目"></div>
+      <div class="pq-fail-card">
+        <span class="pq-fail-icon" id="pq-fail-icon" aria-hidden="true"></span>
+        <h1 id="pq-fail-title"></h1>
+        <blockquote id="pq-fail-quote" hidden></blockquote>
+        <p id="pq-fail-text"></p>
+        <div class="pq-fail-actions" id="pq-fail-actions"></div>
+        <p class="pq-fail-free" id="pq-fail-free">这次不计次数</p>
+      </div>
+    </section>
+
+    <p class="sq-proto-note">原型 · 模拟识别结果：<a href="?demo=ok">成功</a> · <a href="?demo=multi">多问</a> · <a href="?demo=fixed">复核修正</a> · <a href="?demo=figure">缺图</a> · <a href="?demo=unclear">看不清</a> · <a href="?demo=unsupported">暂不支持</a> · <a href="?demo=error">系统失败</a></p>
+  </main>
+
+  <dialog class="sq-dialog pq-sheet" id="pq-misread-sheet">
+    <form method="dialog">
+      <h2>哪里识别错了？</h2>
+      <p>提交后重拍，不计次数。</p>
+      <div class="pq-options">
+        <label><input type="checkbox" name="kind" value="text">文字或公式错了</label>
+        <label><input type="checkbox" name="kind" value="missing">漏了条件或小问</label>
+        <label><input type="checkbox" name="kind" value="parts">小问拆分不对</label>
+        <label><input type="checkbox" name="kind" value="other">其他</label>
+      </div>
+      <menu><button value="cancel" class="sq-ghost">取消</button><button value="retake" class="sq-primary">提交并重拍</button></menu>
+    </form>
+  </dialog>
+
+  <dialog class="pq-viewer" id="pq-viewer"><form method="dialog"><img id="pq-viewer-img" alt="原图"><button class="sq-ghost">关闭</button></form></dialog>
+  <div class="sq-toast" id="sq-toast" role="status" hidden></div>
+</body>
+</html>

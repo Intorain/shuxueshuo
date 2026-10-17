@@ -65,8 +65,8 @@ def resource_owner(path):
     # separately; keep those files visible to the corresponding stage owners.
     if path.startswith('server/shuxueshuo_server/product/'):
         return None, False
-    # Site services (AI tutor dialogue, SMS login, learning marks) never feed the review pipeline.
-    if path.startswith(tuple(f'server/shuxueshuo_server/{name}/' for name in ('tutor_demo', 'auth', 'learning'))):
+    # Site services (AI tutor dialogue, SMS login, learning marks, student search) never feed the review pipeline.
+    if path.startswith(tuple(f'server/shuxueshuo_server/{name}/' for name in ('tutor_demo', 'auth', 'learning', 'search'))):
         return None, False
     # The graph-guided lesson pipeline freezes its own inputs per batch and never feeds review stages.
     if path.startswith('server/shuxueshuo_server/graph_lesson/') or (

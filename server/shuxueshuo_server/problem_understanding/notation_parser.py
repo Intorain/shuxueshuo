@@ -20,8 +20,9 @@ def node(kind, *args):
 
 
 TOKEN = re.compile(
-    r"\s*(?:(\d+(?:\.\d+)?)|([A-Za-z\u0370-\u03ff][A-Za-z0-9_\u0370-\u03ff]*)|(<=|>=|!=|\*\*|[+*/^=<>−\-(),{}\[\]:∈∩∧∨∀∃ℝ∞∠△°⟂∥√]))"
+    r"\s*(?:(\d+(?:\.\d+)?)|([A-Za-z\u0370-\u03ff][A-Za-z0-9_\u0370-\u03ff]*)|(<=|>=|!=|\*\*|[+*/^=<>−\-(),{}\[\]:|∈∉∩∪⊆⊊⊇⊋∅∧∨∀∃ℝ∞∠△°⟂∥√]))"
 )
+SUBSET_RELATIONS = {"⊆", "⊊", "⊇", "⊋"}
 PREC = {
     "∨": 5,
     "∧": 10,
@@ -32,18 +33,27 @@ PREC = {
     ">": 20,
     ">=": 20,
     "∈": 20,
+    "∉": 20,
+    "⊆": 20,
+    "⊊": 20,
+    "⊇": 20,
+    "⊋": 20,
     "⟂": 20,
     "∥": 20,
     "∩": 30,
+    "∪": 30,
     "+": 40,
     "-": 40,
     "*": 50,
     "/": 50,
     "^": 60,
 }
-RELATIONS = {"=", "!=", "<", "<=", ">", ">=", "∈", "⟂", "∥"}
+RELATIONS = {"=", "!=", "<", "<=", ">", ">=", "∈", "∉", "⟂", "∥", *SUBSET_RELATIONS}
 BUILTINS = {
     "sqrt",
+    "abs",
+    "sum",
+    "mod",
     "tan",
     "length",
     "angle",
@@ -92,6 +102,9 @@ def clean(text):
         "）": ")",
         "∥": "∥",
         "⊥": "⟂",
+        "⫋": "⊊",
+        "⫌": "⊋",
+        "Ø": "∅",
         "**": "^",
     }.items():
         text = text.replace(a, b)
@@ -103,6 +116,12 @@ class Parser:
         if len(text) > 4096:
             raise NotationError("notation.length_limit")
         text = clean(text)
+        # LaTeX belongs in original_text only; here it is a formatting slip,
+        # not unsupported mathematics.
+        if "$" in text or "\\" in text:
+            raise NotationError(
+                "notation.latex_markup", "数学候选不写 $ 或 LaTeX 命令，改用目录中的 Unicode 记法"
+            )
         self.tokens = []
         offset = 0
         while offset < len(text):
@@ -149,6 +168,48 @@ class Parser:
     def peek(self):
         return self.tokens[self.i]
 
+    def set_builder_ahead(self):
+        """After "{": a separator "|" or ":" before the matching "}" at depth 0.
+
+        A bar where an operand is expected opens an absolute value and the next
+        bar after an operand closes it, so {1, |a|} stays a literal set."""
+        depth = 0
+        bars = 0
+        operand = True
+        for token in self.tokens[self.i :]:
+            if token == "|":
+                if operand:
+                    bars += 1
+                    continue
+                if bars:
+                    bars -= 1
+                    continue
+                if depth == 0:
+                    break
+                operand = True
+            elif token in ("(", "[", "{"):
+                depth += 1
+                operand = True
+            elif token in (")", "]", "}"):
+                if depth == 0:
+                    return False
+                depth -= 1
+                operand = False
+            elif token == ":" and depth == 0 and not bars:
+                break
+            elif token in ("∀", "∃") or token == "EOF":
+                return False
+            else:
+                operand = not (
+                    token in ("∅", "ℝ", "∞", "°")
+                    or re.fullmatch(r"\d+(?:\.\d+)?|[A-Za-z\u0370-\u03ff][\w]*", token)
+                )
+        else:
+            return False
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", self.peek()) or self.tokens[self.i + 1] != "∈":
+            raise NotationError("notation.set_builder", "写成 {变量∈定义域 | 条件}")
+        return True
+
     def make(self, kind, *args):
         self.count += 1
         if self.count > 512:
@@ -188,6 +249,11 @@ class Parser:
             if self.peek() != "(" and not re.fullmatch(r"\d+(?:\.\d+)?", self.peek()):
                 raise NotationError("notation.radical_requires_number_or_group")
             left = self.make("call", "sqrt", self.expr(61))
+        elif token == "|":
+            # |x-1| is abs(x-1); "|" is not an operator, so the inner
+            # expression stops at the closing bar.
+            left = self.make("call", "abs", self.expr())
+            self.take("|")
         elif token in ("∀", "∃"):
             var = self.take()
             if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", var):
@@ -205,6 +271,15 @@ class Parser:
                 "angle" if token == "∠" else "triangle",
                 *[node("name", p) for p in points],
             )
+        elif token == "{" and self.set_builder_ahead():
+            # {x∈ℝ | condition} or {x∈[0,2]: condition}: x is bound to the braces.
+            var = self.take()
+            self.take("∈")
+            domain = self.expr(21)
+            self.take()
+            body = self.expr()
+            self.take("}")
+            left = self.make("set_builder", var, domain, body)
         elif token in ("(", "[", "{"):
             closing = {"(": ")", "[": "]", "{": "}"}[token]
             values = [self.expr()]
@@ -245,6 +320,8 @@ class Parser:
             left = self.make("number", token)
         elif token == "ℝ":
             left = self.make("real")
+        elif token == "∅":
+            left = self.make("empty_set")
         elif token == "∞":
             # An endpoint token, never a scalar constant. The binder checks
             # its context and the type checker checks endpoint openness.

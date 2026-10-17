@@ -229,7 +229,9 @@ def validate_candidate(raw):
         }
         return result
     result["revision"] = revision(candidate)
-    report = NotationValidator().validate_root(candidate["root"])
+    report = NotationValidator().validate_root(
+        candidate["root"], contracts.schema()["$defs"]
+    )
     result["reports"]["ir"] = report.payload()
     if report.ok:
         try:

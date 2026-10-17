@@ -1,0 +1,39 @@
+{
+  "page": "figure-and-sections",
+  "note": "大题标题分隔；第 14 题配图在题干下方",
+  "width": 2100,
+  "height": 2700,
+  "questions": [
+    {
+      "number": 13,
+      "case": "q03",
+      "box": [
+        141,
+        274,
+        1906,
+        423
+      ]
+    },
+    {
+      "number": 14,
+      "case": null,
+      "box": [
+        196,
+        585,
+        1720,
+        1155
+      ],
+      "has_figure": true
+    },
+    {
+      "number": 15,
+      "case": "q08",
+      "box": [
+        141,
+        1439,
+        1841,
+        1589
+      ]
+    }
+  ]
+}

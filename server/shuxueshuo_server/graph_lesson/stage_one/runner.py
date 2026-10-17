@@ -6,6 +6,7 @@ import shutil
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from hashlib import sha256
+from io import BytesIO
 from pathlib import Path
 from time import perf_counter, time
 
@@ -52,10 +53,15 @@ def digest(path):
 
 def build_request(fixture, store):
     """Only pixels and shared contracts enter the provider request."""
-    source = Path(fixture) / "source.png"
-    content = source.read_bytes()
+    return build_image_request((Path(fixture) / "source.png").read_bytes(), store)
+
+
+def build_image_request(content, store):
+    """Provider request for one PNG question image; the student search path uses this too."""
     source_hash = sha256(content).hexdigest()
-    with Image.open(source) as image:
+    with Image.open(BytesIO(content)) as image:
+        if image.format != "PNG":
+            raise ValueError("stage one expects a PNG question image")
         width, height = image.size
     artifact = store.put_bytes(kind="graph_stage_one_source", content=content, media_type="image/png", suffix=".png")
     pack = MultimodalEvidencePack(

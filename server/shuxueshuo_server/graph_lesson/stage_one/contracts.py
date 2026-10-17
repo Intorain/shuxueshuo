@@ -52,7 +52,7 @@ def expression_catalog():
     catalog["version"] = overlay["version"]
     catalog["expressions"] = [
         overlay["overrides"].get(entry["id"], entry) for entry in catalog["expressions"]
-    ]
+    ] + overlay.get("additions", [])
     return catalog
 
 

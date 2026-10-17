@@ -14,7 +14,7 @@ from shuxueshuo_server.problem_understanding.workflow_diagnostics import (
 
 
 def test_repair_retry_accepts_a_complete_candidate_without_scope_grants(tmp_path):
-    initial = candidate(["t > (0", "t ~ 1"])
+    initial = candidate(["t > (0", "t > 1"])
     repaired = candidate(["t > 0"])
     model = Sequence(initial, repaired, {"status": "confirmed", "findings": []})
     result = run(tmp_path, model)
@@ -23,6 +23,15 @@ def test_repair_retry_accepts_a_complete_candidate_without_scope_grants(tmp_path
     request = json.loads(model.requests[1].prompt.user_prefix)
     assert "allowed_changes" not in request
     assert "change_guard" not in json.dumps(result["events"], ensure_ascii=False)
+
+
+def test_any_code_gap_stops_before_repairing_other_findings(tmp_path):
+    initial = candidate(["t > (0", "t ~ 1"])
+    model = Sequence(initial)
+    result = run(tmp_path, model)
+    assert result["status"] == "code_gap"
+    assert result["content_calls"] == 1 and result["review_calls"] == 0
+    assert {d["action"] for d in result["diagnostics"]} == {"repair", "code_gap"}
 
 
 @pytest.mark.parametrize("gap_path", ["/root", "/root/facts", "/root/facts/0"])

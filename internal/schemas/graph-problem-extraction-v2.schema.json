@@ -270,6 +270,27 @@
                 },
                 "additionalProperties": false,
                 "description": "求一个参数的取值范围。symbol填写参数名，不输出解出的区间。"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "symbol"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "find_count",
+                    "description": "求个数"
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096,
+                    "description": "所计数的集合符号，如M；本节点及父节点条件就是对它的全部限制。不写|{M:…}|、中文名称或答案。"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "求满足本节点条件的集合有多少个（如“满足条件的集合M的个数”）。symbol填写集合名，条件写在facts，不输出算出的个数。"
               }
             ]
           },

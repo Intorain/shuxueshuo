@@ -13,14 +13,14 @@ from .test_generated_explanation import Generator, initial
 from .test_tutor_demo import Tutor
 
 
-def test_local_entry_serves_both_model_routes_even_when_configured_quotas_are_zero(monkeypatch):
+def test_local_entry_serves_both_model_routes_even_when_configured_quotas_are_zero(monkeypatch, tmp_path):
     for name in ("TUTOR_SESSION_CALL_LIMIT", "TUTOR_USER_DAILY_CALL_LIMIT", "TUTOR_DAILY_CALL_LIMIT"):
         monkeypatch.setenv(name, "0")
     tutor = Tutor()
     explanation = Generator(initial(), {"outcome": "feedback", "reply": "可以先换元。"})
     monkeypatch.setattr(run_site, "create_router", lambda *, budget, enable_explanation: create_router(
         tutor=tutor, explanation_interpreter=explanation, budget=budget, enable_explanation=enable_explanation))
-    app = run_site.create_local_app(SimpleNamespace(mode="local"), AuthConfig(environment="development"))
+    app = run_site.create_local_app(SimpleNamespace(mode="local", root=tmp_path), AuthConfig(environment="development"))
     app.dependency_overrides[require_tutor_user] = lambda: {"id": "local-test-user"}
     # No lifespan/database: these requests must not touch the production ledger.
     client = TestClient(app)

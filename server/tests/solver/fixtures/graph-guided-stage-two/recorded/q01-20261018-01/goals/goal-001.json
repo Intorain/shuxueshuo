@@ -1,0 +1,993 @@
+{
+  "target_ref": "/root/goals/0",
+  "scope": "/root",
+  "label": "",
+  "goal": {
+    "kind": "find_range",
+    "symbol": "a"
+  },
+  "status": "resolved",
+  "diagnostics": [],
+  "knowledge": {
+    "items": [
+      {
+        "ref": "quantifiers#universal",
+        "rule_id": "quantifier-universal",
+        "feature_ids": [
+          "quantifier"
+        ],
+        "values": {
+          "quantifier": "∀"
+        },
+        "fragment_kinds": [
+          "quantifier"
+        ]
+      },
+      {
+        "ref": "quantifiers#roles",
+        "rule_id": "variable-roles",
+        "feature_ids": [
+          "bound_vars",
+          "free_vars",
+          "goal"
+        ],
+        "values": {
+          "bound_vars": [
+            "x"
+          ],
+          "free_vars": [
+            "a"
+          ],
+          "goal": {
+            "kind": "find_range",
+            "symbol": "a"
+          }
+        },
+        "fragment_kinds": [
+          "quantifier",
+          "domain",
+          "goal"
+        ],
+        "matched_any": [
+          "bound_vars",
+          "goal"
+        ]
+      },
+      {
+        "ref": "quantifiers#domain",
+        "rule_id": "quantified-domain",
+        "feature_ids": [
+          "domain"
+        ],
+        "values": {
+          "domain": {
+            "expression": "ℝ",
+            "lower": "-∞",
+            "upper": "∞",
+            "left_closed": false,
+            "right_closed": false,
+            "bounded": false
+          }
+        },
+        "fragment_kinds": [
+          "domain"
+        ]
+      },
+      {
+        "ref": "quadratic-inequality#definition",
+        "rule_id": "quadratic-relation",
+        "feature_ids": [
+          "relation",
+          "degree_in_bound"
+        ],
+        "values": {
+          "relation": {
+            "operator": "<=",
+            "strict": false,
+            "lhs": "-x^2 + 2*x + 3",
+            "rhs": "a^2 - 3*a"
+          },
+          "degree_in_bound": {
+            "variable": "x",
+            "degree": 2,
+            "degree_kind": "exact",
+            "expression": "a^2 - 3*a + x^2 - 2*x - 3"
+          }
+        },
+        "fragment_kinds": [
+          "relation"
+        ]
+      },
+      {
+        "ref": "quadratic-function-properties#definition",
+        "rule_id": "quadratic-function",
+        "feature_ids": [
+          "degree_in_bound"
+        ],
+        "values": {
+          "degree_in_bound": {
+            "variable": "x",
+            "degree": 2,
+            "degree_kind": "exact",
+            "expression": "a^2 - 3*a + x^2 - 2*x - 3"
+          }
+        },
+        "fragment_kinds": [
+          "relation"
+        ]
+      }
+    ],
+    "links": [
+      {
+        "from": "quadratic-function-properties",
+        "to": "type-quantified-quadratic",
+        "relation": "involves",
+        "knowledge_refs": [
+          "quadratic-function-properties#definition"
+        ]
+      },
+      {
+        "from": "quadratic-inequality",
+        "to": "type-quantified-quadratic",
+        "relation": "involves",
+        "knowledge_refs": [
+          "quadratic-inequality#definition"
+        ]
+      },
+      {
+        "from": "quantifiers",
+        "to": "type-quantified-quadratic",
+        "relation": "involves",
+        "knowledge_refs": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain"
+        ]
+      }
+    ],
+    "diagnostics": []
+  },
+  "types": [
+    {
+      "type_id": "type-amgm-quantified",
+      "label": "应用基本不等式的恒成立与存在成立问题",
+      "status": "supported",
+      "branches": [
+        {
+          "branch_id": "verified-bound",
+          "status": "supported",
+          "checks": [
+            {
+              "check_id": "type-amgm-quantified/verified-bound/quantifier",
+              "status": "supported",
+              "feature_id": "quantifier",
+              "actual": "∀",
+              "expected": [
+                "∀",
+                "∃"
+              ],
+              "op": "in",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-amgm-quantified",
+                "index": 0,
+                "text": "有「恒成立」「对所有……都成立」或「存在……使得成立」这样的话，要求的是参数的范围。"
+              }
+            },
+            {
+              "check_id": "type-amgm-quantified/verified-bound/range-goal",
+              "status": "supported",
+              "feature_id": "goal",
+              "actual": "find_range",
+              "expected": "find_range",
+              "op": "eq",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-amgm-quantified",
+                "index": 0,
+                "text": "有「恒成立」「对所有……都成立」或「存在……使得成立」这样的话，要求的是参数的范围。"
+              }
+            },
+            {
+              "check_id": "type-amgm-quantified/verified-bound/verified-sum-product",
+              "status": "supported",
+              "feature_id": "verification.amgm",
+              "actual": "supported",
+              "expected": "supported",
+              "op": "eq",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-amgm-quantified",
+                "index": 2,
+                "text": "这个最值能用基本不等式求：能凑出两个正数，它们的积或和是定值。"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type_id": "type-parameter-quadratic-solve",
+      "label": "含参数的一元二次不等式求解问题",
+      "status": "conflict",
+      "branches": [
+        {
+          "branch_id": "parameter-solve",
+          "status": "conflict",
+          "checks": [
+            {
+              "check_id": "type-parameter-quadratic-solve/parameter-solve/solution-goal",
+              "status": "supported",
+              "feature_id": "goal",
+              "actual": "find_range",
+              "expected": "find_range",
+              "op": "eq",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-parameter-quadratic-solve",
+                "index": 1,
+                "text": "要求的是 $x$ 的解集，答案按参数的不同取值分别写。"
+              }
+            },
+            {
+              "check_id": "type-parameter-quadratic-solve/parameter-solve/parameter-coefficients",
+              "status": "supported",
+              "feature_id": "coefficients",
+              "actual": {
+                "variable": "x",
+                "expression": "a^2 - 3*a + x^2 - 2*x - 3",
+                "items": [
+                  {
+                    "power": 2,
+                    "expression": "1",
+                    "contains_parameters": false
+                  },
+                  {
+                    "power": 1,
+                    "expression": "-2",
+                    "contains_parameters": false
+                  },
+                  {
+                    "power": 0,
+                    "expression": "a^2 - 3*a - 3",
+                    "contains_parameters": true
+                  }
+                ]
+              },
+              "expected": {
+                "predicate": "parameter_coefficients"
+              },
+              "op": "parameter_coefficients",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-parameter-quadratic-solve",
+                "index": 0,
+                "text": "要解的是关于 $x$ 的二次不等式，但系数里还有另一个字母（参数）。"
+              }
+            },
+            {
+              "check_id": "type-parameter-quadratic-solve/parameter-solve/no-quantifier",
+              "status": "conflict",
+              "feature_id": "quantifier",
+              "actual": "∀",
+              "expected": [
+                "∀",
+                "∃"
+              ],
+              "op": "in",
+              "role": "exclude",
+              "student_cue": {
+                "type_id": "type-parameter-quadratic-solve",
+                "index": 0,
+                "text": "要解的是关于 $x$ 的二次不等式，但系数里还有另一个字母（参数）。"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type_id": "type-quantified-quadratic",
+      "label": "含参一元二次不等式的恒成立与存在成立问题",
+      "status": "supported",
+      "branches": [
+        {
+          "branch_id": "bound-quadratic",
+          "status": "supported",
+          "checks": [
+            {
+              "check_id": "type-quantified-quadratic/bound-quadratic/quantifier",
+              "status": "supported",
+              "feature_id": "quantifier",
+              "actual": "∀",
+              "expected": [
+                "∀",
+                "∃"
+              ],
+              "op": "in",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 0,
+                "text": "有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/bound-quadratic/range-goal",
+              "status": "supported",
+              "feature_id": "goal",
+              "actual": "find_range",
+              "expected": "find_range",
+              "op": "eq",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 1,
+                "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/bound-quadratic/inequality",
+              "status": "supported",
+              "feature_id": "relation",
+              "actual": "<=",
+              "expected": [
+                "<",
+                "<=",
+                ">",
+                ">="
+              ],
+              "op": "in",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 1,
+                "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/bound-quadratic/quadratic-degree",
+              "status": "supported",
+              "feature_id": "degree_in_bound",
+              "actual": {
+                "variable": "x",
+                "degree": 2,
+                "degree_kind": "exact",
+                "expression": "a^2 - 3*a + x^2 - 2*x - 3"
+              },
+              "expected": {
+                "predicate": "quadratic"
+              },
+              "op": "quadratic",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 1,
+                "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+              }
+            }
+          ]
+        },
+        {
+          "branch_id": "variable-swap",
+          "status": "conflict",
+          "checks": [
+            {
+              "check_id": "type-quantified-quadratic/variable-swap/quantifier",
+              "status": "supported",
+              "feature_id": "quantifier",
+              "actual": "∀",
+              "expected": [
+                "∀",
+                "∃"
+              ],
+              "op": "in",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 0,
+                "text": "有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/variable-swap/range-goal",
+              "status": "supported",
+              "feature_id": "goal",
+              "actual": "find_range",
+              "expected": "find_range",
+              "op": "eq",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 1,
+                "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/variable-swap/inequality",
+              "status": "supported",
+              "feature_id": "relation",
+              "actual": "<=",
+              "expected": [
+                "<",
+                "<=",
+                ">",
+                ">="
+              ],
+              "op": "in",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 1,
+                "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/variable-swap/goal-quadratic",
+              "status": "supported",
+              "feature_id": "degree_in_goal",
+              "actual": {
+                "variable": "a",
+                "degree": 2,
+                "degree_kind": "exact",
+                "expression": "a^2 - 3*a + x^2 - 2*x - 3"
+              },
+              "expected": {
+                "predicate": "quadratic"
+              },
+              "op": "quadratic",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 1,
+                "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/variable-swap/bound-linear",
+              "status": "conflict",
+              "feature_id": "degree_in_bound",
+              "actual": 2,
+              "expected": 1,
+              "op": "lte",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 3,
+                "text": "先看清「对所有」后面的变量是谁，它不一定是 $x$。"
+              }
+            },
+            {
+              "check_id": "type-quantified-quadratic/variable-swap/roles-swapped",
+              "status": "conflict",
+              "feature_id": "range_var_is_principal",
+              "actual": true,
+              "expected": false,
+              "op": "eq",
+              "role": "required",
+              "student_cue": {
+                "type_id": "type-quantified-quadratic",
+                "index": 3,
+                "text": "先看清「对所有」后面的变量是谁，它不一定是 $x$。"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "primary": "type-quantified-quadratic",
+  "primary_source": "llm",
+  "supported": [
+    "type-amgm-quantified",
+    "type-quantified-quadratic"
+  ],
+  "d1": {
+    "fragments": [
+      {
+        "target_ref": "/root/goals/0",
+        "start": 6,
+        "end": 24,
+        "text": "-x^2+2x+3 ≤ a^2-3a",
+        "fragment_kind": "relation",
+        "matched_feature_ids": [
+          "relation"
+        ],
+        "knowledge_rule_ids": [
+          "quadratic-function",
+          "quadratic-relation"
+        ],
+        "knowledge_refs": [
+          "quadratic-function-properties#definition",
+          "quadratic-inequality#definition"
+        ],
+        "source_refs": [
+          "/root/facts/0",
+          "/root/goals/0"
+        ],
+        "id": "/root/goals/0:d1:1"
+      },
+      {
+        "target_ref": "/root/goals/0",
+        "start": 27,
+        "end": 29,
+        "text": "任意",
+        "fragment_kind": "quantifier",
+        "matched_feature_ids": [
+          "quantifier"
+        ],
+        "knowledge_rule_ids": [
+          "quantifier-universal"
+        ],
+        "knowledge_refs": [
+          "quantifiers#universal"
+        ],
+        "source_refs": [
+          "/root/facts/0"
+        ],
+        "id": "/root/goals/0:d1:2"
+      },
+      {
+        "target_ref": "/root/goals/0",
+        "start": 29,
+        "end": 35,
+        "text": "实数 $x$",
+        "fragment_kind": "domain",
+        "matched_feature_ids": [
+          "bound_vars",
+          "domain"
+        ],
+        "knowledge_rule_ids": [
+          "quantified-domain",
+          "variable-roles"
+        ],
+        "knowledge_refs": [
+          "quantifiers#domain",
+          "quantifiers#roles"
+        ],
+        "source_refs": [
+          "/root/facts/0",
+          "/root/goals/0"
+        ],
+        "id": "/root/goals/0:d1:3"
+      },
+      {
+        "target_ref": "/root/goals/0",
+        "start": 36,
+        "end": 39,
+        "text": "恒成立",
+        "fragment_kind": "quantifier",
+        "matched_feature_ids": [
+          "quantifier"
+        ],
+        "knowledge_rule_ids": [
+          "quantifier-universal"
+        ],
+        "knowledge_refs": [
+          "quantifiers#universal"
+        ],
+        "source_refs": [
+          "/root/facts/0"
+        ],
+        "id": "/root/goals/0:d1:4"
+      },
+      {
+        "target_ref": "/root/goals/0",
+        "start": 40,
+        "end": 53,
+        "text": "求实数 $a$ 的取值范围",
+        "fragment_kind": "goal",
+        "matched_feature_ids": [
+          "goal"
+        ],
+        "knowledge_rule_ids": [
+          "variable-roles"
+        ],
+        "knowledge_refs": [
+          "quantifiers#roles"
+        ],
+        "source_refs": [
+          "/root/facts/0",
+          "/root/goals/0"
+        ],
+        "id": "/root/goals/0:d1:5"
+      }
+    ],
+    "diagnostics": []
+  },
+  "d2": {
+    "options": [
+      {
+        "type_id": "type-amgm-quantified",
+        "label": "应用基本不等式的恒成立与存在成立问题",
+        "status": "supported",
+        "role": "alternative",
+        "feedback": "这是得到支持的替代思路，不是数学错误。",
+        "check_ids": [
+          "type-amgm-quantified/verified-bound/quantifier",
+          "type-amgm-quantified/verified-bound/range-goal",
+          "type-amgm-quantified/verified-bound/verified-sum-product"
+        ],
+        "checks": [
+          {
+            "check_id": "type-amgm-quantified/verified-bound/quantifier",
+            "status": "supported",
+            "feature_id": "quantifier",
+            "actual": "∀",
+            "expected": [
+              "∀",
+              "∃"
+            ],
+            "op": "in",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-amgm-quantified",
+              "index": 0,
+              "text": "有「恒成立」「对所有……都成立」或「存在……使得成立」这样的话，要求的是参数的范围。"
+            }
+          },
+          {
+            "check_id": "type-amgm-quantified/verified-bound/range-goal",
+            "status": "supported",
+            "feature_id": "goal",
+            "actual": "find_range",
+            "expected": "find_range",
+            "op": "eq",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-amgm-quantified",
+              "index": 0,
+              "text": "有「恒成立」「对所有……都成立」或「存在……使得成立」这样的话，要求的是参数的范围。"
+            }
+          },
+          {
+            "check_id": "type-amgm-quantified/verified-bound/verified-sum-product",
+            "status": "supported",
+            "feature_id": "verification.amgm",
+            "actual": "supported",
+            "expected": "supported",
+            "op": "eq",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-amgm-quantified",
+              "index": 2,
+              "text": "这个最值能用基本不等式求：能凑出两个正数，它们的积或和是定值。"
+            }
+          }
+        ],
+        "confuse_sources": []
+      },
+      {
+        "type_id": "type-quantified-quadratic",
+        "label": "含参一元二次不等式的恒成立与存在成立问题",
+        "status": "supported",
+        "role": "primary",
+        "feedback": "这是已确认的主要题型。",
+        "check_ids": [
+          "type-quantified-quadratic/bound-quadratic/quantifier",
+          "type-quantified-quadratic/bound-quadratic/range-goal",
+          "type-quantified-quadratic/bound-quadratic/inequality",
+          "type-quantified-quadratic/bound-quadratic/quadratic-degree",
+          "type-quantified-quadratic/variable-swap/quantifier",
+          "type-quantified-quadratic/variable-swap/range-goal",
+          "type-quantified-quadratic/variable-swap/inequality",
+          "type-quantified-quadratic/variable-swap/goal-quadratic"
+        ],
+        "checks": [
+          {
+            "check_id": "type-quantified-quadratic/bound-quadratic/quantifier",
+            "status": "supported",
+            "feature_id": "quantifier",
+            "actual": "∀",
+            "expected": [
+              "∀",
+              "∃"
+            ],
+            "op": "in",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 0,
+              "text": "有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/bound-quadratic/range-goal",
+            "status": "supported",
+            "feature_id": "goal",
+            "actual": "find_range",
+            "expected": "find_range",
+            "op": "eq",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 1,
+              "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/bound-quadratic/inequality",
+            "status": "supported",
+            "feature_id": "relation",
+            "actual": "<=",
+            "expected": [
+              "<",
+              "<=",
+              ">",
+              ">="
+            ],
+            "op": "in",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 1,
+              "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/bound-quadratic/quadratic-degree",
+            "status": "supported",
+            "feature_id": "degree_in_bound",
+            "actual": {
+              "variable": "x",
+              "degree": 2,
+              "degree_kind": "exact",
+              "expression": "a^2 - 3*a + x^2 - 2*x - 3"
+            },
+            "expected": {
+              "predicate": "quadratic"
+            },
+            "op": "quadratic",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 1,
+              "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/variable-swap/quantifier",
+            "status": "supported",
+            "feature_id": "quantifier",
+            "actual": "∀",
+            "expected": [
+              "∀",
+              "∃"
+            ],
+            "op": "in",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 0,
+              "text": "有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/variable-swap/range-goal",
+            "status": "supported",
+            "feature_id": "goal",
+            "actual": "find_range",
+            "expected": "find_range",
+            "op": "eq",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 1,
+              "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/variable-swap/inequality",
+            "status": "supported",
+            "feature_id": "relation",
+            "actual": "<=",
+            "expected": [
+              "<",
+              "<=",
+              ">",
+              ">="
+            ],
+            "op": "in",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 1,
+              "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+            }
+          },
+          {
+            "check_id": "type-quantified-quadratic/variable-swap/goal-quadratic",
+            "status": "supported",
+            "feature_id": "degree_in_goal",
+            "actual": {
+              "variable": "a",
+              "degree": 2,
+              "degree_kind": "exact",
+              "expression": "a^2 - 3*a + x^2 - 2*x - 3"
+            },
+            "expected": {
+              "predicate": "quadratic"
+            },
+            "op": "quadratic",
+            "role": "required",
+            "student_cue": {
+              "type_id": "type-quantified-quadratic",
+              "index": 1,
+              "text": "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+            }
+          }
+        ],
+        "confuse_sources": []
+      },
+      {
+        "type_id": "type-parameter-quadratic-solve",
+        "label": "含参数的一元二次不等式求解问题",
+        "status": "conflict",
+        "role": "conflict",
+        "feedback": "没有「对所有」，只要求出 $x$ 的解集，系数里有参数",
+        "check_ids": [
+          "type-parameter-quadratic-solve/parameter-solve/no-quantifier"
+        ],
+        "checks": [
+          {
+            "check_id": "type-parameter-quadratic-solve/parameter-solve/no-quantifier",
+            "status": "conflict",
+            "feature_id": "quantifier",
+            "actual": "∀",
+            "expected": [
+              "∀",
+              "∃"
+            ],
+            "op": "in",
+            "role": "exclude",
+            "student_cue": {
+              "type_id": "type-parameter-quadratic-solve",
+              "index": 0,
+              "text": "要解的是关于 $x$ 的二次不等式，但系数里还有另一个字母（参数）。"
+            }
+          }
+        ],
+        "confuse_sources": [
+          {
+            "type_id": "type-quantified-quadratic",
+            "text": "没有「对所有」，只要求出 $x$ 的解集，系数里有参数"
+          }
+        ]
+      }
+    ]
+  },
+  "verification": {
+    "status": "supported",
+    "reason": "verification.q01_sum_product_bound",
+    "steps": [
+      {
+        "step_id": "separate-bound",
+        "operation": "polynomial_identity",
+        "checked": true,
+        "expression": "p^2-3*p >= -u^2+2*u+3",
+        "input_operator": "<="
+      },
+      {
+        "step_id": "sum-product-identity",
+        "operation": "polynomial_identity",
+        "checked": true,
+        "expression": "-u^2+2*u+3 = 3+u*(2-u)"
+      },
+      {
+        "step_id": "positive-factors",
+        "operation": "linear_signs_on_interval",
+        "checked": true,
+        "domain": "0<u<2",
+        "conclusions": [
+          "u>0",
+          "2-u>0"
+        ]
+      },
+      {
+        "step_id": "fixed-sum",
+        "operation": "polynomial_identity",
+        "checked": true,
+        "expression": "u+(2-u)=2"
+      },
+      {
+        "step_id": "amgm-bound",
+        "operation": "amgm_with_square_certificate",
+        "checked": true,
+        "domain": "0<u<2",
+        "expression": "u*(2-u)<=1",
+        "certificate": "1-u*(2-u)=(u-1)^2"
+      },
+      {
+        "step_id": "outside-sign",
+        "operation": "linear_signs_on_half_lines",
+        "checked": true,
+        "cases": [
+          {
+            "domain": "u<=0",
+            "factors": [
+              "u<=0",
+              "2-u>=2"
+            ]
+          },
+          {
+            "domain": "u>=2",
+            "factors": [
+              "u>=2",
+              "2-u<=0"
+            ]
+          }
+        ],
+        "conclusion": "u*(2-u)<=0"
+      },
+      {
+        "step_id": "attainment",
+        "operation": "exact_substitution",
+        "checked": true,
+        "point": "u=1",
+        "domain_verified": true,
+        "product": "1",
+        "value": "4"
+      },
+      {
+        "step_id": "full-real-bound",
+        "operation": "cover_domain_and_attain",
+        "checked": true,
+        "cover": [
+          "u<=0",
+          "0<u<2",
+          "u>=2"
+        ],
+        "maximum": "4",
+        "attained": true
+      }
+    ],
+    "input_refs": [
+      "/root/facts/0",
+      "/root/goals/0"
+    ],
+    "input_revision": "83137ac4bbc44166ef026616460f6b08854f884dc6e6efb9cd258d7cb37ae4a0",
+    "variables": {
+      "bound": [
+        "x"
+      ],
+      "goal": {
+        "kind": "find_range",
+        "symbol": "a"
+      }
+    }
+  },
+  "llm": {
+    "status": "succeeded",
+    "mode": "provider",
+    "semantic_calls": 1,
+    "network_attempts": 1,
+    "candidate_ids": [
+      "type-amgm-quantified",
+      "type-quantified-quadratic"
+    ],
+    "request_ref": "request.json",
+    "response_ref": "response.json",
+    "timeout_seconds": 120.0,
+    "max_network_attempts": 2,
+    "validation": {
+      "ok": true
+    },
+    "request_hash": "0d20c647de59bd8a536eb77c8156c143332934524fa874876e034769ec79e2cd",
+    "selection": {
+      "contract": "graph-stage-two-selection/v1",
+      "target_ref": "/root/goals/0",
+      "primary_type_id": "type-quantified-quadratic",
+      "branch_id": "bound-quadratic",
+      "check_ids": [
+        "type-quantified-quadratic/bound-quadratic/quantifier",
+        "type-quantified-quadratic/bound-quadratic/range-goal",
+        "type-quantified-quadratic/bound-quadratic/inequality",
+        "type-quantified-quadratic/bound-quadratic/quadratic-degree"
+      ],
+      "reason": "题目要求含参不等式对任意实数 x 恒成立，并求参数 a 的范围；关于 x 的二次式直接出现在恒成立条件中，属于含参一元二次不等式的恒成立问题，bound-quadratic 分支直接对应这一条件与所求。"
+    },
+    "elapsed_seconds": 2.224182,
+    "new_semantic_calls": 1,
+    "new_network_attempts": 1
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "primary": "type-quantified-quadratic",
+  "diagnostics": [],
+  "llm": {
+    "status": "succeeded",
+    "mode": "provider",
+    "semantic_calls": 1,
+    "network_attempts": 1,
+    "candidate_ids": [
+      "type-amgm-quantified",
+      "type-quantified-quadratic"
+    ],
+    "request_ref": "request.json",
+    "response_ref": "response.json",
+    "timeout_seconds": 120.0,
+    "max_network_attempts": 2,
+    "validation": {
+      "ok": true
+    },
+    "request_hash": "0d20c647de59bd8a536eb77c8156c143332934524fa874876e034769ec79e2cd",
+    "selection": {
+      "contract": "graph-stage-two-selection/v1",
+      "target_ref": "/root/goals/0",
+      "primary_type_id": "type-quantified-quadratic",
+      "branch_id": "bound-quadratic",
+      "check_ids": [
+        "type-quantified-quadratic/bound-quadratic/quantifier",
+        "type-quantified-quadratic/bound-quadratic/range-goal",
+        "type-quantified-quadratic/bound-quadratic/inequality",
+        "type-quantified-quadratic/bound-quadratic/quadratic-degree"
+      ],
+      "reason": "题目要求含参不等式对任意实数 x 恒成立，并求参数 a 的范围；关于 x 的二次式直接出现在恒成立条件中，属于含参一元二次不等式的恒成立问题，bound-quadratic 分支直接对应这一条件与所求。"
+    },
+    "elapsed_seconds": 2.224182,
+    "new_semantic_calls": 1,
+    "new_network_attempts": 1
+  }
+}

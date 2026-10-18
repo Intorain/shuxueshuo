@@ -1,0 +1,213 @@
+{
+  "schema_version": "graph-stage-two-recognition-gold/v1",
+  "provenance": "Independently authored from Q01–Q11 statements and stage-two implementation plan sections 3 and 6; AMGM verification disabled.",
+  "cases": {
+    "q01": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q02": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q03": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q04": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q05": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#existential",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q06": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q07": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q08": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "variable-swap",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition"
+        ]
+      }
+    ],
+    "q09": [
+      {
+        "target_ref": "/root/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "variable-swap",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition"
+        ]
+      }
+    ],
+    "q10": [
+      {
+        "target_ref": "/root/children/0/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      },
+      {
+        "target_ref": "/root/children/1/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#existential",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ],
+    "q11": [
+      {
+        "target_ref": "/root/children/0/goals/0",
+        "supported": [],
+        "quadratic_branch": null,
+        "parameter_status": "unknown",
+        "knowledge": []
+      },
+      {
+        "target_ref": "/root/children/1/goals/0",
+        "supported": [
+          "type-quantified-quadratic"
+        ],
+        "quadratic_branch": "bound-quadratic",
+        "parameter_status": "conflict",
+        "knowledge": [
+          "quantifiers#universal",
+          "quantifiers#roles",
+          "quantifiers#domain",
+          "quadratic-inequality#definition",
+          "quadratic-function-properties#definition"
+        ]
+      }
+    ]
+  }
+}

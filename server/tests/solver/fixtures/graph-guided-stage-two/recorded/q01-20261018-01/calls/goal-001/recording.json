@@ -1,0 +1,11 @@
+{
+  "schema_version": "graph-stage-two-selection-recording/v1",
+  "request_hash": "0d20c647de59bd8a536eb77c8156c143332934524fa874876e034769ec79e2cd",
+  "response_hash": "694747ec810d40d42382f3c28a7535271da8e609e462b6f6e7faf9dfee8dbeb0",
+  "result_hash": "1bb8e77a59cb9642478e3efb034690d236cd61b07eab83279953dee47523235e",
+  "counts": {
+    "semantic_calls": 1,
+    "network_attempts": 1
+  },
+  "mode": "provider"
+}

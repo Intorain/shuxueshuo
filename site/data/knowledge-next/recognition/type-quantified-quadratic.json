@@ -1,0 +1,115 @@
+{
+  "schema_version": "graph-type-recognition/v1",
+  "type_id": "type-quantified-quadratic",
+  "branches": [
+    {
+      "branch_id": "bound-quadratic",
+      "checks": [
+        {
+          "id": "quantifier",
+          "feature_id": "quantifier",
+          "op": "in",
+          "role": "required",
+          "student_cue": 0,
+          "expected": [
+            "∀",
+            "∃"
+          ]
+        },
+        {
+          "id": "range-goal",
+          "feature_id": "goal",
+          "op": "eq",
+          "role": "required",
+          "student_cue": 1,
+          "expected": "find_range",
+          "path": "kind"
+        },
+        {
+          "id": "inequality",
+          "feature_id": "relation",
+          "op": "in",
+          "role": "required",
+          "student_cue": 1,
+          "expected": [
+            "<",
+            "<=",
+            ">",
+            ">="
+          ],
+          "path": "operator"
+        },
+        {
+          "id": "quadratic-degree",
+          "feature_id": "degree_in_bound",
+          "op": "quadratic",
+          "role": "required",
+          "student_cue": 1
+        }
+      ]
+    },
+    {
+      "branch_id": "variable-swap",
+      "checks": [
+        {
+          "id": "quantifier",
+          "feature_id": "quantifier",
+          "op": "in",
+          "role": "required",
+          "student_cue": 0,
+          "expected": [
+            "∀",
+            "∃"
+          ]
+        },
+        {
+          "id": "range-goal",
+          "feature_id": "goal",
+          "op": "eq",
+          "role": "required",
+          "student_cue": 1,
+          "expected": "find_range",
+          "path": "kind"
+        },
+        {
+          "id": "inequality",
+          "feature_id": "relation",
+          "op": "in",
+          "role": "required",
+          "student_cue": 1,
+          "expected": [
+            "<",
+            "<=",
+            ">",
+            ">="
+          ],
+          "path": "operator"
+        },
+        {
+          "id": "goal-quadratic",
+          "feature_id": "degree_in_goal",
+          "op": "quadratic",
+          "role": "required",
+          "student_cue": 1
+        },
+        {
+          "id": "bound-linear",
+          "feature_id": "degree_in_bound",
+          "op": "lte",
+          "role": "required",
+          "student_cue": 3,
+          "expected": 1,
+          "path": "degree"
+        },
+        {
+          "id": "roles-swapped",
+          "feature_id": "range_var_is_principal",
+          "op": "eq",
+          "role": "required",
+          "student_cue": 3,
+          "expected": false
+        }
+      ]
+    }
+  ]
+}

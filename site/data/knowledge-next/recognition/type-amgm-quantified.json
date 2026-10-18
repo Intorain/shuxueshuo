@@ -1,0 +1,39 @@
+{
+  "schema_version": "graph-type-recognition/v1",
+  "type_id": "type-amgm-quantified",
+  "branches": [
+    {
+      "branch_id": "verified-bound",
+      "checks": [
+        {
+          "id": "quantifier",
+          "feature_id": "quantifier",
+          "op": "in",
+          "role": "required",
+          "student_cue": 0,
+          "expected": [
+            "∀",
+            "∃"
+          ]
+        },
+        {
+          "id": "range-goal",
+          "feature_id": "goal",
+          "op": "eq",
+          "role": "required",
+          "student_cue": 0,
+          "expected": "find_range",
+          "path": "kind"
+        },
+        {
+          "id": "verified-sum-product",
+          "feature_id": "verification.amgm",
+          "op": "eq",
+          "role": "required",
+          "student_cue": 2,
+          "expected": "supported"
+        }
+      ]
+    }
+  ]
+}

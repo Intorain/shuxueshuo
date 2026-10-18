@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-two-selection/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "target_ref", "primary_type_id", "branch_id", "check_ids", "reason"],
+  "properties": {
+    "contract": {"const": "graph-stage-two-selection/v1"},
+    "target_ref": {"type": "string", "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"},
+    "primary_type_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "branch_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "check_ids": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1024}},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "\\S"}
+  }
+}

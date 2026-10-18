@@ -1,0 +1,114 @@
+{
+  "schema_version": "graph-feature-knowledge/v1",
+  "rules": [
+    {
+      "rule_id": "quantifier-universal",
+      "ref": "quantifiers#universal",
+      "conditions": {
+        "feature_id": "quantifier",
+        "op": "eq",
+        "expected": "∀"
+      },
+      "fragment_kinds": [
+        "quantifier"
+      ]
+    },
+    {
+      "rule_id": "quantifier-existential",
+      "ref": "quantifiers#existential",
+      "conditions": {
+        "feature_id": "quantifier",
+        "op": "eq",
+        "expected": "∃"
+      },
+      "fragment_kinds": [
+        "quantifier"
+      ]
+    },
+    {
+      "rule_id": "variable-roles",
+      "ref": "quantifiers#roles",
+      "conditions": {
+        "all": [
+          {
+            "feature_id": "bound_vars",
+            "op": "known"
+          },
+          {
+            "feature_id": "free_vars",
+            "op": "known"
+          },
+          {
+            "feature_id": "goal",
+            "op": "known"
+          }
+        ]
+      },
+      "fragment_kinds": [
+        "quantifier",
+        "domain",
+        "goal"
+      ],
+      "matched_any": [
+        "bound_vars",
+        "goal"
+      ]
+    },
+    {
+      "rule_id": "quantified-domain",
+      "ref": "quantifiers#domain",
+      "conditions": {
+        "feature_id": "domain",
+        "op": "known"
+      },
+      "fragment_kinds": [
+        "domain"
+      ]
+    },
+    {
+      "rule_id": "quadratic-relation",
+      "ref": "quadratic-inequality#definition",
+      "conditions": {
+        "all": [
+          {
+            "feature_id": "relation",
+            "op": "in",
+            "expected": [
+              "<",
+              "<=",
+              ">",
+              ">="
+            ],
+            "path": "operator"
+          },
+          {
+            "any": [
+              {
+                "feature_id": "degree_in_bound",
+                "op": "quadratic"
+              },
+              {
+                "feature_id": "degree_in_goal",
+                "op": "quadratic"
+              }
+            ]
+          }
+        ]
+      },
+      "fragment_kinds": [
+        "relation"
+      ]
+    },
+    {
+      "rule_id": "quadratic-function",
+      "ref": "quadratic-function-properties#definition",
+      "conditions": {
+        "feature_id": "degree_in_bound",
+        "op": "quadratic"
+      },
+      "fragment_kinds": [
+        "relation"
+      ]
+    }
+  ]
+}

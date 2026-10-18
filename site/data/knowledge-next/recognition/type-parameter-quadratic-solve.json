@@ -1,0 +1,38 @@
+{
+  "schema_version": "graph-type-recognition/v1",
+  "type_id": "type-parameter-quadratic-solve",
+  "branches": [
+    {
+      "branch_id": "parameter-solve",
+      "checks": [
+        {
+          "id": "solution-goal",
+          "feature_id": "goal",
+          "op": "eq",
+          "role": "required",
+          "student_cue": 1,
+          "expected": "find_range",
+          "path": "kind"
+        },
+        {
+          "id": "parameter-coefficients",
+          "feature_id": "coefficients",
+          "op": "parameter_coefficients",
+          "role": "required",
+          "student_cue": 0
+        },
+        {
+          "id": "no-quantifier",
+          "feature_id": "quantifier",
+          "op": "in",
+          "role": "exclude",
+          "student_cue": 0,
+          "expected": [
+            "∀",
+            "∃"
+          ]
+        }
+      ]
+    }
+  ]
+}

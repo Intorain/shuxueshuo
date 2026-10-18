@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage-two known/conditional input feature values",
+  "description": "Structural validation only, against stage-one feature registry output; unknown values are not interpreted.",
+  "$defs": {
+    "quantifier": {
+      "enum": [
+        "∀",
+        "∃"
+      ]
+    },
+    "bound_vars": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "free_vars": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "uniqueItems": true
+    },
+    "goal": {
+      "type": "object",
+      "required": [
+        "kind",
+        "symbol"
+      ],
+      "properties": {
+        "kind": {
+          "const": "find_range"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "domain": {
+      "type": "object",
+      "required": [
+        "expression",
+        "lower",
+        "upper",
+        "left_closed",
+        "right_closed",
+        "bounded"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "lower": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "upper": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "left_closed": {
+          "type": "boolean"
+        },
+        "right_closed": {
+          "type": "boolean"
+        },
+        "bounded": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "domain_kind": {
+      "enum": [
+        "real",
+        "bounded_interval",
+        "half_infinite_interval"
+      ]
+    },
+    "relation": {
+      "type": "object",
+      "required": [
+        "operator",
+        "strict",
+        "lhs",
+        "rhs"
+      ],
+      "properties": {
+        "operator": {
+          "enum": [
+            "<",
+            "<=",
+            ">",
+            ">=",
+            "=",
+            "!="
+          ]
+        },
+        "strict": {
+          "type": "boolean"
+        },
+        "lhs": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "rhs": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "normal_form": {
+      "type": "object",
+      "required": [
+        "expression",
+        "operator",
+        "rhs",
+        "variable"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "operator": {
+          "enum": [
+            ">",
+            ">=",
+            "=",
+            "!="
+          ]
+        },
+        "rhs": {
+          "const": "0"
+        },
+        "variable": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "degree_in_bound": {
+      "type": "object",
+      "required": [
+        "variable",
+        "degree",
+        "degree_kind",
+        "expression"
+      ],
+      "properties": {
+        "variable": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "degree": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "degree_kind": {
+          "enum": [
+            "exact",
+            "upper_bound",
+            "zero_polynomial"
+          ]
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "degree_kind": {
+                "const": "zero_polynomial"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "degree": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "degree": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "degree_in_goal": {
+      "type": "object",
+      "required": [
+        "variable",
+        "degree",
+        "degree_kind",
+        "expression"
+      ],
+      "properties": {
+        "variable": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "degree": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "degree_kind": {
+          "enum": [
+            "exact",
+            "upper_bound",
+            "zero_polynomial"
+          ]
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "degree_kind": {
+                "const": "zero_polynomial"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "degree": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "degree": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "leading_coeff_in_bound": {
+      "type": "object",
+      "required": [
+        "variable",
+        "expression",
+        "contains_parameters",
+        "may_be_zero"
+      ],
+      "properties": {
+        "variable": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "contains_parameters": {
+          "type": "boolean"
+        },
+        "may_be_zero": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "coefficients": {
+      "type": "object",
+      "required": [
+        "variable",
+        "expression",
+        "items"
+      ],
+      "properties": {
+        "variable": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "power",
+              "expression",
+              "contains_parameters"
+            ],
+            "properties": {
+              "power": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "expression": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "contains_parameters": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "range_var_is_principal": {
+      "type": "boolean"
+    }
+  }
+}

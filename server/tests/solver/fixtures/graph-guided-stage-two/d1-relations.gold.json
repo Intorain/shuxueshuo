@@ -1,0 +1,30 @@
+{
+  "provenance": "Independently selected relationship excerpts from the 22 recorded problem transcriptions; excludes definitions, domains, and the unquantified Q11(1).",
+  "batch": "live-v2-20261017-02",
+  "cases": [
+    {"question": "q01", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "-x^2+2x+3 ≤ a^2-3a"},
+    {"question": "q01", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "-x^2+2x+3 \\le a^2-3a"},
+    {"question": "q02", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "kx^2 + 2kx - (k + 2) < 0"},
+    {"question": "q02", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "kx^2+2kx-(k+2)<0"},
+    {"question": "q03", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "(a^2 - 1)x^2 - (a - 1)x - 1 < 0"},
+    {"question": "q03", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "(a^2-1)x^2-(a-1)x-1<0"},
+    {"question": "q04", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "x^2+mx+4<0"},
+    {"question": "q04", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "x^2+mx+4<0"},
+    {"question": "q05", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "x^2+mx+4>0"},
+    {"question": "q05", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "x^2+mx+4>0"},
+    {"question": "q06", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "x^2+ax+2≥0"},
+    {"question": "q06", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "x^2+ax+2≥0"},
+    {"question": "q07", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "mx^2-mx-1<0"},
+    {"question": "q07", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "mx^2 - mx - 1 < 0"},
+    {"question": "q08", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "y<0"},
+    {"question": "q08", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "y<0"},
+    {"question": "q09", "sample": "sample-01", "target_ref": "/root/goals/0", "text": "y>0"},
+    {"question": "q09", "sample": "sample-02", "target_ref": "/root/goals/0", "text": "y>0"},
+    {"question": "q10", "sample": "sample-01", "target_ref": "/root/children/0/goals/0", "text": "f(x)\\ge 0"},
+    {"question": "q10", "sample": "sample-01", "target_ref": "/root/children/1/goals/0", "text": "f(x)<0"},
+    {"question": "q10", "sample": "sample-02", "target_ref": "/root/children/0/goals/0", "text": "f(x)≥0"},
+    {"question": "q10", "sample": "sample-02", "target_ref": "/root/children/1/goals/0", "text": "f(x)<0"},
+    {"question": "q11", "sample": "sample-01", "target_ref": "/root/children/1/goals/0", "text": "f(x)<-m+5"},
+    {"question": "q11", "sample": "sample-02", "target_ref": "/root/children/1/goals/0", "text": "f(x)<-m+5"}
+  ]
+}

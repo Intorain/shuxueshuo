@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-two-result/v1",
+  "type": "object",
+  "required": ["contract", "run_id", "stage_one", "input_validation", "input_diagnostics", "status", "goals", "llm"],
+  "properties": {
+    "contract": {"const": "graph-stage-two-result/v1"},
+    "run_id": {"type": "string", "minLength": 1},
+    "stage_one": {"type": "object"},
+    "input_validation": {"type": "object", "required": ["ok", "diagnostics"], "properties": {"ok": {"type": "boolean"}, "diagnostics": {"type": "array"}}},
+    "input_diagnostics": {"type": "array"},
+    "status": {"enum": ["completed", "partial", "failed", "input_error"]},
+    "goals": {"type": "array", "items": {"$ref": "#/$defs/Goal"}},
+    "llm": {"type": "object"},
+    "replay_comparison": {
+      "type": "object", "required": ["ok", "baseline", "differences"],
+      "properties": {
+        "ok": {"type": "boolean"},
+        "baseline": {"const": "original_recorded_decisions"},
+        "differences": {"type": "array", "items": {
+          "type": "object", "required": ["target_ref", "field", "expected", "actual"],
+          "properties": {
+            "target_ref": {"type": ["string", "null"]},
+            "field": {"enum": ["status", "primary", "primary_source", "supported", "goal_presence"]}
+          }
+        }}
+      },
+      "allOf": [{"if": {"properties": {"ok": {"const": true}}},
+        "then": {"properties": {"differences": {"maxItems": 0}}},
+        "else": {"properties": {"differences": {"minItems": 1}}}}]
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "input_error"}}}, "then": {"properties": {"goals": {"maxItems": 0}}}, "else": {"properties": {"goals": {"minItems": 1}}}}
+  ],
+  "$defs": {
+    "Goal": {
+      "type": "object",
+      "required": ["target_ref", "scope", "label", "status", "diagnostics", "knowledge", "types", "primary", "primary_source", "supported", "d1", "d2", "verification", "llm"],
+      "properties": {
+        "target_ref": {"type": "string", "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"},
+        "scope": {"type": "string"},
+        "label": {"type": "string"},
+        "status": {"enum": ["resolved", "unsupported", "selection_failed"]},
+        "diagnostics": {"type": "array"},
+        "knowledge": {"type": "object"},
+        "types": {"type": "array"},
+        "primary": {"type": ["string", "null"]},
+        "primary_source": {"enum": ["program", "llm", "unsupported", null]},
+        "supported": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "d1": {"type": ["object", "null"]},
+        "d2": {"type": ["object", "null"]},
+        "verification": {"type": "object"},
+        "llm": {"type": ["object", "null"]},
+        "unsupported_record": {"type": "string"}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "resolved"}}}, "then": {"properties": {"primary": {"type": "string"}, "primary_source": {"enum": ["program", "llm"]}, "d1": {"type": "object"}, "d2": {"type": "object"}}}, "else": {"properties": {"primary": {"type": "null"}, "d1": {"type": "null"}, "d2": {"type": "null"}}}},
+        {"if": {"properties": {"status": {"const": "unsupported"}}}, "then": {"required": ["unsupported_record"], "properties": {"primary_source": {"const": "unsupported"}, "llm": {"type": "null"}, "supported": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"const": "selection_failed"}}}, "then": {"properties": {"primary_source": {"type": "null"}, "llm": {"type": "object"}, "diagnostics": {"minItems": 1}}}}
+      ]
+    }
+  }
+}

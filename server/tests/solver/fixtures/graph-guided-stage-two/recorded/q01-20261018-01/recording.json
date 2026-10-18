@@ -1,0 +1,14 @@
+{
+  "contract": "graph-stage-two-recording/v1",
+  "files": {
+    "calls/goal-001/recording.json": "6ff355a31748f33dbfccd7cefc61ac0f741bdea0a54084a29f421353b857b4c7",
+    "calls/goal-001/request.json": "ac48003a78fd88fd0b054e9fcafe0fcfd774325cdc5e493e5a7e5db3a2c23b92",
+    "calls/goal-001/response.json": "56f60fa5cfc0291df4bcf85d0f638322074d342cd2aba6ac29358e96dae6c18f",
+    "calls/goal-001/selection-result.json": "1589db6c768736d74f5b41cbcdac12cc67cad45cb3b9671ac80bfdfa466e1091",
+    "frozen.json": "970a572f1b421907cedd127f1cba8f9bc929c292b109734546df7de2c4dc9c21",
+    "goals/goal-001.json": "64c82a1b3890047896a38185fdf11e1d963049f785e5692fef5cd6a9a8f8710f",
+    "input.json": "e108110a21d30fa8bca0092bea42bf7ccff8e36f1be2cb321503cf632c6fd495",
+    "source.png": "1b2d865e561dbf240e3e6f8f2e935e1c391a1e4e0b04e27c0ff3e29c8427f790",
+    "stage-two-result.json": "bf5738f314f4eafbac2c8cf0f4b1b34c38f656a6cbe9691099f02232dc28bf96"
+  }
+}

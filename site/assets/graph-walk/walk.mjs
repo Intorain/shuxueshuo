@@ -12,10 +12,17 @@ const narrow = matchMedia('(max-width: 959px)');
 const copyAnswer = answer => Array.isArray(answer) ? [...answer] : answer;
 let bundle, state, studentState, graph, graphView;
 let draft = null, draftKey = '', selectedSlot = null, submitted = null, busy = false;
+// The student's unsubmitted answer when this bundle was parked; picked up once its step renders again.
+let keptDraft = null;
 let actor = 'student', replay = null, replayPosition = 0, replayTimer = null, replayPlaying = false, replayTicket = 0, loadTicket = 0;
 let replayEntries = [], replayIndexLoaded = false, replayNotice = null, focusBeforeGraph = null, commitTimer = null;
 let graphMode = readGraphMode(), webglFailed = false;
 let preview = null, previewTimer = null, story = null, replayStatuses = {replay: null, values: []};
+/* The Demo page loads its own snapshot. Another page sets <body data-walk="mount"> and calls mountWalk
+   with a bundle and replay in hand; progress is kept per bundle so switching back resumes it. */
+let options = {bundleUrl: BUNDLE_URL, practicePage: PRACTICE_PAGE, bundle: null, replay: null, actor: null, revealGraph: false};
+let bound = false;
+const saved = new Map();
 
 function readGraphMode() {
   // Phones always open in 3D: its camera follows the current step, which a small screen needs.
@@ -123,8 +130,9 @@ function projectDraft(decision, answer) {
 function ensureDraft(decision) {
   const key = decisionKey(decision);
   if (key !== draftKey) {
-    draftKey = key; draft = emptyAnswer(decision); selectedSlot = null;
-    if (actor === 'student') submitted = null;
+    const kept = actor === 'student' && keptDraft?.key === key ? keptDraft : null;
+    draftKey = key; draft = kept ? structuredClone(kept.draft) : emptyAnswer(decision); selectedSlot = null;
+    if (actor === 'student') { submitted = kept?.submitted ?? null; keptDraft = null; }
   }
   // Failed recorded actions can have any input shape. Only the display draft is normalized.
   if (actor === 'replay' && submitted?.decision === decision.id) draft = projectDraft(decision, submitted.answer);
@@ -275,7 +283,7 @@ function attemptedCalculation(decision) {
 function feedbackHTML() {
   const feedback = state.lastFeedback;
   if (!feedback || (!submitted && actor !== 'replay')) return '';
-  const label = {wrong: '再想一想', uncovered: '有效思路 · 本 Demo 未展开', passed: '这一步已确认'}[feedback.status] || '提示';
+  const label = {wrong: '再想一想', uncovered: '有效思路 · 本 Demo 未展开', passed: '这一步已确认', ...bundle.feedbackLabels}[feedback.status] || '提示';
   const href = feedback.href?.startsWith('/knowledge/') ? `<a href="${escapeHTML(feedback.href)}" target="_blank" rel="noopener">查看这条思路 ↗</a>` : '';
   return `<div class="gw-feedback" data-status="${escapeHTML(feedback.status)}" role="status"><strong>${label}</strong><p data-math-text>${escapeHTML(feedback.message || '')}</p>${href}</div>`;
 }
@@ -589,7 +597,9 @@ function render({focus = false, scroll = focus} = {}) {
   // The AI's cards appear only as it submits: a step it has not reached yet stays a one-line placeholder.
   const shown = current && (actor === 'student' || submitted?.decision === current.id);
   const pending = actor === 'replay' && !shown ? replayPendingHTML(current) : '';
-  $('#gw-steps').innerHTML = intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending);
+  const waiting = !current && !state.done ? waitingHTML(introCount + (state.run?.completed?.length || 0) + 1) : '';
+  $('#gw-steps').innerHTML = intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending || waiting);
+  revealGraph();
   const lastCompleted = [...(state.introCompleted || []), ...(state.run?.completed || [])].at(-1)?.decision;
   $('#gw-steps').querySelectorAll('details[data-completed-decision]').forEach(item => { item.open = open.has(item.dataset.completedDecision) || item.dataset.completedDecision === lastCompleted; });
   if (shown) renderInteraction(current);
@@ -608,6 +618,8 @@ function render({focus = false, scroll = focus} = {}) {
 function revealStep(behavior = reduced.matches ? 'auto' : 'smooth') {
   const anchor = $('#gw-active') || $('#gw-completion .gw-completion') || [...$('#gw-steps').querySelectorAll('details[data-completed-decision]')].at(-1);
   if (!anchor) return;
+  // A column that just narrowed rewraps the bar before its ResizeObserver reports; scroll with the new height.
+  measureProblemBar();
   if (!isPlayer()) { anchor.scrollIntoView({block: 'start', behavior}); return; }
   // In the phone player the steps live in a bottom sheet; scroll only the sheet, never the page under the graph.
   const lesson = $('.gw-lesson'), head = lesson.querySelector('.gw-sheet-head')?.offsetHeight || 0;
@@ -625,7 +637,7 @@ function toggleSteps(open = !document.body.classList.contains('gw-sheet-open')) 
 }
 
 function mountPlayer() {
-  if ($('.gw-sheet-head')) return;
+  if ($('.gw-sheet-head')) { PracticeMath.render($('.gw-player-problem'), bundle.problem.text); return; }
   const panel = $('#gw-graph-panel'), lesson = $('.gw-lesson');
   const problem = document.createElement('p');
   problem.className = 'gw-player-problem';
@@ -652,6 +664,20 @@ function mountPlayer() {
   panel.addEventListener('click', event => {
     if (event.target === panel && narrow.matches && actor === 'student' && !panel.classList.contains('is-open')) openGraph();
   });
+}
+
+/* A bundle may stop before its routes exist; the next step then shows as a numbered card still on its way. */
+function waitingHTML(number) {
+  const next = bundle.pending;
+  if (!next) return '';
+  return `<section class="gw-active gw-waiting" aria-labelledby="gw-current-title"><header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(next.title)}</h2><span class="status">${escapeHTML(next.status || '准备中')}</span></header>${carryHTML()}<p class="gw-ai-status"><span class="gw-ai-dot" aria-hidden="true"></span><span data-math-text>${escapeHTML(next.text || '')}</span></p></section>`;
+}
+
+/* With revealGraph, the graph column waits until the first step is confirmed, then opens beside the steps. */
+function revealGraph() {
+  if (!options.revealGraph) return;
+  const shown = (state.introCompleted?.length || 0) > 0 || Boolean(state.run?.route);
+  document.body.dataset.graph = shown ? 'shown' : 'hidden';
 }
 
 function replayPendingHTML(current) {
@@ -757,16 +783,22 @@ async function loadMeaning() {
    The dock has no height, so showing it never shifts the steps underneath. */
 function mountProblemBar() {
   const lesson = $('.gw-lesson'), card = lesson.querySelector('.problem-card');
-  if (lesson.querySelector('.gw-problem-dock')) return;
-  const dock = document.createElement('div');
-  dock.className = 'gw-problem-dock';
-  dock.setAttribute('aria-hidden', 'true');
-  dock.innerHTML = '<div class="gw-problem-bar"><span class="gw-problem-bar-label">原题</span><span class="gw-problem-bar-text"></span></div>';
-  lesson.prepend(dock);
-  const bar = dock.firstElementChild;
-  PracticeMath.render(bar.querySelector('.gw-problem-bar-text'), bundle.problem.text);
-  new ResizeObserver(() => lesson.style.setProperty('--gw-bar-h', `${bar.offsetHeight}px`)).observe(bar);
-  new IntersectionObserver(([entry]) => dock.classList.toggle('is-shown', !entry.isIntersecting)).observe(card);
+  let dock = lesson.querySelector('.gw-problem-dock');
+  if (!dock) {
+    dock = document.createElement('div');
+    dock.className = 'gw-problem-dock';
+    dock.setAttribute('aria-hidden', 'true');
+    dock.innerHTML = '<div class="gw-problem-bar"><span class="gw-problem-bar-label">原题</span><span class="gw-problem-bar-text"></span></div>';
+    lesson.prepend(dock);
+    new ResizeObserver(measureProblemBar).observe(dock.firstElementChild);
+    new IntersectionObserver(([entry]) => dock.classList.toggle('is-shown', !entry.isIntersecting)).observe(card);
+  }
+  PracticeMath.render(dock.querySelector('.gw-problem-bar-text'), bundle.problem.text);
+}
+
+function measureProblemBar() {
+  const bar = $('.gw-problem-bar');
+  if (bar) $('.gw-lesson').style.setProperty('--gw-bar-h', `${bar.offsetHeight}px`);
 }
 
 async function loadReplay(path, autoplay = true) {
@@ -791,6 +823,17 @@ async function loadReplay(path, autoplay = true) {
   }
 }
 
+/* A mounted bundle brings its replay along; a position saved for this bundle resumes where it stopped. */
+function useReplay(value, autoplay) {
+  if (!value) { notifyReplay('这一问还没有 AI 解题记录，可以先自己做。'); return; }
+  try {
+    if (value.bundleVersion !== bundle.bundleVersion || value.problemId !== bundle.problemId) throw new Error('回放与当前题目版本不同。');
+    replay = value; replayNotice = null;
+    applyReplayPosition(Math.min(replayPosition, replay.actions.length));
+    if (autoplay && replayPosition < replay.actions.length) playReplay();
+  } catch (error) { replay = null; notifyReplay(error.message); }
+}
+
 async function loadReplayIndex(autoplay = true) {
   const ticket = replayTicket;
   notifyReplay('正在读取 AI 解题记录…');
@@ -811,6 +854,7 @@ async function loadReplayIndex(autoplay = true) {
 /* Switching away drops an in-flight read (its ticket goes stale), so coming back must read again
    whatever was missing: the index, or just the replay file the index points to. */
 function ensureReplay(autoplay = true) {
+  if (options.bundle) { useReplay(options.replay, autoplay); return; }
   if (replayIndexLoaded && replayEntries.length) void loadReplay(replayEntries[0].path, autoplay);
   else void loadReplayIndex(autoplay);
 }
@@ -851,26 +895,53 @@ function openGraph() {
   $('#gw-close-graph').focus(); requestAnimationFrame(() => { graph?.focus(); scrollTimeline('auto'); });
 }
 
+/* A bundle may name its lanes instead of shipping positions; the public lane layout places them here. */
+async function withLayout(value) {
+  if (value.graph.layout || !value.graph.lanes) return value;
+  const {lanesLayout} = await import('../knowledge-next/layout.mjs');
+  const defs = value.graph.lanes.map(lane => {
+    const ids = new Set(lane.ids || []);
+    return {label: lane.label, test: node => ids.has(node.id) || node.kind === lane.kind};
+  });
+  return {...value, graph: {...value.graph, layout: lanesLayout(value.graph.nodes, value.graph.edges, defs)}};
+}
+
+function park() {
+  if (!bundle) return;
+  const previous = saved.get(bundle.problemId);
+  const draftNow = actor === 'student' && draftKey ? {key: draftKey, draft: structuredClone(draft), submitted} : keptDraft;
+  saved.set(bundle.problemId, {bundleVersion: bundle.bundleVersion, studentState, replayPosition,
+    draft: draftNow ?? (previous?.bundleVersion === bundle.bundleVersion ? previous.draft : null)});
+}
+
 async function load() {
   const ticket = ++loadTicket;
+  stopReplay(); ++replayTicket; clearTimeout(commitTimer); busy = false;
+  park();
   $('#gw-loading').hidden = false; $('#gw-error').hidden = true;
   try {
-    const value = await readJSON(BUNDLE_URL);
+    const value = await withLayout(options.bundle || await readJSON(options.bundleUrl));
     if (ticket !== loadTicket) return;
     if (!value.bundleVersion || !value.templates || !value.intro?.length || !value.routes || !value.graph) throw new Error('Demo 快照不完整，请重新构建后重试。');
     bundle = value; graphView = bundle.graph;
-    studentState = state = createState(bundle);
-    PracticeMath.render($('#gw-problem'), bundle.problem.text);
+    const kept = saved.get(bundle.problemId);
+    const resume = kept?.bundleVersion === bundle.bundleVersion;
+    studentState = state = resume ? kept.studentState : createState(bundle);
+    replay = null; replayPosition = resume ? kept.replayPosition : 0; replayNotice = null;
+    keptDraft = resume ? kept.draft : null;
+    draftKey = ''; submitted = null;
+    if ($('#gw-problem')) PracticeMath.render($('#gw-problem'), bundle.problem.text);
     mountProblemBar();
-    void loadMeaning();
-    $('#gw-version').textContent = `版本 ${bundle.bundleVersion.slice(0, 12)} · 公共图谱 ${bundle.graphVersion.slice(0, 12)}`;
+    if (options.practicePage) void loadMeaning();
+    if ($('#gw-version')) $('#gw-version').textContent = `版本 ${bundle.bundleVersion.slice(0, 12)} · 公共图谱 ${bundle.graphVersion.slice(0, 12)}`;
     graph?.destroy(); graph = null;
     $('#gw-ready').hidden = false;
     graph = await createGraph();
     if (ticket !== loadTicket) return;
     mountCaption(); mountPlayer();
     // A phone opens on the AI player, paused at the start; the visitor presses ▶ to watch.
-    if (narrow.matches) chooseActor('replay', {autoplay: false}); else render();
+    if (options.actor) chooseActor(options.actor);
+    else if (narrow.matches) chooseActor('replay', {autoplay: false}); else render();
   } catch (error) {
     if (ticket !== loadTicket) return;
     $('#gw-error p').textContent = `暂时无法打开演示：${error.message}`;
@@ -926,7 +997,12 @@ function bind() {
   });
   $('#gw-reset').addEventListener('click', () => {
     clearTimeout(commitTimer); busy = false; stopReplay(); ++replayTicket;
-    studentState = createState(bundle); replayPosition = 0; chooseActor('student');
+    // Drop any parked unsubmitted answer; otherwise the next student render restores it.
+    keptDraft = null; draftKey = ''; submitted = null;
+    studentState = createState(bundle); replayPosition = 0;
+    const kept = saved.get(bundle.problemId);
+    if (kept) saved.set(bundle.problemId, {...kept, studentState, replayPosition: 0, draft: null});
+    chooseActor('student');
   });
   $('#gw-student').addEventListener('click', () => { if (!busy) chooseActor('student'); });
   $('#gw-ai').addEventListener('click', () => { if (!busy) chooseActor('replay'); });
@@ -945,5 +1021,21 @@ function bind() {
 }
 
 if (document.readyState === 'loading') await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, {once: true}));
-bind();
-await load();
+
+/* Mount (or switch to) a bundle on a page that hosts the walk markup. Each bundle keeps its own progress. */
+export async function mountWalk(next) {
+  options = {...options, ...next};
+  if (!bound) { bind(); bound = true; }
+  await load();
+}
+
+/* Leave the walk without a bundle, e.g. for a part with nothing to walk; its progress stays parked. */
+export function parkWalk() {
+  stopReplay(); ++replayTicket; ++loadTicket; clearTimeout(commitTimer); busy = false;
+  park();
+}
+
+/* The actor the walk currently shows, so a host can carry it across bundles. */
+export const walkActor = () => actor;
+
+if (document.body.dataset.walk !== 'mount') await mountWalk({});

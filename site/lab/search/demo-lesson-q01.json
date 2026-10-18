@@ -1,0 +1,890 @@
+{
+ "status": "completed",
+ "goals": [
+  {
+   "target_ref": "/root/goals/0",
+   "scope": "/root",
+   "label": "",
+   "status": "resolved",
+   "primary": "type-quantified-quadratic",
+   "supported": [
+    "type-amgm-quantified",
+    "type-quantified-quadratic"
+   ],
+   "d1": {
+    "rows": [
+     {
+      "id": "/root/goals/0:quantifier",
+      "kind": "quantifier",
+      "quote": [
+       {
+        "start": 27,
+        "end": 39,
+        "text": "任意实数 $x$ 恒成立"
+       }
+      ],
+      "fragment_ids": [
+       "/root/goals/0:d1:2",
+       "/root/goals/0:d1:3",
+       "/root/goals/0:d1:4"
+      ],
+      "knowledge_refs": [
+       "quantifiers#universal",
+       "quantifiers#domain",
+       "quantifiers#roles"
+      ],
+      "options": [
+       {
+        "text": "所有实数 $x$ 都要满足",
+        "correct": true,
+        "violates": null,
+        "feedback": "",
+        "id": "/root/goals/0:quantifier:o0"
+       },
+       {
+        "text": "只要 $x=0$ 时成立",
+        "correct": false,
+        "violates": "quantifier",
+        "feedback": "不能只看一个值，每一个 $x$ 都要满足。",
+        "id": "/root/goals/0:quantifier:o1"
+       },
+       {
+        "text": "找到一个 $x$ 满足就行",
+        "correct": false,
+        "violates": "quantifier",
+        "feedback": "“任意”“恒成立”要求每一个 $x$ 都满足，不是找到一个就行。",
+        "id": "/root/goals/0:quantifier:o2"
+       }
+      ],
+      "signature": "bb9ddbf5478935be"
+     },
+     {
+      "id": "/root/goals/0:relation",
+      "kind": "relation",
+      "quote": [
+       {
+        "start": 6,
+        "end": 24,
+        "text": "$-x^2+2x+3 ≤ a^2-3a$"
+       }
+      ],
+      "fragment_ids": [
+       "/root/goals/0:d1:1"
+      ],
+      "knowledge_refs": [
+       "quadratic-function-properties#definition",
+       "quadratic-inequality#definition"
+      ],
+      "options": [
+       {
+        "text": "关于 $x$ 的一元二次不等式，$a$ 看作常数",
+        "correct": true,
+        "violates": null,
+        "feedback": "",
+        "id": "/root/goals/0:relation:o0"
+       },
+       {
+        "text": "关于 $a$ 的方程",
+        "correct": false,
+        "violates": "relation",
+        "feedback": "题中是不等号，这是不等式，不是方程。",
+        "id": "/root/goals/0:relation:o1"
+       },
+       {
+        "text": "关于 $x$ 的一元一次不等式",
+        "correct": false,
+        "violates": "degree_in_bound",
+        "feedback": "$x$ 的最高次数是 $2$。",
+        "id": "/root/goals/0:relation:o2"
+       }
+      ],
+      "signature": "5910e6d8c243b870"
+     },
+     {
+      "id": "/root/goals/0:goal",
+      "kind": "goal",
+      "quote": [
+       {
+        "start": 40,
+        "end": 53,
+        "text": "求实数 $a$ 的取值范围"
+       }
+      ],
+      "fragment_ids": [
+       "/root/goals/0:d1:5"
+      ],
+      "knowledge_refs": [
+       "quantifiers#roles"
+      ],
+      "options": [
+       {
+        "text": "求参数 $a$ 能取哪些值",
+        "correct": true,
+        "violates": null,
+        "feedback": "",
+        "id": "/root/goals/0:goal:o0"
+       },
+       {
+        "text": "解出 $x$ 的取值范围",
+        "correct": false,
+        "violates": "goal",
+        "feedback": "题目要的是 $a$ 的范围；$x$ 是在范围里变动的量，不用求它。",
+        "id": "/root/goals/0:goal:o1"
+       }
+      ],
+      "signature": "5a97760da0285bb1"
+     }
+    ],
+    "summary": "合起来：关于 $x$ 的二次不等式对所有实数 $x$ 都成立，求参数 $a$ 的取值范围。"
+   },
+   "d2": [
+    {
+     "type_id": "type-parameter-quadratic-solve",
+     "label": "含参数的一元二次不等式求解问题",
+     "role": "conflict",
+     "feedback": "没有「对所有」，只要求出 $x$ 的解集，系数里有参数",
+     "reasons": []
+    },
+    {
+     "type_id": "type-amgm-quantified",
+     "label": "应用基本不等式的恒成立与存在成立问题",
+     "role": "alternative",
+     "feedback": "这条思路也能做，但不是最直接的；这节课先按「含参一元二次不等式的恒成立与存在成立问题」学。",
+     "reasons": []
+    },
+    {
+     "type_id": "type-quantified-quadratic",
+     "label": "含参一元二次不等式的恒成立与存在成立问题",
+     "role": "primary",
+     "feedback": "",
+     "reasons": [
+      "有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围。",
+      "不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+     ]
+    }
+   ],
+   "knowledge": [
+    {
+     "ref": "quantifiers#universal",
+     "node": "quantifiers",
+     "label": "全称量词与存在量词",
+     "title": "全称量词"
+    },
+    {
+     "ref": "quantifiers#roles",
+     "node": "quantifiers",
+     "label": "全称量词与存在量词",
+     "title": "分清量词变量和要求的量"
+    },
+    {
+     "ref": "quantifiers#domain",
+     "node": "quantifiers",
+     "label": "全称量词与存在量词",
+     "title": "量词的取值范围"
+    },
+    {
+     "ref": "quadratic-inequality#definition",
+     "node": "quadratic-inequality",
+     "label": "一元二次不等式",
+     "title": "定义与解集"
+    },
+    {
+     "ref": "quadratic-function-properties#definition",
+     "node": "quadratic-function-properties",
+     "label": "二次函数",
+     "title": "定义与一般式"
+    }
+   ],
+   "links": [
+    {
+     "from": "quadratic-function-properties",
+     "to": "type-quantified-quadratic",
+     "relation": "involves",
+     "knowledge_refs": [
+      "quadratic-function-properties#definition"
+     ]
+    },
+    {
+     "from": "quadratic-inequality",
+     "to": "type-quantified-quadratic",
+     "relation": "involves",
+     "knowledge_refs": [
+      "quadratic-inequality#definition"
+     ]
+    },
+    {
+     "from": "quantifiers",
+     "to": "type-quantified-quadratic",
+     "relation": "involves",
+     "knowledge_refs": [
+      "quantifiers#universal",
+      "quantifiers#roles",
+      "quantifiers#domain"
+     ]
+    }
+   ],
+   "walk": {
+    "bundle": {
+     "schemaVersion": 1,
+     "problemId": "demo-q01//root/goals/0",
+     "graphVersion": "a9d5826e750fba588437b9b6ed791477ea28dbe189d30cd8db1f7074be295594",
+     "problem": {
+      "text": "若不等式 $-x^2+2x+3 ≤ a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。"
+     },
+     "notation": {},
+     "intro": [
+      {
+       "id": "D1",
+       "title": "读题",
+       "question": "这一问在说什么？逐句选出你的理解。",
+       "source": "authored",
+       "submit_label": "读懂了，看图谱怎么走",
+       "interaction": {
+        "type": "checklist",
+        "title": "逐句读题",
+        "slots": [
+         {
+          "label": "“任意实数 $x$ 恒成立”",
+          "options": [
+           {
+            "value": "/root/goals/0:quantifier:o0",
+            "label": "所有实数 $x$ 都要满足"
+           },
+           {
+            "value": "/root/goals/0:quantifier:o1",
+            "label": "只要 $x=0$ 时成立",
+            "feedback": "不能只看一个值，每一个 $x$ 都要满足。"
+           },
+           {
+            "value": "/root/goals/0:quantifier:o2",
+            "label": "找到一个 $x$ 满足就行",
+            "feedback": "“任意”“恒成立”要求每一个 $x$ 都满足，不是找到一个就行。"
+           }
+          ]
+         },
+         {
+          "label": "“$-x^2+2x+3 ≤ a^2-3a$”",
+          "options": [
+           {
+            "value": "/root/goals/0:relation:o0",
+            "label": "关于 $x$ 的一元二次不等式，$a$ 看作常数"
+           },
+           {
+            "value": "/root/goals/0:relation:o1",
+            "label": "关于 $a$ 的方程",
+            "feedback": "题中是不等号，这是不等式，不是方程。"
+           },
+           {
+            "value": "/root/goals/0:relation:o2",
+            "label": "关于 $x$ 的一元一次不等式",
+            "feedback": "$x$ 的最高次数是 $2$。"
+           }
+          ]
+         },
+         {
+          "label": "“求实数 $a$ 的取值范围”",
+          "options": [
+           {
+            "value": "/root/goals/0:goal:o0",
+            "label": "求参数 $a$ 能取哪些值"
+           },
+           {
+            "value": "/root/goals/0:goal:o1",
+            "label": "解出 $x$ 的取值范围",
+            "feedback": "题目要的是 $a$ 的范围；$x$ 是在范围里变动的量，不用求它。"
+           }
+          ]
+         }
+        ]
+       },
+       "expected_answer": {
+        "terms": [
+         "/root/goals/0:quantifier:o0",
+         "/root/goals/0:relation:o0",
+         "/root/goals/0:goal:o0"
+        ]
+       },
+       "feedback": {
+        "terms": "有一处读得不对，对照原句再看看。"
+       },
+       "candidateNodes": [
+        "quantifiers",
+        "quadratic-function-properties",
+        "quadratic-inequality",
+        "type-parameter-quadratic-solve",
+        "type-amgm-quantified",
+        "type-quantified-quadratic",
+        "type-quadratic-solve",
+        "type-solution-parameters",
+        "type-rational-inequality"
+       ],
+       "effects": {
+        "nodes": [
+         "quantifiers",
+         "quadratic-function-properties",
+         "quadratic-inequality"
+        ],
+        "edges": [],
+        "calls": [],
+        "results": [
+         "合起来：关于 $x$ 的二次不等式对所有实数 $x$ 都成立，求参数 $a$ 的取值范围。"
+        ],
+        "log": "图谱查询：从 3 个知识线索反查，找到 6 个相关题型；最高覆盖 3/3。"
+       }
+      },
+      {
+       "id": "D2",
+       "title": "确定题型",
+       "question": "哪一个题型最直接描述这一问的条件与求解目标？",
+       "source": "authored",
+       "submit_label": "确认题型",
+       "interaction": {
+        "type": "choice",
+        "field": "problem_type",
+        "options": [
+         {
+          "value": "type-parameter-quadratic-solve",
+          "label": "含参数的一元二次不等式求解问题",
+          "feedback": "没有「对所有」，只要求出 $x$ 的解集，系数里有参数"
+         },
+         {
+          "value": "type-amgm-quantified",
+          "label": "应用基本不等式的恒成立与存在成立问题"
+         },
+         {
+          "value": "type-quantified-quadratic",
+          "label": "含参一元二次不等式的恒成立与存在成立问题"
+         }
+        ]
+       },
+       "expected_answer": {
+        "one_of": [
+         "type-quantified-quadratic"
+        ]
+       },
+       "feedback": {
+        "answer": "再对照这一问的条件和问法想一想。"
+       },
+       "alternatives": {
+        "type-amgm-quantified": {
+         "message": "这条思路也能做，但不是最直接的；这节课先按「含参一元二次不等式的恒成立与存在成立问题」学。",
+         "href": "/knowledge/type-amgm-quantified/"
+        }
+       },
+       "candidateNodes": [
+        "type-parameter-quadratic-solve",
+        "type-amgm-quantified",
+        "type-quantified-quadratic"
+       ],
+       "effects": {
+        "nodes": [
+         "type-quantified-quadratic"
+        ],
+        "edges": [
+         "type-quantified-quadratic|involves|quantifiers",
+         "type-quantified-quadratic|involves|quadratic-function-properties",
+         "type-quantified-quadratic|involves|quadratic-inequality"
+        ],
+        "calls": [],
+        "results": [
+         "判断依据：有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围；不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+        ],
+        "log": "作答判断：选择主要题型「含参一元二次不等式的恒成立与存在成立问题」；另外 2 个题型保留为对照。"
+       }
+      }
+     ],
+     "routes": {},
+     "templates": {},
+     "pending": {
+      "title": "选方法",
+      "status": "生成中",
+      "text": "接下来要在图谱里为这一问选方法、一步步解出来；这部分还在生成，先看看图谱里亮起的线索和题型。"
+     },
+     "feedbackLabels": {
+      "uncovered": "也能做 · 这节课先不展开"
+     },
+     "completion": {
+      "answer": "",
+      "back": {
+       "href": "/lab/search/",
+       "label": "再拍一题"
+      }
+     },
+     "graph": {
+      "nodes": [
+       {
+        "id": "quantifiers",
+        "kind": "knowledge",
+        "label": "全称量词与存在量词",
+        "summary": "先明确“对谁、在哪个范围内”，再区分全部满足与至少一次满足。",
+        "aliases": [
+         "恒成立",
+         "存在成立",
+         "任意",
+         "有解"
+        ],
+        "home": "compulsory-1-ch1"
+       },
+       {
+        "id": "quadratic-function-properties",
+        "kind": "knowledge",
+        "label": "二次函数",
+        "summary": "二次函数的表达式、抛物线和零点共同描述函数在各处的取值。",
+        "aliases": [
+         "抛物线"
+        ],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "quadratic-inequality",
+        "kind": "knowledge",
+        "label": "一元二次不等式",
+        "summary": "二次不等式的解集由二次式的符号决定；图像在横轴上方或下方对应不同解集。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "type-parameter-quadratic-solve",
+        "kind": "problem_type",
+        "label": "含参数的一元二次不等式求解问题",
+        "summary": "二次不等式的系数里有参数，按参数的不同情况分别写出 x 的解集。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "type-amgm-quantified",
+        "kind": "problem_type",
+        "label": "应用基本不等式的恒成立与存在成立问题",
+        "summary": "不等式要对所有取值（或某个取值）成立，求参数范围；参数另一边式子的最值用基本不等式求，再看最值取不取得到。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "type-quantified-quadratic",
+        "kind": "problem_type",
+        "label": "含参一元二次不等式的恒成立与存在成立问题",
+        "summary": "在给定范围内，二次不等式要对所有取值都成立（或至少一个取值成立），求参数的范围。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "type-quadratic-solve",
+        "kind": "problem_type",
+        "label": "不含参数的一元二次不等式求解问题",
+        "summary": "系数都是具体的数，解一元二次不等式，写出 x 的全部解。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "type-solution-parameters",
+        "kind": "problem_type",
+        "label": "由一元二次不等式的解集求参数",
+        "summary": "已知二次不等式的解集，反过来求式子里的系数或参数。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "type-rational-inequality",
+        "kind": "problem_type",
+        "label": "一元分式不等式求解问题",
+        "summary": "解分母含 x 的不等式，写出全部解，别忘了分母不能为 0。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "rule-quadratic-method",
+        "kind": "judgment_rule",
+        "subtype": "method_selection",
+        "label": "含参一元二次不等式的选法判断",
+        "summary": "遇到含参数的一元二次不等式，先看清「哪个字母在什么范围里变化」，再挑能用的方法，常常不止一种方法可用。",
+        "aliases": [],
+        "home": "compulsory-1-ch2"
+       },
+       {
+        "id": "method-discriminant",
+        "kind": "method",
+        "label": "判别式法",
+        "summary": "x 取全体实数时，要二次式恒正（或恒负），就看开口方向和判别式；x² 的系数含参数时，先单独看它等于 0 的情况。",
+        "aliases": [],
+        "home": "compulsory-1-ch2",
+        "steps": [
+         {
+          "id": "degree",
+          "title": "先看 x² 的系数能不能是 0",
+          "calls": []
+         },
+         {
+          "id": "normalize",
+          "title": "移项整理成与 0 比较",
+          "calls": [
+           "skill-inequality-transform",
+           "skill-simplify"
+          ]
+         },
+         {
+          "id": "conditions",
+          "title": "写出开口和判别式的条件",
+          "calls": [
+           "skill-quadratic-sign",
+           "skill-simplify",
+           "skill-inequality-transform"
+          ]
+         },
+         {
+          "id": "solve",
+          "title": "解出参数",
+          "calls": [
+           "skill-simplify",
+           "skill-inequality-transform",
+           "quadratic-inequality-solve"
+          ]
+         },
+         {
+          "id": "merge",
+          "title": "把各种情况合起来，检查边界",
+          "calls": []
+         }
+        ]
+       },
+       {
+        "id": "method-interval-extremum",
+        "kind": "method",
+        "label": "区间最值法",
+        "summary": "x 只在某个区间上取值时，把「恒成立」「有解」变成函数在这个区间上的最大值或最小值和参数比较，求出参数范围。",
+        "aliases": [],
+        "home": "compulsory-1-ch2",
+        "steps": [
+         {
+          "id": "quantifier",
+          "title": "判断要区间上的最大值还是最小值",
+          "calls": [
+           "skill-quantified-range"
+          ]
+         },
+         {
+          "id": "select",
+          "title": "按函数类型求区间上的取值范围",
+          "calls": [],
+          "rule": "rule-interval-skill"
+         },
+         {
+          "id": "conditions",
+          "title": "用最值写出参数条件",
+          "calls": [
+           "skill-inequality-transform"
+          ]
+         },
+         {
+          "id": "verify",
+          "title": "检查边界带不带等号",
+          "calls": []
+         }
+        ]
+       },
+       {
+        "id": "method-separation",
+        "kind": "method",
+        "label": "分离参数法",
+        "summary": "把参数单独移到不等号一边，另一边是不含参数的函数，再用这个函数的最大值或最小值求出参数范围。",
+        "aliases": [],
+        "home": "compulsory-1-ch2",
+        "steps": [
+         {
+          "id": "separate",
+          "title": "把参数单独移到一边",
+          "calls": [
+           "skill-inequality-transform",
+           "skill-equality-transform"
+          ]
+         },
+         {
+          "id": "quantifier",
+          "title": "看恒成立要用最大值还是最小值",
+          "calls": [
+           "skill-quantified-range"
+          ]
+         },
+         {
+          "id": "range",
+          "title": "求另一边函数在区间上的最值",
+          "calls": [
+           "quadratic-interval-extremum",
+           "skill-linear-range",
+           "skill-reciprocal-range",
+           "method-square-extremum"
+          ]
+         },
+         {
+          "id": "restore",
+          "title": "写出参数范围，检查等号",
+          "calls": [
+           "skill-inequality-transform",
+           "quadratic-inequality-solve"
+          ]
+         }
+        ]
+       },
+       {
+        "id": "method-variable-swap",
+        "kind": "method",
+        "label": "更换主元法",
+        "summary": "题目让哪个字母在范围里变化，就把它当主角，把式子整理成关于它的一次函数，看区间两端求出另一个字母的范围。",
+        "aliases": [],
+        "home": "compulsory-1-ch2",
+        "steps": [
+         {
+          "id": "roles",
+          "title": "分清谁在变、谁是要求的",
+          "calls": []
+         },
+         {
+          "id": "reorder",
+          "title": "按主角整理成一次式",
+          "calls": [
+           "skill-simplify"
+          ]
+         },
+         {
+          "id": "quantifier",
+          "title": "看恒成立要用最大值还是最小值",
+          "calls": [
+           "skill-quantified-range"
+          ]
+         },
+         {
+          "id": "range",
+          "title": "由系数正负找最值在哪一端",
+          "calls": [
+           "skill-linear-range"
+          ]
+         },
+         {
+          "id": "solve",
+          "title": "解出要求的字母",
+          "calls": [
+           "skill-inequality-transform",
+           "quadratic-inequality-solve"
+          ]
+         }
+        ]
+       }
+      ],
+      "edges": [
+       {
+        "id": "quadratic-function-properties|prerequisite|quadratic-inequality",
+        "from": "quadratic-function-properties",
+        "to": "quadratic-inequality",
+        "type": "prerequisite",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "rule-quadratic-method|selects|method-discriminant",
+        "from": "rule-quadratic-method",
+        "to": "method-discriminant",
+        "type": "selects",
+        "occurrences": [
+         {
+          "branch": "discriminant",
+          "condition": "要求对所有实数 $x$ 成立，式子关于 $x$ 是二次的；二次项系数含参数时，先单独看系数为 $0$ 的情况。"
+         }
+        ]
+       },
+       {
+        "id": "rule-quadratic-method|selects|method-interval-extremum",
+        "from": "rule-quadratic-method",
+        "to": "method-interval-extremum",
+        "type": "selects",
+        "occurrences": [
+         {
+          "branch": "interval",
+          "condition": "$x$ 在给定区间内取值，区间可以是有限区间、半无限区间或全体实数 $\\mathbb R$；能求出相关函数在该范围上的最大值、最小值（二次函数、一次函数或对勾函数），最值取不到时要单独看等号。$x$ 取全体实数时，判别式法通常更直接，优先用判别式法。"
+         }
+        ]
+       },
+       {
+        "id": "rule-quadratic-method|selects|method-separation",
+        "from": "rule-quadratic-method",
+        "to": "method-separation",
+        "type": "selects",
+        "occurrences": [
+         {
+          "branch": "separation",
+          "condition": "$x$ 在题目给定的范围里取值（常见是某个区间，全体实数也可以）；能把参数（或含参数的式子）移到不等号一边，另一边只含 $x$，并且能求出这一边在该范围上的最大值或最小值。除以含 $x$ 的式子之前，要能确定它在这个范围上的正负。"
+         }
+        ]
+       },
+       {
+        "id": "rule-quadratic-method|selects|method-variable-swap",
+        "from": "rule-quadratic-method",
+        "to": "method-variable-swap",
+        "type": "selects",
+        "occurrences": [
+         {
+          "branch": "swap",
+          "condition": "给出范围的是参数（如 $m\\in[1,3]$），要求的却是 $x$；把式子按这个参数整理后是一次式或常数，就看区间两端。"
+         }
+        ]
+       },
+       {
+        "id": "type-amgm-quantified|involves|quantifiers",
+        "from": "type-amgm-quantified",
+        "to": "quantifiers",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-parameter-quadratic-solve|involves|quadratic-function-properties",
+        "from": "type-parameter-quadratic-solve",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-parameter-quadratic-solve|involves|quadratic-inequality",
+        "from": "type-parameter-quadratic-solve",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-quadratic-solve|involves|quadratic-function-properties",
+        "from": "type-quadratic-solve",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-quadratic-solve|involves|quadratic-inequality",
+        "from": "type-quadratic-solve",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-quantified-quadratic|involves|quadratic-function-properties",
+        "from": "type-quantified-quadratic",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-quantified-quadratic|involves|quadratic-inequality",
+        "from": "type-quantified-quadratic",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-quantified-quadratic|involves|quantifiers",
+        "from": "type-quantified-quadratic",
+        "to": "quantifiers",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-quantified-quadratic|method_rule|rule-quadratic-method",
+        "from": "type-quantified-quadratic",
+        "to": "rule-quadratic-method",
+        "type": "method_rule",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-rational-inequality|involves|quadratic-inequality",
+        "from": "type-rational-inequality",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-solution-parameters|involves|quadratic-function-properties",
+        "from": "type-solution-parameters",
+        "to": "quadratic-function-properties",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       },
+       {
+        "id": "type-solution-parameters|involves|quadratic-inequality",
+        "from": "type-solution-parameters",
+        "to": "quadratic-inequality",
+        "type": "involves",
+        "occurrences": [
+         {}
+        ]
+       }
+      ],
+      "lanes": [
+       {
+        "label": "知识线索",
+        "ids": [
+         "quantifiers",
+         "quadratic-function-properties",
+         "quadratic-inequality"
+        ]
+       },
+       {
+        "label": "题型",
+        "kind": "problem_type"
+       },
+       {
+        "label": "选法判断",
+        "kind": "judgment_rule"
+       },
+       {
+        "label": "方法",
+        "kind": "method"
+       }
+      ]
+     },
+     "bundleVersion": "1f53498a3ca368c90f14c7f10668d2006363fa73d96b548917aa5c8e92cc5af1"
+    },
+    "replay": {
+     "schemaVersion": 2,
+     "problemId": "demo-q01//root/goals/0",
+     "bundleVersion": "1f53498a3ca368c90f14c7f10668d2006363fa73d96b548917aa5c8e92cc5af1",
+     "status": "partial",
+     "routes": [],
+     "actions": [
+      {
+       "decision": "D1",
+       "answer": [
+        "/root/goals/0:quantifier:o0",
+        "/root/goals/0:relation:o0",
+        "/root/goals/0:goal:o0"
+       ],
+       "reason": "逐句读题：“任意实数 $x$ 恒成立”——所有实数 $x$ 都要满足；“$-x^2+2x+3 ≤ a^2-3a$”——关于 $x$ 的一元二次不等式，$a$ 看作常数；“求实数 $a$ 的取值范围”——求参数 $a$ 能取哪些值。"
+      },
+      {
+       "decision": "D2",
+       "answer": "type-quantified-quadratic",
+       "reason": "选「含参一元二次不等式的恒成立与存在成立问题」：有「对所有……都成立」「恒成立」或「存在……使得成立」，并给出这个变量的范围；不等式里有二次式，要求的是参数的范围，不是 $x$ 的解集。"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

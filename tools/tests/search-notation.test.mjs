@@ -76,12 +76,28 @@ test('set sums remain a single operand when multiplied or raised to a power', ()
 test('multiplication after inline division cannot merge into the denominator', () => {
   for (const [expression, expected] of [
     ['a/2*x=b', 'a/2\\cdot x=b'],
-    ['2/3sqrt(4)=a', '2/3\\cdot \\sqrt{4}=a'],
     ['a/(2*x)=b', 'a/(2\\cdot x)=b'],
   ]) {
     assert.equal(tex(expression), expected);
     assert.match(render(expression), /<mo>⋅<\/mo>/);
   }
+});
+
+test('a number over a number displays as a fraction', () => {
+  assert.equal(tex('∀x∈(0,1/2]: x^2+a*x+1>=0'), '\\forall x\\in (0,\\frac{1}{2}]\\colon x^{2}+ax+1\\ge 0');
+  assert.match(render('x∈(0,1/2]'), /<mfrac>/);
+  assert.equal(tex('2/3sqrt(4)=a'), '\\frac{2}{3}\\sqrt{4}=a');
+  assert.equal(tex('2^1/2'), '2^{1}/2');
+});
+
+test('chained division keeps every slash, so a/2/3 never reads as a over two thirds', () => {
+  for (const expr of ['a/2/3', '1/2/3', 'sqrt(4)/2/3', 'sqrt(4)/-2/3', 'a/+2/3', 'a/--2/3', 'a/+-2/3', 'a/-+-2/3']) {
+    assert.doesNotMatch(tex(expr), /\\frac/, expr);
+  }
+  assert.equal(tex('a/2/3'), 'a/2/3');
+  assert.equal(tex('sqrt(4)/2/3'), '\\sqrt{4}/2/3');
+  assert.equal(tex('sqrt(4)/-2/3'), '\\sqrt{4}/-2/3');
+  assert.equal(tex('(0,-1/2]'), '(0,-\\frac{1}{2}]');
 });
 
 test('the stage-one expression catalog renders with the bundled KaTeX', () => {

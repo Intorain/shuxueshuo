@@ -1,6 +1,6 @@
 # 图谱交互课程阶段②实现计划：特征检查表判型与 D1、D2
 
-> 状态：阶段②已实现并完成代码复审、自动回归（2026-10-18）。审查清单及后续发现的原文截取阻断、同行全角标题问题均已修复；阶段②离线测试 347 通过、1 项真实调用测试默认跳过，与相关阶段①测试合计 456 通过。22 份阶段①真实录制离线通过；Q01 此前的真实选择录制为 1 次语义调用、1 次网络请求，本轮零网络回放通过且结论一致。本轮未新增真实 LLM 调用；人工页面核对待完成。
+> 状态：阶段②已实现并完成代码复审、自动回归（2026-10-18）。已补齐单一参数最小值／最大值的特征、判型及学生页面数据，阶段①、阶段②与搜索回归合计 710 通过、12 项真实调用测试默认跳过。题 13 的真实识图／复核录制通过当前全链路离线回放；Q01 在新契约下另做真实选择并回放，1 项通过，1 次语义调用、1 次网络请求。旧录制保留为契约漂移检测；人工页面核对待完成。
 > 设计依据：[四阶段交互课程生成设计](graph-guided-interactive-lesson-design.md)第 5 节。
 > 输入依据：[阶段①实现计划](graph-guided-stage-one-implementation-plan.md)。阶段②读取阶段①已经验收的题意和特征，不再识图、不再提取题意。
 > 命中规则：唯一命中 → 程序确认；多个命中（一律）→ LLM 选定；未命中 → 不调用 LLM，学生端暂不支持，本地文件待处理（数据库待前后端打通）。
@@ -76,18 +76,20 @@
 
 不设 `direct` / `alternative` 角色：凡得到支持的题型都计入命中集合；命中个数决定是否调用 LLM。
 
-`type-quantified-quadratic` 对应图谱节点 **“含参一元二次不等式的恒成立与存在成立问题”**：在给定域内要求不等式对所有取值成立（`∀`，恒成立），或至少对一个取值成立（`∃`，存在成立／有解），求参数的范围。这里的变量角色由量词和目标确定；Q08、Q09 关于量词变量为一次、关于目标变量为二次，也属于该节点的“更换主元”分支。识别契约沿用这个节点 ID，分为：
+`type-quantified-quadratic` 对应图谱节点 **“含参一元二次不等式的恒成立与存在成立问题”**：在给定域内要求不等式对所有取值成立（`∀`，恒成立），或至少对一个取值成立（`∃`，存在成立／有解），求参数的范围、最小值或最大值。这里的变量角色由量词和目标确定；Q08、Q09 关于量词变量为一次、关于目标变量为二次，也属于该节点的“更换主元”分支。识别契约沿用这个节点 ID，分为：
 
 | 分支 | 必要条件 |
 | --- | --- |
-| 量词变量的二次式 | `quantifier` 为 ∀ 或 ∃；`goal.kind` 为 `find_range`；`relation.operator` 为 `<`、`<=`、`>`、`>=` 之一；`degree_in_bound` 为 `exact` 且次数为 2，或为 `upper_bound` 且上界恰为 2（含参二次项系数可能为 0） |
+| 量词变量的二次式 | `quantifier` 为 ∀ 或 ∃；`goal.kind` 为 `find_range`、`find_minimum`、`find_maximum` 之一，所求为单一标量；`relation.operator` 为 `<`、`<=`、`>`、`>=` 之一；`degree_in_bound` 为 `exact` 且次数为 2，或为 `upper_bound` 且上界恰为 2（含参二次项系数可能为 0） |
 | 更换主元 | 同样的量词、目标和不等号要求；`degree_in_goal.degree` 为 2；`degree_in_bound.degree` ≤ 1；`range_var_is_principal` 为假 |
 
 上界为 1 或 0 的含参式（如 `∀x∈ℝ: a·x+1≥0`）不是二次式；`=`、`!=` 关系（如 `∃x∈ℝ: x²=a`）是方程或不等于条件，不属于恒成立、有解的不等式题。两个分支都按冲突处理，测试各用这两个反例覆盖。
 
 `type-parameter-quadratic-solve`：必要条件是目标为求解集且系数含参；排除条件是 `quantifier` 存在。Q01–Q09 的目标都是 `find_range` 且带量词，该题型冲突。
 
-`type-amgm-quantified`：结构前提是量词存在且目标为求范围。和积结构不是阶段①特征，由第 5 节的按需验证给出；验证不可用时这项为未知，不支持也不排除。二次结构不作为它的排除条件。
+`type-amgm-quantified`：结构前提是量词存在且目标为求单一参数的范围、最小值或最大值。和积结构不是阶段①特征，由第 5 节的按需验证给出；验证不可用时这项为未知，不支持也不排除。二次结构不作为它的排除条件。
+
+极值目标保持题面语义：候选用 `{"kind":"find_minimum","expression":"a"}`（最大值同理），程序特征用 `{"kind":"find_minimum","symbol":"a"}`，不得伪改成 `find_range`。例如题 13 的 `∀x∈(0,1/2]: x²+a·x+1≥0`、求 `a` 的最小值，应提取量词、半开区间和二次结构并命中恒成立题型。此阶段不判断所求最值是否存在或可达；这些属于后续求解。复合目标如 `min(a+b)` 仍不在当前单标量结构提取范围内。D1 与页面目标选项按实际目标显示“最小值／最大值”，包括“则实数 a 的最小值为……”这类没有“求”字的填空题。
 
 节点 `features` 里“通常转化为最值”这类方法提示不写入契约。
 
@@ -318,11 +320,22 @@ Q01 的 D2 与 [Demo 设计](graph-walk-demo-q01-design.md) 一致：主要题�
 
 ```sh
 .venv/bin/python -m shuxueshuo_server.graph_lesson.stage_two.cli replay \
-  --recording tests/solver/fixtures/graph-guided-stage-two/recorded/q01-20261018-01 \
+  --recording tests/solver/fixtures/graph-guided-stage-two/recorded/q01-20261018-02 \
   --output ../internal/solver-runs/graph-guided-stage-two/my-q01-replay
 ```
 
 回放会核验录制文件及本次准备的完整请求，重新执行判型、知识规则和 D1/D2；提示词、候选或检查报告改变导致请求不一致时拒绝使用旧选择。历史调用计数单独保留，本次调用为 0。`record --run <运行目录> --output <新录制目录>` 导出成功或失败材料；`report --run <运行或批次目录>` 只重建 HTML，不调用 LLM。
+
+参数极值扩展改变了题型检查及线索文案，因此旧 `q01-20261018-01` 录制在当前契约下应报告 `selection.recording_request_mismatch`，不能复用原响应冒充新请求的结果。当前成功回放使用重新真实调用产生的 `q01-20261018-02`；旧录制原样保留，并有漂移检测回归。
+
+题 13 的真实识图与复核录制回放可保留为人可调试报告，无须再次请求视觉模型：
+
+```sh
+GRAPH_PARAMETER_EXTREMUM_RUN_DIR=../internal/solver-runs/graph-guided-stage-two/my-extremum-replay \
+  .venv/bin/python -m pytest -q -s tests/search/test_parameter_extremum_recorded.py
+```
+
+该测试核验原始图片、请求／响应哈希与复核 revision，使用当前代码重算特征，再生成题型和学生页面数据。原候选保持 `find_minimum(a)`，历史 13 项未知特征作为对照保留。学生上传的旧运行结果不会被此次代码修改自动覆盖；重启本地服务后重新提交题目会使用新特征提取。
 
 回放产生的待处理记录全部位于指定输出目录内。结果的 `replay_comparison` 比较最初录制与本次的全题状态、目标增删及逐目标状态、主要归属、选择来源和支持集合；旧历史未保存支持集合时，仍比对其余字段。即使由多命中变为唯一命中而未使用 LLM 录制，也会显示差异。差异不改写本次判型结果，报告明确标记回放验收未通过，CLI 返回 1；重新录制回放结果后继续沿用最初历史基线，不把差异自动视为新基准。
 
@@ -340,13 +353,19 @@ RUN_LLM_INTEGRATION=1 .venv/bin/python -m pytest -q tests/solver/test_graph_stag
 
 每份 `index.html` 展示题图、原文、准入诊断、按目标的全部检查、知识点触发依据、D1 原文高亮、D2 选项和 LLM 请求／原始响应。报告无远端脚本或在线资源；`source.png` 会随录制保留。未知题型的待处理记录同时保存在当前运行目录，便于移动或回放后打开。
 
-本次产物：
+首轮实现与审查修复产物（历史）：
 
 - [22 份录制的批次报告](../internal/solver-runs/graph-guided-stage-two/offline-20261018-03/index.html)。共 26 个目标：24 个确认题型，两个 Q11（1）样本为暂不支持。
 - [Q01 真实 LLM 选择报告](../internal/solver-runs/graph-guided-stage-two/live-selection-20261018-01/selection/index.html)。包括和积验证、双命中检查、主要归属与替代思路。
 - [Q01 在审查修复代码上的零网络回放报告](../internal/solver-runs/graph-guided-stage-two/replay-20261018-02/index.html)。本次与历史调用计数分别展示，并确认历史结论一致。
-- [受版本管理的 Q01 选择录制](../server/tests/solver/fixtures/graph-guided-stage-two/recorded/q01-20261018-01/recording.json)。
+- [首轮 Q01 选择录制](../server/tests/solver/fixtures/graph-guided-stage-two/recorded/q01-20261018-01/recording.json)。
+
+参数极值扩展产物：
+
+- [题 13 真实识图／复核录制的全链路调试报告](../internal/solver-runs/graph-guided-stage-two/extrema-q13-20261018-01/index.html)。含历史结果、当前特征、判型、D1/D2 及学生页面 JSON。
+- [新契约下的 Q01 真实选择与离线回放](../internal/solver-runs/graph-guided-stage-two/live-extrema-q01-20261018-01/replay/index.html)。
+- [当前 Q01 选择录制](../server/tests/solver/fixtures/graph-guided-stage-two/recorded/q01-20261018-02/recording.json)与[题 13 录制及运行说明](../server/tests/search/fixtures/parameter-extremum/README.md)。
 
 运行报告位于 gitignore 目录；其他机器可用上述命令从录制重新生成。浏览器工具本次因 `file://` 协议策略拒绝打开本地报告，未完成浏览器视觉检查；报告内容、转义、原文位置和离线性由自动测试覆盖。
 
-最新修复后的验证：阶段②及阶段①特征、作用域身份、集合与验收回归合计 `456 passed, 1 skipped`，其中阶段②为 `347 passed, 1 skipped`。新增回归覆盖缺标签／重复标签时带警告回退完整原文、选择与 D2 继续成功、降级请求录制回放，以及裸公式后同一行全角标题的两个小问关系定位与偏移。阶段② Ruff 和 `git diff --check` 通过；本轮没有真实 LLM 请求，使用已有真实 Q01 录制验证兼容性。首次实现时的 Q01 真实集成 `1 passed` 及较广共享模块回归 `949 passed, 18 skipped` 保留为历史验证记录。此前复审修复的畸形输入、TeX 包装高亮和重复录制回放材料保留仍有回归覆盖。
+首轮审查修复的历史验证：阶段②及阶段①特征、作用域身份、集合与验收回归合计 `456 passed, 1 skipped`，其中阶段②为 `347 passed, 1 skipped`。当时新增回归覆盖缺标签／重复标签时带警告回退完整原文、选择与 D2 继续成功、降级请求录制回放，以及裸公式后同一行全角标题的两个小问关系定位与偏移。阶段② Ruff 和 `git diff --check` 通过；该轮没有真实 LLM 请求，使用当时的真实 Q01 录制验证兼容性。首次实现时的 Q01 真实集成 `1 passed` 及较广共享模块回归 `949 passed, 18 skipped` 保留为历史验证记录。此前复审修复的畸形输入、TeX 包装高亮和重复录制回放材料保留仍有回归覆盖。

@@ -119,6 +119,105 @@ def test_variable_roles_follow_bindings_not_letters(bound, goal):
     assert features["range_var_is_principal"]["value"] is False
 
 
+@pytest.mark.parametrize(
+    "kind,relation,coefficient",
+    [
+        ("find_minimum", "x^2+a*x+1>=0", "a"),
+        ("find_maximum", "x^2-a*x+1>=0", "-a"),
+    ],
+)
+def test_scalar_parameter_extrema_keep_goal_kind_and_quantified_structure(
+    kind, relation, coefficient
+):
+    candidate = {
+        "root": {
+            "facts": [f"∀x∈(0,1/2]:{relation}"],
+            "goals": [{"kind": kind, "expression": "a"}],
+        }
+    }
+    frozen = deepcopy(candidate)
+    features = feature_values(candidate)
+    assert candidate == frozen
+    assert all(item["status"] == "known" for item in features.values())
+    assert features["goal"]["value"] == {"kind": kind, "symbol": "a"}
+    assert features["goal"]["source_refs"] == ["/root/goals/0"]
+    assert features["quantifier"]["value"] == "∀"
+    assert features["bound_vars"]["value"] == ["x"]
+    assert features["free_vars"]["value"] == ["a"]
+    assert features["domain"]["value"] == {
+        "expression": "(0,1/2]",
+        "lower": "0",
+        "upper": "1/2",
+        "left_closed": False,
+        "right_closed": True,
+        "bounded": True,
+    }
+    assert features["domain_kind"]["value"] == "bounded_interval"
+    assert features["relation"]["value"]["operator"] == ">="
+    assert features["normal_form"]["value"]["operator"] == ">="
+    assert features["degree_in_bound"]["value"]["degree"] == 2
+    assert features["degree_in_goal"]["value"]["degree"] == 1
+    assert features["leading_coeff_in_bound"]["value"]["expression"] == "1"
+    assert features["coefficients"]["value"]["items"] == [
+        {"power": 2, "expression": "1", "contains_parameters": False},
+        {"power": 1, "expression": coefficient, "contains_parameters": True},
+        {"power": 0, "expression": "1", "contains_parameters": False},
+    ]
+    assert features["range_var_is_principal"]["value"] is True
+
+
+@pytest.mark.parametrize("kind", ["find_minimum", "find_maximum"])
+def test_composite_extremum_is_not_rewritten_as_a_single_parameter_goal(kind):
+    features = feature_values(
+        {
+            "root": {
+                "facts": ["∀x∈(0,1/2]:x^2+a*x+b>=0"],
+                "goals": [{"kind": kind, "expression": "a+b"}],
+            }
+        }
+    )
+    assert features["goal"]["status"] == "unknown"
+    assert features["goal"]["value"] is None
+    assert features["goal"]["diagnostics"][0]["code"] == "feature.unsupported_goal"
+    assert features["degree_in_goal"]["status"] == "unknown"
+
+
+def test_extremum_sub_questions_keep_goals_and_quantifiers_in_their_own_scope():
+    features = goal_features(
+        {
+            "root": {
+                "facts": ["a∈ℝ", "b∈ℝ"],
+                "children": [
+                    {
+                        "facts": ["∀x∈(0,1/2]:x^2+a*x+1>=0"],
+                        "goals": [{"kind": "find_minimum", "expression": "a"}],
+                    },
+                    {
+                        "facts": ["∀t∈[1,2):t^2-b*t+1>=0"],
+                        "goals": [{"kind": "find_maximum", "expression": "b"}],
+                    },
+                ],
+            }
+        }
+    )
+    for index, kind, parameter, bound, domain in (
+        (0, "find_minimum", "a", "x", "(0,1/2]"),
+        (1, "find_maximum", "b", "t", "[1,2)"),
+    ):
+        scope = f"/root/children/{index}"
+        target = f"{scope}/goals/0"
+        assert features[target, "goal"]["value"] == {"kind": kind, "symbol": parameter}
+        assert features[target, "bound_vars"]["value"] == [bound]
+        assert features[target, "free_vars"]["value"] == [parameter]
+        assert features[target, "domain"]["value"]["expression"] == domain
+        for (target_ref, _), feature in features.items():
+            if target_ref == target:
+                assert feature["status"] == "known"
+                assert feature["scope"] == scope
+                assert feature["source_refs"]
+                assert all(ref.startswith(scope + "/") for ref in feature["source_refs"])
+
+
 def test_parameter_leading_coefficient_is_not_assumed_nonzero():
     features = feature_values(
         {

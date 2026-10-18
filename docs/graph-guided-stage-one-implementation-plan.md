@@ -146,7 +146,7 @@ LLM 成功返回、题意数学合法、原图复核通过是不同状态。只�
 
 | 首批结构特征 | 程序计算与输出 | 关联知识示例 |
 | --- | --- | --- |
-| `quantifier`、`bound_vars`、`free_vars`、`goal` | 从绑定后的题意读取量词、变量身份和 `find_range` 目标；不按字母名猜角色 | `quantifiers#universal`、`quantifiers#existential` |
+| `quantifier`、`bound_vars`、`free_vars`、`goal` | 从绑定后的题意读取量词、变量身份，以及单一标量的 `find_range`、`find_minimum`、`find_maximum` 目标；保留原目标类型，不按字母名猜角色 | `quantifiers#universal`、`quantifiers#existential` |
 | `domain`、`domain_kind` | 数学域、开闭端点、是否有界 | `quantifiers#domain` |
 | `relation`、`normal_form` | 原关系与规范关系、严格性及变换记录；严格题使用 $>0$，不一律写成 $\ge0$ | `quadratic-inequality#definition` |
 | `degree_in_bound`、`degree_in_goal` | 关于指定变量的次数；非多项式和缺少能力分别报告 | `quadratic-function-properties#definition` |

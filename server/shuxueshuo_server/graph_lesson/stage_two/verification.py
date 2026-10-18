@@ -92,7 +92,7 @@ def verify_amgm(candidate, target_ref, features, enabled=False):
         if not report.ok:
             raise ValueError("verification.invalid_candidate")
         goal, facts = _visible_target(report.semantic, target_ref)
-        if goal["kind"] != "find_range" or goal["target"][:1] != ["ref"]:
+        if goal["kind"] not in ("find_range", "find_minimum", "find_maximum") or goal["target"][:1] != ["ref"]:
             raise ValueError("verification.unsupported_goal")
         quantifiers = [f for f in facts if f[0] == "quantifier"]
         if len(quantifiers) != 1:

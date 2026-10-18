@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "primary": "type-quantified-quadratic",
+  "diagnostics": [],
+  "llm": {
+    "status": "succeeded",
+    "mode": "provider",
+    "semantic_calls": 1,
+    "network_attempts": 1,
+    "candidate_ids": [
+      "type-amgm-quantified",
+      "type-quantified-quadratic"
+    ],
+    "request_ref": "request.json",
+    "response_ref": "response.json",
+    "timeout_seconds": 120.0,
+    "max_network_attempts": 2,
+    "validation": {
+      "ok": true
+    },
+    "request_hash": "62b44eea4b805c5cd298bb76a60b5db28f0872812f36ea1b95cc0f45d65ff702",
+    "selection": {
+      "contract": "graph-stage-two-selection/v1",
+      "target_ref": "/root/goals/0",
+      "primary_type_id": "type-quantified-quadratic",
+      "branch_id": "bound-quadratic",
+      "check_ids": [
+        "type-quantified-quadratic/bound-quadratic/quantifier",
+        "type-quantified-quadratic/bound-quadratic/range-goal",
+        "type-quantified-quadratic/bound-quadratic/inequality",
+        "type-quantified-quadratic/bound-quadratic/quadratic-degree"
+      ],
+      "reason": "题目要求含参不等式对任意实数 x 恒成立，并求参数 a 的范围；约束变量 x 出现在二次式中，直接对应含参一元二次不等式的恒成立问题，因此主要归属该题型。"
+    },
+    "elapsed_seconds": 1.669726,
+    "new_semantic_calls": 1,
+    "new_network_attempts": 1
+  }
+}

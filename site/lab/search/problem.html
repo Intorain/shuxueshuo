@@ -7,13 +7,16 @@
   <meta name="theme-color" content="#f5f7f5">
   <title>拍题学 · 数学说</title>
   <link rel="stylesheet" href="/assets/practice/vendor/katex-0.18.9/katex.min.css">
+  <link rel="stylesheet" href="/assets/graph-walk/walk.css" id="pq-walk-css">
   <link rel="stylesheet" href="search.css">
   <link rel="stylesheet" href="problem.css">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
+  <script src="/assets/practice/math-text.js" defer></script>
+  <script src="/assets/practice/components.js" defer></script>
   <script src="problem.js" defer></script>
 </head>
-<body class="sq-page">
+<body class="sq-page" data-walk="mount">
   <header class="pq-bar">
     <a class="pq-back" href="./" aria-label="返回拍题学">‹</a>
     <strong>拍题学</strong>
@@ -40,7 +43,7 @@
           <span class="pq-verify" id="pq-verify" hidden></span>
           <button type="button" class="pq-thumb" id="pq-thumb" aria-label="查看原图"><img id="pq-thumb-img" alt=""></button>
         </div>
-        <div class="pq-parts" id="pq-parts" role="tablist" aria-label="小问" hidden></div>
+        <nav class="pq-parts" id="pq-parts" aria-label="跳到小问" hidden></nav>
         <div class="pq-text" id="pq-text"></div>
         <section class="pq-meaning" id="pq-meaning" aria-labelledby="pq-meaning-title" hidden>
           <h2 id="pq-meaning-title">题意整理</h2>
@@ -50,11 +53,19 @@
       </div>
 
       <div class="pq-next" id="pq-next">
-        <div class="pq-next-head"><span class="pq-spin" aria-hidden="true"></span><strong id="pq-next-title">正在准备第一步：读题</strong></div>
-        <p>马上开始。你会先逐句读题，再判断这是哪一类题。</p>
-        <ol class="pq-road"><li class="is-on">读题</li><li>判断题型</li><li>选方法</li><li>解答</li></ol>
-        <p class="pq-dev">原型：后续步骤随阶段②开发接入</p>
+        <div class="pq-next-head"><span class="pq-spin" aria-hidden="true"></span><strong id="pq-next-title">核对原图后开始</strong></div>
+        <p>核对完就可以选：自己一步步做，或者看 AI 解题。</p>
       </div>
+
+      <section class="pq-start" id="pq-start" aria-labelledby="pq-start-title" hidden>
+        <h2 id="pq-start-title">怎么学这道题？</h2>
+        <div class="pq-start-options">
+          <button type="button" data-actor="student"><b>自己做</b><span>逐句读题、判断题型，每一步都有反馈</span></button>
+          <button type="button" data-actor="replay"><b>看 AI 解题</b><span>AI 一步步点选，图谱同步点亮</span></button>
+        </div>
+        <p class="pq-start-note" id="pq-start-note" hidden><span class="pq-spin" aria-hidden="true"></span>正在判断题型，选好就开始</p>
+      </section>
+      <div class="pq-lesson" id="pq-lesson"></div>
       <p class="pq-quota" id="pq-quota" hidden>已计入今天的次数，还可以拍 7 道</p>
     </section>
 
@@ -73,6 +84,35 @@
 
     <p class="sq-proto-note">原型 · 模拟识别结果：<a href="?demo=ok">成功</a> · <a href="?demo=multi">多问</a> · <a href="?demo=fixed">复核修正</a> · <a href="?demo=figure">缺图</a> · <a href="?demo=unclear">看不清</a> · <a href="?demo=unsupported">暂不支持</a> · <a href="?demo=error">系统失败</a></p>
   </main>
+
+  <!-- 图谱解题：选好学习方式后，原题卡片移进左栏，由 /assets/graph-walk/walk.mjs 渲染 -->
+  <main class="gw-workspace" id="gw-main" hidden>
+    <div id="gw-loading" role="status" hidden>正在读取题目与图谱…</div>
+    <section id="gw-error" class="gw-error" hidden aria-live="polite"><p></p><button type="button" id="gw-retry">重新加载</button></section>
+    <div id="gw-ready" hidden>
+      <button type="button" class="gw-path-toggle" id="gw-open-graph" aria-controls="gw-graph-panel" aria-expanded="false"><span id="gw-path">从题目找线索</span><span aria-hidden="true">查看图谱 ↗</span></button>
+      <div class="gw-layout">
+        <div class="gw-lesson">
+          <section class="gw-actor-panel" aria-label="学习方式">
+            <div class="gw-toolbar"><button type="button" id="gw-student" aria-pressed="true">自己做</button><button type="button" id="gw-ai" aria-pressed="false">看 AI 解题</button><button type="button" id="gw-reset">重新开始</button></div>
+          </section>
+          <div id="gw-steps" aria-label="解题步骤"></div>
+          <div id="gw-completion"></div>
+          <div class="gw-history-controls"><button type="button" id="gw-undo" disabled>← 后退一步</button><span id="gw-progress"></span></div>
+        </div>
+        <aside id="gw-graph-panel" class="gw-graph-panel" aria-labelledby="gw-graph-title">
+          <div class="gw-graph-heading"><div><p class="eyebrow">知识与解题路径</p><h2 id="gw-graph-title">这一步，图谱做了什么</h2></div><button type="button" id="gw-close-graph" aria-label="关闭图谱">×</button></div>
+          <div id="gw-graph"></div>
+          <div class="gw-legend"><span>○ 候选</span><span>● 已确认</span><span>◎ 当前步骤</span></div>
+          <section id="gw-selection" class="gw-selection" hidden aria-live="polite"></section>
+          <section class="gw-log-panel" aria-labelledby="gw-log-title"><h3 id="gw-log-title">过程记录</h3><ol id="gw-logs"></ol><details id="gw-log-history"><summary>查看全部记录</summary><ol></ol></details></section>
+          <details class="gw-used"><summary>本路线实际用到的依据 <span id="gw-used-count">0</span></summary><ul id="gw-used"></ul></details>
+          <details class="gw-used"><summary>本路线的调用记录</summary><ol id="gw-calls"></ol></details>
+        </aside>
+      </div>
+    </div>
+  </main>
+  <div id="gw-announcement" class="sr-only" aria-live="polite" role="status"></div>
 
   <dialog class="sq-dialog pq-sheet" id="pq-misread-sheet">
     <form method="dialog">

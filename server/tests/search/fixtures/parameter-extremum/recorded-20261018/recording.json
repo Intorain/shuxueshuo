@@ -1,0 +1,14 @@
+{
+  "contract": "student-search-recording/v1",
+  "description": "Unmodified original redacted requests, provider responses, call ledger, image crop and historical result; frozen.json is an export adapter using original ledger implementation hashes. No new LLM calls or live acceptance claims.",
+  "files": {
+    "fixture/source.png": "36b9960b950d33909ae9737fcd78203d9172b62a7a284612de79da71db246b38",
+    "frozen.json": "5921961d77f26edf1d9c1a3145cf7c7baff2046ba6cf200bfd67a595fabeae6c",
+    "historical-result.json": "6967ba536c114563adbc7ddfbf06787dddb893216f3c98b279ca11813af026b5",
+    "workflow/calls/01-extract/request.json": "a621ba8e00c449942b5605b4ebfbdff6c4c7430c4fbc14c07d5ac70e2565a308",
+    "workflow/calls/01-extract/response.json": "1b13bca1a4dce13ed2783ac474c13ae583cde3bd8c468456c463b658eda8a678",
+    "workflow/calls/02-review/request.json": "b7b9f49bf3e144dff98515c758d85845c0005fe87caea8c86582ce3a246440af",
+    "workflow/calls/02-review/response.json": "71cacc6a71ec4e3ee93583cb1afd276ac7a8d62998c9ab75bc1f44d040df6087",
+    "workflow/ledger.json": "9e35ea2990c969b11188aa97522643d80bd3c2ac26f1ee941f854513632fbadf"
+  }
+}

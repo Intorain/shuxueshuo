@@ -39,9 +39,9 @@ const FAILS = {
 /* extract: ms until the extraction is shown (or fails); review: ms the background review takes.
    preview is what extraction showed; text is what review settled on. */
 const SCENARIOS = {
-  ok: {sample: 'sample-q01.png', extract: 2200, review: 2400, text: Q01, root: Q01_ROOT},
-  multi: {sample: 'sample-q10.png', extract: 2600, review: 2600, text: Q10, parts: ['（1）', '（2）'], root: Q10_ROOT},
-  fixed: {sample: 'sample-q01.png', extract: 2200, review: 3600, preview: Q01_MISREAD, previewRoot: Q01_MISREAD_ROOT, text: Q01, root: Q01_ROOT},
+  ok: {sample: 'sample-q01.png', extract: 2200, review: 2400, text: Q01, root: Q01_ROOT, lesson: 'demo-lesson-q01.json'},
+  multi: {sample: 'sample-q10.png', extract: 2600, review: 2600, text: Q10, parts: ['（1）', '（2）'], root: Q10_ROOT, lesson: 'demo-lesson-q10.json'},
+  fixed: {sample: 'sample-q01.png', extract: 2200, review: 3600, preview: Q01_MISREAD, previewRoot: Q01_MISREAD_ROOT, text: Q01, root: Q01_ROOT, lesson: 'demo-lesson-q01.json'},
   figure: {sample: 'sample-q01.png', extract: 2200, review: 2200, preview: Q01, previewRoot: Q01_ROOT, fail: FAILS.figure},
   unclear: {sample: 'sample-q01.png', extract: 2200, review: 2400, preview: Q01, previewRoot: Q01_ROOT, fail: FAILS.unclear},
   unsupported: {sample: 'sample-q01.png', extract: 2400, fail: FAILS.unsupported},
@@ -185,6 +185,18 @@ function normalizeNotation(expr) {
   }).join('');
 }
 
+/* A number over a number becomes \frac only when that pair is a whole division chain.
+   Division is left-associative, so a number that is the denominator of an earlier slash
+   (a/2/3, a/--2/3, a/+-2/3) or whose own denominator is divided again (1/2/3) stays inline. */
+function fractions(s) {
+  return s.replace(/(\d+)\/(\d+)/g, (match, top, bottom, at) => {
+    const before = s.slice(0, at), after = s.slice(at + match.length);
+    if (/[\w.^]$/.test(before) || /^[\w.^/]/.test(after)) return match;
+    if (/\/[+\-−\s]*$/.test(before)) return match;
+    return `\\frac{${top}}{${bottom}}`;
+  });
+}
+
 /* Catalog notation (Unicode, explicit or numeric implicit multiplication) to display TeX. */
 function tex(expr) {
   const clean = normalizeNotation(expr);
@@ -197,6 +209,8 @@ function tex(expr) {
   const operand = arg => (/[+\-−*/]/.test(arg) ? `(${arg})` : arg);
   s = calls(s, 'mod', (n, k) => `(${operand(n)}\\bmod ${operand(k)})`);
   s = calls(s, 'sqrt', arg => `\\sqrt{${arg}}`);
+  s = fractions(s);
+  const inlineDivision = s.includes('/');
   return s
     .replace(/\b(min|max)_\\\{([^}]*?)\\\}/g, '\\$1_{$2}')
     .replace(/√\(([^()]*)\)/g, '\\sqrt{$1}')
@@ -210,7 +224,7 @@ function tex(expr) {
     .replace(/([}A-Za-z)])\s*\*\s*(?=\d)/g, '$1\\cdot ')
     .replace(/([A-Z])\s*\*\s*(?=[A-Z])/g, '$1\\cdot ')
     // With inline division, keep multiplication explicit: a/2*x must not look like a/(2*x).
-    .replace(/\s*\*\s*/g, clean.includes('/') ? '\\cdot ' : '')
+    .replace(/\s*\*\s*/g, inlineDivision ? '\\cdot ' : '')
     .replace(/<=/g, '\\le ').replace(/>=/g, '\\ge ').replace(/!=/g, '\\ne ')
     .replace(/[∧∨⊆⊊⊇⊋∅ℝ∞∀∃∈∉∩∪:°∠△⟂∥]/g, c => TEX[c]);
 }
@@ -254,7 +268,7 @@ function renderMeaning() {
 }
 
 /* ---------- 结果卡：先展示，后核对 ---------- */
-const shown = {text: null, parts: [], part: 0, root: null};
+const shown = {text: null, parts: [], root: null};
 
 function setVerify(state) {
   const badge = $('#pq-verify');
@@ -263,19 +277,16 @@ function setVerify(state) {
   badge.textContent = {checking: '正在核对原图', ok: '已核对原图', fixed: '已按原图修正'}[state];
   const checking = state === 'checking';
   $('#pq-quota').hidden = checking;
-  const part = shown.parts.length > 1 ? partName(shown.parts[shown.part]) : '';
-  $('#pq-next-title').textContent = checking ? '核对原图后开始读题' : `正在准备${part}的第一步：读题`;
+  $('#pq-next').hidden = !checking;
+  $('#pq-start').hidden = checking;
 }
 
 function renderText() {
   const lines = shown.text.split('\n').map(line => line.trim()).filter(Boolean);
   $('#pq-text').innerHTML = lines.map(line => `<p>${escape(line)}</p>`).join('');
   renderMath($('#pq-text'));
-  const tabs = $('#pq-parts');
-  tabs.hidden = shown.parts.length < 2;
-  tabs.innerHTML = shown.parts.length < 2 ? '' : shown.parts.map((label, i) =>
-    `<button type="button" role="tab" data-part="${i}" aria-selected="${i === shown.part}">${escape(partName(label))}</button>`).join('');
   renderMeaning();
+  renderTabs();
 }
 
 /* Show or update the problem and its meaning; returns true when an already shown version changed. */
@@ -283,7 +294,7 @@ function showProblem(text, parts, root = null) {
   const same = shown.text === text && JSON.stringify(shown.root) === JSON.stringify(root);
   const changed = shown.text !== null && !same;
   if (same && String(shown.parts) === String(parts)) return false;
-  Object.assign(shown, {text, parts, root, part: Math.min(shown.part, Math.max(0, parts.length - 1))});
+  Object.assign(shown, {text, parts, root});
   $('#pq-scan').hidden = true;
   $('#pq-result').hidden = false;
   renderText();
@@ -309,6 +320,198 @@ function withdraw(fail) {
   showFail(fail);
 }
 
+/* ---------- 图谱解题（阶段②） ----------
+   The server sends one graph-walk bundle and AI replay per resolved part. After stage one the
+   student picks 自己做 or 看 AI 解题; the problem card then moves into the walk layout and the
+   Demo engine renders the steps and the graph. Part buttons switch bundles; the engine keeps each
+   part's progress. */
+const WALK = '/assets/graph-walk/walk.mjs?v=20261018-reset';
+const lesson = {data: null, actor: null, part: -1, engine: null, opened: false};
+
+function goalName(goal) {
+  return goal.label && /^[（(]\d+[）)]$/.test(goal.label) ? partName(goal.label) : goal.label;
+}
+
+function goalState(goal) {
+  if (goal.status === 'unsupported') return 'unsupported';
+  return goal.walk ? 'ready' : 'failed';
+}
+
+const goals = () => lesson.data?.goals || [];
+const authoredGoal = ref => ref.split('/').slice(2).reduce((node, key) => node?.[key], shown.root);
+
+/* One scope can ask for several things (a range and a minimum); each goal then gets its own tab. */
+function goalTitle(goal) {
+  const part = escape(goalName(goal) || '');
+  const siblings = goals().filter(other => other.scope === goal.scope);
+  if (siblings.length < 2) return part;
+  const authored = authoredGoal(goal.target_ref);
+  const what = authored ? `求 ${goalLine(authored)}` : `目标 ${siblings.indexOf(goal) + 1}`;
+  return part ? `${part} · ${what}` : what;
+}
+
+/* Tabs follow the lesson's goals once they arrive; before that, stage one's parts preview them. */
+function renderTabs() {
+  const tabs = $('#pq-parts');
+  const items = goals().length
+    ? goals().map((goal, index) => [index, goalTitle(goal)])
+    : shown.parts.map(label => [-1, escape(partName(label))]);
+  tabs.hidden = items.length < 2;
+  tabs.innerHTML = items.length < 2 ? '' : items.map(([index, html]) =>
+    `<button type="button" data-part="${index}">${html}</button>`).join('');
+  renderMath(tabs);
+  markPartTabs();
+}
+
+function markPartTabs() {
+  for (const button of document.querySelectorAll('#pq-parts [data-part]')) {
+    const index = Number(button.dataset.part);
+    const goal = goals()[index];
+    button.dataset.state = goal ? goalState(goal) : '';
+    button.setAttribute('aria-pressed', String(lesson.opened && index === lesson.part));
+  }
+}
+
+function noteHtml(goal) {
+  const which = goals().length > 1 ? '这一问' : '这道题';
+  if (goal?.status === 'unsupported') return `<section class="pq-part" data-state="unsupported"><p class="pq-part-note">${which}暂不支持 · 已记下</p></section>`;
+  return `<section class="pq-part" data-state="failed"><p class="pq-part-note">${which}没判断出题型</p>
+    <div class="pq-fail-actions"><button type="button" class="sq-primary" data-lesson-retry>重试</button><a class="sq-ghost" href="./">重新拍照</a></div></section>`;
+}
+
+const LOST = `<section class="pq-part" data-state="failed"><p class="pq-part-note">连不上服务器，暂时拿不到解题步骤</p>
+  <div class="pq-fail-actions"><button type="button" class="sq-primary" data-lesson-resume>重新连接</button></div></section>`;
+const WAITING = '<p class="gw-ai-status is-thinking" role="status"><span class="gw-ai-dot" aria-hidden="true"></span>正在判断题型…</p>';
+
+/* In walk mode a note replaces the steps and hides the graph; before it, notes sit under the card. */
+function showNote(html) {
+  if (!lesson.opened) { $('#pq-lesson').innerHTML = html; renderMath($('#pq-lesson')); return; }
+  lesson.engine?.parkWalk();
+  document.body.dataset.part = 'note';
+  document.body.dataset.graph = 'hidden';
+  $('#gw-ready').hidden = false;
+  $('#gw-completion').innerHTML = '';
+  $('#gw-steps').innerHTML = html;
+  renderMath($('#gw-steps'));
+}
+
+/* A retry or a resumed poll can bring back a lesson after a failure note replaced the choice. */
+function offerStart() {
+  if (lesson.opened) return;
+  $('#pq-lesson').innerHTML = '';
+  $('#pq-start').hidden = $('#pq-verify').dataset.state === 'checking';
+}
+
+function showLesson(data) {
+  if (data.status === 'running') {
+    lesson.data = null;
+    renderTabs();
+    $('#pq-start-note').hidden = false;
+    offerStart();
+    if (lesson.opened) showNote(WAITING);
+    return;
+  }
+  $('#pq-start-note').hidden = true;
+  if (data.status === 'input_error' || data.status === 'error' || !data.goals?.length) {
+    lesson.data = null;
+    renderTabs();
+    $('#pq-start').hidden = true;
+    showNote(noteHtml(null));
+    return;
+  }
+  lesson.data = data;
+  renderTabs();
+  const first = data.goals.findIndex(goal => goal.walk);
+  if (first < 0) {
+    // Nothing to walk in any part: no choice to offer, just say why.
+    $('#pq-start').hidden = true;
+    showNote(data.goals.map(goal => (data.goals.length > 1 ? `<h2 class="pq-part-title">${goalTitle(goal)}</h2>` : '') + noteHtml(goal)).join(''));
+    return;
+  }
+  if (lesson.part < 0 || !data.goals[lesson.part]) lesson.part = first;
+  markPartTabs();
+  if (lesson.opened) openPart(lesson.part);
+  else offerStart();
+}
+
+function lessonLost() {
+  $('#pq-start-note').hidden = true;
+  $('#pq-start').hidden = true;
+  showNote(LOST);
+}
+
+/* practice.css styles bare elements, so it joins the page only once the walk opens. */
+function addPracticeStyles() {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/assets/practice/practice.css';
+  $('#pq-walk-css').before(link);
+}
+
+async function enterWalk(actor) {
+  if (lesson.opened) return;
+  lesson.actor = actor;
+  lesson.opened = true;
+  addPracticeStyles();
+  document.body.classList.add('gw-page');
+  document.body.dataset.actor = actor;
+  const card = $('.pq-card');
+  card.classList.add('problem-card');
+  $('.gw-lesson').prepend(card);
+  $('#gw-main').insertBefore($('#pq-parts'), $('#gw-ready'));
+  $('#main').hidden = true;
+  $('#gw-main').hidden = false;
+  $('#gw-ready').hidden = false;
+  window.scrollTo(0, 0);
+  lesson.engine = await import(WALK);
+  if (lesson.data) openPart(lesson.part);
+  else showNote($('#pq-start-note').hidden ? noteHtml(null) : WAITING);
+}
+
+async function openPart(index) {
+  lesson.part = index;
+  markPartTabs();
+  const goal = goals()[index];
+  if (!lesson.engine) return;
+  if (!goal?.walk) { showNote(noteHtml(goal)); return; }
+  delete document.body.dataset.part;
+  // The first bundle opens on the chosen actor; later ones keep whatever the student switched to.
+  const actor = lesson.mounted ? lesson.engine.walkActor() : lesson.actor;
+  lesson.mounted = true;
+  await lesson.engine.mountWalk({bundle: goal.walk.bundle, replay: goal.walk.replay, actor,
+    revealGraph: true, practicePage: null});
+}
+
+async function retryLesson() {
+  if (!searchId) return toast('原型不能重试');
+  const response = await fetch(`/api/search/problems/${searchId}/lesson`, {method: 'POST'}).catch(() => null);
+  if (!response?.ok) return toast('重试失败，请稍后再试');
+  resumeLesson();
+}
+
+const LESSON_MISSES = 10;
+let lessonPoll = 0;
+
+async function pollLesson() {
+  const ticket = ++lessonPoll;
+  for (let misses = 0; misses < LESSON_MISSES;) {
+    await wait(800);
+    if (ticket !== lessonPoll) return;
+    const response = await fetch(`/api/search/problems/${searchId}`, {cache: 'no-store'}).catch(() => null);
+    const status = response?.ok ? await response.json().catch(() => null) : null;
+    if (ticket !== lessonPoll) return;
+    if (!status) { misses += 1; continue; }
+    misses = 0;
+    if (status.lesson && status.lesson.status !== 'running') return showLesson(status.lesson);
+  }
+  lessonLost();
+}
+
+function resumeLesson() {
+  showLesson({status: 'running'});
+  pollLesson();
+}
+
 /* ---------- 原型 ---------- */
 async function runDemo() {
   setPhotos((params.has('fresh') && sessionStorage.getItem('sq-image')) || scenario.sample);
@@ -324,6 +527,10 @@ async function runDemo() {
   await wait(scenario.review);
   if (scenario.fail) return withdraw(scenario.fail);
   settle(scenario.text, scenario.parts || [], scenario.root);
+  if (!scenario.lesson) return;
+  showLesson({status: 'running'});
+  const [data] = await Promise.all([fetch(scenario.lesson).then(r => r.json()), wait(1800)]);
+  showLesson(data);
 }
 
 /* ---------- 实时：本地 /api/search ---------- */
@@ -397,6 +604,10 @@ async function runLive() {
   }
   settle(status.original_text || '', status.parts || [], status.root);
   devCheck(status, '#pq-result');
+  if (status.lesson) {
+    showLesson(status.lesson);
+    if (status.lesson.status === 'running') pollLesson();
+  }
 }
 
 /* Developer panel: proves which image reached stage one and what came back. */
@@ -449,14 +660,21 @@ document.addEventListener('DOMContentLoaded', () => {
     toast('已记录，谢谢反馈。这次不计次数');
     setTimeout(() => { location.href = './'; }, 1200);
   });
+  // Before the walk opens a part button only picks which part opens first.
   $('#pq-parts').addEventListener('click', event => {
-    const button = event.target.closest('[data-part]');
-    if (!button) return;
-    shown.part = Number(button.dataset.part);
-    renderText();
-    setVerify($('#pq-verify').dataset.state);
+    const index = Number(event.target.closest('[data-part]')?.dataset.part ?? -1);
+    if (!goals()[index] || index === lesson.part && lesson.opened) return;
+    if (lesson.opened) openPart(index); else { lesson.part = index; markPartTabs(); }
   });
-  document.addEventListener('click', event => { if (event.target.closest('[data-retry]')) retry(); });
+  $('#pq-start').addEventListener('click', event => {
+    const button = event.target.closest('[data-actor]');
+    if (button) enterWalk(button.dataset.actor);
+  });
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-retry]')) retry();
+    if (event.target.closest('[data-lesson-retry]')) retryLesson();
+    if (event.target.closest('[data-lesson-resume]')) resumeLesson();
+  });
   if (searchId) {
     $('.sq-proto-note').hidden = true;
     runLive();

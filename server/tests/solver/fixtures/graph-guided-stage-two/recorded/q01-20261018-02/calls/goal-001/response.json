@@ -1,0 +1,125 @@
+{
+  "text": "{\"contract\":\"graph-stage-two-selection/v1\",\"target_ref\":\"/root/goals/0\",\"primary_type_id\":\"type-quantified-quadratic\",\"branch_id\":\"bound-quadratic\",\"check_ids\":[\"type-quantified-quadratic/bound-quadratic/quantifier\",\"type-quantified-quadratic/bound-quadratic/range-goal\",\"type-quantified-quadratic/bound-quadratic/inequality\",\"type-quantified-quadratic/bound-quadratic/quadratic-degree\"],\"reason\":\"题目要求含参不等式对任意实数 x 恒成立，并求参数 a 的范围；约束变量 x 出现在二次式中，直接对应含参一元二次不等式的恒成立问题，因此主要归属该题型。\"}",
+  "finish_reason": "stop",
+  "raw_payload": {
+    "id": "0f71134b-64e5-4d6b-9a8e-1ca996010fd9",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "{\"contract\":\"graph-stage-two-selection/v1\",\"target_ref\":\"/root/goals/0\",\"primary_type_id\":\"type-quantified-quadratic\",\"branch_id\":\"bound-quadratic\",\"check_ids\":[\"type-quantified-quadratic/bound-quadratic/quantifier\",\"type-quantified-quadratic/bound-quadratic/range-goal\",\"type-quantified-quadratic/bound-quadratic/inequality\",\"type-quantified-quadratic/bound-quadratic/quadratic-degree\"],\"reason\":\"题目要求含参不等式对任意实数 x 恒成立，并求参数 a 的范围；约束变量 x 出现在二次式中，直接对应含参一元二次不等式的恒成立问题，因此主要归属该题型。\"}",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": null
+        }
+      }
+    ],
+    "created": 1792298214,
+    "model": "deepseek-flash",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+    "usage": {
+      "completion_tokens": 161,
+      "prompt_tokens": 2413,
+      "total_tokens": 2574,
+      "completion_tokens_details": null,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 640
+      },
+      "prompt_cache_hit_tokens": 640,
+      "prompt_cache_miss_tokens": 1773
+    }
+  },
+  "metadata": {
+    "provider": "deepseek",
+    "request_model": "deepseek-v4-flash",
+    "response_model": "deepseek-flash",
+    "usage": {
+      "completion_tokens": 161,
+      "prompt_tokens": 2413,
+      "total_tokens": 2574,
+      "prompt_cache_hit_tokens": 640,
+      "prompt_cache_miss_tokens": 1773
+    },
+    "usage_complete": true,
+    "finish_reason": "stop",
+    "stream_terminated_at_json": false,
+    "received_output_characters": 477,
+    "thinking_mode": "disabled",
+    "reasoning_effort": null,
+    "response_format": "graph-stage-two-selection/v1",
+    "temperature": 0,
+    "max_output_tokens": 4096,
+    "timeout": 120.0,
+    "stream": false,
+    "transport_response_format": "json_object",
+    "image_detail": null,
+    "latency_ms": 1407
+  },
+  "provider_attempts": [
+    {
+      "provider_attempt": 1,
+      "status": "completed",
+      "response_model": "deepseek-flash",
+      "usage": {
+        "completion_tokens": 161,
+        "prompt_tokens": 2413,
+        "total_tokens": 2574,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 640
+        },
+        "prompt_cache_hit_tokens": 640,
+        "prompt_cache_miss_tokens": 1773
+      },
+      "finish_reason": "stop",
+      "visible_content": true,
+      "latency_ms": 1407,
+      "error_code": null,
+      "raw_payload": {
+        "id": "0f71134b-64e5-4d6b-9a8e-1ca996010fd9",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "logprobs": null,
+            "message": {
+              "content": "{\"contract\":\"graph-stage-two-selection/v1\",\"target_ref\":\"/root/goals/0\",\"primary_type_id\":\"type-quantified-quadratic\",\"branch_id\":\"bound-quadratic\",\"check_ids\":[\"type-quantified-quadratic/bound-quadratic/quantifier\",\"type-quantified-quadratic/bound-quadratic/range-goal\",\"type-quantified-quadratic/bound-quadratic/inequality\",\"type-quantified-quadratic/bound-quadratic/quadratic-degree\"],\"reason\":\"题目要求含参不等式对任意实数 x 恒成立，并求参数 a 的范围；约束变量 x 出现在二次式中，直接对应含参一元二次不等式的恒成立问题，因此主要归属该题型。\"}",
+              "refusal": null,
+              "role": "assistant",
+              "annotations": null,
+              "audio": null,
+              "function_call": null,
+              "tool_calls": null
+            }
+          }
+        ],
+        "created": 1792298214,
+        "model": "deepseek-flash",
+        "object": "chat.completion",
+        "service_tier": null,
+        "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+        "usage": {
+          "completion_tokens": 161,
+          "prompt_tokens": 2413,
+          "total_tokens": 2574,
+          "completion_tokens_details": null,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 640
+          },
+          "prompt_cache_hit_tokens": 640,
+          "prompt_cache_miss_tokens": 1773
+        }
+      }
+    }
+  ]
+}

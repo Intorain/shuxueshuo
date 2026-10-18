@@ -36,7 +36,7 @@
       ],
       "properties": {
         "kind": {
-          "const": "find_range"
+          "enum": ["find_range", "find_minimum", "find_maximum"]
         },
         "symbol": {
           "type": "string",

@@ -301,10 +301,30 @@ def build_d1(candidate: dict, target_ref: str, features: list[dict], knowledge: 
             for match in re.finditer(pattern, normalized):
                 add(surface, match.start(1), match.end(1), "domain", ["domain", "bound_vars"])
         goal = values.get("goal", {})
-        if goal.get("kind") == "find_range" and isinstance(goal.get("symbol"), str):
+        if goal.get("kind") in ("find_range", "find_minimum", "find_maximum") and isinstance(goal.get("symbol"), str):
             symbol = re.escape(goal["symbol"])
-            pattern = rf"求\s*(?:实数\s*)?\$?\s*{symbol}\s*\$?\s*(?:的\s*)?取值范围"
+            if goal["kind"] == "find_range":
+                pattern = rf"求\s*(?:实数\s*)?\$?\s*{symbol}\s*\$?\s*(?:的\s*)?取值范围"
+            else:
+                noun = "最小值" if goal["kind"] == "find_minimum" else "最大值"
+                target = rf"(?:\$\s*{symbol}\s*\$|{symbol}(?![A-Za-z0-9_]))"
+                pattern = rf"(?:求\s*)?(?:(?:实数|参数)\s*)?{target}\s*(?:的\s*)?{noun}"
             for match in re.finditer(pattern, normalized):
+                # With no required “求”, a suffix of ba or a+a can look like
+                # the requested symbol. Do not turn that suffix into a goal.
+                previous = normalized[:match.start()].rstrip()[-1:]
+                if (
+                    goal["kind"] != "find_range"
+                    and not match.group().startswith(("求", "实数", "参数"))
+                    and previous
+                    and (
+                        (previous.isascii() and previous.isalnum())
+                        or previous.isdigit()
+                        or "\u0370" <= previous <= "\u03ff"
+                        or previous in "_$+-*/^=<>|∞ℝ∈≤≥∀∃'()[]{}¤"
+                    )
+                ):
+                    continue
                 add(surface, match.start(), match.end(), "goal", ["goal"])
 
     fragments.sort(key=lambda item: (item["start"], item["end"], item["fragment_kind"]))

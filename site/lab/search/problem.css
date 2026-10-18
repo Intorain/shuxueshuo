@@ -1,3 +1,4 @@
+.sq-page [hidden] { display: none !important; }
 .pq-bar { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 52px; padding: 0 12px; border-bottom: 1px solid var(--sq-line); background: rgba(255, 255, 255, .94); backdrop-filter: blur(8px); }
 .pq-bar strong { font-size: 17px; }
 .pq-back { justify-self: start; padding: 0 10px; color: var(--sq-ink); font-size: 30px; line-height: 1; text-decoration: none; }
@@ -38,7 +39,9 @@
 .pq-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .pq-parts { display: flex; gap: 8px; margin-top: 12px; }
 .pq-parts button { min-height: 34px; padding: 0 14px; border: 1px solid var(--sq-line); border-radius: 999px; background: #fff; color: var(--sq-ink); font: inherit; font-size: 14px; font-weight: 600; }
-.pq-parts button[aria-selected="true"] { border-color: var(--sq-teal); background: var(--sq-teal); color: #fff; }
+.pq-parts button[data-state="done"]::after { content: ' ✓'; color: var(--sq-teal); }
+.pq-parts button[data-state="unsupported"], .pq-parts button[data-state="failed"] { color: var(--sq-muted); }
+.pq-parts button[data-state="unsupported"]::after { content: ' · 暂不支持'; font-weight: 500; font-size: 12px; }
 .pq-text { margin-top: 12px; font-size: 18px; line-height: 1.85; }
 .pq-text p + p { margin-top: 4px; }
 .pq-meaning { margin-top: 10px; padding: 8px 12px; border-radius: 12px; background: #f4f8f6; }
@@ -53,11 +56,41 @@
 .pq-next-head { display: flex; align-items: center; gap: 10px; font-size: 17px; }
 .pq-next > p { margin-top: 6px; color: rgba(255, 255, 255, .8); font-size: 14px; }
 .pq-spin { width: 18px; height: 18px; border: 2.5px solid rgba(255, 255, 255, .9); border-right-color: transparent; border-radius: 50%; animation: sq-spin .8s linear infinite; }
-.pq-road { display: flex; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 13px; }
-.pq-road li { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: rgba(255, 255, 255, .7); }
-.pq-road li.is-on { background: #fff; color: var(--sq-teal-dark); font-weight: 700; }
-.pq-dev { margin-top: 10px !important; color: rgba(255, 255, 255, .55) !important; font-size: 12px !important; }
 .pq-quota { margin-top: 12px; color: var(--sq-muted); font-size: 12.5px; text-align: center; }
+
+/* After stage one: pick how to learn */
+.pq-start { margin-top: 16px; }
+.pq-start h2 { margin: 0 0 10px; font-size: 16px; }
+.pq-start-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pq-start-options button { display: grid; gap: 4px; padding: 14px; border: 1px solid var(--sq-line); border-radius: 16px; background: #fff; color: var(--sq-ink); font: inherit; text-align: left; box-shadow: var(--sq-shadow); cursor: pointer; }
+.pq-start-options button:first-child { border-color: var(--sq-teal); background: linear-gradient(135deg, #0a8b84, #06635e); color: #fff; }
+.pq-start-options b { font-size: 17px; }
+.pq-start-options span { color: var(--sq-muted); font-size: 13px; line-height: 1.5; }
+.pq-start-options button:first-child span { color: rgba(255, 255, 255, .82); }
+.pq-start-note { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; color: var(--sq-muted); font-size: 13px; }
+.pq-start-note .pq-spin { width: 14px; height: 14px; border-color: var(--sq-teal); border-right-color: transparent; }
+
+.pq-part { margin-top: 14px; padding: 16px; border: 1px solid var(--sq-line); border-radius: 20px; background: #fff; box-shadow: var(--sq-shadow); }
+.pq-part-title { margin: 14px 0 0; font-size: 16px; }
+.pq-part-title + .pq-part { margin-top: 8px; }
+.pq-part-note { margin: 0; color: var(--sq-muted); font-size: 15px; }
+
+/* Walk mode: the Demo engine's layout (walk.css) with the search page's bar and problem card */
+.gw-page > .pq-bar { flex: none; position: relative; }
+.gw-page .pq-card.problem-card { box-shadow: none; }
+.gw-page .pq-card :is(.pq-text, .pq-meaning) p { font-size: inherit; font-weight: 400; }
+.gw-page .pq-card .pq-misread { display: none; }
+#gw-main > .pq-parts { flex: none; margin: 0 0 12px; }
+.pq-parts button[aria-pressed="true"] { border-color: var(--sq-teal); background: #e9f5f0; color: var(--sq-teal-dark); }
+.gw-page[data-part="note"] :is(.gw-actor-panel, .gw-history-controls, #gw-completion, .gw-path-toggle) { display: none; }
+.gw-page[data-part="note"] .gw-graph-panel { display: none !important; }
+/* The graph opens beside the steps once step 1 is confirmed. */
+@media (min-width: 960px) {
+  .gw-page[data-graph="hidden"] .gw-graph-panel { display: none; }
+  .gw-page[data-graph="hidden"] .gw-layout { grid-template-columns: minmax(0, 720px); justify-content: center; }}
+@media (max-width: 959px) {
+  .gw-page[data-graph="hidden"][data-actor="student"] :is(.gw-graph-panel:not(.is-open), .gw-path-toggle) { display: none; }
+}
 
 /* Failure */
 .pq-fail { animation: pq-in .35s ease-out; }

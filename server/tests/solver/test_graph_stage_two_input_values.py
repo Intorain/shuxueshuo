@@ -29,6 +29,39 @@ def test_all_actual_stage_one_value_shapes_remain_accepted(case, sample):
     assert checked["ok"], checked
 
 
+def student_upload(value):
+    value["statuses"] = {key: value["statuses"][key] for key in ("extraction", "source_reviewed", "features")}
+    value["statuses"]["admission"] = "student_upload"
+    return value
+
+
+def test_student_upload_is_admitted_without_gold_evaluation():
+    value = student_upload(accepted())
+    assert validate_input(value, "student_upload")["ok"]
+    # The same gold-free input never passes as an acceptance-batch result.
+    codes = {d["path"] for d in validate_input(value)["diagnostics"]}
+    assert {"/statuses/evaluation", "/statuses/passed"} <= codes
+
+
+@pytest.mark.parametrize("change,path", [
+    (lambda s: s.pop("admission"), "/statuses/admission"),
+    (lambda s: s.update(source_reviewed=False), "/statuses/source_reviewed"),
+    (lambda s: s.update(features=False), "/statuses/features"),
+    (lambda s: s.update(extraction="needs_confirmation"), "/statuses/extraction"),
+])
+def test_student_upload_still_requires_review_and_features(change, path):
+    value = student_upload(accepted())
+    change(value["statuses"])
+    checked = validate_input(value, "student_upload")
+    assert not checked["ok"] and path in {d["path"] for d in checked["diagnostics"]}
+
+
+def test_student_upload_run_records_its_admission(tmp_path):
+    result = run_result(student_upload(accepted()), tmp_path / "run", admission="student_upload")
+    assert result["status"] == "completed" and result["options"]["admission"] == "student_upload"
+    assert result["goals"][0]["primary"] == "type-quantified-quadratic"
+
+
 @pytest.mark.parametrize("feature,value", [
     ("quantifier", "forall"), ("quantifier", None),
     ("bound_vars", "x"), ("bound_vars", []), ("free_vars", [3]),

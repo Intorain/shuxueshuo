@@ -36,6 +36,7 @@ def run_question_image(png, output, provider, *, problem_id):
         "source_reviewed": workflow.get("source_reviewed", False),
         "candidate": candidate,
         "features": features["features"],
+        "features_ok": features.get("ok", False),
         "feature_diagnostics": features.get("diagnostics", []),
         "review_findings": _findings(output / "workflow"),
         "confirmation_diagnostics": [d for d in workflow.get("diagnostics", [])

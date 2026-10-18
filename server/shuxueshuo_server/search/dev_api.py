@@ -25,6 +25,7 @@ from starlette.concurrency import run_in_threadpool
 
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
+from .lesson import latest, present_lesson, run_stage_two
 from .ocr_client import OcrClient, OcrWorkerError
 from .question_image import question_png
 from .segmentation import segment
@@ -45,7 +46,7 @@ def create_search_router(root):
     root.mkdir(parents=True, exist_ok=True)
     ocr = OcrClient()
     runs = ThreadPoolExecutor(max_workers=2, thread_name_prefix="search-stage-one")
-    errors = {}
+    errors, lesson_errors, judging = {}, {}, set()
     errors_lock = threading.Lock()
     router = APIRouter(prefix="/api/search")
 
@@ -115,13 +116,67 @@ def create_search_router(root):
             from shuxueshuo_server.problem_understanding.batch_smoke import live_provider_factory
 
             try:
-                run_question_image(png, output, live_provider_factory("deepseek")(), problem_id=search_id)
+                result = run_question_image(png, output, live_provider_factory("deepseek")(), problem_id=search_id)
             except Exception as exc:  # noqa: BLE001 - surfaced to the page as a system failure
                 with errors_lock:
-                    errors[search_id] = getattr(exc, "args", [type(exc).__name__])[0] or type(exc).__name__
+                    errors[search_id] = _message(exc)
+                    judging.discard(search_id)
+                return
+            if result["status"] == "reviewed_candidate":
+                judge(search_id, output, result)
+            else:
+                with errors_lock:
+                    judging.discard(search_id)
 
+        # Marked before result.json can appear, so a poll never sees "done" without stage two.
+        with errors_lock:
+            judging.add(search_id)
         runs.submit(work)
         return {"search_id": search_id, "crop_size": size}
+
+    def judge(search_id, directory, result):
+        """Stage two: usually program-only; one LLM call only when several types hold."""
+        from shuxueshuo_server.graph_lesson.stage_two.selection import live_provider_factory
+
+        with errors_lock:
+            judging.add(search_id)
+            lesson_errors.pop(search_id, None)
+        try:
+            run_stage_two(directory, result, provider=live_provider_factory(),
+                          unsupported_root=root / "unsupported")
+        except Exception as exc:  # noqa: BLE001 - surfaced to the page as a judging failure
+            with errors_lock:
+                lesson_errors[search_id] = _message(exc)
+        finally:
+            with errors_lock:
+                judging.discard(search_id)
+
+    def lesson(search_id, directory, result):
+        stage_two = latest(directory)
+        with errors_lock:
+            running, error = search_id in judging, lesson_errors.get(search_id)
+        if running:
+            return {"status": "running"}
+        if stage_two is None:
+            return {"status": "error", "message": error or "stage_two.missing"}
+        return present_lesson(stage_two, result.get("features", []),
+                              (result.get("candidate") or {}).get("original_text", ""), search_id)
+
+    @router.post("/problems/{search_id}/lesson")
+    def retry_lesson(search_id: str):
+        """Rerun stage two only (no image reading) after a judging failure."""
+        directory = problem_dir(search_id)
+        if not (directory / RESULT_FILE).exists():
+            raise HTTPException(409, "stage_one.not_done")
+        result = json.loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
+        if result["status"] != "reviewed_candidate":
+            raise HTTPException(409, "stage_one.not_reviewed")
+        with errors_lock:
+            if search_id in judging:
+                return {"status": "running"}
+            judging.add(search_id)
+        runs.submit(judge, search_id, directory, result)
+        return {"status": "running"}
 
     @router.get("/problems/{search_id}")
     def problem_status(search_id: str):
@@ -133,7 +188,10 @@ def create_search_router(root):
             error = errors.get(search_id)
         if (directory / RESULT_FILE).exists():
             result = json.loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
-            return {**state, "state": "done", **_present(result)}
+            presented = _present(result)
+            if presented["outcome"] == "ok":
+                presented["lesson"] = lesson(search_id, directory, result)
+            return {**state, "state": "done", **presented}
         if error:
             return {**state, "state": "done", "status": str(error), "outcome": "error"}
         candidate = reviewing_candidate(directory / "workflow")
@@ -184,6 +242,10 @@ def _present(result):
         },
         "elapsed_seconds": result.get("elapsed_seconds"),
     }
+
+
+def _message(exc):
+    return getattr(exc, "args", [type(exc).__name__])[0] or type(exc).__name__
 
 
 def _parts(candidate):

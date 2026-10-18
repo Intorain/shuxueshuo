@@ -19,10 +19,10 @@
         {
           "id": "range-goal",
           "feature_id": "goal",
-          "op": "eq",
+          "op": "in",
           "role": "required",
           "student_cue": 1,
-          "expected": "find_range",
+          "expected": ["find_range", "find_minimum", "find_maximum"],
           "path": "kind"
         },
         {
@@ -65,10 +65,10 @@
         {
           "id": "range-goal",
           "feature_id": "goal",
-          "op": "eq",
+          "op": "in",
           "role": "required",
           "student_cue": 1,
-          "expected": "find_range",
+          "expected": ["find_range", "find_minimum", "find_maximum"],
           "path": "kind"
         },
         {

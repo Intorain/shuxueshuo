@@ -89,8 +89,18 @@ export function gradeDecision(decision, answer) {
     }
     return {status: 'passed', message: '判断通过，已记录本步结果。'};
   } catch (error) {
-    return {status: 'wrong', message: error.message};
+    return {status: 'wrong', message: optionFeedback(decision, answer) || error.message};
   }
+}
+
+/* An option may carry its own feedback; a wrong pick then explains itself instead of the step's generic hint. */
+function optionFeedback(decision, answer) {
+  const component = decision.interaction;
+  if (component.type === 'choice') return component.options.find(option => option.value === answer)?.feedback || '';
+  if (component.type !== 'checklist' || !Array.isArray(answer)) return '';
+  const expected = decision.expected_answer?.terms || [];
+  return answer.map((value, index) => value !== expected[index] &&
+    component.slots[index]?.options.find(option => option.value === value)?.feedback).filter(Boolean).join(' ');
 }
 
 const routeOf = (decision, answer) => decision.interaction.methods?.find(method => method.value === answer?.[2])?.route;

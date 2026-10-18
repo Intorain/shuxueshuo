@@ -49,8 +49,19 @@ def _visible_sources(candidate):
     return visible
 
 
-def validate_input(value):
+# Acceptance inputs come from recorded batches checked against gold fixtures.
+# Student uploads have no gold: they must say so explicitly and are admitted on
+# extraction, source review and features alone, never by claiming evaluation.
+ADMISSIONS = {
+    "acceptance": ("source_reviewed", "features", "evaluation", "passed"),
+    "student_upload": ("source_reviewed", "features"),
+}
+
+
+def validate_input(value, admission="acceptance"):
     diagnostics = []
+    if admission not in ADMISSIONS:
+        raise ValueError(f"unknown admission: {admission}")
     feature_values = json.loads(FEATURE_VALUES_PATH.read_text(encoding="utf-8"))
 
     def issue(code, path, message):
@@ -67,7 +78,9 @@ def validate_input(value):
     statuses = value["statuses"]
     if statuses.get("extraction") != "reviewed_candidate":
         issue("input.extraction", "/statuses/extraction", "阶段①尚未完成题意提取与原图复核。")
-    for key in ("source_reviewed", "features", "evaluation", "passed"):
+    if admission == "student_upload" and statuses.get("admission") != "student_upload":
+        issue("input.admission", "/statuses/admission", "学生上传的阶段①结果必须标明 admission=student_upload。")
+    for key in ADMISSIONS[admission]:
         if statuses.get(key) is not True:
             issue("input.not_accepted", f"/statuses/{key}", "阶段①完成与验收标记必须明确为 true。")
     if not checked["contract_valid"]:

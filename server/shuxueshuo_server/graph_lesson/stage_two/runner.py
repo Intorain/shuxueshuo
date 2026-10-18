@@ -66,7 +66,7 @@ def compare_replay_decisions(historical, current):
 
 
 def run_result(value, output, *, provider=None, verify=False, input_reference=None,
-               source_image=None, unsupported_root=None, contracts=None):
+               source_image=None, unsupported_root=None, contracts=None, admission="acceptance"):
     """Run a validated stage-one result; an existing output is never overwritten.
 
     Providers may be lazy factories. Only multiple supported types invoke one.
@@ -83,7 +83,7 @@ def run_result(value, output, *, provider=None, verify=False, input_reference=No
     stamp = datetime.now(UTC).isoformat()
     input_hash = revision(value)
     run_id = output.name
-    validation = validate_input(value)
+    validation = validate_input(value, admission)
     result = {
         "contract": RESULT_CONTRACT,
         "run_id": run_id,
@@ -95,7 +95,7 @@ def run_result(value, output, *, provider=None, verify=False, input_reference=No
         "status": "input_error" if not validation["ok"] else "completed",
         "goals": [],
         "llm": _counts([]),
-        "options": {"verify_amgm": verify},
+        "options": {"verify_amgm": verify, "admission": admission},
     }
     save(output / "input.json", value)
     save(output / "frozen.json", {"input_sha256": input_hash, "implementation": fingerprint(),
@@ -256,6 +256,7 @@ def replay_run(recording, output):
     result = run_result(value, output, provider=RecordedSelectionProvider.from_run(recording),
                         verify=original["options"]["verify_amgm"], input_reference=recording / "input.json",
                         contracts=frozen.get("recognition_contracts"),
+                        admission=original["options"].get("admission", "acceptance"),
                         source_image=recording / "source.png",
                         unsupported_root=Path(output) / "unsupported")
     if (recording / "input-raw.txt").is_file():

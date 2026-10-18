@@ -415,7 +415,7 @@ def _scope_features(report, candidate, scope, ancestors, features):
 
         goal_ast = goal["target"]
         if (
-            goal["kind"] != "find_range"
+            goal["kind"] not in ("find_range", "find_minimum", "find_maximum")
             or goal_ast[0] != "ref"
             or goal_ast[2] != "scalar"
         ):
@@ -424,6 +424,9 @@ def _scope_features(report, candidate, scope, ancestors, features):
                 add(spec.feature_id, diagnostic=diagnostic, source_refs=[target_ref])
             continue
         goal_name = objects[goal_ast[1]]["name"]
+        # A scalar parameter's extremum uses the same structural variables as
+        # its range. Preserve the requested kind; finding that extremum (or
+        # proving it exists) remains a later solving-stage responsibility.
         add(
             "goal",
             {"kind": goal["kind"], "symbol": goal_name},

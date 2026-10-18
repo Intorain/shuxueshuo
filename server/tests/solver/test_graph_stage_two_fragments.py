@@ -156,6 +156,36 @@ def test_one_fact_does_not_spread_knowledge_between_fragments():
     assert set(quantifier["source_refs"]) & set(relation["source_refs"])
 
 
+@pytest.mark.parametrize(("kind", "noun"), [("find_minimum", "最小值"), ("find_maximum", "最大值")])
+@pytest.mark.parametrize("spelling", ["实数 $a$ 的", "参数 $ a $ 的", "求实数 a 的", "求 $a$ 的", "a的", r"实数 \(a\) 的"])
+def test_extremum_goal_locates_whole_symbol_with_or_without_request_verb(kind, noun, spelling):
+    candidate, features = recorded("q01")
+    next(item for item in features if item["feature_id"] == "goal")["value"] = {"kind": kind, "symbol": "a"}
+    candidate["original_text"] = "🧮若不等式恒成立，则" + spelling + noun + "为 ______。"
+    output = build(candidate, features)
+    fragment, = of_kind(output, "goal")
+    assert fragment["text"] == spelling + noun
+    assert fragment["matched_feature_ids"] == ["goal"]
+    assert_offsets(candidate, output)
+
+
+@pytest.mark.parametrize(("kind", "noun"), [("find_minimum", "最小值"), ("find_maximum", "最大值")])
+@pytest.mark.parametrize("spelling", ["b", "$b$", "ba", "b a", "a+a", "a + a", "$a+a$", "a_1", "a₁", "$a^2$"])
+def test_extremum_goal_does_not_match_a_different_symbol_or_expression(kind, noun, spelling):
+    candidate, features = recorded("q01")
+    next(item for item in features if item["feature_id"] == "goal")["value"] = {"kind": kind, "symbol": "a"}
+    candidate["original_text"] = "则实数 " + spelling + " 的" + noun + "为 ______。"
+    assert not of_kind(build(candidate, features), "goal")
+
+
+@pytest.mark.parametrize(("kind", "opposite"), [("find_minimum", "最大值"), ("find_maximum", "最小值")])
+def test_extremum_goal_does_not_match_the_opposite_requested_extremum(kind, opposite):
+    candidate, features = recorded("q01")
+    next(item for item in features if item["feature_id"] == "goal")["value"] = {"kind": kind, "symbol": "a"}
+    candidate["original_text"] = f"求实数 $a$ 的{opposite}。"
+    assert not of_kind(build(candidate, features), "goal")
+
+
 def test_unknown_features_never_attach_knowledge_even_if_source_refs_match():
     candidate, features = recorded("q01")
     for item in features:

@@ -54,7 +54,7 @@ def test_real_q01_text_selection_replays_without_network(tmp_path, monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", forbidden)
     monkeypatch.setattr(socket.socket, "connect_ex", forbidden)
     monkeypatch.setattr(socket, "create_connection", forbidden)
-    source = Path(__file__).parent / "fixtures/graph-guided-stage-two/recorded/q01-20261018-01"
+    source = Path(__file__).parent / "fixtures/graph-guided-stage-two/recorded/q01-20261018-02"
     result = replay_run(source, tmp_path / "replay")
     assert result["status"] == "completed"
     assert result["replay_comparison"]["ok"]
@@ -87,3 +87,20 @@ def test_real_q01_text_selection_replays_without_network(tmp_path, monkeypatch):
                 assert attrs["src"].startswith("data:image/png;base64,")
 
     OfflineReport().feed(html)
+
+
+def test_pre_extrema_selection_recording_reports_contract_drift(tmp_path, monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("historical replay must remain offline")
+
+    monkeypatch.setattr(socket.socket, "connect", forbidden)
+    monkeypatch.setattr(socket.socket, "connect_ex", forbidden)
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+    source = Path(__file__).parent / "fixtures/graph-guided-stage-two/recorded/q01-20261018-01"
+    result = replay_run(source, tmp_path / "historical")
+    assert result["status"] == "failed"
+    assert not result["replay_comparison"]["ok"]
+    goal, = result["goals"]
+    assert goal["status"] == "selection_failed"
+    assert any(d["code"] == "selection.recording_request_mismatch" for d in goal["diagnostics"])
+    assert result["llm"]["new_network_attempts"] == 0

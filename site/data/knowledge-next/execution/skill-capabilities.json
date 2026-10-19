@@ -56,6 +56,18 @@
     ],
     "separate_parameter": [
       "method-separation#separate"
+    ],
+    "degenerate_case_check": [
+      "method-discriminant#degree"
+    ],
+    "solve_parameter_relation": [
+      "method-discriminant#solve"
+    ],
+    "intersect_conditions": [
+      "method-discriminant#solve"
+    ],
+    "merge_cases": [
+      "method-discriminant#merge"
     ]
   }
 }

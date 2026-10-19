@@ -1,6 +1,6 @@
 {
   "contract": "graph-stage-three-answer-gold/v1",
-  "source": "Q01 原题与人工 Demo 独立解答",
+  "source": "Q01 原题与人工 Demo；Q02、Q03 原题与人工课程独立解答，不从运行结果生成",
   "cases": {
     "q01": {
       "target_ref": "/root/goals/0",
@@ -25,6 +25,38 @@
         "discriminant",
         "extremum"
       ]
+    },
+    "q02": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_basis": "k=0 时原式为 -2<0，保留；k<0 且 Δ=8k(k+1)<0 给出 -1<k<0；取并集为 (-1,0]。k=-1 时 -(x+1)^2 在 x=-1 取零，排除。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-1",
+            "upper": "0",
+            "left_closed": false,
+            "right_closed": true
+          }
+        ]
+      },
+      "routes": ["discriminant"]
+    },
+    "q03": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_basis": "a=1 时原式为 -1<0，保留；a=-1 时为 2x-1<0，不恒成立；非退化时 a²-1<0 且 Δ=(5a+3)(a-1)<0 给出 -3/5<a<1，取并集为 (-3/5,1]。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-3/5",
+            "upper": "1",
+            "left_closed": false,
+            "right_closed": true
+          }
+        ]
+      },
+      "routes": ["discriminant"]
     }
   }
 }

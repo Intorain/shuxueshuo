@@ -15,8 +15,25 @@
       "required_bindings": [
         "before",
         "after",
-        "strict"
+        "strict",
+        "relation",
+        "expression"
       ]
+    },
+    "case_basis": {
+      "title": "确定分类条件",
+      "explanation": "先求二次项系数为零的全部参数值，逐一检查退化情况；其余参数按二次式处理。",
+      "required_bindings": ["before", "after", "coefficient", "parameter"]
+    },
+    "degenerate_case": {
+      "title": "检查退化情况",
+      "explanation": "将本情况的参数值代回原关系，判断一次式或常数能否对全部实数成立。",
+      "required_bindings": ["before", "after", "parameter", "value", "holds", "linear_coefficient", "constant"]
+    },
+    "merge_cases": {
+      "title": "合并各情况",
+      "explanation": "每种情况的结果先与其分类条件取交集，再合并全部情况；检查分类无遗漏且条件彼此不重叠。",
+      "required_bindings": ["before", "after", "case_results"]
     },
     "discriminant": {
       "title": "建立判别式条件",

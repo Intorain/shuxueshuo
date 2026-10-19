@@ -203,7 +203,7 @@ Q01–Q09 在结构上唯一命中恒成立题型时由程序确认，不调用 
 
 ## 6. 阶段③：选法与方法驱动求解
 
-本阶段待实施，具体契约、批次与验收见[阶段③实施计划](graph-guided-stage-three-implementation-plan.md)。本期覆盖确定性程序判断，不调用 LLM；阶段①提取、阶段②多命中选择和阶段④教学问答使用 LLM。阶段③实施范围包含数学步骤发布、持久事件接口与网页增量接线，不以整条路线结束后才拉取结果代替逐步交付。
+本阶段按批次实施，Q01 首批求解闭环及网页逐步交付已完成；当前进度、具体契约与后续类别验收见[阶段③实施计划](graph-guided-stage-three-implementation-plan.md)。本期覆盖确定性程序判断，不调用 LLM；阶段①提取、阶段②多命中选择和阶段④教学问答使用 LLM。阶段③实施范围包含数学步骤发布、持久事件接口与网页增量接线，不以整条路线结束后才拉取结果代替逐步交付。
 
 ### 6.1 选法：评估全部分支
 
@@ -484,7 +484,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 1 | [阶段①：题意提取、特征提取函数注册表](graph-guided-stage-one-implementation-plan.md) | 已实现 Q01–Q11 题意金标、22 份录制题意与特征表；逐题真实 LLM 集成测试与人工调试报告 | 第 4.5 节及阶段①实施计划 |
 | 2 | [阶段②：特征检查表判型，D1、D2 片段](graph-guided-stage-two-implementation-plan.md) | 已实现 Q01–Q11 按目标判型与片段；Q01 双命中真实 LLM 选择录制、未支持与失败材料 | 第 5.4 节；D1、D2 与 Demo 原稿一致 |
-| 3 | [阶段③：选法分支评估、方法驱动器、数学步骤展示与增量接线；Q01 再扩展到 Q02–Q09 与题 13](graph-guided-stage-three-implementation-plan.md) | 待实施：D3、D4、逐步数学片段、持久事件／游标接口、可恢复执行快照、可阅读网页及完整目标答案 | 第 6.7、10.4 节及阶段③实施计划分批验收；阶段④尚未实现时即可逐步阅读 |
+| 3 | [阶段③：选法分支评估、方法驱动器、数学步骤展示与增量接线；Q01 再扩展到 Q02–Q09 与题 13](graph-guided-stage-three-implementation-plan.md) | 分批实施中：Q01 的 D3、D4、数学片段、持久事件／游标、恢复快照与网页已完成；批次 2 扩展 Q02/Q03 退化分类、条件合并与严格关系，其余类别按实施计划推进 | 第 6.7、10.4 节及阶段③实施计划分批验收；阶段④尚未实现时即可逐步阅读 |
 | 4 | 阶段④：问答注册表、常见错误目录、完整路线输入的 LLM 问答、独立片段编译与附加展示 | 待实施：绑定原步骤与路线快照的问答；Q01 再扩展到 Q02–Q09 与题 13 | 第 7.5、10.4 节；数学正文哈希不变，问答失败不阻塞阅读 |
 | 5 | 联调与调度完善：路线优先级、版本复用、断线恢复、多路线与双模式 | 打开题目、逐步阅读到补充问答的完整链路 | 数学逐步同步、路线独立完成、问答独立失败，推送与轮询同源 |
 
@@ -501,7 +501,7 @@ sequenceDiagram
 - [公共图谱本体设计](public-knowledge-graph-ontology-design.md)：题型、方法、技能与判断规则，多重归属与三值判断。
 - `site/data/math-notation-v1/quadratic-always/q01.json`：Q01 题意金标。
 - `site/data/graph-walk/quadratic-always-q01.source.json`：Q01 课程原稿金标。
-- `site/data/knowledge-next/nodes/type-quantified-quadratic.json`、`rule-quadratic-method.json`、`method-*.json`：题型特征、选法规则与方法步骤的教学内容；阶段②识别契约已实现，阶段③选法与执行契约待补充。
+- `site/data/knowledge-next/nodes/type-quantified-quadratic.json`、`rule-quadratic-method.json`、`method-*.json`：题型特征、选法规则与方法步骤的教学内容；阶段②识别契约已实现，阶段③选法与执行契约按批次扩展于 `site/data/knowledge-next/execution/`。
 - `server/shuxueshuo_server/problem_understanding/notation_parser.py`、`notation_normalization.py`、`algebra.py`：记法解析、规范化与受限代数计算。
-- `server/shuxueshuo_server/graph_lesson/stage_three/`：拟新增的方法驱动器、能力函数、独立验证器、轨迹与数学步骤契约、执行快照及事件提交接口；仅复用 `math_kernel`、`notation_semantics` 中适用的纯代数部件。
-- `tools/build-graph-walk-demo.mjs`、`tools/graph-walk-actor.mjs`、`site/assets/graph-walk/walk-state.mjs`：现有构建、Node 桥与状态推导，待拆出单片段编译与部分 bundle 支持。
+- `server/shuxueshuo_server/graph_lesson/stage_three/`：已实现的方法驱动器、能力函数、独立验证器、轨迹与数学步骤契约、执行快照及事件提交接口；能力范围与剩余工作以阶段③实施计划为准，仅复用适用的纯代数部件。
+- `tools/build-graph-walk-demo.mjs`、`tools/graph-walk-actor.mjs`、`site/assets/graph-walk/walk-state.mjs`：课程构建、Node 桥、作答状态推导及部分 bundle 扩展；`stage-three-stream.mjs` 消费持久数学片段、恢复快照与问答附加。

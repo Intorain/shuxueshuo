@@ -23,6 +23,17 @@ def _event(kind, state, payload):
     return {"type": kind, "target_ref": state["target_ref"], "route_id": state["route_id"], "payload": payload}
 
 
+def _trajectory_changes(previous, current):
+    """Send every changed record, including parents resumed after a child.
+
+    A child return can complete an earlier call; finishing a case span also
+    attaches collected results to its original degree record. The streaming
+    consumer upserts by seq, so sending only the last record loses those sources.
+    """
+    prior = {record["seq"]: record for record in previous}
+    return [record for record in current if prior.get(record["seq"]) != record]
+
+
 def _checkpoint(store, state, *, phase="method", status="running"):
     return make_checkpoint(
         store.identity, state["target_ref"], state["route_id"], driver_state=state,
@@ -142,13 +153,16 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
         try:
             while state["status"] == "running":
                 index = state.get("commit_index", 0) + 1
+                previous_trajectory = state["trajectory"]["steps"]
                 state = calculator.call(f"advance:{index}", {"operation": "advance", "state": state})
                 state["commit_index"] = index
                 calculator.sync_state(state)
                 _commit(store, state, f"operation-{index}",
                         events=[_event("solver.step_completed", state, {
                             "operation": index, "status": state["status"],
-                            "trajectory": state["trajectory"]["steps"][-1:]})], hooks=hooks)
+                            "trajectory": _trajectory_changes(
+                                previous_trajectory, state["trajectory"]["steps"],
+                            )})], hooks=hooks)
             if state["status"] == "method_complete":
                 finalization = state.setdefault("finalization", [])
                 common = {"candidate": candidate, "target_ref": ref, "context": goal["constraint_context"]}
@@ -183,7 +197,19 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
                         state = result["state"]
                         state["endpoint_evidence"] = result["evidence"]
                         calculator.sync_state(state)
-                        _commit(store, state, "endpoints", phase="finalization", hooks=hooks)
+                        # Publish the checked source in the same transaction,
+                        # before the boundary card that references it. Sparse
+                        # indices keep /finalization/N stable without sending
+                        # the full independent proof on every update.
+                        boundary_index = len(state["finalization"]) - 1
+                        _commit(store, state, "endpoints", phase="finalization",
+                                events=[_event("solver.step_completed", state, {
+                                    "operation": "endpoint_check", "status": state["status"],
+                                    "trajectory": [], "finalization": [{
+                                        "index": boundary_index,
+                                        "record": state["finalization"][boundary_index],
+                                    }],
+                                })], hooks=hooks)
                     if state["endpoint_evidence"]["status"] != "passed":
                         state["status"] = "math_failed"
                         state.setdefault("diagnostics", []).append({"code": "verification.endpoint_failed"})

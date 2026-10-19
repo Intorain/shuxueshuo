@@ -17,7 +17,7 @@ export function createEventConsumer(identity, hooks = {}) {
   let lastSeq = 0;
   const pending = new Map(), seen = new Map(), steps = new Map(), goals = new Map();
   const completions = new Map(), qa = new Map(), routeStatuses = new Map(), enrichmentStatuses = new Map();
-  const selections = new Map(), trajectories = new Map();
+  const selections = new Map(), trajectories = new Map(), finalizations = new Map();
   let checkpoints = [];
   const matches = value => value.run_id === run.run_id && value.lesson_version === run.lesson_version;
   const orderedSteps = () => [...steps.values()].sort((left, right) =>
@@ -61,10 +61,20 @@ export function createEventConsumer(identity, hooks = {}) {
     }
   }
 
-  function acceptTrajectory(target, route, values) {
+  function acceptTrajectory(target, route, values, finalization = []) {
     const key = routeKey(target, route), rows = trajectories.get(key) || new Map();
     for (const value of values || []) rows.set(value.seq, copy(value));
     trajectories.set(key, rows);
+    const operations = finalizations.get(key) || new Map();
+    for (const value of finalization) {
+      if (!Number.isInteger(value.index) || value.index < 0 || !value.record || typeof value.record !== 'object') {
+        throw new Error('stream.invalid_finalization_source');
+      }
+      const previous = operations.get(value.index);
+      if (previous && JSON.stringify(previous) !== JSON.stringify(value.record)) throw new Error('stream.immutable_finalization_source');
+      operations.set(value.index, copy(value.record));
+    }
+    finalizations.set(key, operations);
   }
 
   function applyOrdered(event) {
@@ -73,7 +83,7 @@ export function createEventConsumer(identity, hooks = {}) {
     if (event.type === 'lesson.chunk_ready' && ['D1', 'D2', 'D3', 'D4'].includes(payload.kind)) {
       acceptSelection(target, payload.kind, payload.chunk);
     } else if (event.type === 'solver.step_completed') {
-      acceptTrajectory(target, event.route_id, payload.trajectory);
+      acceptTrajectory(target, event.route_id, payload.trajectory, payload.finalization);
     } else if (event.type === 'lesson.chunk_ready' && payload.kind === 'math_step') {
       const step = payload.chunk;
       if (!step || step.target_ref !== target || step.route_id !== event.route_id ||
@@ -133,7 +143,11 @@ export function createEventConsumer(identity, hooks = {}) {
     goals.clear();
     for (const [target, value] of Object.entries(snapshot.goals || {})) goals.set(target, copy(value));
     checkpoints = copy(snapshot.checkpoints || []);
-    for (const checkpoint of checkpoints) acceptTrajectory(checkpoint.target_ref, checkpoint.route_id, checkpoint.driver_state?.trajectory?.steps);
+    for (const checkpoint of checkpoints) {
+      const trajectory = checkpoint.driver_state?.trajectory;
+      acceptTrajectory(checkpoint.target_ref, checkpoint.route_id, trajectory?.steps,
+        (trajectory?.finalization || []).map((record, index) => ({index, record})));
+    }
     for (const selection of snapshot.selection_chunks || []) acceptSelection(selection.target_ref, selection.kind, selection.chunk);
     for (const step of (snapshot.math_steps || []).slice().sort((left, right) => left.ordinal - right.ordinal)) acceptStep(step);
     completions.clear();
@@ -161,7 +175,8 @@ export function createEventConsumer(identity, hooks = {}) {
       qa: copy([...qa.values()]), route_statuses: copy([...routeStatuses]), enrichment_statuses: copy([...enrichmentStatuses]),
       selection_chunks: copy([...selections.values()]), checkpoints: copy(checkpoints),
       trajectories: [...trajectories].map(([key, values]) => ({target_ref: JSON.parse(key)[0], route_id: JSON.parse(key)[1],
-        steps: copy([...values.values()].sort((a, b) => a.seq - b.seq))}))};
+        steps: copy([...values.values()].sort((a, b) => a.seq - b.seq)),
+        finalization: [...(finalizations.get(key) || [])].map(([index, record]) => ({index, record: copy(record)}))}))};
   }
 
   return {accept, hydrate, view, get last_seq() { return lastSeq; }};

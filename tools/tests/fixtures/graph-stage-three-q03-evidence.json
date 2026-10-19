@@ -1,0 +1,999 @@
+{
+  "source": "Q03 sample-01, acceptance-batch-two-20261019-02. Projection preserves card/source identities and check verdicts; mathematical input/output payloads are omitted.",
+  "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+  "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+  "stream_id": "b4ce8b87395645ae897339bb38d5d9e5",
+  "last_seq": 82,
+  "selection_chunks": [
+    {
+      "target_ref": "/root/goals/0",
+      "kind": "D3",
+      "chunk": {
+        "expected_answer": {
+          "cell": [
+            "real",
+            "free"
+          ]
+        },
+        "feedback": {
+          "method": "这种方法不在这一格里，请从这一格列出的方法中选一种。",
+          "x": "再看横轴：$x$ 取遍全体实数。",
+          "y": "再看纵轴：$a$ 是所求参数。"
+        },
+        "id": "D3",
+        "interaction": {
+          "coverage": {
+            "discriminant": [
+              [
+                "real",
+                "free"
+              ]
+            ],
+            "interval": [
+              [
+                "interval",
+                "free"
+              ]
+            ],
+            "separation": [
+              [
+                "interval",
+                "free"
+              ]
+            ],
+            "swap": [
+              [
+                "interval",
+                "given"
+              ],
+              [
+                "real",
+                "given"
+              ]
+            ]
+          },
+          "title": "方法坐标图",
+          "type": "plane",
+          "x": {
+            "label": "$x$ 取全体实数吗？",
+            "options": [
+              {
+                "label": "否",
+                "note": "$x$ 在某个区间内",
+                "value": "interval"
+              },
+              {
+                "label": "是",
+                "note": "$x\\in\\mathbb R$",
+                "value": "real"
+              }
+            ]
+          },
+          "y": {
+            "label": "参数有给定范围吗？",
+            "options": [
+              {
+                "label": "有",
+                "note": "给定参数范围，求主元的范围",
+                "value": "given"
+              },
+              {
+                "label": "没有",
+                "note": "要求的就是参数",
+                "value": "free"
+              }
+            ]
+          }
+        },
+        "query": {
+          "from": "type-quantified-quadratic",
+          "op": "method_rule"
+        },
+        "question": "本题落在哪一格？",
+        "submit_label": "用这种方法解题",
+        "title": "选择解题方法",
+        "verdicts": {
+          "discriminant": {
+            "message": "对所有实数 $x$ 成立；二次项系数为零的参数集合为 $\\left\\{-1, 1\\right\\}$，需要单独讨论退化情况。",
+            "value": "fit"
+          },
+          "interval": {
+            "message": "$\\mathbb R$ 也是区间，区间最值法在数学上可行；本题全实数上的全称关系优先采用判别式法。",
+            "value": "superseded"
+          },
+          "separation": {
+            "message": "参数 $a$ 在不同次幂项中的系数不成比例，不能这样分离参数。",
+            "value": "unfit"
+          },
+          "swap": {
+            "message": "更换主元的本选法分支未触发；本题给出范围的是 $x$，要求的是参数 $a$。",
+            "value": "not_triggered"
+          }
+        }
+      }
+    },
+    {
+      "target_ref": "/root/goals/0",
+      "kind": "D4",
+      "chunk": {
+        "id": "D4",
+        "options": [
+          {
+            "branch": "discriminant",
+            "message": "开始解题",
+            "method": "method-discriminant",
+            "recommendation": "preferred",
+            "route_id": "discriminant",
+            "route_plan": "planned"
+          }
+        ],
+        "title": "解题路线"
+      }
+    }
+  ],
+  "math_steps": [
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-001-case_basis",
+      "ordinal": 1,
+      "local_check": "passed",
+      "math_step_sha256": "0d32bf752325dcba46f42e680c6f8664d68dd5ea33d4c2c7adb4fd34c8f8d0d6",
+      "method_ref": "method-discriminant#degree",
+      "source_refs": [
+        "/steps/0/judgments/0"
+      ],
+      "used_basis": [],
+      "title": "确定分类条件",
+      "case_path": []
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-002-degenerate_case",
+      "ordinal": 2,
+      "local_check": "passed",
+      "math_step_sha256": "f5ce8b5d15ac6a449f7491b23798014bdaf93655e53fef8499c9f44b648c68a7",
+      "method_ref": "method-discriminant#degree",
+      "source_refs": [
+        "/steps/1/calls/0"
+      ],
+      "used_basis": [
+        "linear-interval-extremum",
+        "method-discriminant#degree",
+        "quadratic-function-properties#definition"
+      ],
+      "title": "检查退化情况",
+      "case_path": [
+        "degenerate-0"
+      ]
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-003-degenerate_case",
+      "ordinal": 3,
+      "local_check": "passed",
+      "math_step_sha256": "96c65623dc4143b166036b37b21fe7ea33087d05fbdea10c4f4e77d25f07f77e",
+      "method_ref": "method-discriminant#degree",
+      "source_refs": [
+        "/steps/3/calls/0"
+      ],
+      "used_basis": [
+        "linear-interval-extremum",
+        "method-discriminant#degree",
+        "quadratic-function-properties#definition"
+      ],
+      "title": "检查退化情况",
+      "case_path": [
+        "degenerate-1"
+      ]
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-004-normalized",
+      "ordinal": 4,
+      "local_check": "passed",
+      "math_step_sha256": "7e6e30a1824f9923f26a58f24ab254c957e29da269963f0eaf22766d31be01c2",
+      "method_ref": "method-discriminant#normalize",
+      "source_refs": [
+        "/steps/6/calls/0",
+        "/steps/6/calls/1"
+      ],
+      "used_basis": [
+        "equality-properties#identity",
+        "inequality-properties#addition"
+      ],
+      "title": "整理不等式",
+      "case_path": [
+        "nondegenerate"
+      ]
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-005-opening",
+      "ordinal": 5,
+      "local_check": "passed",
+      "math_step_sha256": "b3324ae7134c56d44f51ee253d40aaacd86e32941aa0ba41b961e59deadbc1fb",
+      "method_ref": "method-discriminant#conditions",
+      "source_refs": [
+        "/steps/7/calls/0"
+      ],
+      "used_basis": [
+        "quadratic-function-properties#zeros",
+        "quadratic-inequality#all-real"
+      ],
+      "title": "判断图像位置",
+      "case_path": [
+        "nondegenerate"
+      ]
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-006-discriminant",
+      "ordinal": 6,
+      "local_check": "passed",
+      "math_step_sha256": "60b0ca35ee620d378257890bb0ab1d1194ca30a159614b5b6c05f49dc9d26745",
+      "method_ref": "method-discriminant#conditions",
+      "source_refs": [
+        "/steps/7/calls/1",
+        "/steps/7/calls/2",
+        "/steps/7/calls/3"
+      ],
+      "used_basis": [
+        "equality-properties#identity",
+        "inequality-properties#multiplication",
+        "quadratic-equation#discriminant",
+        "quadratic-inequality#all-real"
+      ],
+      "title": "建立判别式条件",
+      "case_path": [
+        "nondegenerate"
+      ]
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-007-solution",
+      "ordinal": 7,
+      "local_check": "passed",
+      "math_step_sha256": "cd80af372801c2a770e0bb47b8f799cf462afbcfd758960a3a0e8032a429f993",
+      "method_ref": "method-discriminant#solve",
+      "source_refs": [
+        "/steps/8/calls/0",
+        "/steps/8/calls/1",
+        "/steps/8/calls/2",
+        "/steps/8/skipped_calls/0",
+        "/steps/8/skipped_calls/1",
+        "/steps/8/skipped_calls/2",
+        "/steps/8/judgments/0",
+        "/steps/8/merges/0",
+        "/steps/9/skipped_calls/0",
+        "/steps/9/skipped_calls/1",
+        "/steps/9/judgments/0",
+        "/steps/10/calls/0",
+        "/steps/11/calls/0"
+      ],
+      "used_basis": [
+        "method-discriminant#solve",
+        "quadratic-equation#roots",
+        "quadratic-inequality#signs"
+      ],
+      "title": "求参数范围",
+      "case_path": [
+        "nondegenerate"
+      ]
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-008-merge_cases",
+      "ordinal": 8,
+      "local_check": "passed",
+      "math_step_sha256": "a9cd2f4993cbb5b9b3069d99f381a22a92b7424cb0a558228049bad7e0a89d9d",
+      "method_ref": "method-discriminant#merge",
+      "source_refs": [
+        "/steps/13/calls/0"
+      ],
+      "used_basis": [
+        "method-discriminant#merge"
+      ],
+      "title": "合并各情况",
+      "case_path": []
+    },
+    {
+      "run_id": "b4ce8b87395645ae897339bb38d5d9e5",
+      "lesson_version": "a28deeacb73418e2c038e55702d5ae503ed7513d869f20d0ac845b1b9f233661",
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "step_id": "39e5646dcb-discriminant-009-boundary",
+      "ordinal": 9,
+      "local_check": "passed",
+      "math_step_sha256": "0639b6b846835db2ac4c9b6363524b89b29fde0269e97c5f0312d2c48c93eec3",
+      "method_ref": "method-discriminant#merge",
+      "source_refs": [
+        "/finalization/2"
+      ],
+      "used_basis": [
+        "function-range-extrema#attainability"
+      ],
+      "title": "检查边界",
+      "case_path": []
+    }
+  ],
+  "checkpoints": [
+    {
+      "target_ref": "/root/goals/0",
+      "route_id": "discriminant",
+      "driver_state": {
+        "trajectory": {
+          "steps": [
+            {
+              "seq": 1,
+              "method": "method-discriminant",
+              "step": "degree",
+              "case_path": [],
+              "calls": [],
+              "skipped_calls": []
+            },
+            {
+              "seq": 2,
+              "method": "method-discriminant",
+              "step": "degree",
+              "case_path": [
+                "degenerate-0"
+              ],
+              "calls": [
+                {
+                  "public_ref": null,
+                  "used_basis": [
+                    "linear-interval-extremum",
+                    "method-discriminant#degree",
+                    "quadratic-function-properties#definition"
+                  ],
+                  "case_path": [
+                    "degenerate-0"
+                  ],
+                  "source_refs": [
+                    "/steps/0/judgments/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "case_substitution",
+                      "passed": true
+                    },
+                    {
+                      "kind": "whole_real_affine_sign",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            },
+            {
+              "seq": 3,
+              "method": "method-discriminant",
+              "step": "solve",
+              "case_path": [
+                "degenerate-0"
+              ],
+              "calls": [],
+              "skipped_calls": [
+                {
+                  "public_ref": null,
+                  "reason": "guard_false",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": "skill-simplify",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": "skill-inequality-transform",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": "quadratic-inequality-solve",
+                  "reason": "guard_false",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "guard_false",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "degenerate-0"
+                  ]
+                }
+              ]
+            },
+            {
+              "seq": 4,
+              "method": "method-discriminant",
+              "step": "degree",
+              "case_path": [
+                "degenerate-1"
+              ],
+              "calls": [
+                {
+                  "public_ref": null,
+                  "used_basis": [
+                    "linear-interval-extremum",
+                    "method-discriminant#degree",
+                    "quadratic-function-properties#definition"
+                  ],
+                  "case_path": [
+                    "degenerate-1"
+                  ],
+                  "source_refs": [
+                    "/steps/0/judgments/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "case_substitution",
+                      "passed": true
+                    },
+                    {
+                      "kind": "whole_real_affine_sign",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            },
+            {
+              "seq": 5,
+              "method": "method-discriminant",
+              "step": "solve",
+              "case_path": [
+                "degenerate-1"
+              ],
+              "calls": [],
+              "skipped_calls": [
+                {
+                  "public_ref": null,
+                  "reason": "guard_false",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": "skill-simplify",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": "skill-inequality-transform",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": "quadratic-inequality-solve",
+                  "reason": "guard_false",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "guard_false",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "degenerate-1"
+                  ]
+                }
+              ]
+            },
+            {
+              "seq": 6,
+              "method": "method-discriminant",
+              "step": "degree",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [],
+              "skipped_calls": [
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "nondegenerate"
+                  ]
+                }
+              ]
+            },
+            {
+              "seq": 7,
+              "method": "method-discriminant",
+              "step": "normalize",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [
+                {
+                  "public_ref": "skill-inequality-transform",
+                  "used_basis": [
+                    "inequality-properties#addition"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [],
+                  "postconditions": [
+                    {
+                      "kind": "direction_residual",
+                      "passed": true
+                    }
+                  ]
+                },
+                {
+                  "public_ref": "skill-simplify",
+                  "used_basis": [
+                    "equality-properties#identity"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/6/calls/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "identity",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            },
+            {
+              "seq": 8,
+              "method": "method-discriminant",
+              "step": "conditions",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [
+                {
+                  "public_ref": "skill-quadratic-sign",
+                  "used_basis": [
+                    "quadratic-function-properties#zeros",
+                    "quadratic-inequality#all-real"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/0/judgments/0",
+                    "/steps/6/calls/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "nonzero_leading_coefficient_on_case",
+                      "passed": true
+                    },
+                    {
+                      "kind": "direction_and_strictness",
+                      "passed": true
+                    }
+                  ]
+                },
+                {
+                  "public_ref": "skill-quadratic-sign",
+                  "used_basis": [
+                    "quadratic-equation#discriminant",
+                    "quadratic-inequality#all-real"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/0/judgments/0",
+                    "/steps/6/calls/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "nonzero_leading_coefficient_on_case",
+                      "passed": true
+                    },
+                    {
+                      "kind": "direction_and_strictness",
+                      "passed": true
+                    }
+                  ]
+                },
+                {
+                  "public_ref": "skill-simplify",
+                  "used_basis": [
+                    "equality-properties#identity"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/7/calls/1"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "identity",
+                      "passed": true
+                    }
+                  ]
+                },
+                {
+                  "public_ref": "skill-inequality-transform",
+                  "used_basis": [
+                    "inequality-properties#multiplication"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/7/calls/1"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "positive_scaled_residual",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            },
+            {
+              "seq": 9,
+              "method": "method-discriminant",
+              "step": "solve",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [
+                {
+                  "public_ref": "quadratic-inequality-solve",
+                  "used_basis": [],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/7/calls/3"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "child_completed",
+                      "passed": true
+                    }
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "used_basis": [
+                    "method-discriminant#solve"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/7/calls/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "complete_real_roots",
+                      "passed": true
+                    },
+                    {
+                      "kind": "parameter_root_partition",
+                      "passed": true
+                    },
+                    {
+                      "kind": "parameter_root_partition",
+                      "passed": true
+                    },
+                    {
+                      "kind": "parameter_root_partition",
+                      "passed": true
+                    }
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "used_basis": [
+                    "method-discriminant#solve"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/0/judgments/0",
+                    "/steps/7/calls/0",
+                    "/steps/7/calls/3",
+                    "/steps/8/calls/1",
+                    "/steps/8/merges/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "condition_solution",
+                      "passed": true
+                    },
+                    {
+                      "kind": "condition_solution",
+                      "passed": true
+                    },
+                    {
+                      "kind": "same_case_intersection",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": [
+                {
+                  "public_ref": "skill-simplify",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "nondegenerate"
+                  ]
+                },
+                {
+                  "public_ref": "skill-inequality-transform",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "nondegenerate"
+                  ]
+                },
+                {
+                  "public_ref": null,
+                  "reason": "not_selected",
+                  "case_path": [
+                    "nondegenerate"
+                  ]
+                }
+              ]
+            },
+            {
+              "seq": 10,
+              "method": "quadratic-inequality-solve",
+              "step": "normalize",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [],
+              "skipped_calls": [
+                {
+                  "public_ref": "skill-inequality-transform",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "nondegenerate"
+                  ]
+                },
+                {
+                  "public_ref": "skill-simplify",
+                  "reason": "already_satisfied",
+                  "case_path": [
+                    "nondegenerate"
+                  ]
+                }
+              ]
+            },
+            {
+              "seq": 11,
+              "method": "quadratic-inequality-solve",
+              "step": "roots",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [
+                {
+                  "public_ref": "skill-solve-quadratic",
+                  "used_basis": [
+                    "quadratic-equation#roots"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/9/judgments/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "complete_real_roots",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            },
+            {
+              "seq": 12,
+              "method": "quadratic-inequality-solve",
+              "step": "signs",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [
+                {
+                  "public_ref": "skill-quadratic-sign",
+                  "used_basis": [
+                    "quadratic-inequality#signs"
+                  ],
+                  "case_path": [
+                    "nondegenerate"
+                  ],
+                  "source_refs": [
+                    "/steps/10/calls/0",
+                    "/steps/9/judgments/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "complete_real_roots",
+                      "passed": true
+                    },
+                    {
+                      "kind": "root_partition",
+                      "passed": true
+                    },
+                    {
+                      "kind": "root_partition",
+                      "passed": true
+                    },
+                    {
+                      "kind": "root_partition",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            },
+            {
+              "seq": 13,
+              "method": "quadratic-inequality-solve",
+              "step": "solution",
+              "case_path": [
+                "nondegenerate"
+              ],
+              "calls": [],
+              "skipped_calls": []
+            },
+            {
+              "seq": 14,
+              "method": "method-discriminant",
+              "step": "merge",
+              "case_path": [],
+              "calls": [
+                {
+                  "public_ref": null,
+                  "used_basis": [
+                    "method-discriminant#merge"
+                  ],
+                  "case_path": [],
+                  "source_refs": [
+                    "/steps/0/case_results",
+                    "/steps/0/judgments/0"
+                  ],
+                  "postconditions": [
+                    {
+                      "kind": "complete_disjoint_cases",
+                      "passed": true
+                    },
+                    {
+                      "kind": "case_result",
+                      "passed": true
+                    },
+                    {
+                      "kind": "case_result",
+                      "passed": true
+                    },
+                    {
+                      "kind": "case_result",
+                      "passed": true
+                    }
+                  ]
+                }
+              ],
+              "skipped_calls": []
+            }
+          ],
+          "finalization": [
+            {
+              "capability": "apply_visible_constraints"
+            },
+            {
+              "capability": "independent_verification"
+            },
+            {
+              "capability": "endpoint_check",
+              "public_ref": null,
+              "used_basis": [
+                "function-range-extrema#attainability"
+              ],
+              "postconditions": [
+                {
+                  "kind": "independent_boundary",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

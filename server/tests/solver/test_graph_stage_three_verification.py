@@ -155,7 +155,7 @@ def test_negative_power_definition_condition_survives_simplification():
 
 
 @pytest.mark.parametrize("facts", [
-    ["∀x∈ℝ:a*x^2+1>=0"], ["∀x∈ℝ:x^2+a>0"], ["∃x∈ℝ:x^2+a>=0"],
+    ["∀x∈ℝ:x^2+1/a>=0"], ["∀x∈ℝ:x^3+a>0"], ["∃x∈ℝ:x^2+a>=0"],
     ["∀x∈[0,1]:x^2+a>=0"], ["a^2<1", "∀x∈ℝ:x^2+a>=0"],
     ["∀x∈ℝ:x^2+a>=0", "∀t∈ℝ:t^2+a>=0"],
     ["b>0", "∀x∈ℝ:x^2+a>=0"], ["∀x∈ℝ:x^2+x/x+a>=0"],
@@ -164,6 +164,29 @@ def test_unregistered_input_categories_are_explicit_gaps(facts):
     result = check(problem(*facts), sp.S.Reals)
     assert result["status"] == "capability_gap", result
     assert result["diagnostics"][0]["code"] == "verification_incomplete"
+
+
+@pytest.mark.parametrize("fact,expected", [
+    ("∀x∈ℝ:a*x^2+1>=0", sp.Interval(0, sp.oo)),
+    ("∀x∈ℝ:x^2+a>0", sp.Interval.open(0, sp.oo)),
+    ("∀x∈ℝ:-x^2+a>=0", sp.S.EmptySet),
+    ("∀x∈ℝ:a^2*x^2+a*x>=0", sp.FiniteSet(0)),
+    ("∀x∈ℝ:a^2*x^2+a*x>0", sp.S.EmptySet),
+    ("∀x∈ℝ:a*x^2+1<=0", sp.S.EmptySet),
+])
+def test_parameter_leading_coefficient_strictness_and_degenerate_original_proofs(fact, expected):
+    candidate = problem(fact)
+    correct = check(candidate, expected)
+    assert correct["status"] == "verified", correct
+    wrong = check(candidate, sp.S.Reals if expected != sp.S.Reals else sp.S.EmptySet)
+    assert wrong["status"] == "math_failed", wrong
+    assert correct["proof"]["cells"] == wrong["proof"]["cells"]
+    for cell in correct["proof"]["cells"]:
+        evidence = cell["evidence"][-1]
+        if not evidence["holds"]:
+            witness = evidence["counterexample"]
+            assert witness["bound_variable"]["expression"]
+            assert witness["value"]["expression"]
 
 
 def test_lexical_ancestry_keeps_parent_and_excludes_sibling():

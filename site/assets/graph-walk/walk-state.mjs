@@ -342,14 +342,21 @@ function sourceCalls(view, step) {
   const calls = [];
   for (const source of step.source_refs || []) {
     const match = /^\/steps\/(\d+)\/calls\/(\d+)$/.exec(source);
-    if (!match) continue;
+    const final = /^\/finalization\/(\d+)$/.exec(source);
+    if (!match && !final) continue;
     // Streaming solver events carry a one-based seq, even if earlier records
     // have not arrived. Snapshot trajectories use the same sequence identity.
-    const record = records.find(item => item.seq === Number(match[1]) + 1);
-    const call = record?.calls?.[Number(match[2])];
-    if (!call?.public_ref || !call.postconditions?.every(check => check.passed === true)) continue;
-    calls.push({method: record.method, step: record.step, ref: call.public_ref,
-      usedBasis: copy(call.used_basis || []), source});
+    const record = match ? records.find(item => item.seq === Number(match[1]) + 1) : null;
+    const call = match ? record?.calls?.[Number(match[2])]
+      : trajectory?.finalization?.find(item => item.index === Number(final[1]))?.record ||
+        checkpoint?.driver_state?.trajectory?.finalization?.[Number(final[1])];
+    if (!Array.isArray(call?.postconditions) || !call.postconditions.length ||
+        !call.postconditions.every(check => check.passed === true) ||
+        JSON.stringify(record?.case_path || []) !== JSON.stringify(step.case_path || []) ||
+        (call.case_path && JSON.stringify(call.case_path) !== JSON.stringify(step.case_path || []))) continue;
+    const [method, methodStep] = (step.method_ref || '').split('#');
+    calls.push({method: record?.method || method, step: record?.step || methodStep, ref: call.public_ref || null,
+      usedBasis: (Array.isArray(call.used_basis) ? call.used_basis : []).filter(ref => typeof ref === 'string' && ref), source});
   }
   return calls;
 }
@@ -396,9 +403,9 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
   const edges = new Map([...(fullGraph?.edges || []), ...base.graph.edges].map(edge => [edge.id, edge]));
   const ids = new Set(base.graph.nodes.map(node => node.id));
   for (const step of mathSteps) {
-    for (const ref of [step.method_ref, ...(step.used_basis || [])]) if (ref && nodes.has(nodeId(ref))) ids.add(nodeId(ref));
+    if (step.method_ref && nodes.has(nodeId(step.method_ref))) ids.add(nodeId(step.method_ref));
     for (const call of stepCalls[streamStepKey(step)] || []) {
-      for (const ref of [call.method, call.ref, ...call.usedBasis]) if (nodes.has(nodeId(ref))) ids.add(nodeId(ref));
+      for (const ref of [call.method, call.ref, ...call.usedBasis]) if (ref && nodes.has(nodeId(ref))) ids.add(nodeId(ref));
     }
   }
   if (d3 && d4) {
@@ -468,17 +475,22 @@ export function streamGraphState(bundle, state, {steps = [], route = state.run.r
     if (!step || seen.has(key) || !sameStream(bundle.stream, passed) || passed.route_id !== route ||
         passed.math_step_sha256 !== step.math_step_sha256) continue;
     seen.add(key);
-    light(step.method_ref);
-    for (const basis of step.used_basis || []) if (nodeId(basis) in view.nodes) { light(basis); used.add(basis); }
     const calls = bundle.stream.step_calls[key] || [];
     for (const [index, call] of calls.entries()) {
-      if (!(call.method in view.nodes) || !(nodeId(call.ref) in view.nodes)) continue;
-      light(call.method); light(call.ref);
+      if (!(call.method in view.nodes)) continue;
+      light(call.method);
+      for (const basis of call.usedBasis) {
+        if (nodeId(basis) in view.nodes) {
+          light(basis); used.add(basis);
+          if (call.ref) edge(`${nodeId(call.ref)}|uses|${nodeId(basis)}`);
+        }
+      }
+      // Internal operations provide checked mathematical bases, but are not
+      // invented public skill calls or synthetic edges in the knowledge graph.
+      if (!call.ref || !(nodeId(call.ref) in view.nodes)) continue;
+      light(call.ref);
       const relation = `${call.method}|calls|${nodeId(call.ref)}`;
       edge(relation);
-      for (const basis of call.usedBasis) {
-        if (nodeId(basis) in view.nodes) { light(basis); used.add(basis); edge(`${nodeId(call.ref)}|uses|${nodeId(basis)}`); }
-      }
       const occurrence = bundle.graph.edges.find(item => item.id === relation)?.occurrences?.findIndex(item => item.step === call.step);
       view.calls.push({...copy(call), edge: relation, occurrence: occurrence >= 0 ? occurrence : 0,
         runId: state.run.id, decision: step.step_id, executionIndex: index});

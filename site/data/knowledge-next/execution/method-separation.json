@@ -192,12 +192,17 @@
             "domain": "$domain"
           },
           "outputs": {
-            "function_range": "range",
-            "square": "square",
-            "vertex": "vertex",
-            "extremum": "value"
+            "square_function_range": "range",
+            "square_square": "square",
+            "square_vertex": "vertex",
+            "square_extremum": "value"
           },
-          "order": 3
+          "order": 3,
+          "guard": {
+            "ref": "range_choice",
+            "equals": "square"
+          },
+          "skip_reason": "not_selected"
         }
       ],
       "judgments": [
@@ -237,7 +242,7 @@
       "display_units": [
         {
           "id": "range",
-          "after": "square",
+          "after": "range_result",
           "template": "square_range",
           "bindings": {
             "before": [
@@ -259,6 +264,26 @@
             "square",
             "vertex",
             "x"
+          ]
+        }
+      ],
+      "merges": [
+        {
+          "id": "range_result",
+          "order": 4,
+          "branches": [
+            {
+              "guard": {
+                "ref": "range_choice",
+                "equals": "square"
+              },
+              "bindings": {
+                "function_range": "$square_function_range",
+                "square": "$square_square",
+                "vertex": "$square_vertex",
+                "extremum": "$square_extremum"
+              }
+            }
           ]
         }
       ]

@@ -27,8 +27,8 @@ from .contracts import (
 )
 from .selection import evaluate_goal
 
-MILESTONE = "1b"
-MILESTONES = ("1a", "1b-1", "1b")
+MILESTONE = "2"
+MILESTONES = ("1a", "1b-1", "1b", "2")
 
 
 def fingerprint():

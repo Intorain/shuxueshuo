@@ -176,6 +176,7 @@ class OriginalProblem:
     constraints: list
     denominators: list
     processing: list
+    strict: bool = False
 
     @property
     def parameter(self):
@@ -232,8 +233,8 @@ def read_problem(candidate, target_ref, constraint_context=None):
     if len(quantified) != 1:
         raise VerificationGap("unsupported_constraint:single_quantifier_required")
     main_entry, main = quantified[0]
-    if main[1] != "∀" or not _real_domain(main[3]) or main[4][0] not in (">=", "<="):
-        raise VerificationGap("verification_incomplete:universal_full_real_nonstrict")
+    if main[1] != "∀" or not _real_domain(main[3]) or main[4][0] not in (">=", "<=", ">", "<"):
+        raise VerificationGap("verification_incomplete:universal_full_real")
     algebra = _Arithmetic(original["symbols"], goal["target"][1], main[2])
     processing, constraints, denominator_sources = [], [], []
     for entry, atom in atoms:
@@ -251,15 +252,15 @@ def read_problem(candidate, target_ref, constraint_context=None):
             algebra.denominators.clear()
     algebra.bound = main[2]
     lhs, rhs = (algebra.expr(side) for side in main[4][1:])
-    expression = bounded_expand(lhs - rhs if main[4][0] == ">=" else rhs - lhs)
+    expression = bounded_expand(lhs - rhs if main[4][0] in (">=", ">") else rhs - lhs)
     denominator_sources.extend((d, main_entry["source_ref"]) for d in algebra.denominators)
     algebra.denominators.clear()
     try:
         polynomial = sp.Poly(expression, algebra.x)
     except BasePolynomialError as exc:
         raise VerificationGap("verification_incomplete:quadratic_required") from exc
-    if polynomial.degree() != 2 or polynomial.nth(2).is_Rational is not True or polynomial.nth(2) <= 0:
-        raise VerificationGap("verification_incomplete:positive_constant_quadratic")
+    if polynomial.degree() != 2:
+        raise VerificationGap("verification_incomplete:quadratic_required")
     for coefficient in polynomial.all_coeffs():
         _poly(coefficient, algebra.parameter)
     for entry, atom in atoms:
@@ -293,7 +294,7 @@ def read_problem(candidate, target_ref, constraint_context=None):
         _poly(numerator, algebra.parameter)
         _poly(denominator_part, algebra.parameter)
     return OriginalProblem(original, algebra, expression, main_entry["source_ref"], constraints,
-                           denominator_sources, processing)
+                           denominator_sources, processing, strict=main[4][0] in (">", "<"))
 
 
 def _relation(expression, operator):
@@ -556,21 +557,57 @@ def _point(problem, value):
     # This independently constructed square identity uses no method outputs.
     polynomial = sp.Poly(problem.expression.subs(problem.parameter, value), problem.x)
     a, b, c = (_algebraic_value(polynomial.nth(i)) for i in (2, 1, 0))
-    if polynomial.degree() != 2 or _algebraic_sign(a) != 1:
-        raise VerificationGap("verification_incomplete:point_quadratic_category")
+    leading_sign = _algebraic_sign(a)
+    if leading_sign == 0:
+        slope_sign = _algebraic_sign(b)
+        if slope_sign == 0:
+            constant_sign = _algebraic_sign(c)
+            holds = constant_sign > 0 if problem.strict else constant_sign >= 0
+            certificate = {"kind": "constant_predicate", "leading_coefficient": math_value(a),
+                           "linear_coefficient": math_value(b), "constant": math_value(c),
+                           "constant_sign": constant_sign, "strict": problem.strict}
+            witness, evaluated = sp.S.Zero, c
+        else:
+            # A nonconstant affine function cannot be positive/nonnegative on
+            # the entire real line. Produce a concrete original-input witness.
+            witness = _algebraic_value((-c - 1) / b)
+            evaluated = _algebraic_value(b * witness + c)
+            if _algebraic_sign(evaluated + 1) != 0:
+                raise VerificationGap("verification_incomplete:linear_counterexample")
+            holds = False
+            certificate = {"kind": "nonconstant_linear_counterexample", "leading_coefficient": math_value(a),
+                           "linear_coefficient": math_value(b), "slope_sign": slope_sign,
+                           "constant": math_value(c), "strict": problem.strict}
+        evidence.append({"source_ref": problem.main_ref, "kind": "quantified_predicate", "holds": holds,
+                         "certificate": certificate})
+        if not holds:
+            evidence[-1]["counterexample"] = {"bound_variable": math_value(witness), "value": math_value(evaluated)}
+        return holds, evidence
     vertex = _algebraic_value(-b / (2*a))
     minimum = _algebraic_value(c - b**2 / (4*a))
     identity = sp.Poly(bounded_expand(polynomial.as_expr() - a*(problem.x-vertex)**2-minimum), problem.x)
     if any(_algebraic_sign(coefficient) != 0 for coefficient in identity.all_coeffs()):
         raise VerificationGap("verification_incomplete:point_square_identity")
     sign = _algebraic_sign(minimum)
-    holds = sign >= 0
+    if leading_sign < 0:
+        # The negative quadratic has a negative value sufficiently far from
+        # its vertex. This explicit distance satisfies |a|*d² > minimum.
+        distance = _algebraic_value((minimum if sign >= 0 else -minimum) + 1 - 1 / a)
+        witness = _algebraic_value(vertex + distance)
+        evaluated = _algebraic_value(a * distance**2 + minimum)
+        if _algebraic_sign(evaluated) >= 0:
+            raise VerificationGap("verification_incomplete:negative_quadratic_counterexample")
+        holds = False
+    else:
+        witness, evaluated = vertex, minimum
+        holds = sign > 0 if problem.strict else sign >= 0
     evidence.append({"source_ref": problem.main_ref, "kind": "quantified_predicate", "holds": holds,
-                     "certificate": {"kind": "positive_quadratic_minimum", "identity_verified": True,
+                     "certificate": {"kind": "positive_quadratic_minimum" if leading_sign > 0 else "negative_quadratic_counterexample",
+                                     "identity_verified": True, "leading_sign": leading_sign, "strict": problem.strict,
                                      "leading_coefficient": math_value(a), "vertex": math_value(vertex),
                                      "minimum": math_value(minimum), "minimum_sign": sign}})
     if not holds:
-        evidence[-1]["counterexample"] = {"bound_variable": math_value(vertex), "value": math_value(minimum)}
+        evidence[-1]["counterexample"] = {"bound_variable": math_value(witness), "value": math_value(evaluated)}
     return holds, evidence
 
 
@@ -706,14 +743,14 @@ def verify(candidate, target_ref, constraint_context, feasible_set):
                     accepted.append(sp.FiniteSet(point))
         reconstructed = sp.Union(*accepted)
         result["proof"] = {
-            "category": "positive-rational-leading-universal-real-quadratic/v1",
+            "category": "rational-polynomial-coefficients-universal-real-quadratic/v2",
             "source_refs": [e["source_ref"] for e in problem.original["entries"]],
             "critical_polynomials": critical,
             "critical_points": [{**math_value(p), "sources": [
                 {"source_ref": item["source_ref"], "kind": item["kind"], "part": item["part"]}
                 for item in critical if math_value(p) in item["roots"]
             ]} for p in points],
-            "invariance": {"proved": True, "reason": "Positive constant degree-two leading coefficient; all coefficient, discriminant, condition and original-denominator signs are fixed between their complete exact real roots."},
+            "invariance": {"proved": True, "reason": "All coefficient, discriminant, condition and original-denominator signs are fixed between their complete exact real roots; critical points are checked independently for quadratic, affine and constant predicates with the original strictness."},
             "cells": cells, "reconstructed_set": math_value(reconstructed), "candidate_set": math_value(feasible_set),
         }
         sample = _set_mismatch(reconstructed, feasible_set)

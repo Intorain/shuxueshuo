@@ -36,6 +36,20 @@
     ],
     "multiply_negative": [
       "inequality-properties#multiplication"
+    ],
+    "parameter_polynomial_signs": [
+      "method-discriminant#solve"
+    ],
+    "degenerate_linear_or_constant": [
+      "method-discriminant#degree",
+      "linear-interval-extremum",
+      "quadratic-function-properties#definition"
+    ],
+    "intersect_case_conditions": [
+      "method-discriminant#solve"
+    ],
+    "union_disjoint_cases": [
+      "method-discriminant#merge"
     ]
   }
 }

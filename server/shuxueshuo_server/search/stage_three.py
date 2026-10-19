@@ -93,7 +93,7 @@ def run_stage_three(stage_two_directory, *, hooks=None):
                 return read(output / "stage-three-result.json")
             raise LessonConflict("lesson.resume_required")
         try:
-            return runner.run_sample(stage_two_directory / RESULT, output, milestone="1b", hooks=hooks)
+            return runner.run_sample(stage_two_directory / RESULT, output, hooks=hooks)
         except Exception as exc:
             save(stage_two_directory / "stage-three-error.json", {"type": type(exc).__name__, "message": str(exc)})
             raise

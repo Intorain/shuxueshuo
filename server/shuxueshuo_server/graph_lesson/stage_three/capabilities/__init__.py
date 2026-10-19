@@ -98,29 +98,52 @@ def simplify_expression(expression):
     )
 
 
-def quadratic_sign_condition(expression, variable, domain, quantifier, strict, mode):
+def quadratic_sign_condition(relation, variable, domain, quantifier, case_domain, mode):
+    from .cases import coefficient_zeros, exact_set_equal, parameter_symbols
+
+    # The sign theorem applies to the direction residual, including when an
+    # earlier normalization multiplied by a negative number. Strictness is part
+    # of the relation and cannot drift in a separate boolean binding.
+    if relation.rel_op not in (">", ">=", "<", "<="):
+        raise CapabilityGap("ordered_relation_required")
+    expression = residual(relation)
     poly = polynomial(expression, variable)
     if domain != sp.S.Reals or quantifier != "∀" or poly.degree() != 2:
         raise CapabilityGap("all_real_universal_quadratic_required")
     a, b, c = poly.all_coeffs()
-    if a.free_symbols or a.is_positive is not True:
-        raise CapabilityGap("nondegenerate_positive_coefficient_required")
+    symbols = parameter_symbols(expression, variable)
+    zeros = coefficient_zeros(a, next(iter(symbols)) if symbols else None)
+    if not exact_set_equal(sp.Intersection(case_domain, zeros), sp.S.EmptySet):
+        raise CapabilityGap("nondegenerate_case_required")
+    strict = relation.rel_op in (">", "<")
     delta = bounded_expand(b * b - 4 * a * c)
+    checks = [
+        {"kind": "nonzero_leading_coefficient_on_case", "passed": True,
+         "coefficient": a, "case_domain": case_domain, "zero_set": zeros},
+        {"kind": "direction_and_strictness", "passed": True,
+         "relation": relation, "residual": expression, "strict": strict},
+    ]
     if mode == "opening":
         return result(
-            {"opening": sp.Gt(a, 0, evaluate=False), "delta": delta},
+            {"opening": sp.Gt(a, 0, evaluate=False), "delta": delta,
+             "coefficient": a, "basis_expression": expression},
             ["quadratic_zeros", "all_real_sign"],
+            checks,
         )
-    condition = relation(delta, "<" if strict else "<=")
+    if mode != "delta":
+        raise CapabilityGap("unknown_quadratic_condition_mode")
+    condition = globals()["relation"](delta, "<" if strict else "<=")
     return result(
-        {"condition": condition, "delta": delta},
+        {"condition": condition, "delta": delta, "coefficient": a,
+         "basis_expression": expression},
         ["discriminant_condition", "all_real_sign"],
+        checks,
     )
 
 
 def transform_param_inequality(relation, variable):
     value = residual(relation)
-    poly = polynomial(value, variable)
+    poly = polynomial(value, variable, maximum=48)
     scale = abs(poly.LC()) if poly.LC().is_nonzero else sp.S.One
     if scale.free_symbols or scale.is_positive is not True:
         raise CapabilityGap("constant_transform_required")
@@ -361,6 +384,13 @@ def square_extremum(expression, variable, domain, square, coefficient, vertex, v
     )
 
 
+from .cases import (
+    degenerate_case_check,
+    intersect_conditions,
+    merge_cases,
+    solve_parameter_relation,
+)
+
 REGISTRY = {
     fn.__name__: fn
     for fn in (
@@ -375,6 +405,10 @@ REGISTRY = {
         apply_quantifier_policy,
         complete_square,
         square_extremum,
+        degenerate_case_check,
+        intersect_conditions,
+        merge_cases,
+        solve_parameter_relation,
     )
 }
 PLANNED = frozenset(

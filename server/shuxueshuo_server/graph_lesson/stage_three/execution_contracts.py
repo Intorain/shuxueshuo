@@ -35,6 +35,7 @@ def actions(step):
         [
             *(dict(v, kind="call") for v in step["calls"]),
             *(dict(v, kind="judgment") for v in step["judgments"]),
+            *(dict(v, kind="merge") for v in step.get("merges", [])),
         ],
         key=lambda v: v["order"],
     )
@@ -78,6 +79,38 @@ def validate_dependencies(declared, required, available):
         raise ValueError("execution.future_dependency")
 
 
+def guard_references(guard):
+    if not guard:
+        return set()
+    if "all" in guard:
+        return set().union(*(guard_references(item) for item in guard["all"]))
+    return {guard["ref"].split(".")[0]} if "ref" in guard else set()
+
+
+def _atoms(guard):
+    if not guard or guard == {"constant": True}:
+        return frozenset()
+    if guard == {"constant": False}:
+        return frozenset({("__never__", "true")})
+    if set(guard) == {"all"} and isinstance(guard["all"], list) and guard["all"]:
+        return frozenset().union(*(_atoms(item) for item in guard["all"]))
+    if set(guard) != {"ref", "equals"} or not isinstance(guard["ref"], str):
+        raise ValueError("execution.invalid_guard")
+    return frozenset({(guard["ref"], json.dumps(guard["equals"], sort_keys=True))})
+
+
+def _combine(*guards):
+    return {"all": [guard for guard in guards if guard]} if any(guards) else None
+
+
+def _require(required, environment, guard=None):
+    for name in required:
+        if name not in environment:
+            raise ValueError("execution.future_or_branch_binding")
+        if not _atoms(environment[name]) <= _atoms(guard):
+            raise ValueError("execution.unmerged_branch_binding")
+
+
 def validate_contract(contract, nodes=None):
     schema_validator().validate(contract)
     nodes = load_nodes() if nodes is None else nodes
@@ -87,7 +120,7 @@ def validate_contract(contract, nodes=None):
         raise ValueError("execution.step_mismatch")
     mappings = read("skill-capabilities")
     templates = read("presentation-registry")["templates"]
-    available = set(contract["inputs"])
+    environment = {name: None for name in contract["inputs"]}
     if any(
         not isinstance(role, dict)
         or not isinstance(role.get("role"), str)
@@ -101,20 +134,15 @@ def validate_contract(contract, nodes=None):
     ):
         raise ValueError("execution.exit_status")
     display_ids = set()
-    for step, node in zip(contract["steps"], public):
+
+    def validate_step(step, node, env):
         allowed = {c["ref"] for c in node.get("calls", [])}
         ids, executed_refs = set(), set()
-        all_actions = [*step["calls"], *step["judgments"]]
-        if any(
-            not {"id", "order", "inputs", "outputs"} <= action.keys()
-            or type(action["order"]) is not int
-            or not isinstance(action["id"], str)
-            or not action["id"]
-            for action in all_actions
-        ):
-            raise ValueError("execution.action_fields")
-        if len({action["order"] for action in all_actions}) != len(all_actions):
+        ordered = actions(step)
+        if len({action["order"] for action in ordered}) != len(ordered):
             raise ValueError("execution.duplicate_order")
+        _atoms(step.get("guard"))
+        _require(guard_references(step.get("guard")), env)
         for unit in step["display_units"]:
             if not isinstance(unit.get("after"), str) or not unit["after"]:
                 raise ValueError("execution.display_trigger")
@@ -131,59 +159,124 @@ def validate_contract(contract, nodes=None):
                 unit["bindings"]["after"], list
             ):
                 raise TypeError("execution.display_math_lists")
-        for action in actions(step):
+        for action in ordered:
+            if (
+                not isinstance(action.get("id"), str)
+                or not action["id"]
+                or type(action.get("order")) is not int
+            ):
+                raise ValueError("execution.action_fields")
             if action["id"] in ids:
                 raise ValueError("execution.duplicate_action")
             ids.add(action["id"])
-            required = set(references(action.get("inputs", {})))
-            if action.get("guard", {}).get("ref"):
-                required.add(action["guard"]["ref"])
-            if not required <= available:
-                raise ValueError("execution.future_or_branch_binding")
-            if action["kind"] == "judgment":
-                if action.get("guard"):
-                    raise ValueError("execution.judgment_guard_unavailable")
-                if action["function"] not in judgments.REGISTRY:
-                    raise ValueError("execution.unregistered_judgment")
-                validate_dependencies(action["depends_on"], required, available)
-                choices = [option.get("id") for option in action["options"]]
-                if (
-                    not choices
-                    or any(
-                        not isinstance(choice, str) or not choice for choice in choices
-                    )
-                    or len(set(choices)) != len(choices)
+            active_guard = _combine(step.get("guard"), action.get("guard"))
+            _atoms(active_guard)
+            _require(guard_references(action.get("guard")), env, active_guard)
+            if action["kind"] == "merge":
+                branch_outputs = [
+                    set(branch["bindings"]) for branch in action["branches"]
+                ]
+                if not branch_outputs or any(
+                    keys != branch_outputs[0] for keys in branch_outputs
                 ):
-                    raise ValueError("execution.judgment_options")
-            if action["kind"] == "call":
-                ref, cap = action["public_ref"], action["capability"]
-                if ref is not None:
-                    if ref not in allowed or not valid_ref(ref, nodes):
-                        raise ValueError("execution.public_call_position")
-                    if cap not in mappings["skills"].get(ref, []):
-                        raise ValueError("execution.capability_mapping")
-                    executed_refs.add(ref)
-                elif method + "#" + step["id"] not in mappings["internal"].get(cap, []):
-                    raise ValueError("execution.internal_call_position")
-                if cap not in REGISTRY and cap not in PLANNED and cap != "submethod":
-                    raise ValueError("execution.unknown_capability")
-                if cap == "submethod" and ref not in METHODS:
-                    raise ValueError("execution.unavailable_child")
-            outputs = set(action.get("outputs", {}))
-            if action.get("guard") and outputs:
-                raise ValueError("execution.unmerged_branch_binding")
-            available.update(outputs)
-            for unit in step.get("display_units", []):
+                    raise ValueError("execution.merge_outputs")
+                for branch in action["branches"]:
+                    guard = _combine(active_guard, branch["guard"])
+                    _atoms(guard)
+                    _require(guard_references(branch["guard"]), env, active_guard)
+                    _require(references(branch["bindings"]), env, guard)
+                outputs = branch_outputs[0]
+            else:
+                if not {"inputs", "outputs"} <= action.keys():
+                    raise ValueError("execution.action_fields")
+                required = set(references(action["inputs"])) | guard_references(
+                    action.get("guard")
+                )
+                _require(required, env, active_guard)
+                if action["kind"] == "judgment":
+                    if action["function"] not in judgments.REGISTRY:
+                        raise ValueError("execution.unregistered_judgment")
+                    validate_dependencies(action["depends_on"], required, set(env))
+                    choices = [option.get("id") for option in action["options"]]
+                    if (
+                        not choices
+                        or any(
+                            not isinstance(choice, str) or not choice
+                            for choice in choices
+                        )
+                        or len(set(choices)) != len(choices)
+                    ):
+                        raise ValueError("execution.judgment_options")
+                else:
+                    ref, cap = action["public_ref"], action["capability"]
+                    if ref is not None:
+                        if ref not in allowed or not valid_ref(ref, nodes):
+                            raise ValueError("execution.public_call_position")
+                        if cap not in mappings["skills"].get(ref, []):
+                            raise ValueError("execution.capability_mapping")
+                        executed_refs.add(ref)
+                    elif method + "#" + node["id"] not in mappings["internal"].get(
+                        cap, []
+                    ):
+                        raise ValueError("execution.internal_call_position")
+                    if (
+                        cap not in REGISTRY
+                        and cap not in PLANNED
+                        and cap != "submethod"
+                    ):
+                        raise ValueError("execution.unknown_capability")
+                    if cap == "submethod" and ref not in METHODS:
+                        raise ValueError("execution.unavailable_child")
+                outputs = set(action["outputs"])
+            for name in outputs:
+                env[name] = active_guard
+            for unit in step["display_units"]:
                 if unit["after"] == action["id"]:
-                    validate_dependencies(
-                        unit["depends_on"], references(unit["bindings"]), available
-                    )
+                    required = set(references(unit["bindings"]))
+                    validate_dependencies(unit["depends_on"], required, set(env))
+                    _require(guard_references(unit.get("guard")), env, active_guard)
+                    _require(required, env, _combine(active_guard, unit.get("guard")))
         if executed_refs != allowed:
             raise ValueError("execution.missing_public_call")
-        if any(unit["after"] not in ids for unit in step.get("display_units", [])):
+        if any(unit["after"] not in ids for unit in step["display_units"]):
             raise ValueError("execution.display_trigger")
-    if not set(references(contract["outputs"])) <= available:
-        raise ValueError("execution.missing_return_binding")
+
+    index = 0
+    while index < len(contract["steps"]):
+        step, node = contract["steps"][index], public[index]
+        validate_step(step, node, environment)
+        cases = step.get("cases")
+        if not cases:
+            index += 1
+            continue
+        _require([cases["source"]], environment)
+        end = next(
+            (
+                i
+                for i, row in enumerate(contract["steps"])
+                if row["id"] == cases["through"]
+            ),
+            -1,
+        )
+        if (
+            end < index
+            or cases["binding"] in environment
+            or cases["collect"] in environment
+        ):
+            raise ValueError("execution.invalid_case_scope")
+        child = dict(environment, **{cases["binding"]: None})
+        validate_step(dict(cases["entry"], id=step["id"]), node, child)
+        for child_index in range(index + 1, end + 1):
+            if contract["steps"][child_index].get("cases"):
+                raise ValueError("execution.nested_case_span")
+            validate_step(contract["steps"][child_index], public[child_index], child)
+        _require(references(cases["outputs"]), child)
+        environment[cases["collect"]] = None
+        index = end + 1
+    try:
+        _require(references(contract["outputs"]), environment)
+    except ValueError as exc:
+        raise ValueError("execution.missing_return_binding") from exc
     return contract
 
 
@@ -195,7 +288,10 @@ def load_contracts():
         if name in path:
             raise ValueError("execution.recursive_method")
         for step in contracts[name]["steps"]:
-            for call in step["calls"]:
+            for call in [
+                *step["calls"],
+                *step.get("cases", {}).get("entry", {}).get("calls", []),
+            ]:
                 if call["capability"] == "submethod":
                     child = contracts[call["public_ref"]]
                     if set(call["inputs"]) != set(child["inputs"]):

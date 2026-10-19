@@ -125,6 +125,42 @@
             "items": {
               "type": "object"
             }
+          },
+          "step_skip": {
+            "type": "object",
+            "required": [
+              "reason",
+              "guard",
+              "guard_bindings",
+              "source_refs",
+              "case_path"
+            ],
+            "properties": {
+              "reason": {
+                "const": "guard_false"
+              },
+              "guard": {
+                "type": "object",
+                "minProperties": 1
+              },
+              "guard_bindings": {
+                "type": "object"
+              },
+              "source_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "case_path": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       }

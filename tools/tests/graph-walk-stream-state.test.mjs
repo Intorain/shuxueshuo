@@ -5,6 +5,7 @@ import {
   createState, currentDecision, submitAnswer, switchRoute, undo, graphState,
   extendStreamBundle, streamGraphState, replayState, migrateStageTwoState,
 } from '../../site/assets/graph-walk/walk-state.mjs';
+import {createEventConsumer} from '../../site/assets/graph-walk/stage-three-stream.mjs';
 
 const read = path => JSON.parse(fs.readFileSync(new URL(path, import.meta.url), 'utf8'));
 const original = read('../../site/lab/search/demo-lesson-q01.json').goals[0].walk;
@@ -43,7 +44,7 @@ function selected(bundle, route = 'discriminant') {
   state = answer(bundle, state);
   state = answer(bundle, state);
   const method = currentDecision(bundle, state).interaction.methods.find(item => item.route === route);
-  state = answer(bundle, state, [...d3.expected_answer.cell, method.value]);
+  state = answer(bundle, state, [...currentDecision(bundle, state).expected_answer.cell, method.value]);
   return answer(bundle, state, route);
 }
 
@@ -187,4 +188,116 @@ test('QA and arrival order never rewrite mathematical data or selection identiti
   const changedSelection = structuredClone(withMath);
   changedSelection.selection_chunks[0].chunk.title = '改变选法';
   assert.throws(() => extendStreamBundle(bundle, changedSelection, target, graph), /immutable_selection/);
+});
+
+const q03Evidence = read('./fixtures/graph-stage-three-q03-evidence.json');
+const q03Bundle = snapshot => extendStreamBundle(original.bundle, snapshot, target, graph);
+const q03Reached = (snapshot, steps) => {
+  const bundle = q03Bundle(snapshot);
+  return streamGraphState(bundle, selected(bundle), {steps});
+};
+
+test('Q03 checked internal operations light their bases only after their own card is read', () => {
+  const bundle = q03Bundle(q03Evidence), state = selected(bundle);
+  const [classification, negativeCase, positiveCase, , , , solution, merge, boundary] = q03Evidence.math_steps;
+  const unread = streamGraphState(bundle, state);
+  assert.equal(unread.nodes['linear-interval-extremum'], 'idle');
+  assert.ok(!unread.usedBasis.includes('method-discriminant#merge'));
+  const classified = streamGraphState(bundle, state, {steps: [classification]});
+  assert.equal(classified.nodes['linear-interval-extremum'], 'idle');
+  for (const card of [negativeCase, positiveCase]) {
+    const reached = streamGraphState(bundle, state, {steps: [card]});
+    assert.equal(reached.nodes['linear-interval-extremum'], 'confirmed');
+    assert.ok(reached.usedBasis.includes('method-discriminant#degree'));
+    assert.ok(reached.usedBasis.includes('quadratic-function-properties#definition'));
+    assert.ok(!reached.usedBasis.includes('method-discriminant#merge'));
+    assert.equal(reached.calls.length, 0); // No synthetic public call for an internal operation.
+  }
+  const solved = streamGraphState(bundle, state, {steps: [solution]});
+  assert.ok(solved.usedBasis.includes('method-discriminant#solve'));
+  assert.equal(solved.nodes['skill-solve-quadratic'], 'confirmed');
+  assert.ok(!solved.usedBasis.includes('method-discriminant#merge'));
+  const merged = streamGraphState(bundle, state, {steps: [merge]});
+  assert.ok(merged.usedBasis.includes('method-discriminant#merge'));
+  assert.equal(merged.nodes['linear-interval-extremum'], 'idle'); // No scan of earlier cases.
+  assert.equal(merged.calls.length, 0);
+  assert.ok(streamGraphState(bundle, state, {steps: [boundary]}).usedBasis.includes('function-range-extrema#attainability'));
+});
+
+test('Q03 card basis claims cannot bypass source, branch and nonempty local-check validation', () => {
+  const caseIndex = 1;
+  const base = structuredClone(q03Evidence);
+  base.math_steps[caseIndex].used_basis.push('inequality-properties#addition', 'invented-basis');
+  const reached = q03Reached(base, [base.math_steps[caseIndex]]);
+  assert.ok(!reached.usedBasis.includes('inequality-properties#addition'));
+  assert.ok(!reached.usedBasis.includes('invented-basis'));
+  assert.equal(reached.nodes['invented-basis'], undefined);
+  const invalid = [
+    value => value.checkpoints[0].driver_state.trajectory.steps[1].calls[0].postconditions = [],
+    value => delete value.checkpoints[0].driver_state.trajectory.steps[1].calls[0].postconditions,
+    value => value.checkpoints[0].driver_state.trajectory.steps[1].calls[0].postconditions[0].passed = false,
+    value => value.checkpoints[0].driver_state.trajectory.steps[1].calls[0].postconditions[0].passed = 'true',
+    value => value.checkpoints[0].driver_state.trajectory.steps[1].case_path = ['degenerate-1'],
+    value => value.checkpoints[0].driver_state.trajectory.steps[1].calls[0].case_path = ['degenerate-1'],
+    value => value.checkpoints[0].route_id = 'extremum',
+    value => value.checkpoints[0].target_ref = '/root/children/0/goals/0',
+    value => value.math_steps[caseIndex].source_refs = ['/steps/8/skipped_calls/0'],
+    value => value.math_steps[caseIndex].source_refs = ['/steps/0/judgments/0'],
+    value => value.math_steps[caseIndex].source_refs = ['/steps/999/calls/0'],
+  ];
+  for (const mutate of invalid) {
+    const snapshot = structuredClone(base);
+    mutate(snapshot);
+    const result = q03Reached(snapshot, [snapshot.math_steps[caseIndex]]);
+    assert.ok(!result.usedBasis.includes('linear-interval-extremum'));
+    assert.ok(!result.usedBasis.includes('method-discriminant#degree'));
+    assert.equal(result.calls.length, 0);
+  }
+  const unverifiedBoundary = structuredClone(base);
+  unverifiedBoundary.checkpoints[0].driver_state.trajectory.finalization[2].postconditions = [];
+  assert.ok(!q03Reached(unverifiedBoundary, [unverifiedBoundary.math_steps.at(-1)]).usedBasis.includes('function-range-extrema#attainability'));
+});
+
+test('unchecked public calls cannot light a skill or inherit a card basis claim', () => {
+  for (const postconditions of [undefined, [], [{passed: false}], [{passed: true}, {passed: false}]]) {
+    const changed = structuredClone(withMath);
+    changed.checkpoints[0].driver_state.trajectory.steps[0].calls[0].postconditions = postconditions;
+    const bundle = extendStreamBundle(original.bundle, changed, target, graph);
+    const reached = streamGraphState(bundle, selected(bundle), {steps: [first]});
+    assert.equal(reached.calls.length, 0);
+    assert.notEqual(reached.nodes['skill-inequality-transform'], 'confirmed');
+    assert.ok(!reached.usedBasis.includes('inequality-properties#addition'));
+  }
+});
+
+test('Q03 snapshot and committed events give identical internal, public and boundary graph evidence', () => {
+  const snapshotConsumer = createEventConsumer(q03Evidence);
+  snapshotConsumer.hydrate(q03Evidence);
+  const eventConsumer = createEventConsumer(q03Evidence);
+  let seq = 0;
+  const emit = (type, payload, route = null) => eventConsumer.accept({
+    run_id: q03Evidence.run_id, lesson_version: q03Evidence.lesson_version, stream_id: q03Evidence.stream_id,
+    event_id: `event-${++seq}`, seq, type, target_ref: target, route_id: route, payload,
+  });
+  for (const {kind, chunk} of q03Evidence.selection_chunks) emit('lesson.chunk_ready', {kind, chunk});
+  const trajectory = q03Evidence.checkpoints[0].driver_state.trajectory;
+  emit('solver.step_completed', {trajectory: trajectory.steps}, 'discriminant');
+  for (const card of q03Evidence.math_steps) {
+    if (card.source_refs[0].startsWith('/finalization/')) {
+      // The sparse event carries the original index, never a compacted array.
+      emit('solver.step_completed', {trajectory: [], operation: 'endpoint_check',
+        finalization: [{index: 2, record: trajectory.finalization[2]}]}, 'discriminant');
+    }
+    emit('lesson.chunk_ready', {kind: 'math_step', step_id: card.step_id,
+      math_step_sha256: card.math_step_sha256, chunk: card}, 'discriminant');
+    const snapshotGraph = q03Reached({...snapshotConsumer.view(),
+      math_steps: q03Evidence.math_steps.filter(step => step.ordinal <= card.ordinal)}, [card]);
+    const eventGraph = q03Reached(eventConsumer.view(), [card]);
+    assert.deepEqual(eventGraph, snapshotGraph);
+  }
+  const finalView = eventConsumer.view();
+  assert.deepEqual(finalView.trajectories[0].finalization.map(item => item.index), [2]);
+  assert.ok(q03Reached(finalView, [q03Evidence.math_steps.at(-1)]).usedBasis.includes('function-range-extrema#attainability'));
+  assert.throws(() => emit('solver.step_completed', {trajectory: [], finalization: [{index: 2,
+    record: {...trajectory.finalization[2], used_basis: ['invented-basis']}}]}, 'discriminant'), /immutable_finalization_source/);
 });

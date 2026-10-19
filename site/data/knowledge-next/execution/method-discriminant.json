@@ -36,12 +36,18 @@
       "judgments": [
         {
           "id": "degree",
-          "function": "nondegenerate",
+          "function": "degenerate_branches",
           "inputs": {
-            "expression": "$expression",
-            "variable": "$x"
+            "relation": "$relation",
+            "variable": "$x",
+            "parameter": "$parameter",
+            "domain": "$domain",
+            "quantifier": "$quantifier"
           },
           "outputs": {
+            "degree_cases": "cases",
+            "coefficient": "coefficient",
+            "has_degenerate": "has_degenerate",
             "degree_evidence": "evidence"
           },
           "options": [
@@ -54,12 +60,107 @@
           ],
           "order": 0,
           "depends_on": [
-            "expression",
-            "x"
+            "relation",
+            "x",
+            "parameter",
+            "domain",
+            "quantifier"
           ]
         }
       ],
-      "display_units": []
+      "display_units": [
+        {
+          "id": "case_basis",
+          "after": "degree",
+          "template": "case_basis",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$coefficient"
+            ],
+            "coefficient": "$coefficient",
+            "parameter": "$parameter"
+          },
+          "depends_on": [
+            "coefficient",
+            "parameter"
+          ],
+          "guard": {
+            "ref": "has_degenerate",
+            "equals": true
+          }
+        }
+      ],
+      "cases": {
+        "source": "degree_cases",
+        "binding": "case",
+        "through": "solve",
+        "collect": "case_results",
+        "outputs": {
+          "solution": "$case_solution"
+        },
+        "entry": {
+          "calls": [
+            {
+              "id": "degenerate",
+              "capability": "degenerate_case_check",
+              "public_ref": null,
+              "inputs": {
+                "relation": "$relation",
+                "variable": "$x",
+                "parameter": "$parameter",
+                "case": "$case"
+              },
+              "outputs": {
+                "degenerate_solution": "solution",
+                "substituted_relation": "substituted_relation",
+                "holds": "holds",
+                "linear_coefficient": "linear_coefficient",
+                "constant": "constant"
+              },
+              "order": 0,
+              "guard": {
+                "ref": "case.kind",
+                "equals": "degenerate"
+              },
+              "skip_reason": "not_selected"
+            }
+          ],
+          "judgments": [],
+          "display_units": [
+            {
+              "id": "degenerate_case",
+              "after": "degenerate",
+              "template": "degenerate_case",
+              "bindings": {
+                "before": [
+                  "$relation"
+                ],
+                "after": [
+                  "$substituted_relation",
+                  "$degenerate_solution"
+                ],
+                "parameter": "$parameter",
+                "value": "$case.value",
+                "holds": "$holds",
+                "linear_coefficient": "$linear_coefficient",
+                "constant": "$constant"
+              },
+              "depends_on": [
+                "case",
+                "degenerate_solution",
+                "holds",
+                "parameter",
+                "relation",
+                "substituted_relation",
+                "linear_coefficient",
+                "constant"
+              ]
+            }
+          ],
+          "id": "degree"
+        }
+      }
     },
     {
       "id": "normalize",
@@ -110,7 +211,11 @@
             "relation"
           ]
         }
-      ]
+      ],
+      "guard": {
+        "ref": "case.kind",
+        "equals": "nondegenerate"
+      }
     },
     {
       "id": "conditions",
@@ -120,16 +225,17 @@
           "capability": "quadratic_sign_condition",
           "public_ref": "skill-quadratic-sign",
           "inputs": {
-            "expression": "$normal_expression",
+            "relation": "$normalized",
             "variable": "$x",
             "domain": "$domain",
             "quantifier": "$quantifier",
-            "strict": "$strict",
+            "case_domain": "$case.domain",
             "mode": "opening"
           },
           "outputs": {
             "opening": "opening",
-            "delta": "delta"
+            "delta": "delta",
+            "sign_expression": "basis_expression"
           },
           "order": 0
         },
@@ -138,11 +244,11 @@
           "capability": "quadratic_sign_condition",
           "public_ref": "skill-quadratic-sign",
           "inputs": {
-            "expression": "$normal_expression",
+            "relation": "$normalized",
             "variable": "$x",
             "domain": "$domain",
             "quantifier": "$quantifier",
-            "strict": "$strict",
+            "case_domain": "$case.domain",
             "mode": "delta"
           },
           "outputs": {
@@ -189,11 +295,15 @@
             "after": [
               "$opening"
             ],
-            "strict": "$strict"
+            "strict": "$strict",
+            "relation": "$normalized",
+            "expression": "$sign_expression"
           },
           "depends_on": [
             "opening",
-            "strict"
+            "strict",
+            "normalized",
+            "sign_expression"
           ]
         },
         {
@@ -213,7 +323,11 @@
             "parameter_condition"
           ]
         }
-      ]
+      ],
+      "guard": {
+        "ref": "case.kind",
+        "equals": "nondegenerate"
+      }
     },
     {
       "id": "solve",
@@ -225,7 +339,15 @@
           "inputs": {},
           "outputs": {},
           "guard": {
-            "constant": false
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "constant": false
+              }
+            ]
           },
           "skip_reason": "already_satisfied",
           "order": 0
@@ -237,7 +359,15 @@
           "inputs": {},
           "outputs": {},
           "guard": {
-            "constant": false
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "constant": false
+              }
+            ]
           },
           "skip_reason": "already_satisfied",
           "order": 1
@@ -251,16 +381,128 @@
             "variable": "$parameter"
           },
           "outputs": {
+            "quadratic_solution": "solution"
+          },
+          "order": 2,
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "parameter_solver",
+                "equals": "quadratic"
+              }
+            ]
+          }
+        },
+        {
+          "id": "polynomial",
+          "capability": "solve_parameter_relation",
+          "public_ref": null,
+          "inputs": {
+            "relation": "$parameter_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "polynomial_solution": "solution"
+          },
+          "order": 3,
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "parameter_solver",
+                "equals": "polynomial"
+              }
+            ]
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "opening_solution",
+          "capability": "solve_parameter_relation",
+          "public_ref": null,
+          "inputs": {
+            "relation": "$opening",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "opening_solution": "solution"
+          },
+          "order": 5,
+          "guard": {
+            "ref": "case.kind",
+            "equals": "nondegenerate"
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "intersection",
+          "capability": "intersect_conditions",
+          "public_ref": null,
+          "inputs": {
+            "conditions": [
+              "$opening",
+              "$parameter_condition"
+            ],
+            "solutions": [
+              "$opening_solution",
+              "$delta_solution"
+            ],
+            "variable": "$parameter",
+            "case_domain": "$case.domain"
+          },
+          "outputs": {
             "candidate_set": "solution"
           },
-          "order": 2
+          "order": 6,
+          "guard": {
+            "ref": "case.kind",
+            "equals": "nondegenerate"
+          },
+          "skip_reason": "not_selected"
         }
       ],
-      "judgments": [],
+      "judgments": [
+        {
+          "id": "parameter_solver",
+          "function": "parameter_solver",
+          "inputs": {
+            "relation": "$parameter_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "parameter_solver": "choice"
+          },
+          "guard": {
+            "ref": "case.kind",
+            "equals": "nondegenerate"
+          },
+          "options": [
+            {
+              "id": "quadratic"
+            },
+            {
+              "id": "polynomial"
+            }
+          ],
+          "order": -1,
+          "depends_on": [
+            "parameter_condition",
+            "parameter",
+            "case"
+          ]
+        }
+      ],
       "display_units": [
         {
           "id": "solution",
-          "after": "solve",
+          "after": "intersection",
           "template": "solution",
           "bindings": {
             "before": [
@@ -275,13 +517,102 @@
             "parameter_condition"
           ]
         }
+      ],
+      "merges": [
+        {
+          "id": "delta_solution",
+          "order": 4,
+          "guard": {
+            "ref": "case.kind",
+            "equals": "nondegenerate"
+          },
+          "branches": [
+            {
+              "guard": {
+                "ref": "parameter_solver",
+                "equals": "quadratic"
+              },
+              "bindings": {
+                "delta_solution": "$quadratic_solution"
+              }
+            },
+            {
+              "guard": {
+                "ref": "parameter_solver",
+                "equals": "polynomial"
+              },
+              "bindings": {
+                "delta_solution": "$polynomial_solution"
+              }
+            }
+          ]
+        },
+        {
+          "id": "case_solution",
+          "order": 7,
+          "branches": [
+            {
+              "guard": {
+                "ref": "case.kind",
+                "equals": "degenerate"
+              },
+              "bindings": {
+                "case_solution": "$degenerate_solution"
+              }
+            },
+            {
+              "guard": {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              "bindings": {
+                "case_solution": "$candidate_set"
+              }
+            }
+          ]
+        }
       ]
     },
     {
       "id": "merge",
-      "calls": [],
+      "calls": [
+        {
+          "id": "merge",
+          "capability": "merge_cases",
+          "public_ref": null,
+          "inputs": {
+            "cases": "$degree_cases",
+            "results": "$case_results"
+          },
+          "outputs": {
+            "candidate_set": "solution"
+          },
+          "order": 0
+        }
+      ],
       "judgments": [],
-      "display_units": []
+      "display_units": [
+        {
+          "id": "merge_cases",
+          "after": "merge",
+          "template": "merge_cases",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$candidate_set"
+            ],
+            "case_results": "$case_results"
+          },
+          "depends_on": [
+            "candidate_set",
+            "case_results"
+          ],
+          "guard": {
+            "ref": "has_degenerate",
+            "equals": true
+          }
+        }
+      ]
     }
   ],
   "outputs": {

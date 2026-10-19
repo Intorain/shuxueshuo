@@ -58,7 +58,7 @@ def _math_step(step, seq):
             body += '<p>' + label + ' <span class="math">' + escape(expression['display']) + '</span></p>'
     body += '<p class="muted">本步局部检查通过 · ' + escape(step['method_ref']) + '</p>'
     body += _details('条件、依据与来源', {key: step.get(key) for key in
-                                        ('premise_refs', 'used_basis', 'source_refs', 'step_id', 'math_step_sha256')})
+                                        ('case_path', 'premise_refs', 'used_basis', 'source_refs', 'step_id', 'math_step_sha256')})
     return body + '</article>'
 
 

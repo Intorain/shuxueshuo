@@ -17,6 +17,7 @@ from hashlib import sha256
 from html import escape
 from pathlib import Path
 
+import sympy as sp
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -29,6 +30,7 @@ from shuxueshuo_server.graph_lesson.stage_three.handoff import (
     invalidate_goal,
 )
 from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
+from shuxueshuo_server.graph_lesson.stage_three.trajectory import encode_value
 from shuxueshuo_server.search.dev_api import create_search_router
 
 PAGE_ID = "0" * 12
@@ -56,11 +58,29 @@ CASE_EXPECTATIONS = {
             "separation": {"division": "positive", "range_unit": "inverse_range",
                            "range_capability": "reciprocal_of_range",
                            "basis": ["function-monotonicity", "skill-inequality-transform#reciprocal"]}},
+    # Variable-route card counts come from committed snapshots and the final
+    # handoff, so child-method teaching steps can evolve without hiding gaps.
+    "q08": {"routes": ["variable"], "variable_swap": {
+        "slope_sign": "positive", "endpoint_mode": "right_endpoint", "endpoint_conditions": 1}},
+    "q09": {"routes": ["variable"], "variable_swap": {
+        "slope_sign": "unknown", "endpoint_mode": "both_endpoints", "endpoint_conditions": 2}},
 }
 
 
 def save(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def variable_gold(case):
+    """Read independently authored math gold, never a current execution result."""
+    path = ROOT / "server/tests/solver/fixtures/graph-guided-stage-three/answers.gold.json"
+    authored = json.loads(path.read_text())["cases"][case]
+    intervals = [sp.Interval(sp.sympify(row["lower"]), sp.sympify(row["upper"]),
+                             left_open=not row["left_closed"], right_open=not row["right_closed"])
+                 for row in authored["feasible_set"]["intervals"]]
+    feasible = sp.Union(*intervals)
+    return {"source": str(path.relative_to(ROOT)), "feasible_set_exact": encode_value(feasible),
+            "boundary_points": [sp.sstr(point) for point in sorted(feasible.boundary)]}
 
 
 def seed(output, source, case):
@@ -99,12 +119,15 @@ def main():
         if not (source / name).is_file():
             parser.error(f"recording is missing {name}: {source}")
     expectations = {"case": args.case, **CASE_EXPECTATIONS[args.case]}
+    if expectations.get("variable_swap"):
+        expectations["gold"] = variable_gold(args.case)
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=False)
     save(output / "browser-case.json", expectations)
     directory = seed(output, source, args.case)
     releases = {route: threading.Event() for route in expectations["routes"]}
     paused = set()
+    llm_provider_attempts = 0
 
     def barrier(state, _store):
         route = state["route_id"]
@@ -113,6 +136,8 @@ def main():
             raise TimeoutError("search_browser.release_timeout")
 
     def forbidden(*args, **kwargs):
+        nonlocal llm_provider_attempts
+        llm_provider_attempts += 1
         raise AssertionError("browser acceptance must not construct an LLM provider")
 
     from shuxueshuo_server.graph_lesson.stage_two import selection
@@ -130,6 +155,7 @@ def main():
     def state():
         snapshot = store().snapshot()
         return {"paused": sorted(paused), "snapshot": snapshot,
+                "llm_provider_attempts": llm_provider_attempts,
                 "stage_two_attempts": len(list(directory.glob("stage-two-*")))}
 
     @app.post("/test/release/{route}")
@@ -189,7 +215,7 @@ def main():
     evidence = json.loads((output / "browser-evidence.json").read_text())
     screenshots = [("01-running-prefix.png", "完整验证之前，数学步骤已可阅读"),
                    ("01a-interrupted-prefix.png", "构造中断状态：无新增事件、无需刷新即可继续计算，已提交步骤保留"),
-                   ("02-first-route-with-qa.png", "第一条路线已交付，第二条仍在计算；问答单独附加"),
+                   ("02-first-route-with-qa.png", "已验证路线交付后，问答通过游标恢复单独附加"),
                    ("03-student-reading.png", "自己做：作答与逐步阅读进度独立保存"),
                    ("04-refreshed.png", "刷新恢复同一运行与阅读位置")]
     if expectations.get("internal_basis"):
@@ -198,6 +224,8 @@ def main():
         screenshots.append(("06-interval-cases.png", "逐个阅读真实分类卡，常数与二次分支按实际调用点亮图谱"))
     if expectations.get("separation"):
         screenshots.append(("07-separation-range.png", "分离路线的除法方向与范围计算均来自实际执行证据"))
+    if expectations.get("variable_swap"):
+        screenshots.append(("08-variable-sources.png", "逐卡阅读主元法；公开调用与独立边界检查按真实来源点亮图谱"))
     figures = "".join(f'<figure><figcaption>{escape(title)}</figcaption><a href="{name}"><img src="{name}"></a></figure>'
                       for name, title in screenshots)
     (output / "index.html").write_text(

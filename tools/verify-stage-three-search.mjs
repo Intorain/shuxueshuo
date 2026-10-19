@@ -8,7 +8,7 @@ const [origin, output, searchId, configPath] = process.argv.slice(2);
 const config = configPath ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {
   case: 'q01', routes: ['discriminant', 'extremum'], prefix_cards: 4, completed_cards: 10, qa_cards: 5,
 };
-assert.equal(config.routes.length, 2);
+assert.ok(config.routes.length >= 1 && config.routes.length <= 2, 'acceptance supports one or two actual routes');
 const [firstRoute, secondRoute] = config.routes;
 const base = `/api/search/problems/${searchId}`;
 const browser = await chromium.launch({headless: true,
@@ -40,6 +40,15 @@ try {
     assert.ok(response.ok(), `${method} ${path}: ${response.status()} ${await response.text()}`);
     return response.json();
   };
+  const waitState = async (predicate, message) => {
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const state = await api('/test/state');
+      if (predicate(state)) return state;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail(message);
+  };
   const checked = call => call.postconditions?.length && call.postconditions.every(item => item.passed === true);
   const trajectoryFor = (snapshot, route) => {
     const checkpoint = snapshot.checkpoints.find(item => item.route_id === route);
@@ -68,6 +77,34 @@ try {
     }
     return [...grouped.values()];
   };
+  const collectPublicPaths = (snapshot, route) => {
+    const paths = [];
+    for (const {record, call, source_ref} of callsFor(trajectoryFor(snapshot, route)).filter(item => item.call.public_ref)) {
+      assert.ok(!call.rule_ref, 'variable-route public calls must retain their actual direct call occurrence');
+      const cards = snapshot.math_steps.filter(card => card.route_id === route &&
+        JSON.stringify(card.case_path) === JSON.stringify(record.case_path) && card.source_refs.includes(source_ref));
+      assert.ok(cards.length, `public call ${route}:${source_ref} needs a readable source card`);
+      // A parent summary may cite a child call again. Activation follows the
+      // earliest real readable card, not the later summary or execution time.
+      paths.push({method: record.method, step: record.step, capability: call.capability,
+        public_ref: call.public_ref, source_ref, step_ids: cards.map(card => card.step_id),
+        read_cards: Math.min(...cards.map(card => card.ordinal)),
+        edge: `${record.method}|calls|${call.public_ref.split('#')[0]}`});
+    }
+    return paths;
+  };
+  const assertPublicPathsAt = async (paths, readCards) => {
+    const thresholds = new Map();
+    for (const path of paths) thresholds.set(path.edge, Math.min(thresholds.get(path.edge) ?? Infinity, path.read_cards));
+    const expected = [...thresholds].map(([edge, ordinal]) => [edge, ordinal <= readCards ? 'chosen' : 'idle']);
+    await page.waitForFunction(rows => rows.every(([edge, state]) => [...document.querySelectorAll('[data-edge]')]
+      .some(node => node.dataset.edge === edge && node.dataset.state === state)), expected);
+    const methods = [...new Set(paths.map(path => path.method))];
+    const actual = await page.locator('[data-edge][data-state="chosen"]').evaluateAll((nodes, callers) =>
+      nodes.map(node => node.dataset.edge).filter(edge => callers.some(method => edge.startsWith(`${method}|calls|`))), methods);
+    assert.deepEqual(actual.sort(), expected.filter(([, state]) => state === 'chosen').map(([edge]) => edge).sort(),
+      'chosen public call edges must have checked sources on cards the student has read');
+  };
   const assertRulePathsAt = async (paths, readCards) => {
     // The method→rule edge is shared by cases. A later skill branch must stay
     // idle until the first actual source card that invokes that branch is read.
@@ -91,25 +128,31 @@ try {
   await api(base + '/lesson/start', 'POST');
   await page.goto(`${origin}/lab/search/problem.html?search=${searchId}`);
   await page.locator('[data-actor="replay"]').click();
-  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length >= expected, config.prefix_cards);
+  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length >= expected, config.prefix_cards ?? 1);
   await page.waitForFunction(() => [...document.querySelectorAll('.stage-three-math-step')].some(node => node.getClientRects().length));
-  let paused;
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const state = await api('/test/state');
-    if (state.paused.includes(firstRoute)) { paused = state.snapshot; break; }
-    await new Promise(resolve => setTimeout(resolve, 100));
+  const paused = (await waitState(state => state.paused.includes(firstRoute),
+    'the first route must reach its verification barrier before the interruption probe')).snapshot;
+  const prefixCards = paused.math_steps.length;
+  assert.ok(prefixCards > 0, 'actual mathematical cards are committed before independent finalization');
+  if (config.prefix_cards !== undefined) assert.equal(prefixCards, config.prefix_cards);
+  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length === expected, prefixCards);
+  assert.ok(paused.math_steps.every(card => card.local_check === 'passed'));
+  if (config.variable_swap) {
+    assert.ok(paused.math_steps.every(card => card.route_id === firstRoute && card.display_unit !== 'boundary'));
+    assert.ok(!(trajectoryFor(paused, firstRoute).finalization || []).some(call => call.capability === 'endpoint_check'));
   }
-  assert.ok(paused, 'the first route must reach its verification barrier before the interruption probe');
-  assert.equal(paused.math_steps.length, config.prefix_cards);
   assert.equal(paused.handoffs.length, 0);
   assert.equal(await page.locator('.stage-three-completion:visible').count(), 0);
   assert.ok(await page.locator('.stage-three-math-step .katex').count() > 0);
   await page.locator('.stage-three-math-step').first().scrollIntoViewIfNeeded();
   await page.screenshot({path: `${output}/01-running-prefix.png`, fullPage: true});
-  console.log(`Verified running prefix: ${config.prefix_cards} mathematical cards before completion.`);
+  console.log(`Verified running prefix: ${prefixCards} mathematical cards before completion.`);
   await page.evaluate(() => {
     window.__firstMathCard = document.querySelector('.stage-three-math-step');
     window.__firstMathBody = [...window.__firstMathCard.children].filter(node => !node.classList.contains('stage-three-qa'));
+    window.__prefixMathCards = [...document.querySelectorAll('.stage-three-math-step')].map(node => ({
+      node, stepId: node.dataset.stepId, body: [...node.children].filter(child => !child.classList.contains('stage-three-qa')),
+    }));
   });
 
   // A worker can disappear without emitting a terminal event. Construct only
@@ -147,7 +190,7 @@ try {
   await api(`/test/release/${firstRoute}`, 'POST');
   await page.waitForFunction(() => [...document.querySelectorAll('.stage-three-completion')].filter(node => node.getClientRects().length).length === 1);
   const firstDone = (await api('/test/state')).snapshot;
-  assert.equal(firstDone.handoffs.length, 1, 'one verified route is publishable before the second finishes');
+  assert.equal(firstDone.handoffs.length, 1, 'the first verified route is independently publishable');
   assert.ok(firstDone.handoffs[0].available);
 
   // Let a committed QA fragment fall beyond this client's cursor, then prune
@@ -163,19 +206,39 @@ try {
   assert.ok(events.websocket_frames >= 1, 'initial steps came through the real WebSocket');
   assert.ok(await page.evaluate(() => window.__firstMathCard === document.querySelector('.stage-three-math-step') &&
     window.__firstMathBody.every(node => node.parentNode === window.__firstMathCard)), 'QA recovery preserves mathematical DOM');
+  assert.ok(await page.evaluate(() => window.__prefixMathCards.every(({node, stepId, body}) =>
+    node === document.querySelector(`.stage-three-math-step[data-step-id="${stepId}"]`) &&
+    body.every(child => child.parentNode === node))), 'QA snapshot recovery preserves every existing mathematical card');
   await page.screenshot({path: `${output}/02-first-route-with-qa.png`, fullPage: true});
   console.log('Verified first-route handoff and cursor-expiry QA recovery.');
 
-  await api(`/test/release/${secondRoute}`, 'POST');
-  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length === expected, config.completed_cards);
-  await page.waitForFunction(route => document.querySelector(`.stage-three-route[data-route-id="${route}"]`)?.dataset.mathStatus === 'verified', secondRoute);
-  let completed = (await api('/test/state')).snapshot;
-  assert.equal(completed.handoffs.length, 2);
+  if (secondRoute) await api(`/test/release/${secondRoute}`, 'POST');
+  const completedState = await waitState(state => state.snapshot.handoffs.length === config.routes.length &&
+    state.snapshot.checkpoints.every(checkpoint => checkpoint.status === 'verified'),
+  'every actual route must complete its independent verification');
+  assert.equal(completedState.llm_provider_attempts, 0);
+  let completed = completedState.snapshot;
+  const completedCards = completed.math_steps.length;
+  const firstRouteCards = completed.math_steps.filter(card => card.route_id === firstRoute);
+  const qaCards = firstRouteCards.length;
+  if (config.completed_cards !== undefined) assert.equal(completedCards, config.completed_cards);
+  if (config.qa_cards !== undefined) assert.equal(qaCards, config.qa_cards);
+  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length === expected, completedCards);
+  await page.waitForFunction(routes => routes.every(route =>
+    document.querySelector(`.stage-three-route[data-route-id="${route}"]`)?.dataset.mathStatus === 'verified'), config.routes);
+  assert.equal(completed.handoffs.length, config.routes.length);
+  assert.deepEqual(firstDone.handoffs[0].math_steps.map(step => step.step_id), firstRouteCards.map(step => step.step_id));
   assert.equal(completed.qa.length, 1);
   assert.ok(completed.checkpoints.every(checkpoint => checkpoint.status === 'verified'));
   const originalIds = completed.math_steps.map(step => step.step_id);
+  const originalMathSteps = JSON.stringify(completed.math_steps);
   assert.equal(new Set(originalIds).size, originalIds.length);
   assert.equal(await page.locator('.katex-error').count(), 0);
+  await page.evaluate(() => {
+    window.__completedMathCards = [...document.querySelectorAll('.stage-three-math-step')].map(node => ({
+      node, stepId: node.dataset.stepId, body: [...node.children].filter(child => !child.classList.contains('stage-three-qa')),
+    }));
+  });
 
   // Student decisions remain separate from AI playback. Answer D1/D2 from the
   // same recorded contract, then use the actual plane/route UI for D3/D4.
@@ -208,6 +271,16 @@ try {
   assert.equal(await page.locator('.stage-three-math-step:visible').count(), 1,
     'completed computation does not advance the student reading position');
   let rulePaths = [];
+  let publicPaths = [];
+  if (config.variable_swap) {
+    publicPaths = collectPublicPaths(completed, firstRoute);
+    const rootRefs = new Set(publicPaths.filter(path => path.method === 'method-variable-swap').map(path => path.public_ref));
+    for (const ref of ['skill-simplify', 'skill-quantified-range', 'skill-linear-range',
+      'skill-inequality-transform', 'quadratic-inequality-solve']) {
+      assert.ok(rootRefs.has(ref), `missing actual variable-route public call ${ref}`);
+    }
+    await assertPublicPathsAt(publicPaths, 1);
+  }
   if (config.internal_basis) {
     rulePaths = collectRulePaths(completed, firstRoute);
     assert.ok(rulePaths.length, 'the interval route must retain its actual rule-selected range calls');
@@ -218,6 +291,7 @@ try {
   const studentVisible = await page.locator('.stage-three-math-step:visible').count();
   assert.equal(studentVisible, 2);
   if (rulePaths.length) await assertRulePathsAt(rulePaths, studentVisible);
+  if (publicPaths.length) await assertPublicPathsAt(publicPaths, studentVisible);
   const progress = await page.locator('#gw-progress').textContent();
   const readingScroll = await page.locator('.gw-lesson').evaluate(node => node.scrollTop);
   await api('/test/qa/completed', 'POST');
@@ -226,13 +300,17 @@ try {
   assert.equal(await page.locator('#gw-progress').textContent(), progress, 'QA retry preserves student decisions');
   assert.equal(await page.locator('.gw-lesson').evaluate(node => node.scrollTop), readingScroll, 'QA retry does not jump reading position');
   assert.ok(await page.evaluate(() => window.__firstMathCard === document.querySelector('.stage-three-math-step')));
+  assert.ok(await page.evaluate(() => window.__completedMathCards.every(({node, stepId, body}) =>
+    node === document.querySelector(`.stage-three-math-step[data-step-id="${stepId}"]`) &&
+    body.every(child => child.parentNode === node))), 'constructed QA completion preserves every mathematical DOM body');
   completed = (await api('/test/state')).snapshot;
-  assert.equal(completed.qa.length, config.qa_cards);
+  assert.equal(JSON.stringify(completed.math_steps), originalMathSteps, 'constructed QA cannot rewrite committed mathematics');
+  assert.equal(completed.qa.length, qaCards);
   await page.screenshot({path: `${output}/03-student-reading.png`, fullPage: true});
   console.log('Verified student decisions and two-step reading position survive QA retry.');
   await page.reload();
   // The page should restore the selected actor/part and its saved decisions.
-  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length === expected, config.completed_cards);
+  await page.waitForFunction(expected => document.querySelectorAll('.stage-three-math-step').length === expected, completedCards);
   await page.waitForFunction(expected => [...document.querySelectorAll('.stage-three-math-step')].filter(node => node.getClientRects().length).length === expected, studentVisible);
   assert.equal(await page.locator('.stage-three-math-step:visible').count(), studentVisible);
   assert.equal(await page.locator('#gw-progress').textContent(), progress);
@@ -245,6 +323,7 @@ try {
     await assertRulePathsAt(rulePaths, studentVisible);
     rulePaths = rulePaths.map(path => ({...path, refresh_restored: true}));
   }
+  if (publicPaths.length) await assertPublicPathsAt(publicPaths, studentVisible);
   await page.screenshot({path: `${output}/04-refreshed.png`, fullPage: true});
   console.log('Verified refresh restores the same run, steps and reading position.');
   let internalBasis = null;
@@ -260,7 +339,7 @@ try {
     console.log('Verified checked internal-operation basis appears only after reading its condition card.');
   }
   if (rulePaths.length) await assertRulePathsAt(rulePaths, await page.locator('.stage-three-math-step:visible').count());
-  let classification = null, separation = null;
+  let classification = null, separation = null, variableSwap = null;
   if (config.interval_cases) {
     const trajectory = trajectoryFor(completed, firstRoute);
     const cases = trajectory.steps.flatMap(record => record.case_results || []);
@@ -268,7 +347,7 @@ try {
     assert.equal(new Set(cases.map(item => JSON.stringify(item.case_path))).size, cases.length);
     assert.ok(cases.every(item => item.case_path.length && item.source_refs.length));
     const firstCards = completed.math_steps.filter(card => card.route_id === firstRoute);
-    assert.equal(firstCards.length, config.qa_cards);
+    assert.equal(firstCards.length, qaCards);
     const caseCards = firstCards.filter(card => card.case_path.length);
     assert.ok(cases.every(item => caseCards.some(card => JSON.stringify(card.case_path) === JSON.stringify(item.case_path))),
       'every collected case must have its own student-visible mathematical source');
@@ -354,12 +433,74 @@ try {
     await page.screenshot({path: `${output}/07-separation-range.png`, fullPage: true});
     console.log('Verified actual division direction, range card and checked knowledge sources on the second route.');
   }
+  if (config.variable_swap) {
+    const trajectory = trajectoryFor(completed, firstRoute);
+    const traced = callsFor(trajectory);
+    const rangeCalls = traced.filter(({call}) => call.capability === 'parameter_linear_range');
+    assert.equal(rangeCalls.length, 1);
+    const range = rangeCalls[0];
+    assert.equal(range.call.outputs.slope_sign, config.variable_swap.slope_sign);
+    assert.equal(range.call.outputs.endpoint_mode, config.variable_swap.endpoint_mode);
+    const applied = traced.filter(({call, record}) => call.capability === 'apply_quantifier_policy' &&
+      record.method === 'method-variable-swap');
+    // Root role/quantifier/range/combination evidence stays independent of how
+    // many child-method cards are needed to solve the endpoint inequalities.
+    assert.equal(applied.length, 1);
+    assert.equal(applied[0].call.public_ref, null);
+    assert.equal(applied[0].call.outputs.combiner, 'all');
+    assert.equal(applied[0].call.outputs.conditions.length, config.variable_swap.endpoint_conditions);
+    assert.ok(traced.every(({call}) => !call.used_basis.some(ref => ref.startsWith('method-interval-extremum'))),
+      'variable-route computation must not acquire another method basis from a shared implementation');
+    const checkpoint = completed.checkpoints.find(item => item.route_id === firstRoute);
+    assert.deepEqual(checkpoint.driver_state.feasible_set_exact, config.gold.feasible_set_exact,
+      'the final exact set must equal the independently authored gold');
+    const boundaries = trajectory.finalization.map((call, index) => ({call, index}))
+      .filter(({call}) => call.capability === 'endpoint_check');
+    assert.equal(boundaries.length, 1);
+    const boundary = boundaries[0];
+    assert.ok(checked(boundary.call));
+    assert.equal(boundary.call.public_ref, null);
+    assert.equal(boundary.call.outputs.status, 'passed');
+    assert.deepEqual(boundary.call.outputs.points.map(point => point.point.expression), config.gold.boundary_points);
+    assert.ok(boundary.call.outputs.points.every(point => point.included === false && point.holds === false && point.passed));
+    const boundaryCards = firstRouteCards.filter(card => card.display_unit === 'boundary');
+    assert.equal(boundaryCards.length, 1);
+    const boundaryCard = boundaryCards[0];
+    assert.ok(completedCards > prefixCards, 'independent finalization adds its boundary card after the running prefix');
+    assert.deepEqual(completed.math_steps.slice(0, prefixCards), paused.math_steps,
+      'verification preserves every mathematical card committed before the barrier');
+    assert.equal(boundaryCard.ordinal, Math.max(...firstRouteCards.map(card => card.ordinal)));
+    assert.deepEqual(boundaryCard.source_refs, [`/finalization/${boundary.index}`]);
+    assert.ok(boundary.call.used_basis.includes('function-range-extrema#attainability'));
+    assert.equal(await basisLinkFor('function-range-extrema#attainability').count(), 0,
+      'independent boundary basis stays absent until the boundary card is read');
+    while (await page.locator('.stage-three-math-step:visible').count() < firstRouteCards.length) {
+      await page.locator(`[data-stream-next=${JSON.stringify(firstRoute)}]`).click();
+      await assertPublicPathsAt(publicPaths, await page.locator('.stage-three-math-step:visible').count());
+    }
+    for (const card of firstRouteCards) {
+      await page.locator(`.stage-three-math-step[data-step-id=${JSON.stringify(card.step_id)}]`).waitFor({state: 'visible'});
+    }
+    await basisLinkFor('function-range-extrema#attainability').waitFor({state: 'attached'});
+    assert.equal(await page.locator('.stage-three-completion:visible').count(), 1);
+    assert.ok(await page.locator(`.stage-three-math-step[data-step-id=${JSON.stringify(boundaryCard.step_id)}] .katex`).count() > 0);
+    publicPaths = publicPaths.map(path => ({...path, activation_follows_reading: true, refresh_restored: true}));
+    variableSwap = {slope_sign: range.call.outputs.slope_sign, endpoint_mode: range.call.outputs.endpoint_mode,
+      slope: range.call.outputs.slope, range_source: range.source_ref,
+      combiner: applied[0].call.outputs.combiner, endpoint_conditions: applied[0].call.outputs.conditions,
+      public_paths: publicPaths, gold_source: config.gold.source, exact_answer_matches_gold: true,
+      boundary_source: `/finalization/${boundary.index}`, boundary_step_id: boundaryCard.step_id,
+      boundary_points: boundary.call.outputs.points, boundary_after_verification: true,
+      actual_prefix_cards: prefixCards, actual_completed_cards: firstRouteCards.length, all_actual_cards_read: true};
+    await page.screenshot({path: `${output}/08-variable-sources.png`, fullPage: true});
+    console.log('Verified variable-route public sources, reading-dependent graph activation, exact gold and independent boundaries.');
+  }
   assert.equal(await page.locator('.katex-error').count(), 0);
   await api('/test/invalidate', 'POST');
   await page.waitForFunction(() => [...document.querySelectorAll('.stage-three-route')].every(node => node.dataset.available === 'false'));
   assert.equal(await page.locator('.stage-three-completion:visible').count(), 0);
   assert.equal(await page.locator('.stage-three-qa:visible').count(), 0);
-  assert.equal(await page.locator('.stage-three-math-step').count(), config.completed_cards);
+  assert.equal(await page.locator('.stage-three-math-step').count(), completedCards);
   assert.deepEqual(errors, []);
   fs.writeFileSync(`${output}/browser-evidence.json`, JSON.stringify({
     source: `recorded_${config.case}`, case: config.case, routes: config.routes, new_llm_calls: 0, entry: '/lab/search/problem.html',
@@ -369,7 +510,8 @@ try {
     interrupted_without_events: true, interruption_fixture: 'execution_metadata_only', explicit_resume_requests: resumeRequests,
     mathematical_dom_preserved: true, conflict_revoked_completion_and_qa: true, internal_basis: internalBasis,
     rule_path: rulePaths.length === 1 ? rulePaths[0] : null, rule_paths: rulePaths,
-    classification, separation, formula_errors: 0, ...events, browser_errors: errors,
+    classification, separation, variable_swap: variableSwap, llm_provider_attempts: completedState.llm_provider_attempts,
+    formula_errors: 0, ...events, browser_errors: errors,
   }, null, 2));
 } catch (error) {
   fs.writeFileSync(`${output}/failure.txt`, String(error.stack || error));

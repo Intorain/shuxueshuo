@@ -80,6 +80,47 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis):
             f"{quantifier} ${sp.latex(bindings['x'])}$ 使关系成立，比较式 ${sp.latex(bindings['parameter_expression'])}$ "
             f"需要与函数 ${sp.latex(bindings['function'])}$ 的{name}比较。先确定策略，下一步再计算数值和是否取到。"
         )
+    elif unit["template"] == "variable_roles":
+        quantifier = "对所有" if bindings["quantifier"] == "∀" else "至少存在一个"
+        explanation = (
+            f"题目要求{quantifier} ${sp.latex(bindings['x'])}\\in {sp.latex(bindings['domain'])}$ 使关系成立。"
+            f"因此以 ${sp.latex(bindings['x'])}$ 为变化的字母，先固定所求的 ${sp.latex(bindings['parameter'])}$，"
+            "再由整个区间上的条件求它的取值范围。"
+        )
+    elif unit["template"] == "variable_reorder":
+        explanation = (
+            f"按 ${sp.latex(bindings['x'])}$ 合并同类项，一次项系数为 ${sp.latex(bindings['slope'])}$，"
+            f"常数项为 ${sp.latex(bindings['intercept'])}$。这两个系数都不含变化的字母。"
+        )
+    elif unit["template"] == "variable_range":
+        sign, bounds = bindings["slope_sign"], bindings["range"]
+        slope = sp.latex(bindings["slope"])
+        if sign in ("positive", "negative"):
+            symbol, direction = (">", "递增") if sign == "positive" else ("<", "递减")
+            certificate = bindings["slope_certificate"]
+            equality = f"={sp.latex(certificate['square'])}" if "square" in certificate else ""
+            explanation = f"一次项系数 ${slope}{equality}{symbol}0$，函数在给定区间上严格{direction}。"
+        elif sign == "zero":
+            explanation = "一次项系数恒为零，函数为常数，在区间内部也能取得该值。"
+        else:
+            explanation = (f"一次项系数 ${slope}$ 不能统一判定为严格正或严格负。"
+                           "一次函数在闭区间上的确界由两端决定，保留两个端点条件。")
+        label = "上确界" if bounds["bound"] == "sup" else "下确界"
+        for candidate in bounds["candidates"]:
+            after.append(candidate["value"])
+            location = f"${sp.latex(bindings['x'])}={sp.latex(candidate['point'])}$"
+            attained = "能取得" if candidate["attained"] else "只能趋近、不能取得"
+            qualifier = "候选值" if len(bounds["candidates"]) > 1 else ""
+            explanation += f"{label}{qualifier}来自 {location}，为 ${sp.latex(candidate['value'])}$，{attained}。"
+    elif unit["template"] == "variable_conditions":
+        before.extend(bindings["conditions"])
+        after = [*bindings["normalized"], *bindings["solutions"], *after]
+        logical, operation = ("每个条件都成立", "交集") if bindings["combiner"] == "all" else ("至少一个条件成立", "并集")
+        explanation = (f"按确界及其是否取得建立关于 ${sp.latex(bindings['parameter'])}$ 的条件，"
+                       "移项并按非零常数作等价变形，分别求解。")
+        if len(bindings["conditions"]) > 1:
+            explanation += f"原量词要求{logical}，因此各解集取{operation}。"
+        explanation += "所得范围随后与其余题设求交，并独立验证边界。"
     elif unit["template"] in ("divided", "negative_divided"):
         negative = unit["template"] == "negative_divided"
         sign, noun, direction = ("<", "负", "反向") if negative else (">", "正", "不变")

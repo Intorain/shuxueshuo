@@ -154,9 +154,40 @@ def interval_requirement(domain):
     }
 
 
+def variable_roles(variable, parameter, domain, quantifier):
+    if not isinstance(variable, sp.Symbol) or not isinstance(parameter, sp.Symbol) or variable == parameter:
+        raise CapabilityGap("distinct_variable_roles_required")
+    if quantifier not in ("∀", "∃") or domain.free_symbols:
+        raise CapabilityGap("fixed_quantified_domain_required")
+    return {"selected": "identified", "evidence": {
+        "quantified_variable": variable, "sought_variable": parameter,
+        "domain": domain, "quantifier": quantifier,
+    }}
+
+
+def affine_slope_decision(certificate):
+    sign = certificate.get("sign", "zero" if certificate.get("kind") == "identically_zero_affine_slope" else None)
+    if certificate.get("passed") is not True or sign not in ("positive", "negative", "zero", "unknown"):
+        raise CapabilityGap("missing_affine_slope_certificate")
+    return {"selected": sign, "evidence": certificate}
+
+
+def endpoint_condition_plan(conditions, variable):
+    if len(conditions) not in (1, 2):
+        raise CapabilityGap("one_or_two_endpoint_conditions_required")
+    kinds = ["quadratic" if polynomial(residual(condition), variable).degree() == 2 else "affine"
+             for condition in conditions]
+    return {"selected": "single" if len(conditions) == 1 else "both",
+            "first": conditions[0], "first_kind": kinds[0],
+            "second": conditions[1] if len(conditions) == 2 else None,
+            "second_kind": kinds[1] if len(conditions) == 2 else "absent", "absent": None,
+            "evidence": {"conditions": conditions, "degrees": kinds}}
+
+
 REGISTRY = {
     fn.__name__: fn
     for fn in (nondegenerate, degenerate_branches, parameter_solver,
                polynomial_relation, range_skill, interval_requirement, interval_skill,
-               interval_case_plan, interval_case_skill)
+               interval_case_plan, interval_case_skill, variable_roles,
+               affine_slope_decision, endpoint_condition_plan)
 }

@@ -1,0 +1,504 @@
+{
+  "schema_version": "graph-method-execution/v1",
+  "method": "method-variable-swap",
+  "inputs": {
+    "interval_function": {
+      "role": "interval_function"
+    },
+    "interval_operator": {
+      "role": "interval_operator"
+    },
+    "x": {
+      "role": "x"
+    },
+    "parameter": {
+      "role": "parameter"
+    },
+    "domain": {
+      "role": "domain"
+    },
+    "quantifier": {
+      "role": "quantifier"
+    },
+    "zero": {
+      "role": "zero"
+    }
+  },
+  "steps": [
+    {
+      "id": "roles",
+      "calls": [],
+      "judgments": [
+        {
+          "id": "identify",
+          "function": "variable_roles",
+          "inputs": {
+            "variable": "$x",
+            "parameter": "$parameter",
+            "domain": "$domain",
+            "quantifier": "$quantifier"
+          },
+          "outputs": {},
+          "options": [
+            {
+              "id": "identified"
+            }
+          ],
+          "order": 0,
+          "depends_on": [
+            "domain",
+            "parameter",
+            "quantifier",
+            "x"
+          ]
+        }
+      ],
+      "display_units": [
+        {
+          "id": "roles",
+          "after": "identify",
+          "template": "variable_roles",
+          "bindings": {
+            "before": [],
+            "after": [],
+            "x": "$x",
+            "parameter": "$parameter",
+            "domain": "$domain",
+            "quantifier": "$quantifier"
+          },
+          "depends_on": [
+            "domain",
+            "parameter",
+            "quantifier",
+            "x"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reorder",
+      "calls": [
+        {
+          "id": "collect",
+          "capability": "reorder_by_variable",
+          "public_ref": "skill-simplify",
+          "inputs": {
+            "expression": "$interval_function",
+            "variable": "$x",
+            "parameter": "$parameter"
+          },
+          "outputs": {
+            "collected": "expression",
+            "slope": "slope",
+            "intercept": "intercept"
+          },
+          "order": 0
+        }
+      ],
+      "judgments": [],
+      "display_units": [
+        {
+          "id": "reorder",
+          "after": "collect",
+          "template": "variable_reorder",
+          "bindings": {
+            "before": [
+              "$interval_function"
+            ],
+            "after": [
+              "$collected"
+            ],
+            "x": "$x",
+            "slope": "$slope",
+            "intercept": "$intercept"
+          },
+          "depends_on": [
+            "collected",
+            "intercept",
+            "interval_function",
+            "slope",
+            "x"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quantifier",
+      "calls": [
+        {
+          "id": "policy",
+          "capability": "select_quantifier_policy",
+          "public_ref": "skill-quantified-range",
+          "inputs": {
+            "quantifier": "$quantifier",
+            "operator": "$interval_operator",
+            "domain": "$domain"
+          },
+          "outputs": {
+            "policy": "policy"
+          },
+          "order": 0
+        }
+      ],
+      "judgments": [],
+      "display_units": [
+        {
+          "id": "policy",
+          "after": "policy",
+          "template": "policy",
+          "bindings": {
+            "before": [
+              "$collected"
+            ],
+            "after": [],
+            "policy": "$policy",
+            "x": "$x",
+            "parameter_expression": "$zero",
+            "function": "$collected"
+          },
+          "depends_on": [
+            "collected",
+            "policy",
+            "x",
+            "zero"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "range",
+      "calls": [
+        {
+          "id": "linear",
+          "capability": "parameter_linear_range",
+          "public_ref": "skill-linear-range",
+          "inputs": {
+            "expression": "$collected",
+            "variable": "$x",
+            "parameter": "$parameter",
+            "domain": "$domain",
+            "policy": "$policy"
+          },
+          "outputs": {
+            "function_range": "range",
+            "slope_sign": "slope_sign",
+            "endpoint_mode": "endpoint_mode",
+            "slope_certificate": "slope_certificate"
+          },
+          "order": 0
+        }
+      ],
+      "judgments": [
+        {
+          "id": "sign",
+          "function": "affine_slope_decision",
+          "inputs": {
+            "certificate": "$slope_certificate"
+          },
+          "outputs": {},
+          "options": [
+            {
+              "id": "positive"
+            },
+            {
+              "id": "negative"
+            },
+            {
+              "id": "zero"
+            },
+            {
+              "id": "unknown"
+            }
+          ],
+          "order": 1,
+          "depends_on": [
+            "slope_certificate"
+          ]
+        }
+      ],
+      "display_units": [
+        {
+          "id": "range",
+          "after": "sign",
+          "template": "variable_range",
+          "bindings": {
+            "before": [
+              "$collected"
+            ],
+            "after": [],
+            "x": "$x",
+            "parameter": "$parameter",
+            "domain": "$domain",
+            "slope": "$slope",
+            "slope_sign": "$slope_sign",
+            "endpoint_mode": "$endpoint_mode",
+            "range": "$function_range",
+            "slope_certificate": "$slope_certificate"
+          },
+          "depends_on": [
+            "collected",
+            "domain",
+            "endpoint_mode",
+            "function_range",
+            "parameter",
+            "slope",
+            "slope_sign",
+            "x",
+            "slope_certificate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "solve",
+      "calls": [
+        {
+          "id": "apply",
+          "capability": "apply_quantifier_policy",
+          "public_ref": null,
+          "inputs": {
+            "policy": "$policy",
+            "range": "$function_range",
+            "parameter_expression": "$zero"
+          },
+          "outputs": {
+            "conditions": "conditions",
+            "combiner": "combiner"
+          },
+          "order": 0
+        },
+        {
+          "id": "normalize",
+          "capability": "normalize_parameter_conditions",
+          "public_ref": "skill-inequality-transform",
+          "inputs": {
+            "conditions": "$conditions",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "normalized_conditions": "conditions"
+          },
+          "order": 1
+        },
+        {
+          "id": "first_quadratic",
+          "capability": "submethod",
+          "public_ref": "quadratic-inequality-solve",
+          "inputs": {
+            "relation": "$first_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "first_quadratic_solution": "solution"
+          },
+          "order": 3,
+          "guard": {
+            "ref": "first_kind",
+            "equals": "quadratic"
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "first_affine",
+          "capability": "solve_affine_condition",
+          "public_ref": null,
+          "inputs": {
+            "condition": "$first_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "first_affine_solution": "solution"
+          },
+          "order": 4,
+          "guard": {
+            "ref": "first_kind",
+            "equals": "affine"
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "second_quadratic",
+          "capability": "submethod",
+          "public_ref": "quadratic-inequality-solve",
+          "inputs": {
+            "relation": "$second_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "second_quadratic_solution": "solution"
+          },
+          "order": 6,
+          "guard": {
+            "ref": "second_kind",
+            "equals": "quadratic"
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "second_affine",
+          "capability": "solve_affine_condition",
+          "public_ref": null,
+          "inputs": {
+            "condition": "$second_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "second_affine_solution": "solution"
+          },
+          "order": 7,
+          "guard": {
+            "ref": "second_kind",
+            "equals": "affine"
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "combine",
+          "capability": "combine_variable_solutions",
+          "public_ref": null,
+          "inputs": {
+            "conditions": "$normalized_conditions",
+            "first": "$first_solution",
+            "second": "$second_solution",
+            "combiner": "$combiner",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "candidate_set": "solution",
+            "condition_sets": "solutions"
+          },
+          "order": 9
+        }
+      ],
+      "judgments": [
+        {
+          "id": "plan",
+          "function": "endpoint_condition_plan",
+          "inputs": {
+            "conditions": "$normalized_conditions",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "first_condition": "first",
+            "first_kind": "first_kind",
+            "second_condition": "second",
+            "second_kind": "second_kind",
+            "absent_solution": "absent"
+          },
+          "options": [
+            {
+              "id": "single"
+            },
+            {
+              "id": "both"
+            }
+          ],
+          "order": 2,
+          "depends_on": [
+            "normalized_conditions",
+            "parameter"
+          ]
+        }
+      ],
+      "display_units": [
+        {
+          "id": "solution",
+          "after": "combine",
+          "template": "variable_conditions",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$candidate_set"
+            ],
+            "conditions": "$conditions",
+            "normalized": "$normalized_conditions",
+            "combiner": "$combiner",
+            "solutions": "$condition_sets",
+            "parameter": "$parameter"
+          },
+          "depends_on": [
+            "candidate_set",
+            "combiner",
+            "condition_sets",
+            "conditions",
+            "normalized_conditions",
+            "parameter"
+          ]
+        }
+      ],
+      "merges": [
+        {
+          "id": "first_result",
+          "order": 5,
+          "branches": [
+            {
+              "guard": {
+                "ref": "first_kind",
+                "equals": "quadratic"
+              },
+              "bindings": {
+                "first_solution": "$first_quadratic_solution"
+              }
+            },
+            {
+              "guard": {
+                "ref": "first_kind",
+                "equals": "affine"
+              },
+              "bindings": {
+                "first_solution": "$first_affine_solution"
+              }
+            }
+          ]
+        },
+        {
+          "id": "second_result",
+          "order": 8,
+          "branches": [
+            {
+              "guard": {
+                "ref": "second_kind",
+                "equals": "quadratic"
+              },
+              "bindings": {
+                "second_solution": "$second_quadratic_solution"
+              }
+            },
+            {
+              "guard": {
+                "ref": "second_kind",
+                "equals": "affine"
+              },
+              "bindings": {
+                "second_solution": "$second_affine_solution"
+              }
+            },
+            {
+              "guard": {
+                "ref": "second_kind",
+                "equals": "absent"
+              },
+              "bindings": {
+                "second_solution": "$absent_solution"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "candidate_set": "$candidate_set"
+  },
+  "exits": {
+    "capability_gap": {
+      "status": "capability_gap"
+    },
+    "math_failed": {
+      "status": "math_failed"
+    },
+    "execution_error": {
+      "status": "execution_error"
+    }
+  }
+}

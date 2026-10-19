@@ -16,6 +16,7 @@ METHODS = (
     "method-discriminant",
     "method-separation",
     "method-interval-extremum",
+    "method-variable-swap",
     "quadratic-inequality-solve",
     "method-square-extremum",
 )

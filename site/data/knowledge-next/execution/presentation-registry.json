@@ -239,11 +239,64 @@
         "cases",
         "solutions"
       ]
+    },
+    "variable_roles": {
+      "title": "确定变化的字母",
+      "explanation": "由题目量词和所求目标确定字母角色。",
+      "required_bindings": [
+        "before",
+        "after",
+        "x",
+        "parameter",
+        "domain",
+        "quantifier"
+      ]
+    },
+    "variable_reorder": {
+      "title": "按变化的字母整理",
+      "explanation": "合并同类项，整理为一次式或常数。",
+      "required_bindings": [
+        "before",
+        "after",
+        "x",
+        "slope",
+        "intercept"
+      ]
+    },
+    "variable_range": {
+      "title": "确定区间端点条件",
+      "explanation": "根据斜率符号和端点可达性确定候选。",
+      "required_bindings": [
+        "before",
+        "after",
+        "x",
+        "parameter",
+        "domain",
+        "slope",
+        "slope_sign",
+        "endpoint_mode",
+        "range",
+        "slope_certificate"
+      ]
+    },
+    "variable_conditions": {
+      "title": "解出所求范围",
+      "explanation": "将端点条件化为关于所求字母的不等式，逐一求解并按量词组合。",
+      "required_bindings": [
+        "before",
+        "after",
+        "conditions",
+        "normalized",
+        "combiner",
+        "solutions",
+        "parameter"
+      ]
     }
   },
   "boundary_steps": {
     "method-discriminant": "merge",
     "method-separation": "restore",
-    "method-interval-extremum": "verify"
+    "method-interval-extremum": "verify",
+    "method-variable-swap": "solve"
   }
 }

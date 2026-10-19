@@ -53,6 +53,15 @@ def can_execute(method, features, context):
         values = initial_bindings(features, context)
         if values["quantifier"] not in ("∀", "∃"):
             return False
+        if method == "method-variable-swap":
+            from .capabilities.variable_swap import validate_variable_swap
+
+            policy = capabilities.select_quantifier_policy(
+                values["quantifier"], values["interval_operator"], values["domain"]
+            )["outputs"]["policy"]
+            validate_variable_swap(values["interval_function"], values["x"], values["parameter"],
+                                   values["domain"], policy)
+            return True
         poly = capabilities.polynomial(values["expression"], values["x"])
         if poly.degree() != 2:
             return False

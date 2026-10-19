@@ -1,6 +1,6 @@
 {
   "contract": "graph-stage-three-answer-gold/v1",
-  "source": "Q01 原题与人工 Demo；Q02–Q07 原题与人工课程独立解答，不从运行结果生成",
+  "source": "Q01 原题与人工 Demo；Q02–Q09 原题与人工课程独立解答，不从运行结果生成",
   "cases": {
     "q01": {
       "target_ref": "/root/goals/0",
@@ -123,6 +123,40 @@
         ]
       },
       "routes": ["interval", "extremum"]
+    },
+    "q08": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_source": "Q08 原题与人工课程独立解答，不从运行结果生成",
+      "authored_basis": "把给出范围的 m 当主元，f(m)=(x²-x+1)m-6。斜率 x²-x+1=(x-1/2)²+3/4 始终为正，所以 [1,3] 上最大值是 f(3)=3x²-3x-3。恒小于零等价于 x²-x-1<0，取两根 (1±√5)/2 之间。两边界均使 m=3 时原式等于零，严格不等式排除边界。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "(1-sqrt(5))/2",
+            "upper": "(1+sqrt(5))/2",
+            "left_closed": false,
+            "right_closed": false
+          }
+        ]
+      },
+      "routes": ["variable"]
+    },
+    "q09": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_source": "Q09 原题与人工课程独立解答，不从运行结果生成",
+      "authored_basis": "把给出范围的 a 当主元，f(a)=(x²-x)a+1-x。斜率 x²-x 随 x 正负零均可能，闭区间 [-1,1] 上恒大于零必须两端同时大于零：f(-1)=1-x²>0 且 f(1)=(x-1)²>0。第一项给 (-1,1)，第二项只排除 x=1，取交集仍为 (-1,1)。x=-1 时在 a=-1 取零，x=1 时恒为零，均排除。改为存在量词时两端条件取并集为 ℝ\\{1}，x=2,a=1 给原式 1>0。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-1",
+            "upper": "1",
+            "left_closed": false,
+            "right_closed": false
+          }
+        ]
+      },
+      "routes": ["variable"]
     }
   }
 }

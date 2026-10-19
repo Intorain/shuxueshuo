@@ -333,6 +333,14 @@ from .ranges import (
 from .reciprocal import reciprocal_of_range
 from .separation import inspect_separation as inspect_separation
 from .separation import separate_parameter, separation_division
+from .variable_swap import (
+    combine_variable_solutions,
+    normalize_parameter_conditions,
+    parameter_linear_range,
+    reorder_by_variable,
+    solve_affine_condition,
+    solve_variable_conditions,
+)
 
 REGISTRY = {
     fn.__name__: fn
@@ -363,6 +371,12 @@ REGISTRY = {
         intersect_conditions,
         merge_cases,
         solve_parameter_relation,
+        reorder_by_variable,
+        parameter_linear_range,
+        normalize_parameter_conditions,
+        solve_variable_conditions,
+        solve_affine_condition,
+        combine_variable_solutions,
     )
 }
 PLANNED = frozenset(

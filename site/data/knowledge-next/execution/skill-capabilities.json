@@ -7,13 +7,15 @@
       "separation_division",
       "solve_conditions",
       "reciprocal_of_range",
-      "solve_interval_conditions"
+      "solve_interval_conditions",
+      "normalize_parameter_conditions"
     ],
     "skill-equality-transform": [
       "separation_division"
     ],
     "skill-simplify": [
-      "simplify_expression"
+      "simplify_expression",
+      "reorder_by_variable"
     ],
     "skill-quadratic-sign": [
       "quadratic_sign_condition",
@@ -34,7 +36,8 @@
       "parametric_interval_extremum"
     ],
     "skill-linear-range": [
-      "linear_range"
+      "linear_range",
+      "parameter_linear_range"
     ],
     "skill-reciprocal-range": [
       "reciprocal_range"
@@ -55,7 +58,8 @@
   "internal": {
     "apply_quantifier_policy": [
       "method-separation#restore",
-      "method-interval-extremum#conditions"
+      "method-interval-extremum#conditions",
+      "method-variable-swap#solve"
     ],
     "square_extremum": [
       "method-square-extremum#range"
@@ -77,6 +81,12 @@
     ],
     "merge_interval_cases": [
       "method-interval-extremum#verify"
+    ],
+    "solve_affine_condition": [
+      "method-variable-swap#solve"
+    ],
+    "combine_variable_solutions": [
+      "method-variable-swap#solve"
     ]
   }
 }

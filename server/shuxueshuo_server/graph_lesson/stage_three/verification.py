@@ -259,9 +259,12 @@ def read_problem(candidate, target_ref, constraint_context=None):
     try:
         polynomial = sp.Poly(expression, algebra.x)
     except BasePolynomialError as exc:
-        raise VerificationGap("verification_incomplete:quadratic_required") from exc
-    if polynomial.degree() != 2:
-        raise VerificationGap("verification_incomplete:quadratic_required")
+        raise VerificationGap("verification_incomplete:polynomial_degree_at_most_two_required") from exc
+    # The same complete coefficient/endpoint partition covers original affine
+    # and constant predicates, not only quadratics that degenerate at a point.
+    # The identically zero polynomial has degree -oo and is included as well.
+    if polynomial.degree() > 2:
+        raise VerificationGap("verification_incomplete:polynomial_degree_at_most_two_required")
     for coefficient in polynomial.all_coeffs():
         _poly(coefficient, algebra.parameter)
     for entry, atom in atoms:
@@ -840,7 +843,9 @@ def verify(candidate, target_ref, constraint_context, feasible_set):
                     accepted.append(sp.FiniteSet(point))
         reconstructed = sp.Union(*accepted)
         result["proof"] = {
-            "category": ("rational-polynomial-coefficients-universal-real-quadratic/v2"
+            "category": ("rational-polynomial-coefficients-quantified-affine/v1"
+                         if sp.Poly(problem.expression, problem.x).degree() < 2
+                         else "rational-polynomial-coefficients-universal-real-quadratic/v2"
                          if problem.quantifier == "∀" and problem.domain == sp.S.Reals
                          else "rational-polynomial-coefficients-quantified-interval-quadratic/v1"),
             "source_refs": [e["source_ref"] for e in problem.original["entries"]],

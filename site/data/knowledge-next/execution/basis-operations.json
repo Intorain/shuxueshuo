@@ -67,7 +67,8 @@
       "method-interval-extremum#conditions"
     ],
     "linear_interval_extrema": [
-      "skill-linear-range"
+      "skill-linear-range",
+      "linear-interval-extremum#interval"
     ],
     "constant_range": [
       "skill-linear-range#constant"
@@ -84,6 +85,9 @@
     ],
     "interval_case_union": [
       "method-interval-extremum#conditions"
+    ],
+    "variable_condition_sets": [
+      "method-variable-swap#solve"
     ]
   }
 }

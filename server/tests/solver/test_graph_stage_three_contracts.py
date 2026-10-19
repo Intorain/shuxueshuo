@@ -263,7 +263,7 @@ def test_result_cannot_claim_nonzero_calls_or_skip_resolved_goal(tmp_path):
     from shuxueshuo_server.graph_lesson.stage_three.runner import run_sample
 
     source = upstream(tmp_path)
-    result = run_sample(source, tmp_path / "stage-three")
+    result = run_sample(source, tmp_path / "stage-three", milestone="1a")
     validate_result(result)
     broken = deepcopy(result)
     broken["llm"]["network_attempts"] = 1

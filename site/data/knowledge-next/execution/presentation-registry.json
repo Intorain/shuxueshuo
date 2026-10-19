@@ -1,0 +1,79 @@
+{
+  "contract": "graph-presentation-registry/v1",
+  "templates": {
+    "normalize": {
+      "title": "整理不等式",
+      "explanation": "将原不等式移项整理为与零比较的形式，每一步保持两边关系等价。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    },
+    "opening": {
+      "title": "判断图像位置",
+      "explanation": "二次项系数确定为正且非零。要在全体实数上非负，图像不能穿过横轴；非严格不等式允许相切。",
+      "required_bindings": [
+        "before",
+        "after",
+        "strict"
+      ]
+    },
+    "discriminant": {
+      "title": "建立判别式条件",
+      "explanation": "开口条件满足后，用判别式限制交点个数；按常数的符号变形得到等价参数条件。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    },
+    "solution": {
+      "title": "求参数范围",
+      "explanation": "求出全部实根，在根分隔的每个区间上检查符号，并按原不等式严格性决定是否保留根。此处所得集合还须与全部题设求交并独立验证。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    },
+    "separated": {
+      "title": "确认参数已分离",
+      "explanation": "参数项与量词变量已经分居两边，无需再移项或除以含变量的式子。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    },
+    "policy": {
+      "title": "转化为最值条件",
+      "explanation": "对每个变量值都要满足比较关系，因此先确定应比较上确界还是下确界；具体数值由下一步计算。",
+      "required_bindings": [
+        "before",
+        "after",
+        "policy",
+        "x",
+        "parameter_expression",
+        "function"
+      ]
+    },
+    "square_range": {
+      "title": "配方求最值",
+      "explanation": "把二次式配成平方。平方非负，顶点在定义域内，代入顶点即可求出能取到的最值。",
+      "required_bindings": [
+        "before",
+        "after",
+        "function",
+        "square",
+        "x",
+        "vertex",
+        "extremum"
+      ]
+    },
+    "boundary": {
+      "title": "检查边界",
+      "explanation": "将候选集合的每个有限边界代回原题的全部条件，独立检查量词关系及边界是否保留。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    }
+  }
+}

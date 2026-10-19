@@ -54,7 +54,13 @@ def assert_self_contained_report(path):
 
     OfflineReport().feed(html)
     assert not re.search(r"url\(\s*['\"]?(?:https?:|//)", html, re.IGNORECASE)
-    assert "fetch(" not in html and "XMLHttpRequest" not in html and "new WebSocket" not in html
+    # KaTeX's parser has a local token-fetch method. Verify the embedded vendor
+    # bytes, then inspect our application code for actual network APIs.
+    vendor = Path(__file__).parents[3] / "site/assets/practice/vendor/katex-0.18.9/katex.min.js"
+    embedded = '<script data-vendor="katex">' + vendor.read_text().replace('</script', '<\\/script') + '</script>'
+    assert embedded in html
+    application = html.replace(embedded, '')
+    assert "fetch(" not in application and "XMLHttpRequest" not in application and "new WebSocket" not in application
     return html
 
 
@@ -66,7 +72,7 @@ def test_real_selection_report_contains_scoped_evidence_and_local_artifacts(tmp_
     stage_two = run_stage_two(value, source, unsupported_root=source / "unsupported")
     assert stage_two["status"] == "completed"
     output = tmp_path / "stage-three"
-    result = run_sample(source / "stage-two-result.json", output)
+    result = run_sample(source / "stage-two-result.json", output, milestone="1a")
     assert result["status"] == "completed"
     html = assert_self_contained_report(output / "index.html")
     assert "D3" in html and "D4" in html
@@ -87,7 +93,7 @@ def test_accepted_transcription_is_escaped_in_debug_report(tmp_path):
     stage_two = run_stage_two(value, source, unsupported_root=source / "unsupported")
     assert stage_two["status"] == "completed"
     output = tmp_path / "stage-three"
-    result = run_sample(source / "stage-two-result.json", output)
+    result = run_sample(source / "stage-two-result.json", output, milestone="1a")
     assert result["status"] == "completed"
     html = assert_self_contained_report(output / "index.html")
     assert attack not in html
@@ -100,7 +106,7 @@ def test_invalid_json_still_has_an_offline_failure_report(tmp_path):
     source = tmp_path / "broken.json"
     source.write_text('{"contract":', encoding="utf-8")
     output = tmp_path / "stage-three"
-    result = run_sample(source, output)
+    result = run_sample(source, output, milestone="1a")
     assert result["status"] == "input_error"
     assert not result["input_validation"]["ok"]
     assert result["input_diagnostics"]

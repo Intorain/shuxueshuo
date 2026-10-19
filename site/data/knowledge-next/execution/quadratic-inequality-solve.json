@@ -1,0 +1,132 @@
+{
+  "method": "quadratic-inequality-solve",
+  "inputs": {
+    "relation": {
+      "role": "relation"
+    },
+    "variable": {
+      "role": "variable"
+    }
+  },
+  "steps": [
+    {
+      "id": "normalize",
+      "calls": [
+        {
+          "id": "move",
+          "capability": "normalize_to_zero",
+          "public_ref": "skill-inequality-transform",
+          "inputs": {},
+          "outputs": {},
+          "guard": {
+            "constant": false
+          },
+          "skip_reason": "already_satisfied",
+          "order": 0
+        },
+        {
+          "id": "simplify",
+          "capability": "simplify_expression",
+          "public_ref": "skill-simplify",
+          "inputs": {},
+          "outputs": {},
+          "guard": {
+            "constant": false
+          },
+          "skip_reason": "already_satisfied",
+          "order": 1
+        }
+      ],
+      "judgments": [
+        {
+          "id": "normalized",
+          "function": "polynomial_relation",
+          "inputs": {
+            "relation": "$relation",
+            "variable": "$variable"
+          },
+          "outputs": {
+            "polynomial": "expression",
+            "strict": "strict"
+          },
+          "options": [
+            {
+              "id": "normalized"
+            }
+          ],
+          "order": -1,
+          "depends_on": [
+            "relation",
+            "variable"
+          ]
+        }
+      ],
+      "display_units": []
+    },
+    {
+      "id": "roots",
+      "calls": [
+        {
+          "id": "roots",
+          "capability": "solve_quadratic",
+          "public_ref": "skill-solve-quadratic",
+          "inputs": {
+            "expression": "$polynomial",
+            "variable": "$variable"
+          },
+          "outputs": {
+            "roots": "roots",
+            "all_zero": "all_zero"
+          },
+          "order": 0
+        }
+      ],
+      "judgments": [],
+      "display_units": []
+    },
+    {
+      "id": "signs",
+      "calls": [
+        {
+          "id": "signs",
+          "capability": "quadratic_sign_pattern",
+          "public_ref": "skill-quadratic-sign",
+          "inputs": {
+            "expression": "$polynomial",
+            "variable": "$variable",
+            "roots": "$roots",
+            "strict": "$strict",
+            "all_zero": "$all_zero"
+          },
+          "outputs": {
+            "solution": "solution"
+          },
+          "order": 0
+        }
+      ],
+      "judgments": [],
+      "display_units": []
+    },
+    {
+      "id": "solution",
+      "calls": [],
+      "judgments": [],
+      "display_units": []
+    }
+  ],
+  "outputs": {
+    "solution": "$solution"
+  },
+  "exits": {
+    "capability_gap": {
+      "status": "capability_gap"
+    },
+    "math_failed": {
+      "status": "math_failed"
+    },
+    "execution_error": {
+      "status": "execution_error"
+    }
+  },
+  "schema_version": "graph-method-execution/v1"
+}

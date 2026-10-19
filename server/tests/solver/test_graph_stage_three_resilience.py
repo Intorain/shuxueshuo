@@ -54,7 +54,7 @@ def test_one_goal_exception_keeps_other_goal_and_debug_artifacts(tmp_path, monke
 
     monkeypatch.setattr(runner, phase, fail_one)
     output = tmp_path / "stage-three"
-    result = runner.run_sample(source, output)
+    result = runner.run_sample(source, output, milestone="1a")
     validate_result(result)
     assert result["status"] == "partial"
     failed, continued = result["goals"]
@@ -111,7 +111,7 @@ def test_unconfirmed_goal_stays_skipped_without_running_its_context_or_selection
             return _original(candidate, ref, *args, **kwargs)
 
         monkeypatch.setattr(runner, phase, fail_unconfirmed)
-    result = runner.run_sample(source, tmp_path / "stage-three")
+    result = runner.run_sample(source, tmp_path / "stage-three", milestone="1a")
     assert result["status"] == "completed"
     skipped, continued = result["goals"]
     assert skipped["status"] == "skipped"
@@ -124,7 +124,7 @@ def test_unconfirmed_goal_stays_skipped_without_running_its_context_or_selection
 def test_retained_snapshot_replays_after_original_source_is_removed(tmp_path, legacy, admission):
     source = upstream(tmp_path, admission=admission)
     first_directory = tmp_path / "first"
-    first = runner.run_sample(source, first_directory)
+    first = runner.run_sample(source, first_directory, milestone="1a")
     manifest = read(first_directory / "input.json")
     assert manifest["contract"] == MANIFEST_CONTRACT
     if legacy:
@@ -136,7 +136,7 @@ def test_retained_snapshot_replays_after_original_source_is_removed(tmp_path, le
     assert admitted["ok"], admitted["diagnostics"]
     assert admitted["admission"] == admission
     assert Path(admitted["stage_one_source"]) == first_directory / "stage-one-input.json"
-    replay = runner.run_sample(replay_source, tmp_path / "replay")
+    replay = runner.run_sample(replay_source, tmp_path / "replay", milestone="1a")
     assert replay["status"] == first["status"] == "completed"
     assert replay["goals"] == first["goals"]
     assert replay["stage_one"]["sha256"] == first["stage_one"]["sha256"]
@@ -153,7 +153,7 @@ def test_corrupt_retained_input_never_falls_back_to_valid_original(tmp_path, cor
     stage_two["stage_one"]["reference"] = str(source.parent / "input.json")
     write(source, stage_two)
     retained = tmp_path / "retained"
-    runner.run_sample(source, retained)
+    runner.run_sample(source, retained, milestone="1a")
     manifest_path = retained / "input.json"
     manifest = read(manifest_path)
     snapshot = retained / "stage-one-input.json"
@@ -179,7 +179,7 @@ def test_corrupt_retained_input_never_falls_back_to_valid_original(tmp_path, cor
             manifest["stage_two"].pop("snapshot")
         write(manifest_path, manifest)
     assert load_input(source)["ok"]
-    result = runner.run_sample(retained / "stage-two-input.json", tmp_path / "rejected")
+    result = runner.run_sample(retained / "stage-two-input.json", tmp_path / "rejected", milestone="1a")
     assert result["status"] == "input_error"
     assert result["input_diagnostics"]
     assert not result["goals"]
@@ -191,7 +191,7 @@ def test_corrupt_retained_input_never_falls_back_to_valid_original(tmp_path, cor
 def test_manifest_snapshot_cannot_escape_retained_directory(tmp_path, escape, snapshot_kind):
     source = upstream(tmp_path)
     retained = tmp_path / "retained"
-    runner.run_sample(source, retained)
+    runner.run_sample(source, retained, milestone="1a")
     manifest = read(retained / "input.json")
     snapshot = retained / manifest[snapshot_kind]["snapshot"]
     outside = tmp_path / "outside.json"

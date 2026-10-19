@@ -206,12 +206,16 @@ def validate_result(value):
                 raise ValueError("result.resolved_goal_without_primary")
             if goal["status"] == "skipped":
                 raise ValueError("result.resolved_goal_skipped")
-        if goal["status"] in ("skipped", "unsupported_type", "no_applicable_method", "execution_error") and (
+        if goal["status"] in ("skipped", "unsupported_type", "no_applicable_method") and (
             goal["d3"] is not None or goal["d4"] is not None or goal["routes"]
         ):
             raise ValueError("result.ineligible_goal_artifacts")
         if goal["status"] == "execution_error" and not goal["diagnostics"]:
             raise ValueError("result.missing_execution_diagnostics")
+        if goal["status"] == "execution_error" and goal["routes"]:
+            # D3/D4 may preserve the already committed selection prefix;
+            # interrupted route summaries stay in execution_evidence instead.
+            raise ValueError("result.ineligible_goal_artifacts")
         if len({route["route_id"] for route in goal["routes"]}) != len(goal["routes"]):
             raise ValueError("result.duplicate_route")
         if goal["status"] == "solved":

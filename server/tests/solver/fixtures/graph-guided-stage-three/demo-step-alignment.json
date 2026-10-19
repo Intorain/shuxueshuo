@@ -1,0 +1,22 @@
+{
+  "contract": "graph-demo-step-alignment/v1",
+  "routes": {
+    "discriminant": {
+      "normalized": "d_rewrite",
+      "opening": "d_position",
+      "discriminant": "d_delta",
+      "solution": "d_range",
+      "boundary": "d_boundary"
+    },
+    "extremum": {
+      "separated": "e_basis",
+      "policy": "e_condition",
+      "range": "e_extremum",
+      "solution": "e_range",
+      "boundary": "e_boundary"
+    }
+  },
+  "omitted": [
+    "d_basis"
+  ]
+}

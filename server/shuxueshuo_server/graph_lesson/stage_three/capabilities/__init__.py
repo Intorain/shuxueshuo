@@ -1,0 +1,395 @@
+"""Bounded exact algebra, independent of orchestration and problem identities."""
+
+from itertools import pairwise
+
+import sympy as sp
+
+from ....problem_understanding.notation_semantics import bounded_expand
+
+
+class CapabilityGap(ValueError):
+    pass
+
+
+class LocalCheckFailed(ValueError):
+    def __init__(self, message, *, evidence=None):
+        super().__init__(message)
+        self.evidence = evidence
+
+
+def result(outputs, operations=(), checks=None):
+    checks = (
+        [{"kind": "declared_domain", "passed": True}]
+        if checks is None
+        else list(checks)
+    )
+    if not checks:
+        raise LocalCheckFailed(
+            "capability.missing_local_evidence",
+            evidence={
+                "outputs": outputs,
+                "operations": list(operations),
+                "checks": [{"kind": "missing_local_evidence", "passed": False}],
+            },
+        )
+    if any(c["passed"] is not True for c in checks):
+        raise LocalCheckFailed(
+            "capability.postcondition_failed",
+            evidence={
+                "outputs": outputs,
+                "operations": list(operations),
+                "checks": checks,
+            },
+        )
+    return {"outputs": outputs, "operations": list(operations), "checks": checks}
+
+
+def relation(lhs, operator, rhs=sp.S.Zero):
+    return {">=": sp.Ge, ">": sp.Gt, "<=": sp.Le, "<": sp.Lt}[operator](
+        lhs, rhs, evaluate=False
+    )
+
+
+def residual(value):
+    return bounded_expand(
+        value.lhs - value.rhs if value.rel_op in (">", ">=") else value.rhs - value.lhs
+    )
+
+
+def polynomial(expression, variable, maximum=2):
+    try:
+        poly = sp.Poly(expression, variable)
+    except sp.PolynomialError as exc:
+        raise CapabilityGap("nonpolynomial") from exc
+    if poly.degree() > maximum:
+        raise CapabilityGap("polynomial_degree")
+    return poly
+
+
+def normalize_to_zero(relation, variable):
+    value = residual(relation)
+    poly = polynomial(value, variable)
+    operator = ">" if relation.rel_op in (">", "<") else ">="
+    normalized = globals()["relation"](value, operator)
+    operations = ["add_both_sides"]
+    if poly.LC().is_negative:
+        value = -value
+        normalized = globals()["relation"](value, "<" if operator == ">" else "<=")
+        operations.append("multiply_negative")
+    return result(
+        {"relation": normalized, "expression": value},
+        operations,
+        [
+            {
+                "kind": "direction_residual",
+                "passed": bounded_expand(residual(normalized) - residual(relation))
+                == 0,
+            }
+        ],
+    )
+
+
+def simplify_expression(expression):
+    value = bounded_expand(expression)
+    return result(
+        {"expression": value},
+        ["identity"],
+        [{"kind": "identity", "passed": bounded_expand(value - expression) == 0}],
+    )
+
+
+def quadratic_sign_condition(expression, variable, domain, quantifier, strict, mode):
+    poly = polynomial(expression, variable)
+    if domain != sp.S.Reals or quantifier != "∀" or poly.degree() != 2:
+        raise CapabilityGap("all_real_universal_quadratic_required")
+    a, b, c = poly.all_coeffs()
+    if a.free_symbols or a.is_positive is not True:
+        raise CapabilityGap("nondegenerate_positive_coefficient_required")
+    delta = bounded_expand(b * b - 4 * a * c)
+    if mode == "opening":
+        return result(
+            {"opening": sp.Gt(a, 0, evaluate=False), "delta": delta},
+            ["quadratic_zeros", "all_real_sign"],
+        )
+    condition = relation(delta, "<" if strict else "<=")
+    return result(
+        {"condition": condition, "delta": delta},
+        ["discriminant_condition", "all_real_sign"],
+    )
+
+
+def transform_param_inequality(relation, variable):
+    value = residual(relation)
+    poly = polynomial(value, variable)
+    scale = abs(poly.LC()) if poly.LC().is_nonzero else sp.S.One
+    if scale.free_symbols or scale.is_positive is not True:
+        raise CapabilityGap("constant_transform_required")
+    expression = bounded_expand(value / scale)
+    transformed = globals()["relation"](
+        expression, ">" if relation.rel_op in (">", "<") else ">="
+    )
+    return result(
+        {"relation": transformed, "expression": expression},
+        ["multiply_constant"],
+        [
+            {
+                "kind": "positive_scaled_residual",
+                "passed": bounded_expand(
+                    residual(transformed) * scale - residual(relation)
+                )
+                == 0,
+            }
+        ],
+    )
+
+
+def _root_certificate(expression, variable, roots, all_zero):
+    poly = polynomial(expression, variable)
+    if expression.free_symbols - {variable}:
+        raise CapabilityGap("numeric_coefficients_required")
+    if expression == 0:
+        expected = 0
+    elif poly.degree() < 2:
+        expected = int(poly.degree())
+    else:
+        a, b, c = poly.all_coeffs()
+        discriminant = bounded_expand(b * b - 4 * a * c)
+        if discriminant.is_positive:
+            expected = 2
+        elif discriminant.is_zero:
+            expected = 1
+        elif discriminant.is_negative:
+            expected = 0
+        else:
+            raise CapabilityGap("root_count_unknown")
+    valid = (
+        all_zero == (expression == 0)
+        and len(roots) == expected
+        and len(set(roots)) == expected
+        and all(
+            r.is_real is True and bounded_expand(expression.subs(variable, r)) == 0
+            for r in roots
+        )
+        and all((right - left).is_positive is True for left, right in pairwise(roots))
+    )
+    if not valid:
+        raise LocalCheckFailed("incomplete_or_invalid_real_roots")
+    return {"kind": "complete_real_roots", "passed": True, "count": expected}
+
+
+def solve_quadratic(expression, variable):
+    poly = polynomial(expression, variable)
+    if poly.degree() not in (0, 1, 2) and expression != 0:
+        raise CapabilityGap("constant_linear_quadratic_required")
+    if expression.free_symbols - {variable}:
+        raise CapabilityGap("numeric_coefficients_required")
+    roots = sp.solveset(expression, variable, domain=sp.S.Reals)
+    if roots == sp.S.Reals:
+        values = []
+    elif isinstance(roots, sp.FiniteSet) or roots == sp.S.EmptySet:
+        values = sorted(roots, key=lambda x: x)
+    else:
+        raise CapabilityGap("real_roots_unknown")
+    return result(
+        {"roots": values, "all_zero": expression == 0},
+        ["quadratic_roots"],
+        [_root_certificate(expression, variable, values, expression == 0)],
+    )
+
+
+def quadratic_sign_pattern(expression, variable, roots, strict, all_zero=False):
+    complete = _root_certificate(expression, variable, roots, all_zero)
+    # Exhaustive exact partition: intervals contain no roots; roots checked separately.
+    if all_zero:
+        return result(
+            {"solution": sp.S.EmptySet if strict else sp.S.Reals},
+            ["quadratic_signs"],
+            [complete],
+        )
+    boundaries = [-sp.oo, *roots, sp.oo]
+    parts, checks = [], [complete]
+    for left, right in pairwise(boundaries):
+        sample = (
+            right - 1
+            if left == -sp.oo and right != sp.oo
+            else left + 1
+            if right == sp.oo and left != -sp.oo
+            else sp.S.Zero
+            if left == -sp.oo
+            else (left + right) / 2
+        )
+        value = bounded_expand(expression.subs(variable, sample))
+        if value.is_positive is None:
+            raise CapabilityGap("sign_undecidable")
+        checks.append(
+            {"kind": "root_partition", "passed": True, "sample": sample, "value": value}
+        )
+        if value.is_positive:
+            parts.append(sp.Interval.open(left, right))
+    if not strict:
+        parts.extend(sp.FiniteSet(r) for r in roots)
+    return result({"solution": sp.Union(*parts)}, ["quadratic_signs"], checks)
+
+
+def separate_parameter(relation, parameter, variable):
+    lhs, rhs = relation.lhs, relation.rhs
+    if not lhs.has(variable) and not rhs.has(parameter):
+        h, g, op = lhs, rhs, relation.rel_op
+    elif not rhs.has(variable) and not lhs.has(parameter):
+        h, g = rhs, lhs
+        op = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[relation.rel_op]
+    else:
+        raise CapabilityGap("separation_transform_unavailable")
+    separated = globals()["relation"](h, op, g)
+    return result(
+        {
+            "parameter_expression": h,
+            "function": g,
+            "operator": op,
+            "already_separated": True,
+            "separated_relation": separated,
+        },
+        checks=[
+            {
+                "kind": "separated_symbol_roles",
+                "passed": not h.has(variable) and not g.has(parameter),
+            },
+            {
+                "kind": "direction_residual",
+                "passed": bounded_expand(residual(separated) - residual(relation)) == 0,
+            },
+        ],
+    )
+
+
+def select_quantifier_policy(quantifier, operator, domain):
+    if operator not in (">", ">=", "<", "<="):
+        raise CapabilityGap("unsupported_comparison")
+    if quantifier != "∀":
+        raise CapabilityGap("existential_policy_not_enabled")
+    if domain == sp.S.EmptySet:
+        return result(
+            {"policy": {"empty": True, "quantifier": quantifier, "operator": operator}},
+            ["universal", "quantified_bound"],
+        )
+    return result(
+        {
+            "policy": {
+                "bound": "sup" if operator in (">", ">=") else "inf",
+                "strict": operator in (">", "<"),
+                "quantifier": quantifier,
+                "operator": operator,
+            }
+        },
+        ["universal", "quantified_bound"],
+    )
+
+
+def apply_quantifier_policy(policy, range, parameter_expression):
+    if policy.get("empty"):
+        return result(
+            {"condition": relation(sp.S.One, ">=")},
+            ["quantified_bound"],
+        )
+    bound = range[policy["bound"]]
+    attained = range[policy["bound"] + "_attained"]
+    if bound in (sp.oo, -sp.oo):
+        raise CapabilityGap("unbounded_policy_not_enabled")
+    strict = policy["strict"] and attained
+    op = (
+        (">" if strict else ">=")
+        if policy["bound"] == "sup"
+        else ("<" if strict else "<=")
+    )
+    condition = relation(parameter_expression, op, bound)
+    return result(
+        {"condition": condition},
+        ["quantified_bound"],
+    )
+
+
+def complete_square(expression, variable):
+    poly = polynomial(expression, variable)
+    if poly.degree() != 2 or expression.free_symbols - {variable}:
+        raise CapabilityGap("numeric_quadratic_required")
+    a, b, c = poly.all_coeffs()
+    vertex = -b / (2 * a)
+    value = bounded_expand(c - b * b / (4 * a))
+    square = a * (variable - vertex) ** 2 + value
+    return result(
+        {"square": square, "coefficient": a, "vertex": vertex, "value": value},
+        ["identity", "square_nonnegative"],
+        [
+            {
+                "kind": "square_identity",
+                "passed": bounded_expand(square - expression) == 0,
+            }
+        ],
+    )
+
+
+def square_extremum(expression, variable, domain, square, coefficient, vertex, value):
+    if domain != sp.S.Reals or coefficient.is_positive is None:
+        raise CapabilityGap("whole_real_square_required")
+    poly = polynomial(expression, variable)
+    if (
+        poly.degree() != 2
+        or bounded_expand(square - expression) != 0
+        or poly.LC() != coefficient
+        or bounded_expand(sp.diff(expression, variable).subs(variable, vertex)) != 0
+    ):
+        raise LocalCheckFailed("invalid_square_range_certificate")
+    minimum = coefficient.is_positive
+    bounds = {
+        "inf": value if minimum else -sp.oo,
+        "sup": sp.oo if minimum else value,
+        "inf_attained": minimum,
+        "sup_attained": not minimum,
+        "point": vertex,
+        "set": sp.Interval(value, sp.oo) if minimum else sp.Interval(-sp.oo, value),
+    }
+    return result(
+        {"range": bounds},
+        ["square_nonnegative"],
+        [
+            {
+                "kind": "vertex_substitution",
+                "passed": bounded_expand(expression.subs(variable, vertex) - value) == 0
+                and domain.contains(vertex) is sp.true,
+            }
+        ],
+    )
+
+
+REGISTRY = {
+    fn.__name__: fn
+    for fn in (
+        normalize_to_zero,
+        simplify_expression,
+        quadratic_sign_condition,
+        transform_param_inequality,
+        solve_quadratic,
+        quadratic_sign_pattern,
+        separate_parameter,
+        select_quantifier_policy,
+        apply_quantifier_policy,
+        complete_square,
+        square_extremum,
+    )
+}
+PLANNED = frozenset(
+    {
+        "separation_division",
+        "quadratic_interval_range",
+        "linear_range",
+        "reciprocal_range",
+        "elimination",
+        "substitution",
+    }
+)
+
+
+def execute(capability, inputs):
+    if capability in PLANNED:
+        raise CapabilityGap(capability)
+    return REGISTRY[capability](**inputs)

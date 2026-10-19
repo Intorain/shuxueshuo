@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 from html import escape
 from pathlib import Path
 from urllib.parse import quote
@@ -16,6 +17,8 @@ LABELS = {
     "applicable": "适用", "not_applicable": "不适用", "preferred": "优先", "optional": "可选",
     "superseded": "不优先", "capability_gap": "详细步骤暂不支持", "not_planned": "不生成路线",
     "execution_error": "目标处理异常",
+    "solved": "已完成求解", "verified": "完整验证通过", "math_failed": "数学校验未通过",
+    "conflict": "路线结论冲突", "running": "计算中", "planned": "已安排执行",
 }
 METHODS = {"discriminant": "判别式法", "interval": "区间最值法", "separation": "分离参数法", "swap": "更换主元法"}
 
@@ -39,14 +42,81 @@ def _label(value):
     return escape(LABELS.get(value, str(value)) if value is not None else "—")
 
 
+def _math_text(value):
+    """Only author text nodes; KaTeX runs in untrusted, MathML-only mode."""
+    return ''.join('<span class="math">' + escape(part[1:-1]) + '</span>'
+                   if part.startswith('$') and part.endswith('$') else escape(part)
+                   for part in re.split(r'(\$[^$]+\$)', str(value)))
+
+
+def _math_step(step, seq):
+    body = '<article class="math-card" data-math-seq="' + str(seq) + '"><h4>'
+    body += escape(str(step['ordinal'])) + '. ' + _math_text(step['title']) + '</h4>'
+    body += '<p>' + _math_text(step.get('explanation', '')) + '</p>'
+    for key, label in (('before', '由'), ('after', '得')):
+        for expression in step.get(key, []):
+            body += '<p>' + label + ' <span class="math">' + escape(expression['display']) + '</span></p>'
+    body += '<p class="muted">本步局部检查通过 · ' + escape(step['method_ref']) + '</p>'
+    body += _details('条件、依据与来源', {key: step.get(key) for key in
+                                        ('premise_refs', 'used_basis', 'source_refs', 'step_id', 'math_step_sha256')})
+    return body + '</article>'
+
+
+def _safe_artifact(directory, relative):
+    path = (directory / relative).resolve()
+    if not path.is_relative_to(directory.resolve()):
+        raise ValueError('报告产物引用越过输出目录。')
+    return _read(path)
+
+
+def _route_details(directory, goal, events):
+    body = ''
+    for route in goal['routes']:
+        body += '<h3>' + escape(METHODS.get(route['branch'], route['method'])) + ' · ' + _label(route['status']) + '</h3>'
+        artifact = _safe_artifact(directory, route['trajectory']) if route.get('trajectory') else None
+        if not artifact:
+            body += _details('路线诊断', route)
+            continue
+        for ref in artifact.get('math_steps', []):
+            step = _safe_artifact(directory, ref['file'])
+            if not step:
+                continue
+            seq = next((event['seq'] for event in events if event.get('target_ref') == goal['target_ref']
+                        and event.get('route_id') == route['route_id']
+                        and event.get('payload', {}).get('kind') == 'math_step'
+                        and event.get('step_id', event.get('payload', {}).get('step_id')) == step['step_id']), 0)
+            body += _math_step(step, seq)
+        body += _details('完整方法轨迹：调用、跳过与判断', artifact.get('steps'))
+        body += _details('完整约束处理、独立分区证明与目标收束', artifact.get('finalization'))
+        body += _details('路线题设处理记录', artifact.get('constraint_context'))
+        body += _details('验证预算与各阶段耗时', artifact.get('verification_timing'))
+        body += _details('路线结果与诊断', {'result': artifact.get('result'), 'diagnostics': artifact.get('diagnostics')})
+    return body
+
+
 def _page(title, body):
     extra = (".columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}"
              "table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border:1px solid #dbe4e2}"
              "td.current{background:#e0f4e9}pre{overflow-wrap:anywhere;white-space:pre-wrap}"
-             ".original{white-space:pre-wrap}code{overflow-wrap:anywhere}")
+             ".original{white-space:pre-wrap}code{overflow-wrap:anywhere}"
+             ".math-card{border:1px solid #dbe4e2;border-radius:12px;padding:16px;margin:16px 0}"
+             ".math{font-size:1.1em}math{overflow-x:auto;max-width:100%}[hidden]{display:none!important}")
+    katex = (ROOT / 'site/assets/practice/vendor/katex-0.18.9/katex.min.js').read_text()
+    scripts = '<script data-vendor="katex">' + katex.replace('</script', '<\\/script') + '</script><script>' + """
+document.querySelectorAll('.math').forEach(node => {
+  katex.render(node.textContent, node, {throwOnError:false, trust:false, output:'mathml'});
+});
+const cursor = document.querySelector('#event-cursor');
+if (cursor) cursor.addEventListener('input', () => {
+  document.querySelector('#event-position').textContent = cursor.value;
+  document.querySelectorAll('[data-math-seq]').forEach(node => {
+    node.hidden = Number(node.dataset.mathSeq) > Number(cursor.value);
+  });
+});
+""" + '</script>'
     return ('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(title)
-            + '</title><style>' + CSS + extra + '</style></head><body><main>' + body + '</main></body></html>')
+            + '</title><style>' + CSS + extra + '</style></head><body><main>' + body + '</main>' + scripts + '</body></html>')
 
 
 def _plane(d3):
@@ -75,7 +145,7 @@ def _verdicts(d3):
     if not d3:
         return ""
     return "".join('<p><strong>' + escape(METHODS.get(key, key)) + '</strong> · '
-                   + escape(item["value"]) + '<br>' + escape(item["message"]) + '</p>'
+                   + escape(item["value"]) + '<br>' + _math_text(item["message"]) + '</p>'
                    for key, item in d3["verdicts"].items())
 
 
@@ -91,9 +161,21 @@ def render_result(directory):
     demo_source = _read(ROOT / "site/data/graph-walk/quadratic-always-q01.source.json") or {}
     demo = next((row for row in demo_source.get("intro", []) if row.get("id") == "D3"), None)
     title = "图谱课程 · 阶段③调试报告"
-    body = '<header><div class="eyebrow">批次 1a · 入口与选法</div><h1>' + title + '</h1><p>'
-    body += _label(result["status"]) + ' · <code>' + escape(result["run_id"]) + '</code></p>'
-    body += '<p>本批生成选法与 D3/D4；尚未执行数学路线，不生成答案、求解事件或问答。</p></header>'
+    milestone = result.get('milestone', '1a')
+    body = '<header><div class="eyebrow">批次 ' + escape(milestone) + '</div><h1>' + title + '</h1><p>'
+    status_label = '本批处理完成' if result['status'] == 'completed' and milestone != '1a' else _label(result['status'])
+    body += status_label + ' · <code>' + escape(result["run_id"]) + '</code></p>'
+    body += ('<p>本批生成选法与 D3/D4；尚未执行数学路线，不生成答案、求解事件或问答。</p>' if milestone == '1a'
+             else '<p>数学步骤逐步保存；局部检查通过不代表整题完成。完整验证后发布答案和教学问答交接清单，本阶段不调用 LLM。</p>')
+    body += '</header>'
+    event_path = directory / 'events.jsonl'
+    events = [json.loads(line) for line in event_path.read_text().splitlines() if line.strip()] if event_path.is_file() else []
+    if events:
+        last = events[-1]['seq']
+        body += '<section><h2>已提交步骤回放</h2><label>事件水位 <output id="event-position">' + str(last) + '</output>'
+        body += '<input id="event-cursor" type="range" min="0" max="' + str(last) + '" value="' + str(last) + '"></label>'
+        body += '<p>游标控制下方已提交数学卡片；路线结果与校验证据保留最终状态，供对照。</p>'
+        body += _details('持久事件（回放不重新计算）', events) + '</section>'
     body += '<section><h2>题图与原文</h2>'
     if (directory / "source.png").is_file():
         image = base64.b64encode((directory / "source.png").read_bytes()).decode()
@@ -109,7 +191,7 @@ def render_result(directory):
         body += '<p>' + _label(goal["status"]) + ' · <code>' + escape(goal["target_ref"]) + '</code></p>'
         body += '<p>主要归属：' + escape(str(goal["primary"])) + ' · 来源：' + escape(str(goal["primary_source"])) + '</p>'
         body += _details("原始目标", goal["goal"]) + _details("诊断", goal["diagnostics"])
-        body += '<h3>完整可见题设与来源</h3>' + _json(goal["constraint_context"])
+        body += '<h3>完整原始题设与来源</h3><p>各路线的处理记录见下方路线详情。</p>' + _json(goal["constraint_context"])
         body += _details("阶段①原始特征（本阶段不重新提取）", goal["features"])
         selection = goal.get("selection") or {}
         body += '<h3>分支四项结论与前提证据</h3><table><thead><tr>'
@@ -127,10 +209,13 @@ def render_result(directory):
         body += '<details><summary>Q01 Demo 原稿参考（不参与本题计算）</summary>' + _verdicts(demo) + '</details></div>'
         body += _details("D3 原始片段", goal.get("d3"))
         body += '<h3>D4 · 方法路线</h3>' + _json(goal.get("d4"))
-        body += _details("数学路线状态", goal["routes"]) + '</section>'
+        body += _details("数学路线状态", goal["routes"])
+        body += _route_details(directory, goal, events) + '</section>'
     body += '<section><h2>完整产物</h2><p>'
     links = [("stage-three-result.json", "阶段③结果"), ("input.json", "输入引用"),
              ("stage-two-input.json", "阶段②快照"), ("stage-one-input.json", "阶段①快照"), ("frozen.json", "实现版本")]
+    links += [(name, label) for name, label in [('events.jsonl', '已提交事件'), ('checkpoint.json', '恢复快照')]
+              if (directory / name).is_file()]
     body += ' · '.join('<a href="' + name + '">' + label + '</a>' for name, label in links) + '</p></section>'
     path = directory / "index.html"
     path.write_text(_page(title, body), encoding="utf-8")
@@ -142,12 +227,13 @@ def render_batch(directory):
     summary = _read(directory / "batch-summary.json")
     if not isinstance(summary, dict):
         raise TypeError("缺少有效批次汇总。")
-    title = "阶段③ · 录制批次选法验收"
-    body = '<header><h1>' + title + '</h1><p>阶段①真实录制重验 → 阶段②离线判型 → 阶段③选法。</p>'
+    title = "阶段③ · 录制批次验收"
+    body = '<header><h1>' + title + '</h1><p>阶段①真实录制重验 → 阶段②离线判型 → 阶段③选法与方法执行。</p>'
+    body += '<p>批次 ' + escape(summary.get('milestone', '1a')) + '</p>'
     body += '<p>' + ("批次完成" if summary["completed"] else "批次未通过") + '</p></header>'
     body += '<section><h2>本阶段调用计数</h2>' + _json(summary["llm"]) + '</section>'
     body += '<section><h2>逐题调试</h2><table><thead><tr><th>样本</th><th>状态</th><th>已确认目标</th>'
-    body += '<th>跳过</th></tr></thead><tbody>'
+    body += '<th>跳过</th><th>已解决目标</th><th>已验证路线</th></tr></thead><tbody>'
     for row in summary["results"]:
         relative = Path(row["sample_dir"]) / "index.html"
         resolved = (directory / relative).resolve()
@@ -156,7 +242,8 @@ def render_batch(directory):
         body += '<tr><td><a href="' + quote(relative.as_posix(), safe="/") + '">'
         body += escape(f"{row['case_id']} / {row['sample_id']}") + '</a></td>'
         body += '<td>' + _label(row["status"]) + '</td><td>' + str(row["eligible"]) + '</td><td>'
-        body += str(row["skipped"]) + '</td></tr>'
+        body += str(row["skipped"]) + '</td><td>' + str(row.get('solved', 0)) + '</td><td>'
+        body += str(row.get('verified_routes', 0)) + '</td></tr>'
     body += '</tbody></table></section><p><a href="batch-summary.json">批次结果 JSON</a> · '
     body += '<a href="stage-two/index.html">本次阶段②报告与阶段①重验材料</a></p>'
     for relative, label in (("selection-replay/stage-three/index.html", "Q01 · 历史 LLM 判型准入"),

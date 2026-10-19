@@ -14,7 +14,7 @@ SOURCE = FIXTURES / "graph-guided-stage-two/recorded/q01-20261018-02/stage-two-r
 
 def test_cli_accepts_recorded_input_and_regenerates_report(tmp_path, capsys):
     output = tmp_path / "output"
-    assert main(["run", "--input", str(SOURCE), "--output", str(output)]) == 0
+    assert main(["run", "--input", str(SOURCE), "--output", str(output), "--milestone", "1a"]) == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["status"] == "completed" and printed["milestone"] == "1a"
     assert printed["llm"]["new_network_attempts"] == 0
@@ -48,8 +48,8 @@ def test_existing_output_is_preserved(tmp_path):
 
 
 def test_identical_inputs_have_identical_decisions_but_distinct_runs(tmp_path):
-    first = run_sample(SOURCE, tmp_path / "first")
-    second = run_sample(SOURCE, tmp_path / "second")
+    first = run_sample(SOURCE, tmp_path / "first", milestone="1a")
+    second = run_sample(SOURCE, tmp_path / "second", milestone="1a")
     assert first["run_id"] != second["run_id"]
     assert first["lesson_version"] == second["lesson_version"]
     assert first["goals"] == second["goals"]

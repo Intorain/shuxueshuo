@@ -1,0 +1,302 @@
+{
+  "method": "method-discriminant",
+  "inputs": {
+    "relation": {
+      "role": "relation"
+    },
+    "expression": {
+      "role": "expression"
+    },
+    "x": {
+      "role": "x"
+    },
+    "parameter": {
+      "role": "parameter"
+    },
+    "domain": {
+      "role": "domain"
+    },
+    "quantifier": {
+      "role": "quantifier"
+    },
+    "strict": {
+      "role": "strict"
+    },
+    "goal": {
+      "role": "goal"
+    },
+    "constraint_context": {
+      "role": "constraint_context"
+    }
+  },
+  "steps": [
+    {
+      "id": "degree",
+      "calls": [],
+      "judgments": [
+        {
+          "id": "degree",
+          "function": "nondegenerate",
+          "inputs": {
+            "expression": "$expression",
+            "variable": "$x"
+          },
+          "outputs": {
+            "degree_evidence": "evidence"
+          },
+          "options": [
+            {
+              "id": "nondegenerate"
+            },
+            {
+              "id": "degenerate"
+            }
+          ],
+          "order": 0,
+          "depends_on": [
+            "expression",
+            "x"
+          ]
+        }
+      ],
+      "display_units": []
+    },
+    {
+      "id": "normalize",
+      "calls": [
+        {
+          "id": "move",
+          "capability": "normalize_to_zero",
+          "public_ref": "skill-inequality-transform",
+          "inputs": {
+            "relation": "$relation",
+            "variable": "$x"
+          },
+          "outputs": {
+            "normalized": "relation",
+            "normal_expression": "expression"
+          },
+          "order": 0
+        },
+        {
+          "id": "simplify",
+          "capability": "simplify_expression",
+          "public_ref": "skill-simplify",
+          "inputs": {
+            "expression": "$normal_expression"
+          },
+          "outputs": {
+            "normal_expression": "expression"
+          },
+          "order": 1
+        }
+      ],
+      "judgments": [],
+      "display_units": [
+        {
+          "id": "normalized",
+          "after": "simplify",
+          "template": "normalize",
+          "bindings": {
+            "before": [
+              "$relation"
+            ],
+            "after": [
+              "$normalized"
+            ]
+          },
+          "depends_on": [
+            "normalized",
+            "relation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conditions",
+      "calls": [
+        {
+          "id": "opening",
+          "capability": "quadratic_sign_condition",
+          "public_ref": "skill-quadratic-sign",
+          "inputs": {
+            "expression": "$normal_expression",
+            "variable": "$x",
+            "domain": "$domain",
+            "quantifier": "$quantifier",
+            "strict": "$strict",
+            "mode": "opening"
+          },
+          "outputs": {
+            "opening": "opening",
+            "delta": "delta"
+          },
+          "order": 0
+        },
+        {
+          "id": "delta",
+          "capability": "quadratic_sign_condition",
+          "public_ref": "skill-quadratic-sign",
+          "inputs": {
+            "expression": "$normal_expression",
+            "variable": "$x",
+            "domain": "$domain",
+            "quantifier": "$quantifier",
+            "strict": "$strict",
+            "mode": "delta"
+          },
+          "outputs": {
+            "delta_condition": "condition",
+            "delta": "delta"
+          },
+          "order": 1
+        },
+        {
+          "id": "simplify",
+          "capability": "simplify_expression",
+          "public_ref": "skill-simplify",
+          "inputs": {
+            "expression": "$delta"
+          },
+          "outputs": {
+            "delta": "expression"
+          },
+          "order": 2
+        },
+        {
+          "id": "transform",
+          "capability": "transform_param_inequality",
+          "public_ref": "skill-inequality-transform",
+          "inputs": {
+            "relation": "$delta_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "parameter_condition": "relation",
+            "parameter_polynomial": "expression"
+          },
+          "order": 3
+        }
+      ],
+      "judgments": [],
+      "display_units": [
+        {
+          "id": "opening",
+          "after": "opening",
+          "template": "opening",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$opening"
+            ],
+            "strict": "$strict"
+          },
+          "depends_on": [
+            "opening",
+            "strict"
+          ]
+        },
+        {
+          "id": "discriminant",
+          "after": "transform",
+          "template": "discriminant",
+          "bindings": {
+            "before": [
+              "$delta_condition"
+            ],
+            "after": [
+              "$parameter_condition"
+            ]
+          },
+          "depends_on": [
+            "delta_condition",
+            "parameter_condition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "solve",
+      "calls": [
+        {
+          "id": "simplify",
+          "capability": "simplify_expression",
+          "public_ref": "skill-simplify",
+          "inputs": {},
+          "outputs": {},
+          "guard": {
+            "constant": false
+          },
+          "skip_reason": "already_satisfied",
+          "order": 0
+        },
+        {
+          "id": "transform",
+          "capability": "normalize_to_zero",
+          "public_ref": "skill-inequality-transform",
+          "inputs": {},
+          "outputs": {},
+          "guard": {
+            "constant": false
+          },
+          "skip_reason": "already_satisfied",
+          "order": 1
+        },
+        {
+          "id": "solve",
+          "capability": "submethod",
+          "public_ref": "quadratic-inequality-solve",
+          "inputs": {
+            "relation": "$parameter_condition",
+            "variable": "$parameter"
+          },
+          "outputs": {
+            "candidate_set": "solution"
+          },
+          "order": 2
+        }
+      ],
+      "judgments": [],
+      "display_units": [
+        {
+          "id": "solution",
+          "after": "solve",
+          "template": "solution",
+          "bindings": {
+            "before": [
+              "$parameter_condition"
+            ],
+            "after": [
+              "$candidate_set"
+            ]
+          },
+          "depends_on": [
+            "candidate_set",
+            "parameter_condition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "merge",
+      "calls": [],
+      "judgments": [],
+      "display_units": []
+    }
+  ],
+  "outputs": {
+    "candidate_set": "$candidate_set"
+  },
+  "exits": {
+    "capability_gap": {
+      "status": "capability_gap"
+    },
+    "math_failed": {
+      "status": "math_failed"
+    },
+    "execution_error": {
+      "status": "execution_error"
+    }
+  },
+  "schema_version": "graph-method-execution/v1"
+}

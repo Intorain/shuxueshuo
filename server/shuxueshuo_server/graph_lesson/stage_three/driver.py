@@ -1,0 +1,444 @@
+"""One deterministic, JSON-checkpointable graph operation per advance call."""
+
+import traceback
+from copy import deepcopy
+from time import perf_counter
+
+import sympy as sp
+
+from . import capabilities, execution_contracts, judgments
+from .capabilities import CapabilityGap, LocalCheckFailed
+from .premises import FeatureMath, UnknownPremise, parse_expression
+from .presentation import render_unit
+from .trajectory import decode_value, encode_value, trace_value
+
+
+def _index(features, target_ref=None):
+    if isinstance(features, dict):
+        return features
+    return {
+        row["feature_id"]: row
+        for row in features
+        if target_ref is None or row["target_ref"] == target_ref
+    }
+
+
+def initial_bindings(features, context):
+    math = FeatureMath(_index(features, context["target_ref"]))
+    relation = math.value("relation")
+    values = {
+        "relation": capabilities.relation(
+            parse_expression(relation["lhs"]),
+            relation["operator"],
+            parse_expression(relation["rhs"]),
+        ),
+        "expression": math.expression,
+        "x": math.x,
+        "parameter": math.parameter,
+        "domain": math.domain,
+        "quantifier": math.value("quantifier"),
+        "strict": relation["strict"],
+        "goal": deepcopy(context["goal"]),
+        "constraint_context": deepcopy(context),
+    }
+    return values
+
+
+def can_execute(method, features, context):
+    try:
+        values = initial_bindings(features, context)
+        if (
+            values["quantifier"] != "∀"
+            or values["domain"] != sp.S.Reals
+            or values["strict"]
+        ):
+            return False
+        poly = capabilities.polynomial(values["expression"], values["x"])
+        if (
+            poly.degree() != 2
+            or not poly.LC().is_Rational
+            or poly.LC().is_positive is not True
+        ):
+            return False
+        if method == "method-discriminant":
+            return True
+        if method == "method-separation":
+            # Admission only inspects the supported shape. The actual role
+            # bindings and equivalence check belong to the first traced call.
+            lhs, rhs = values["relation"].lhs, values["relation"].rhs
+            if not lhs.has(values["x"]) and not rhs.has(values["parameter"]):
+                function = rhs
+            elif not rhs.has(values["x"]) and not lhs.has(values["parameter"]):
+                function = lhs
+            else:
+                return False
+            judgments.range_skill(function, values["x"], values["domain"])
+            return True
+        return False
+    except (CapabilityGap, UnknownPremise):
+        return False
+
+
+def create_state(
+    *,
+    features,
+    context,
+    method,
+    route_id,
+    branch,
+    target_ref,
+    run_id,
+    lesson_version,
+    revisions=None,
+    solve_budget_seconds=10,
+):
+    contracts = execution_contracts.load_contracts()
+    state = {
+        "run_id": run_id,
+        "lesson_version": lesson_version,
+        "target_ref": target_ref,
+        "method": method,
+        "route_id": route_id,
+        "branch": branch,
+        "revisions": revisions or execution_contracts.revisions(),
+        "status": "running",
+        "frames": [],
+        "fragments": [],
+        "premise_refs": [],
+        "result": None,
+        "diagnostics": [],
+        "compute_seconds": 0.0,
+        "solve_budget_seconds": solve_budget_seconds,
+        "next_call_seq": 1,
+        "trajectory": {
+            "contract": "graph-stage-three-route/v1",
+            "run_id": run_id,
+            "lesson_version": lesson_version,
+            "target_ref": target_ref,
+            "route_id": route_id,
+            "branch": branch,
+            "method": method,
+            "status": "capability_gap",
+            "steps": [],
+            "math_steps": [],
+            "constraint_context": deepcopy(context),
+            "finalization": [],
+            "result": None,
+            "diagnostics": [],
+        },
+    }
+    state["trajectory"]["revisions"] = deepcopy(state["revisions"])
+    try:
+        if method not in contracts or not can_execute(method, features, context):
+            raise CapabilityGap("method_input_class_unavailable")
+        values = initial_bindings(features, context)
+        state["frames"] = [_frame(method, values, None)]
+        state["input_values"] = encode_value(values)
+    except (CapabilityGap, UnknownPremise) as exc:
+        _fail(state, "capability_gap", exc)
+    return state
+
+
+def _frame(method, bindings, parent_call):
+    return {
+        "method": method,
+        "step_index": 0,
+        "call_index": 0,
+        "bindings": encode_value(bindings),
+        "binding_sources": {},
+        "parent_call": parent_call,
+        "case_path": [],
+        "step_trace": None,
+        "pending_child": None,
+    }
+
+
+def _resolve(value, bindings):
+    if isinstance(value, str) and value.startswith("$"):
+        pieces = value[1:].split(".")
+        output = bindings[pieces[0]]
+        for part in pieces[1:]:
+            output = output[part]
+        return output
+    if isinstance(value, dict):
+        return {key: _resolve(v, bindings) for key, v in value.items()}
+    if isinstance(value, list):
+        return [_resolve(v, bindings) for v in value]
+    return value
+
+
+def _guard(guard, bindings):
+    if not guard:
+        return True
+    if "constant" in guard:
+        return guard["constant"]
+    return bindings[guard["ref"]] == guard["equals"]
+
+
+def _fail(state, status, exc):
+    state["status"] = status
+    state["trajectory"]["status"] = status
+    frame = state["frames"][-1] if state["frames"] else {}
+    evidence = {
+        "code": str(exc),
+        "exception_type": type(exc).__name__,
+        "method": frame.get("method"),
+        "step_index": frame.get("step_index"),
+        "call_index": frame.get("call_index"),
+    }
+    if status == "execution_error":
+        evidence["traceback"] = traceback.format_exc()
+    state["trajectory"]["gap" if status == "capability_gap" else "error"] = evidence
+    state["trajectory"]["diagnostics"].append(evidence)
+    state["diagnostics"].append(evidence)
+
+
+def _publish(state, frame, step, action, bindings):
+    for unit in step["display_units"]:
+        if unit["after"] != action["id"]:
+            continue
+        execution_contracts.validate_dependencies(
+            unit["depends_on"],
+            execution_contracts.references(unit["bindings"]),
+            set(bindings),
+        )
+        display_bindings = _resolve(unit["bindings"], bindings)
+        index = frame["step_trace"]
+        # Exact call pointers freeze the source boundary even when later calls
+        # append to the same method step (opening and discriminant, for example).
+        published = set(frame.get("published_sources", []))
+        sources, basis = [], []
+        for trace_index, trace in enumerate(
+            state["trajectory"]["steps"][index:], index
+        ):
+            for category in ("calls", "skipped_calls", "judgments"):
+                for item_index, item in enumerate(trace[category]):
+                    reference = f"/steps/{trace_index}/{category}/{item_index}"
+                    if reference in published:
+                        continue
+                    sources.append(reference)
+                    basis.extend(item.get("used_basis", []))
+        frame["published_sources"] = sorted(published | set(sources))
+        fragment = render_unit(
+            state, frame, step, unit, display_bindings, sources, basis
+        )
+        state["fragments"].append(fragment)
+        state["trajectory"]["math_steps"].append(
+            {
+                "step_id": fragment["step_id"],
+                "math_step_sha256": fragment["math_step_sha256"],
+                "source_refs": sources,
+                "file": f"math-steps/{state['route_id']}/{fragment['step_id']}.json",
+            }
+        )
+
+
+def _advance(state, contracts):
+    frame = state["frames"][-1]
+    contract = contracts[frame["method"]]
+    bindings = decode_value(frame["bindings"])
+    if frame["step_index"] >= len(contract["steps"]):
+        outputs = _resolve(contract["outputs"], bindings)
+        state["frames"].pop()
+        if not state["frames"]:
+            state["result"] = encode_value(outputs)
+            state["status"] = "method_complete"
+            return
+        parent = state["frames"][-1]
+        pending = parent["pending_child"]
+        target_bindings = decode_value(parent["bindings"])
+        for dest, source in pending["action"]["outputs"].items():
+            target_bindings[dest] = outputs[source]
+            parent["binding_sources"][dest] = (
+                f"/steps/{parent['step_trace']}/calls/{pending['call_index']}"
+            )
+        parent["bindings"] = encode_value(target_bindings)
+        call = state["trajectory"]["steps"][parent["step_trace"]]["calls"][
+            pending["call_index"]
+        ]
+        call["outputs"] = trace_value(outputs)
+        call["postconditions"] = [{"kind": "child_completed", "passed": True}]
+        parent["pending_child"] = None
+        step = contracts[parent["method"]]["steps"][parent["step_index"]]
+        _publish(state, parent, step, pending["action"], target_bindings)
+        parent["call_index"] += 1
+        return
+    step = contract["steps"][frame["step_index"]]
+    if frame["step_trace"] is None:
+        frame["step_trace"] = len(state["trajectory"]["steps"])
+        state["trajectory"]["steps"].append(
+            {
+                "seq": frame["step_trace"] + 1,
+                "method": frame["method"],
+                "step": step["id"],
+                "depth": len(state["frames"]) - 1,
+                "parent_call": frame["parent_call"],
+                "case_path": [],
+                "calls": [],
+                "skipped_calls": [],
+                "judgments": [],
+            }
+        )
+    actions = execution_contracts.actions(step)
+    if frame["call_index"] >= len(actions):
+        frame["step_index"] += 1
+        frame["call_index"] = 0
+        frame["step_trace"] = None
+        return
+    action = actions[frame["call_index"]]
+    trace = state["trajectory"]["steps"][frame["step_trace"]]
+    if not _guard(action.get("guard"), bindings):
+        guard_ref = action.get("guard", {}).get("ref")
+        source = frame["binding_sources"].get(guard_ref)
+        trace["skipped_calls"].append(
+            {
+                "public_ref": action["public_ref"],
+                "reason": action.get("skip_reason", "guard_false"),
+                "guard": deepcopy(action.get("guard")),
+                "guard_bindings": trace_value({guard_ref: bindings[guard_ref]})
+                if guard_ref
+                else {},
+                "evidence_refs": [source] if source else [],
+                "action_id": action["id"],
+            }
+        )
+        _publish(state, frame, step, action, bindings)
+        frame["call_index"] += 1
+        return
+    inputs = _resolve(action["inputs"], bindings)
+    if action["kind"] == "judgment":
+        execution_contracts.validate_dependencies(
+            action["depends_on"],
+            execution_contracts.references(action["inputs"]),
+            set(bindings),
+        )
+        if action.get("decided_by", "program") != "program":
+            raise CapabilityGap("llm_judgment_unavailable")
+        output = judgments.REGISTRY[action["function"]](**inputs)
+        if output["selected"] not in {option["id"] for option in action["options"]}:
+            raise ValueError("judgment.invalid_choice")
+        trace["judgments"].append(
+            {
+                "id": action["id"],
+                "inputs": trace_value(inputs),
+                "options": action["options"],
+                "selected": output["selected"],
+                "decided_by": "program",
+                "evidence": trace_value(output),
+            }
+        )
+        state["premise_refs"].append(
+            f"/steps/{frame['step_trace']}/judgments/{len(trace['judgments']) - 1}"
+        )
+        binding_source = state["premise_refs"][-1]
+    else:
+        seq = state["next_call_seq"]
+        state["next_call_seq"] += 1
+        call = {
+            "seq": seq,
+            "capability": action["capability"],
+            "public_ref": action["public_ref"],
+            "inputs": trace_value(inputs),
+            "outputs": {},
+            "operations": [],
+            "used_basis": [],
+            "postconditions": [],
+        }
+        if action["capability"] == "submethod":
+            trace["calls"].append(call)
+            frame["pending_child"] = {
+                "action": deepcopy(action),
+                "call_index": len(trace["calls"]) - 1,
+            }
+            state["frames"].append(_frame(action["public_ref"], inputs, seq))
+            return
+        trace["calls"].append(call)
+        try:
+            computed = capabilities.execute(action["capability"], inputs)
+        except LocalCheckFailed as exc:
+            if exc.evidence is not None:
+                call.update(
+                    outputs=trace_value(exc.evidence["outputs"]),
+                    operations=exc.evidence["operations"],
+                    postconditions=trace_value(exc.evidence["checks"]),
+                )
+            else:
+                call["postconditions"] = [
+                    {
+                        "kind": "local_check_exception",
+                        "passed": False,
+                        "reason": str(exc),
+                    }
+                ]
+            raise
+        except (
+            Exception
+        ) as exc:  # Record the attempted input, then propagate route failure.
+            call["error"] = {"exception_type": type(exc).__name__, "message": str(exc)}
+            raise
+        output = computed["outputs"]
+        basis = execution_contracts.read("basis-operations")["operations"]
+        call.update(
+            outputs=trace_value(output),
+            operations=computed["operations"],
+            used_basis=sorted(
+                {ref for op in computed["operations"] for ref in basis[op]}
+            ),
+            postconditions=trace_value(computed["checks"]),
+        )
+        if not computed["checks"]:
+            call["postconditions"] = [
+                {"kind": "missing_local_evidence", "passed": False}
+            ]
+            raise LocalCheckFailed("capability.missing_local_evidence")
+        if any(c.get("passed") is not True for c in computed["checks"]):
+            raise LocalCheckFailed("capability.postcondition_failed")
+        binding_source = f"/steps/{frame['step_trace']}/calls/{len(trace['calls']) - 1}"
+    for destination, source in action.get("outputs", {}).items():
+        bindings[destination] = output[source]
+        frame["binding_sources"][destination] = binding_source
+    frame["bindings"] = encode_value(bindings)
+    _publish(state, frame, step, action, bindings)
+    frame["call_index"] += 1
+
+
+def advance(state):
+    """Return a new checkpoint. Caller atomically commits it with fragment deltas."""
+    if state["status"] != "running":
+        return deepcopy(state)
+    updated = deepcopy(state)
+    started = perf_counter()
+    try:
+        # Contract/graph I/O and readiness validation are preparation, not algebra.
+        contracts = execution_contracts.load_contracts()
+        started = perf_counter()
+        if updated["compute_seconds"] >= updated["solve_budget_seconds"]:
+            raise TimeoutError("solve_budget_exhausted")
+        _advance(updated, contracts)
+        elapsed = perf_counter() - started
+        if updated["compute_seconds"] + elapsed > updated["solve_budget_seconds"]:
+            # The uncommitted operation (including fragments) is discarded on timeout.
+            updated = deepcopy(state)
+            raise TimeoutError("solve_budget_exhausted")
+    except (CapabilityGap, UnknownPremise) as exc:
+        _fail(updated, "capability_gap", exc)
+    except LocalCheckFailed as exc:
+        _fail(updated, "math_failed", exc)
+    except Exception as exc:  # noqa: BLE001 -- explicit route failure with diagnostic, never unknown.
+        _fail(updated, "execution_error", exc)
+    updated["compute_seconds"] += perf_counter() - started
+    return updated
+
+
+def export_values(state):
+    values = decode_value(state.get("input_values", {}))
+    values.update(decode_value(state.get("result") or {}))
+    if "candidate_set" in values:
+        values["feasible_set"] = values["candidate_set"]
+    return values
+
+
+def append_endpoint(state, feasible_set, evidence):
+    from .presentation import append_boundary
+
+    return append_boundary(state, evidence, feasible_set=feasible_set)

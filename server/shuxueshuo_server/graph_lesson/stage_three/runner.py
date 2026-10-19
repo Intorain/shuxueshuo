@@ -1,10 +1,7 @@
-"""Admit stage-two artifacts and persist independently inspectable method decisions.
+"""Admit stage-two artifacts, select methods, and durably execute supported routes."""
 
-Milestone 1a evaluates methods only. It never claims a route was executed, emits
-solver events, or invokes a provider. Later milestones add execution at the
-explicit route-plan boundary.
-"""
-
+import json
+import math
 import shutil
 import traceback
 from datetime import UTC, datetime
@@ -28,16 +25,18 @@ from .contracts import (
 )
 from .selection import evaluate_goal
 
-MILESTONE = "1a"
+MILESTONE = "1b"
+MILESTONES = ("1a", "1b-1", "1b")
 
 
 def fingerprint():
     paths = [
-        *Path(__file__).parent.glob("*.py"),
+        *Path(__file__).parent.rglob("*.py"),
         *Path(__file__).parents[2].joinpath("problem_understanding").glob("notation_*.py"),
         *Path(__file__).parent.parent.joinpath("stage_one").glob("*.py"),
         *Path(__file__).parent.parent.joinpath("stage_two").glob("*.py"),
         *(ROOT / "site/data/knowledge-next/selection").glob("*.json"),
+        *(ROOT / "site/data/knowledge-next/execution").glob("*.json"),
         *(ROOT / "site/data/knowledge-next/nodes").glob("*.json"),
         *(ROOT / "internal/schemas").glob("graph-stage-three-*.json"),
         *(ROOT / "internal/schemas").glob("graph-method-*.json"),
@@ -58,17 +57,55 @@ def _provenance(value, reference):
             "run_id": value.get("run_id") if isinstance(value, dict) else None}
 
 
-def run_sample(source, output, *, reference_base=None):
+def _target_failure(goal, exc, phase, store):
+    """Record an isolated failure and revoke any completion from an earlier resume."""
+    if phase == "execute_goal":
+        goal["execution_evidence"] = {"routes": goal["routes"], "selection": goal["selection"]}
+    published = {}
+    if store:
+        from .handoff import invalidate_goal
+
+        published = {event["payload"]["kind"].lower(): event["payload"]["chunk"]
+                     for event in store.committed_events(goal["target_ref"] + ":selection")
+                     if event["type"] == "lesson.chunk_ready" and event["payload"].get("kind") in ("D3", "D4")}
+        # A repeated failure has the same invalidation payload and commit key.
+        # The durable stream, final result and QA availability must agree even
+        # when the failure occurs before method selection can run again.
+        invalidate_goal(store, goal["target_ref"], status="no_verified_route", reason="execution.target_error",
+                        commit_id=goal["target_ref"] + ":execution-error")
+    # Published selection cards are immutable history, not a completed answer.
+    # Read them from the committed transaction, not partially rebuilt values.
+    goal.update(status="execution_error", selection=goal["selection"] if published else None,
+                d3=published.get("d3"), d4=published.get("d4"),
+                routes=[], answer=None, feasible_set=None)
+    goal["diagnostics"].append({
+        "code": "execution.target_error", "path": goal["target_ref"], "phase": phase,
+        "exception_type": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc(),
+    })
+
+
+def run_sample(source, output, *, reference_base=None, milestone=MILESTONE, resume=False, hooks=None,
+               solve_budget_seconds=10, verification_budget_seconds=20):
     """Read an external stage-two result; invalid input still gets a debug report."""
+    if milestone not in MILESTONES or any(not math.isfinite(value) or value <= 0
+                                         for value in (solve_budget_seconds, verification_budget_seconds)):
+        raise ValueError("execution.invalid_options")
     output = Path(output)
-    output.mkdir(parents=True, exist_ok=False)
+    if not resume:
+        output.mkdir(parents=True, exist_ok=False)
     started = perf_counter()
+    if resume:
+        saved = json.loads((output / "run.json").read_text())
+        source = output / "stage-two-input.json"
+        milestone = saved["milestone"]
+        if milestone == "1a":
+            raise ValueError("checkpoint.selection_only_run")
     loaded = load_input(source, reference_base=reference_base)
     stage_two, stage_one = loaded["stage_two"], loaded["stage_one"]
     frozen = fingerprint()
     run_id = uuid4().hex
     result = {
-        "contract": RESULT_CONTRACT, "run_id": run_id, "milestone": MILESTONE,
+        "contract": RESULT_CONTRACT, "run_id": run_id, "milestone": milestone,
         "created_at": datetime.now(UTC).isoformat(),
         "lesson_version": revision({"stage_two": stage_two, "stage_one": stage_one, "implementation": frozen}),
         "stage_two": _provenance(stage_two, loaded["source"]),
@@ -79,21 +116,41 @@ def run_sample(source, output, *, reference_base=None):
         "events": {"stream_id": run_id, "last_seq": 0, "snapshot": None},
         "llm": zero_calls(),
         "upstream_llm": stage_two.get("llm") if isinstance(stage_two, dict) else None,
+        "options": {"solve_budget_seconds": solve_budget_seconds, "verification_budget_seconds": verification_budget_seconds},
     }
+    if resume:
+        frozen_saved = json.loads((output / "frozen.json").read_text())
+        if frozen_saved["implementation"] != frozen:
+            raise ValueError("checkpoint.revisions_changed")
+        if not loaded["ok"] or any(result[name]["sha256"] != saved[name]["sha256"] for name in ("stage_one", "stage_two")):
+            raise ValueError("checkpoint.input_changed")
+        result = saved
+        result["goals"] = []
+        solve_budget_seconds = result["options"]["solve_budget_seconds"]
+        verification_budget_seconds = result["options"]["verification_budget_seconds"]
     # Store the actual checked values so reports remain inspectable after moving
     # the output directory or deleting the source run.
-    save(output / "stage-two-input.json", stage_two)
-    save(output / "stage-one-input.json", stage_one)
-    save(output / "input.json", {
-        "contract": INPUT_MANIFEST_CONTRACT,
-        "stage_two": {**result["stage_two"], "snapshot": "stage-two-input.json"},
-        "stage_one": {**result["stage_one"], "snapshot": "stage-one-input.json"},
-        "admission": loaded["admission"],
-    })
-    save(output / "frozen.json", {"milestone": MILESTONE, "implementation": frozen})
+    if not resume:
+        save(output / "stage-two-input.json", stage_two)
+        save(output / "stage-one-input.json", stage_one)
+        save(output / "input.json", {
+            "contract": INPUT_MANIFEST_CONTRACT,
+            "stage_two": {**result["stage_two"], "snapshot": "stage-two-input.json"},
+            "stage_one": {**result["stage_one"], "snapshot": "stage-one-input.json"},
+            "admission": loaded["admission"],
+        })
+        save(output / "frozen.json", {"milestone": milestone, "implementation": frozen})
+        save(output / "run.json", result)
     image = Path(source).parent / "source.png"
-    if image.is_file():
+    if image.is_file() and image.resolve() != (output / "source.png").resolve():
         shutil.copyfile(image, output / "source.png")
+    store = None
+    if loaded["ok"] and milestone != "1a":
+        from .events import EventStore
+
+        store = EventStore(output, {"run_id": result["run_id"], "lesson_version": result["lesson_version"],
+            "input_sha256": revision({"stage_one": result["stage_one"]["sha256"], "stage_two": result["stage_two"]["sha256"]}),
+            "revisions": frozen}, create=not resume)
     if loaded["ok"]:
         candidate = stage_one["candidate"]
         original_targets = {row["target_ref"]: row for row in targets(candidate)}
@@ -117,12 +174,7 @@ def run_sample(source, output, *, reference_base=None):
                 except Exception as exc:  # noqa: BLE001 — persist failure at the target isolation boundary
                     # This is the target isolation boundary, not a mathematical
                     # unknown: programming failures stay visible and fail the run.
-                    goal.update(status="execution_error", selection=None, d3=None, d4=None)
-                    goal["diagnostics"].append({
-                        "code": "execution.target_error", "path": ref, "phase": phase,
-                        "exception_type": type(exc).__name__, "message": str(exc),
-                        "traceback": traceback.format_exc(),
-                    })
+                    _target_failure(goal, exc, phase, store)
             else:
                 goal["diagnostics"].append({
                     "code": "input.target_skipped", "path": ref,
@@ -131,11 +183,25 @@ def run_sample(source, output, *, reference_base=None):
                 })
             result["goals"].append(goal)
             folder = output / "goals" / f"goal-{number:03}"
+            if store and goal["selection"] and goal["status"] != "execution_error":
+                try:
+                    _execute_goal(candidate, goal, folder, store, milestone=milestone, hooks=hooks,
+                                  solve_budget_seconds=solve_budget_seconds,
+                                  verification_budget_seconds=verification_budget_seconds)
+                except Exception as exc:  # noqa: BLE001 — preserve all other goals and the durable prefix
+                    _target_failure(goal, exc, "execute_goal", store)
             for name, value in (("selection", goal["selection"]), ("d3", goal["d3"]),
                                 ("d4", goal["d4"]), ("context", goal["constraint_context"]),
                                 ("features", features), ("goal", goal)):
                 save(folder / f"{name}.json", value)
         result["status"] = aggregate_status(result["goals"])
+    if store:
+        snapshot = store.export()
+        folders = {goal["target_ref"]: output / "goals" / f"goal-{index:03}"
+                   for index, goal in enumerate(result["goals"], 1)}
+        for task in snapshot["handoffs"]:
+            save(folders[task["target_ref"]] / "handoff" / (task["route_id"] + ".json"), task)
+        result["events"] = {"stream_id": result["run_id"], "last_seq": snapshot["last_seq"], "snapshot": "checkpoint.json"}
     result["elapsed_seconds"] = round(perf_counter() - started, 6)
     validate_result(result)
     save(output / "stage-three-result.json", result)
@@ -145,11 +211,52 @@ def run_sample(source, output, *, reference_base=None):
     return result
 
 
+def _execute_goal(candidate, goal, folder, store, *, milestone, hooks, **budgets):
+    from .driver import can_execute
+    from .execution import execute_route
+
+    allowed = {"method-discriminant"} if milestone == "1b-1" else {"method-discriminant", "method-separation"}
+    for branch in goal["selection"]["branches"]:
+        if branch["route_plan"] == "not_planned":
+            continue
+        if branch["target"] in allowed and can_execute(branch["target"], goal["features"], goal["constraint_context"]):
+            branch.update(route_plan="planned", missing_capabilities=[])
+    for option in goal["d4"]["options"]:
+        branch = next(row for row in goal["selection"]["branches"] if row["route_id"] == option["route_id"])
+        option["route_plan"] = branch["route_plan"]
+        option["message"] = "开始解题" if branch["route_plan"] == "planned" else "详细步骤暂不支持"
+    store.commit_events([{"type": "lesson.chunk_ready", "target_ref": goal["target_ref"], "route_id": None,
+                          "payload": {"kind": kind, "chunk": goal[kind.lower()]}} for kind in ("D3", "D4")],
+                        commit_id=goal["target_ref"] + ":selection")
+    for branch in goal["selection"]["branches"]:
+        if branch["route_plan"] == "planned":
+            route = execute_route(candidate, goal, branch, folder, store, previous=goal["routes"], hooks=hooks, **budgets)
+            goal["routes"].append(route)
+    snapshot = store.snapshot()
+    status = snapshot["goals"].get(goal["target_ref"])
+    if status:
+        goal["status"] = status["status"]
+        if status["status"] == "solved" and status.get("available"):
+            goal["answer"], goal["feasible_set"] = status["answer"], status["feasible_set"]
+        elif status.get("reason"):
+            goal["diagnostics"].append({"code": status["reason"]})
+    else:
+        store.commit_events([{"type": "lesson.goal_status", "target_ref": goal["target_ref"], "route_id": None,
+                              "payload": {"status": goal["status"]}}], commit_id=goal["target_ref"] + ":final-status")
+    goal["route_status"] = [{"route_id": event["route_id"], "seq": event["seq"], **event["payload"]}
+                            for event in store.events(snapshot["minimum_seq"] - 1)
+                            if event["type"] == "lesson.route_status" and event["target_ref"] == goal["target_ref"]]
+
+
+def resume_sample(output, *, hooks=None):
+    return run_sample(None, output, resume=True, hooks=hooks)
+
+
 def _no_provider(*args, **kwargs):
     raise RuntimeError("Stage-three offline acceptance cannot construct an LLM provider")
 
 
-def run_recorded_batch(batch, output, *, cases=None):
+def run_recorded_batch(batch, output, *, cases=None, milestone=MILESTONE):
     """Reverify all stage-one records, run stage two offline, then admit its files."""
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
@@ -159,15 +266,17 @@ def run_recorded_batch(batch, output, *, cases=None):
     rows = []
     for previous in upstream["results"]:
         relative = previous["sample_dir"]
-        result = run_sample(output / "stage-two" / relative / "stage-two-result.json", output / relative)
+        result = run_sample(output / "stage-two" / relative / "stage-two-result.json", output / relative, milestone=milestone)
         rows.append({key: previous[key] for key in ("case_id", "sample_id", "sample_dir")} | {
             "status": result["status"], "goals": len(result["goals"]),
             "eligible": sum(goal["stage_two_status"] == "resolved" for goal in result["goals"]),
             "skipped": sum(goal["status"] == "skipped" for goal in result["goals"]),
+            "solved": sum(goal["status"] == "solved" for goal in result["goals"]),
+            "verified_routes": sum(route["status"] == "verified" for goal in result["goals"] for route in goal["routes"]),
             "llm": result["llm"],
         })
     summary = {
-        "contract": "graph-stage-three-batch/v1", "run_id": output.name, "milestone": MILESTONE,
+        "contract": "graph-stage-three-batch/v1", "run_id": output.name, "milestone": milestone,
         "stage_one_recording": str(Path(batch).resolve()), "stage_two_batch": "stage-two/batch-summary.json",
         "completed": bool(rows) and upstream["completed"] and all(row["status"] == "completed" for row in rows),
         "results": rows, "llm": zero_calls(), "upstream_llm": upstream["llm"],

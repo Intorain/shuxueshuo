@@ -1,0 +1,61 @@
+{
+  "contract": "graph-skill-capabilities/v1",
+  "skills": {
+    "skill-inequality-transform": [
+      "normalize_to_zero",
+      "transform_param_inequality",
+      "separation_division"
+    ],
+    "skill-equality-transform": [
+      "separation_division"
+    ],
+    "skill-simplify": [
+      "simplify_expression"
+    ],
+    "skill-quadratic-sign": [
+      "quadratic_sign_condition",
+      "quadratic_sign_pattern"
+    ],
+    "skill-solve-quadratic": [
+      "solve_quadratic"
+    ],
+    "skill-quantified-range": [
+      "select_quantifier_policy"
+    ],
+    "method-complete-square": [
+      "complete_square"
+    ],
+    "quadratic-interval-extremum": [
+      "quadratic_interval_range"
+    ],
+    "skill-linear-range": [
+      "linear_range"
+    ],
+    "skill-reciprocal-range": [
+      "reciprocal_range"
+    ],
+    "method-elimination": [
+      "elimination"
+    ],
+    "method-substitution": [
+      "substitution"
+    ],
+    "quadratic-inequality-solve": [
+      "submethod"
+    ],
+    "method-square-extremum": [
+      "submethod"
+    ]
+  },
+  "internal": {
+    "apply_quantifier_policy": [
+      "method-separation#restore"
+    ],
+    "square_extremum": [
+      "method-square-extremum#range"
+    ],
+    "separate_parameter": [
+      "method-separation#separate"
+    ]
+  }
+}

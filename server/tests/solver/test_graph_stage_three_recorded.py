@@ -68,7 +68,7 @@ def test_all_22_recordings_reach_selection_with_scoped_gold(tmp_path):
 
     configured = os.getenv("GRAPH_STAGE_THREE_RUN_DIR")
     output = Path(configured) if configured else tmp_path / "batch"
-    summary = run_recorded_batch(STAGE_ONE_BATCH, output)
+    summary = run_recorded_batch(STAGE_ONE_BATCH, output, milestone="1a")
     assert summary["completed"] and len(summary["results"]) == 22
     assert_no_new_calls(summary)
     assert sum(row["eligible"] for row in summary["results"]) == 24
@@ -112,7 +112,7 @@ def test_real_q01_selection_provenance_is_admitted_without_new_calls(tmp_path):
     assert replay["historical"]["llm"]["new_semantic_calls"] == 1
     assert_no_new_calls(replay)
     output = replay_directory / "stage-three"
-    result = run_sample(replay_directory / "stage-two-result.json", output)
+    result = run_sample(replay_directory / "stage-two-result.json", output, milestone="1a")
     assert result["status"] == "completed", str(output / "index.html")
     assert result["input_validation"]["ok"]
     assert result["stage_two"]["sha256"] == revision(replay)
@@ -148,7 +148,7 @@ def test_revalidated_student_minimum_recording_preserves_original_goal(tmp_path,
     ]
     assert_no_new_calls(stage_two)
     output = source / "stage-three"
-    result = run_sample(stage_two_directory / "stage-two-result.json", output)
+    result = run_sample(stage_two_directory / "stage-two-result.json", output, milestone="1a")
     assert result["status"] == "completed", str(output / "index.html")
     assert result["input_validation"]["ok"]
     assert result["stage_one"]["sha256"] == revision(admitted_stage_one)

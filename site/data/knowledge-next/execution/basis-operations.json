@@ -1,0 +1,41 @@
+{
+  "contract": "graph-basis-operations/v1",
+  "operations": {
+    "add_both_sides": [
+      "inequality-properties#addition"
+    ],
+    "multiply_constant": [
+      "inequality-properties#multiplication"
+    ],
+    "identity": [
+      "equality-properties#identity"
+    ],
+    "quadratic_zeros": [
+      "quadratic-function-properties#zeros"
+    ],
+    "all_real_sign": [
+      "quadratic-inequality#all-real"
+    ],
+    "discriminant_condition": [
+      "quadratic-equation#discriminant"
+    ],
+    "quadratic_roots": [
+      "quadratic-equation#roots"
+    ],
+    "quadratic_signs": [
+      "quadratic-inequality#signs"
+    ],
+    "universal": [
+      "quantifiers#universal"
+    ],
+    "quantified_bound": [
+      "function-range-extrema#quantified"
+    ],
+    "square_nonnegative": [
+      "square-nonnegative#nonnegative"
+    ],
+    "multiply_negative": [
+      "inequality-properties#multiplication"
+    ]
+  }
+}

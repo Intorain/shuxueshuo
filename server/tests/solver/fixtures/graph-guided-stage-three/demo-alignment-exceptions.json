@@ -1,0 +1,20 @@
+{
+  "contract": "graph-demo-alignment-exceptions/v1",
+  "exceptions": [
+    {
+      "id": "separation-restore-normalize",
+      "status": "pending_human_confirmation",
+      "route": "extremum",
+      "demo_step": "e_range",
+      "method": "method-separation",
+      "step": "restore",
+      "public_ref": "skill-inequality-transform",
+      "capability": "normalize_to_zero",
+      "used_basis": [
+        "inequality-properties#addition"
+      ],
+      "order_before": "quadratic-inequality-solve",
+      "reason": "量词策略仅产生参数式与界的比较；把 a^2-3*a>=4 移项为 a^2-3*a-4>=0 是真实公共技能调用。Demo 的 e_range 未列出该调用，保留原稿并登记实际差异，等待人工确认。"
+    }
+  ]
+}

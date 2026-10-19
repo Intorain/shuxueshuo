@@ -1,0 +1,30 @@
+{
+  "contract": "graph-stage-three-answer-gold/v1",
+  "source": "Q01 原题与人工 Demo 独立解答",
+  "cases": {
+    "q01": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-oo",
+            "upper": "-1",
+            "left_closed": false,
+            "right_closed": true
+          },
+          {
+            "lower": "4",
+            "upper": "oo",
+            "left_closed": true,
+            "right_closed": false
+          }
+        ]
+      },
+      "routes": [
+        "discriminant",
+        "extremum"
+      ]
+    }
+  }
+}

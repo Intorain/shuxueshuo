@@ -50,3 +50,29 @@ def test_unknown_set_comparison_cannot_become_consistent(monkeypatch):
     monkeypatch.setattr(verification, "_set_mismatch", unknown)
     answer = finalize_goal({"kind": "find_range"}, sp.S.Reals)
     assert calculations.consistency(sp.S.Reals, answer, previous(sp.S.Reals)) == "unknown"
+
+
+def test_extremum_consistency_compares_exact_values_not_display():
+    feasible = sp.Interval(sp.sqrt(2), sp.oo)
+    answer = finalize_goal({"kind": "find_minimum"}, feasible)
+    earlier = finalize_goal({"kind": "find_minimum"}, feasible)
+    earlier["value"].update(expression="different inert display", latex=r"2/\sqrt{2}")
+    routes = [{"status": "verified", "feasible_set_exact": encode_value(feasible), "answer": earlier}]
+    assert calculations.consistency(feasible, answer, routes) == "consistent"
+    earlier["value"]["exact"] = encode_value(sp.sqrt(3))
+    assert calculations.consistency(feasible, answer, routes) == "conflict"
+
+
+def test_equal_minima_do_not_mask_different_feasible_sets():
+    first, second = sp.Interval(0, 1), sp.Interval(0, 2)
+    routes = [{"status": "verified", "feasible_set_exact": encode_value(first),
+               "answer": finalize_goal({"kind": "find_minimum"}, first)}]
+    assert calculations.consistency(second, finalize_goal({"kind": "find_minimum"}, second), routes) == "conflict"
+
+
+def test_extremum_consistency_cannot_ignore_attainment():
+    feasible = sp.Interval.open(0, 1)
+    answer = finalize_goal({"kind": "find_minimum"}, feasible)
+    earlier = finalize_goal({"kind": "find_minimum"}, sp.Interval(0, 1))
+    routes = [{"status": "verified", "feasible_set_exact": encode_value(feasible), "answer": earlier}]
+    assert calculations.consistency(feasible, answer, routes) == "conflict"

@@ -316,3 +316,118 @@ def append_boundary(state, evidence, *, feasible_set=None):
         }
     )
     return updated
+
+
+def _goal_math(value, *, set_value=False):
+    """Decode an already certified value; do not solve for its bound here."""
+    if not isinstance(value, dict) or "exact" not in value:
+        raise ValueError("presentation.goal_exact_value_required")
+    decoded = decode_value(value["exact"])
+    if not isinstance(decoded, sp.Set if set_value else sp.Expr):
+        raise TypeError("presentation.goal_math_type")
+    if value.get("expression") != sp.sstr(decoded) or value.get("latex") != sp.latex(decoded):
+        raise ValueError("presentation.goal_display_mismatch")
+    return decoded
+
+
+def append_goal_finalization(state, answer, evidence):
+    """Append a checked goal conclusion without recomputing extrema.
+
+    Range closure retains its existing record and adds no card. Extremum closure
+    requires the independent boundary card first and uses only the supplied exact
+    bound, membership evidence and typed answer.
+    """
+    updated = deepcopy(state)
+    records = updated.setdefault("finalization", deepcopy(updated["trajectory"]["finalization"]))
+    kind = answer.get("kind")
+    if kind == "find_range":
+        if answer.get("status") != "set":
+            raise ValueError("presentation.goal_answer_invalid")
+        records.append({"capability": "finalize_goal", "answer": deepcopy(answer)})
+        updated["trajectory"]["finalization"] = deepcopy(records)
+        return updated
+    if kind not in ("find_minimum", "find_maximum"):
+        raise ValueError("presentation.goal_kind_unsupported")
+    status = answer.get("status")
+    minimum = kind == "find_minimum"
+    direction = "lower" if minimum else "upper"
+    unbounded = "unbounded_below" if minimum else "unbounded_above"
+    checks = evidence.get("checks") if isinstance(evidence, dict) else None
+    if (
+        not checks or not all(check.get("passed") is True for check in checks)
+        or evidence.get("kind") != "goal_closure" or evidence.get("goal_kind") != kind
+        or evidence.get("status") != status or evidence.get("direction") != direction
+        or status not in ("attained", "not_attained", unbounded, "empty_feasible_set")
+    ):
+        raise ValueError("presentation.goal_evidence_unverified")
+    fragments = updated["fragments"]
+    if (not fragments or fragments[-1]["display_unit"] != "boundary"
+            or updated.get("verification", {}).get("status") != "verified"):
+        raise ValueError("presentation.goal_independent_boundary_required")
+    boundary_sources = {f"/finalization/{index}" for index, record in enumerate(records)
+                        if record.get("capability") == "endpoint_check"
+                        and record.get("postconditions")
+                        and all(check.get("passed") is True for check in record["postconditions"])}
+    if not boundary_sources.intersection(fragments[-1]["source_refs"]):
+        raise ValueError("presentation.goal_independent_boundary_required")
+    feasible = _goal_math(evidence.get("feasible_set"), set_value=True)
+    if evidence["feasible_set"]["exact"] != updated.get("feasible_set_exact"):
+        raise ValueError("presentation.goal_feasible_set_mismatch")
+    if any(record.get("capability") == "finalize_goal" for record in records):
+        raise ValueError("presentation.goal_already_finalized")
+    name, bound_name = ("最小值", "下确界") if minimum else ("最大值", "上确界")
+    after, displayed = [], None
+    if status == "empty_feasible_set":
+        valid = (evidence.get("empty") is True and feasible is sp.S.EmptySet
+                 and all(evidence.get(key) is None for key in ("bounded", "bound", "member", "attained"))
+                 and "value" not in answer and "bound" not in answer)
+        explanation = f"完整可行集为空，没有满足题设的参数，因此{name}不存在。"
+    elif status == unbounded:
+        bound = _goal_math(evidence.get("bound"))
+        valid = (evidence.get("empty") is False and evidence.get("bounded") is False
+                 and evidence.get("member") is False and evidence.get("attained") is False
+                 and bound is (-sp.oo if minimum else sp.oo)
+                 and "value" not in answer and "bound" not in answer)
+        explanation = f"完整可行集已通过独立验证。可行集没有{'下' if minimum else '上'}界，因此{name}不存在。"
+    else:
+        attained = status == "attained"
+        displayed = answer.get("value" if attained else "bound")
+        bound = _goal_math(displayed)
+        valid = (evidence.get("empty") is False and evidence.get("bounded") is True
+                 and evidence.get("member") is attained and evidence.get("attained") is attained
+                 and displayed == evidence.get("bound") and not bound.free_symbols
+                 and bound.is_real is True and bound.is_finite is True)
+        after.append(bound)
+        membership = "属于" if attained else "不属于"
+        explanation = (f"完整可行集已通过独立验证。{bound_name}为 ${sp.latex(bound)}$，该界{membership}可行集。"
+                       + (f"因此{name}为 ${sp.latex(bound)}$，能够取得。" if attained else
+                          f"因此{name}不存在，只能趋近该{bound_name}。"))
+    if not valid:
+        raise ValueError("presentation.goal_answer_evidence_mismatch")
+    used_basis = ["function-range-extrema#attainability"]
+    operation = {
+        "capability": "finalize_goal", "public_ref": None,
+        "answer": deepcopy(answer), "outputs": {"answer": deepcopy(answer), "evidence": deepcopy(evidence)},
+        "operations": ["goal_finalization"], "used_basis": used_basis,
+        "postconditions": [*deepcopy(checks), {"kind": "goal_answer_evidence_match", "passed": True}],
+    }
+    index = len(records)
+    records.append(operation)
+    updated["trajectory"]["finalization"] = deepcopy(records)
+    fragment = make_fragment(
+        updated, unit_id="goal_finalization",
+        method_ref=updated["method"] + "#" + read("presentation-registry")["boundary_steps"][updated["method"]],
+        template="goal_minimum" if minimum else "goal_maximum", before=[feasible], after=after,
+        source_refs=[f"/finalization/{index}"], used_basis=used_basis, explanation=explanation,
+    )
+    fragment["before"][0]["exact"] = deepcopy(evidence["feasible_set"]["exact"])
+    if displayed is not None:
+        fragment["after"][0]["exact"] = deepcopy(displayed["exact"])
+    fragment["math_step_sha256"] = math_step_hash(fragment)
+    fragments.append(fragment)
+    updated["trajectory"]["math_steps"].append({
+        "step_id": fragment["step_id"], "math_step_sha256": fragment["math_step_sha256"],
+        "source_refs": fragment["source_refs"],
+        "file": f"math-steps/{updated['route_id']}/{fragment['step_id']}.json",
+    })
+    return updated

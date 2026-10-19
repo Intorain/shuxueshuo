@@ -79,8 +79,8 @@ try {
   };
   const collectPublicPaths = (snapshot, route) => {
     const paths = [];
-    for (const {record, call, source_ref} of callsFor(trajectoryFor(snapshot, route)).filter(item => item.call.public_ref)) {
-      assert.ok(!call.rule_ref, 'variable-route public calls must retain their actual direct call occurrence');
+    for (const {record, call, source_ref} of callsFor(trajectoryFor(snapshot, route))
+      .filter(item => item.call.public_ref && !item.call.rule_ref)) {
       const cards = snapshot.math_steps.filter(card => card.route_id === route &&
         JSON.stringify(card.case_path) === JSON.stringify(record.case_path) && card.source_refs.includes(source_ref));
       assert.ok(cards.length, `public call ${route}:${source_ref} needs a readable source card`);
@@ -140,6 +140,19 @@ try {
   if (config.variable_swap) {
     assert.ok(paused.math_steps.every(card => card.route_id === firstRoute && card.display_unit !== 'boundary'));
     assert.ok(!(trajectoryFor(paused, firstRoute).finalization || []).some(call => call.capability === 'endpoint_check'));
+  }
+  if (config.goal_extremum) {
+    assert.ok(paused.math_steps.every(card => !['boundary', 'goal_finalization'].includes(card.display_unit)),
+      'independent boundary and goal conclusion must remain absent before verification');
+    assert.ok(!(trajectoryFor(paused, firstRoute).finalization || [])
+      .some(call => ['endpoint_check', 'finalize_goal'].includes(call.capability)));
+    assert.equal(config.provenance.kind, 'real_recorded_image_and_review');
+    assert.equal(config.provenance.historical_semantic_calls, 2);
+    assert.equal(config.provenance.historical_network_attempts, 2);
+    assert.equal(config.provenance.new_semantic_calls, 0);
+    assert.equal(config.provenance.new_network_attempts, 0);
+    assert.ok(Object.keys(config.provenance.retained_files_sha256).length > 2,
+      'raw image extraction/review and revalidation receipts must remain linked in this artifact');
   }
   assert.equal(paused.handoffs.length, 0);
   assert.equal(await page.locator('.stage-three-completion:visible').count(), 0);
@@ -339,7 +352,7 @@ try {
     console.log('Verified checked internal-operation basis appears only after reading its condition card.');
   }
   if (rulePaths.length) await assertRulePathsAt(rulePaths, await page.locator('.stage-three-math-step:visible').count());
-  let classification = null, separation = null, variableSwap = null;
+  let classification = null, separation = null, variableSwap = null, goalFinalization = null;
   if (config.interval_cases) {
     const trajectory = trajectoryFor(completed, firstRoute);
     const cases = trajectory.steps.flatMap(record => record.case_results || []);
@@ -495,6 +508,91 @@ try {
     await page.screenshot({path: `${output}/08-variable-sources.png`, fullPage: true});
     console.log('Verified variable-route public sources, reading-dependent graph activation, exact gold and independent boundaries.');
   }
+  if (config.goal_extremum) {
+    goalFinalization = [];
+    assert.deepEqual(completed.math_steps.filter(card => card.route_id === firstRoute).slice(0, prefixCards), paused.math_steps,
+      'independent goal closure preserves the complete pre-verification prefix');
+    for (const route of config.routes) {
+      const checkpoint = completed.checkpoints.find(item => item.route_id === route);
+      const trajectory = trajectoryFor(completed, route);
+      const handoff = completed.handoffs.find(item => item.route_id === route);
+      const cards = completed.math_steps.filter(card => card.route_id === route);
+      assert.deepEqual(trajectory.constraint_context.goal, config.gold.goal, 'the original minimum goal must survive execution');
+      assert.deepEqual(checkpoint.driver_state.feasible_set_exact, config.gold.feasible_set_exact,
+        'the complete feasible set must equal the independently authored gold');
+      assert.deepEqual(handoff.answer, config.gold.answer, 'typed extremum answer must equal independent exact gold');
+      const finalizations = trajectory.finalization.map((call, index) => ({call, index}));
+      const boundaries = finalizations.filter(({call}) => call.capability === 'endpoint_check');
+      const closures = finalizations.filter(({call}) => call.capability === 'finalize_goal');
+      assert.equal(boundaries.length, 1); assert.equal(closures.length, 1);
+      const boundary = boundaries[0], closure = closures[0];
+      assert.ok(checked(boundary.call)); assert.ok(checked(closure.call));
+      assert.equal(boundary.call.outputs.status, 'passed');
+      assert.deepEqual(boundary.call.outputs.points.map(point => point.point.expression), config.gold.boundary_points);
+      assert.ok(boundary.call.outputs.points.every(point => point.included && point.holds && point.passed));
+      assert.equal(closure.call.public_ref, null, 'goal closure cites its checked internal operation');
+      assert.deepEqual(closure.call.answer, config.gold.answer);
+      assert.deepEqual(closure.call.outputs.answer, config.gold.answer);
+      assert.ok(closure.call.operations.includes('goal_finalization'));
+      const proof = closure.call.outputs.evidence;
+      assert.equal(proof.kind, 'goal_closure'); assert.equal(proof.goal_kind, config.goal_extremum.kind);
+      assert.equal(proof.status, config.goal_extremum.status); assert.equal(proof.direction, 'lower');
+      assert.equal(proof.empty, false); assert.equal(proof.bounded, true);
+      assert.equal(proof.member, true); assert.equal(proof.attained, true);
+      assert.deepEqual(proof.feasible_set.exact, config.gold.feasible_set_exact);
+      assert.deepEqual(proof.bound, config.gold.answer.value);
+      assert.ok(proof.checks.length && proof.checks.every(check => check.passed === true));
+      assert.ok(proof.checks.some(check => check.kind === 'goal_answer_matches_feasible_set'));
+      const closureCards = cards.filter(card => card.display_unit === 'goal_finalization');
+      assert.equal(closureCards.length, 1);
+      const goalCard = closureCards[0], boundaryCard = cards.at(-2);
+      assert.equal(goalCard.step_id, cards.at(-1).step_id);
+      assert.equal(goalCard.title, '确定最小值'); assert.equal(boundaryCard.display_unit, 'boundary');
+      assert.deepEqual(goalCard.source_refs, [`/finalization/${closure.index}`]);
+      assert.deepEqual(boundaryCard.source_refs, [`/finalization/${boundary.index}`]);
+      assert.deepEqual(goalCard.before[0].exact, config.gold.feasible_set_exact);
+      assert.deepEqual(goalCard.after[0].exact, config.gold.answer.value.exact);
+      assert.ok(goalCard.used_basis.includes('function-range-extrema#attainability'));
+      const directPaths = collectPublicPaths(completed, route), selectedPaths = collectRulePaths(completed, route);
+      assert.ok(directPaths.length, 'the route retains real public calls');
+      if (route !== firstRoute) await page.locator(`[data-stream-route=${JSON.stringify(route)}]`).click();
+      const section = page.locator(`.stage-three-route[data-route-id=${JSON.stringify(route)}]`);
+      await section.waitFor({state: 'visible'});
+      let readCards = await section.locator('.stage-three-math-step:visible').count();
+      assert.ok(readCards < goalCard.ordinal);
+      await assertPublicPathsAt(directPaths, readCards);
+      if (selectedPaths.length) await assertRulePathsAt(selectedPaths, readCards);
+      assert.equal(await section.locator('.stage-three-completion:visible').count(), 0,
+        'a verified result must remain hidden until the final goal card is read');
+      while (readCards < boundaryCard.ordinal) {
+        await page.locator(`[data-stream-next=${JSON.stringify(route)}]`).click();
+        readCards = await section.locator('.stage-three-math-step:visible').count();
+        await assertPublicPathsAt(directPaths, readCards);
+        if (selectedPaths.length) await assertRulePathsAt(selectedPaths, readCards);
+      }
+      assert.equal(await section.locator('.stage-three-completion:visible').count(), 0,
+        'reading the complete feasible set and boundary alone must not skip the extremum conclusion');
+      await page.locator(`[data-stream-next=${JSON.stringify(route)}]`).click();
+      assert.equal(await section.locator('.stage-three-math-step:visible').count(), cards.length);
+      await section.locator('.stage-three-completion').waitFor({state: 'visible'});
+      assert.equal(await section.getAttribute('data-answer-status'), 'attained');
+      assert.match(await section.locator('.stage-three-completion').textContent(), /最小值/);
+      assert.ok(await section.locator('.stage-three-completion .katex').count() > 0);
+      await basisLinkFor('function-range-extrema#attainability').waitFor({state: 'attached'});
+      const shown = page.locator(`.stage-three-math-step[data-step-id=${JSON.stringify(goalCard.step_id)}]`);
+      assert.ok(await shown.locator('.katex').count() > 0);
+      await shown.scrollIntoViewIfNeeded();
+      await section.locator('.stage-three-completion').scrollIntoViewIfNeeded();
+      await page.screenshot({path: `${output}/09-goal-closure-${route}.png`, fullPage: true});
+      goalFinalization.push({route, goal: trajectory.constraint_context.goal, answer: handoff.answer,
+        feasible_set_exact: checkpoint.driver_state.feasible_set_exact, proof,
+        boundary_source: `/finalization/${boundary.index}`, boundary_points: boundary.call.outputs.points,
+        closure_source: `/finalization/${closure.index}`, closure_step_id: goalCard.step_id,
+        actual_cards: cards.length, boundary_precedes_goal: true, completion_waits_for_goal_reading: true,
+        direct_paths: directPaths, rule_paths: selectedPaths, activation_follows_actual_reading: true});
+    }
+    console.log('Verified both Q13 routes: exact full set, independent boundary, attained minimum, readable conclusion and actual graph sources.');
+  }
   assert.equal(await page.locator('.katex-error').count(), 0);
   await api('/test/invalidate', 'POST');
   await page.waitForFunction(() => [...document.querySelectorAll('.stage-three-route')].every(node => node.dataset.available === 'false'));
@@ -510,7 +608,8 @@ try {
     interrupted_without_events: true, interruption_fixture: 'execution_metadata_only', explicit_resume_requests: resumeRequests,
     mathematical_dom_preserved: true, conflict_revoked_completion_and_qa: true, internal_basis: internalBasis,
     rule_path: rulePaths.length === 1 ? rulePaths[0] : null, rule_paths: rulePaths,
-    classification, separation, variable_swap: variableSwap, llm_provider_attempts: completedState.llm_provider_attempts,
+    classification, separation, variable_swap: variableSwap, goal_finalization: goalFinalization,
+    provenance: config.provenance || null, llm_provider_attempts: completedState.llm_provider_attempts,
     formula_errors: 0, ...events, browser_errors: errors,
   }, null, 2));
 } catch (error) {

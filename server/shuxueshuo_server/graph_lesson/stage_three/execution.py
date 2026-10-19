@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 from . import driver, verification
 from .checkpoint import export_json, make_checkpoint
 from .contracts import ROOT
+from .goals import GoalClosureMismatch
 from .handoff import complete_route
 from .route_calculations import RouteCalculations
 
@@ -102,7 +103,10 @@ def _artifact(state, context, folder):
 
 
 def _mark_failure(state, exc):
-    if isinstance(exc, verification.ContextMismatch):
+    if isinstance(exc, GoalClosureMismatch):
+        state["status"] = "math_failed"
+        diagnostic = {"code": "goal_finalize.answer_mismatch", "message": str(exc)}
+    elif isinstance(exc, verification.ContextMismatch):
         state["status"] = "math_failed"
         diagnostic = {"code": "constraint_context_mismatch", "message": str(exc)}
     elif isinstance(exc, verification.VerificationGap):
@@ -214,14 +218,27 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
                         state["status"] = "math_failed"
                         state.setdefault("diagnostics", []).append({"code": "verification.endpoint_failed"})
                     else:
-                        result = calculator.call("goal_finalize_and_consistency", {
-                            "operation": "finish", "goal": goal["goal"],
-                            "feasible_set_exact": state["feasible_set_exact"], "previous": list(previous),
-                        }, bucket="verification")
-                        state["verified_result"] = {"feasible_set": result["feasible_set"], "answer": result["answer"]}
-                        state["finalization"].append({"capability": "finalize_goal", "answer": result["answer"]})
+                        if not state.get("goal_finalized"):
+                            result = calculator.call("goal_finalize_and_consistency", {
+                                "operation": "finish", "goal": goal["goal"], "state": state,
+                                "feasible_set_exact": state["feasible_set_exact"], "previous": list(previous),
+                            }, bucket="verification")
+                            state = result["state"]
+                            state["verified_result"] = {"feasible_set": result["feasible_set"], "answer": result["answer"]}
+                            state["consistency"] = result["consistency"]
+                            state["goal_finalized"] = True
+                            calculator.sync_state(state)
+                            # Persist the final mathematical card and its source
+                            # before the terminal publication/handoff boundary.
+                            index = len(state["finalization"]) - 1
+                            _commit(store, state, "goal-finalization", phase="finalization",
+                                    events=[_event("solver.step_completed", state, {
+                                        "operation": "finalize_goal", "status": state["status"],
+                                        "trajectory": [], "finalization": [{
+                                            "index": index, "record": state["finalization"][index],
+                                        }],
+                                    })], hooks=hooks)
                         state["status"] = "verified"
-                        state["consistency"] = result["consistency"]
         except Exception as exc:  # noqa: BLE001 -- retain route evidence, never turn bugs into unknown.
             _mark_failure(state, exc)
         finally:

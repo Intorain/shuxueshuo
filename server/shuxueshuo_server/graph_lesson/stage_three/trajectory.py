@@ -34,6 +34,11 @@ _CONSTANTS = {
 
 
 def encode_value(value):
+    if isinstance(value, sp.CRootOf):
+        # A rational polynomial and a root index are inert data. Never persist
+        # RootOf's printed expression for later sympify/eval reconstruction.
+        return {"$math": "CRootOf", "coefficients": [encode_value(c) for c in value.poly.all_coeffs()],
+                "index": int(value.index)}
     if isinstance(value, sp.Symbol):
         return {"$math": "Symbol", "name": value.name}
     if isinstance(value, sp.Integer):
@@ -72,6 +77,17 @@ def decode_value(value):
         return sp.Integer(value["value"])
     if name == "Rational":
         return sp.Rational(int(value["p"]), int(value["q"]))
+    if name == "CRootOf":
+        coefficients = value.get("coefficients")
+        index = value.get("index")
+        if (not isinstance(coefficients, list) or not 2 <= len(coefficients) <= 49
+                or type(index) is not int or not 0 <= index < len(coefficients) - 1):
+            raise ValueError("checkpoint.invalid_algebraic_root")
+        coefficients = [decode_value(c) for c in coefficients]
+        if (any(not isinstance(c, sp.Rational) for c in coefficients) or coefficients[0] == 0):
+            raise ValueError("checkpoint.invalid_algebraic_polynomial")
+        polynomial = sp.Poly.from_list(coefficients, sp.Symbol("_root"), domain=sp.QQ)
+        return sp.CRootOf(polynomial, index, radicals=False)
     if name not in _CONSTRUCTORS:
         raise ValueError("checkpoint.unknown_math_type")
     arguments = [decode_value(v) for v in value["args"]]

@@ -64,6 +64,8 @@ CASE_EXPECTATIONS = {
         "slope_sign": "positive", "endpoint_mode": "right_endpoint", "endpoint_conditions": 1}},
     "q09": {"routes": ["variable"], "variable_swap": {
         "slope_sign": "unknown", "endpoint_mode": "both_endpoints", "endpoint_conditions": 2}},
+    "q13": {"routes": ["interval", "extremum"], "goal_extremum": {
+        "kind": "find_minimum", "status": "attained"}},
 }
 
 
@@ -71,30 +73,66 @@ def save(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def variable_gold(case):
+def answer_gold(case):
     """Read independently authored math gold, never a current execution result."""
-    path = ROOT / "server/tests/solver/fixtures/graph-guided-stage-three/answers.gold.json"
+    name = "extrema-answers.gold.json" if case == "q13" else "answers.gold.json"
+    path = ROOT / "server/tests/solver/fixtures/graph-guided-stage-three" / name
     authored = json.loads(path.read_text())["cases"][case]
     intervals = [sp.Interval(sp.sympify(row["lower"]), sp.sympify(row["upper"]),
                              left_open=not row["left_closed"], right_open=not row["right_closed"])
                  for row in authored["feasible_set"]["intervals"]]
     feasible = sp.Union(*intervals)
-    return {"source": str(path.relative_to(ROOT)), "feasible_set_exact": encode_value(feasible),
+    gold = {"source": str(path.relative_to(ROOT)), "feasible_set_exact": encode_value(feasible),
             "boundary_points": [sp.sstr(point) for point in sorted(feasible.boundary)]}
+    if "answer" in authored:
+        answer = dict(authored["answer"])
+        for field in ("value", "bound"):
+            if field in answer:
+                value = sp.sympify(answer[field])
+                answer[field] = {"expression": sp.sstr(value), "latex": sp.latex(value), "exact": encode_value(value)}
+        gold.update(goal=authored["goal"], answer=answer)
+    return gold
 
 
 def seed(output, source, case):
     directory = output / "search" / PAGE_ID / "problems" / SEARCH_ID
     directory.mkdir(parents=True)
-    shutil.copytree(source, directory / "stage-two-1")
+    shutil.copytree(source, directory / "stage-two-1", ignore=shutil.ignore_patterns("stage-three"))
     shutil.copyfile(source / "source.png", directory / "question.png")
     stage_one = json.loads((source / "input.json").read_text())
     digest = sha256((directory / "question.png").read_bytes()).hexdigest()
-    save(directory / "result.json", {
+    result = {
         "status": "reviewed_candidate", "candidate": stage_one["candidate"], "features": stage_one["features"],
         "features_ok": True, "source_reviewed": True, "review_findings": [],
-        "question_sha256": digest, "sent_image_sha256": [digest],
-    })
+    }
+    provenance = None
+    if case == "q13":
+        # Consume the integration run's actual revalidation result; do not
+        # manufacture an upload admission or reviewed flag for browser setup.
+        parent = source.parent
+        result = json.loads((parent / "revalidated-stage-one.json").read_text())
+        evidence = json.loads((parent / "revalidation.json").read_text())
+        assert stage_one["statuses"]["admission"] == "student_upload"
+        assert "passed" not in stage_one["statuses"] and "evaluation" not in stage_one["statuses"]
+        assert result["candidate"] == stage_one["candidate"] and result["features"] == stage_one["features"]
+        assert result["status"] == "reviewed_candidate" and result["source_reviewed"] is True
+        assert evidence["review"]["status"] == "confirmed" and evidence["source_sha256"] == digest
+        assert evidence["new_semantic_calls"] == evidence["new_network_attempts"] == 0
+        retained = output / "source-evidence"
+        retained.mkdir()
+        shutil.copytree(parent / "recorded-source", retained / "recorded-source")
+        for name in ("revalidated-stage-one.json", "revalidation.json"):
+            shutil.copyfile(parent / name, retained / name)
+        provenance = {"kind": "real_recorded_image_and_review", "source_sha256": digest,
+                      "revalidation": "source-evidence/revalidation.json",
+                      "revalidated_stage_one": "source-evidence/revalidated-stage-one.json",
+                      "recorded_source": "source-evidence/recorded-source",
+                      "retained_files_sha256": {
+                          str(path.relative_to(output)): sha256(path.read_bytes()).hexdigest()
+                          for path in sorted(retained.rglob("*")) if path.is_file()},
+                      **{key: evidence[key] for key in ("historical_semantic_calls", "historical_network_attempts",
+                                                        "new_semantic_calls", "new_network_attempts")}}
+    save(directory / "result.json", {**result, "question_sha256": digest, "sent_image_sha256": [digest]})
     with Image.open(directory / "question.png") as image:
         size = list(image.size)
     save(directory / "crop.json", {"page_id": PAGE_ID, "box": [0, 0, 1, 1], "page_size": size,
@@ -102,7 +140,8 @@ def seed(output, source, case):
     source_label = str(source.relative_to(ROOT)) if source.is_relative_to(ROOT) else str(source)
     save(output / "recording.json", {"source": source_label, "case": case,
                                     "evidence": "historical_recording", "new_llm_calls": 0,
-                                    "qa": "constructed_interface_fixture"})
+                                    "qa": "constructed_interface_fixture",
+                                    **({"provenance": provenance} if provenance else {})})
     return directory
 
 
@@ -119,12 +158,14 @@ def main():
         if not (source / name).is_file():
             parser.error(f"recording is missing {name}: {source}")
     expectations = {"case": args.case, **CASE_EXPECTATIONS[args.case]}
-    if expectations.get("variable_swap"):
-        expectations["gold"] = variable_gold(args.case)
+    if expectations.get("variable_swap") or expectations.get("goal_extremum"):
+        expectations["gold"] = answer_gold(args.case)
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=False)
-    save(output / "browser-case.json", expectations)
     directory = seed(output, source, args.case)
+    if expectations.get("goal_extremum"):
+        expectations["provenance"] = json.loads((output / "recording.json").read_text())["provenance"]
+    save(output / "browser-case.json", expectations)
     releases = {route: threading.Event() for route in expectations["routes"]}
     paused = set()
     llm_provider_attempts = 0
@@ -226,8 +267,17 @@ def main():
         screenshots.append(("07-separation-range.png", "分离路线的除法方向与范围计算均来自实际执行证据"))
     if expectations.get("variable_swap"):
         screenshots.append(("08-variable-sources.png", "逐卡阅读主元法；公开调用与独立边界检查按真实来源点亮图谱"))
+    if expectations.get("goal_extremum"):
+        screenshots.extend((f"09-goal-closure-{route}.png", "独立边界检查后，读取完整可行集并确定最小值")
+                           for route in expectations["routes"])
     figures = "".join(f'<figure><figcaption>{escape(title)}</figcaption><a href="{name}"><img src="{name}"></a></figure>'
                       for name, title in screenshots)
+    provenance_link = (
+        '<p>Q13 保留真实题图的历史识图与复核两次调用；本次离线复验和浏览器新增调用均为 0。'
+        '<a href="source-evidence/revalidation.json">本次复验证据</a> · '
+        '<a href="source-evidence/recorded-source/recording.json">历史录制文件校验清单</a></p>'
+        if expectations.get("goal_extremum") else ""
+    )
     (output / "index.html").write_text(
         '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>阶段③ 浏览器验收</title>'
         '<style>body{max-width:1100px;margin:32px auto;padding:20px;font:17px/1.7 system-ui;background:#f5f7f5;color:#203633}'
@@ -237,7 +287,7 @@ def main():
         '<p><a href="search/000000000000/problems/111111111111/stage-two-1/stage-three/index.html">求解轨迹与预算报告</a> · '
         '<a href="browser-evidence.json">浏览器验收数据</a> · <a href="recording.json">输入出处</a></p>'
         '<p>验收最后注入了构造的冲突事件，检查已交付答案和问答的撤销；这不是对原题数学结论的更正。</p>'
-        f'<pre>{escape(json.dumps(evidence, ensure_ascii=False, indent=2))}</pre>{figures}</html>', encoding="utf-8")
+        f'{provenance_link}<pre>{escape(json.dumps(evidence, ensure_ascii=False, indent=2))}</pre>{figures}</html>', encoding="utf-8")
     print(output / "browser-evidence.json")
 
 

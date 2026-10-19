@@ -179,6 +179,7 @@ class OriginalProblem:
     strict: bool = False
     quantifier: str = "∀"
     domain: sp.Set = sp.S.Reals
+    extended_coefficients_or_constraints: bool = False
 
     @property
     def parameter(self):
@@ -211,6 +212,121 @@ def _poly(expression, parameter):
     if result.degree() > 48:
         raise VerificationGap("verification_incomplete:polynomial_degree_limit")
     return result
+
+
+def _algebraic_poly(expression, parameter):
+    """Validate a polynomial over real algebraic constants without choosing conjugates."""
+    if expression.free_symbols - {parameter} or expression.has(sp.Float, sp.nan, sp.zoo):
+        raise VerificationGap("verification_incomplete:real_algebraic_coefficients_required")
+    try:
+        poly = sp.Poly(expression, parameter)
+    except BasePolynomialError as exc:
+        raise VerificationGap("verification_incomplete:rational_function_required") from exc
+    if poly.degree() > 48:
+        raise VerificationGap("verification_incomplete:polynomial_degree_limit")
+    if any(c.is_real is not True or c.is_algebraic is not True for c in poly.all_coeffs()):
+        raise VerificationGap("verification_incomplete:real_algebraic_coefficients_required")
+    return poly
+
+
+def _rational_function(expression, parameter):
+    numerator, denominator = sp.fraction(sp.cancel(expression))
+    top, bottom = (_algebraic_poly(value, parameter) for value in (numerator, denominator))
+    if bottom.is_zero:
+        raise VerificationGap("verification_incomplete:zero_denominator")
+    return top, bottom
+
+
+def _legacy_polynomial(expression, parameter, maximum=48):
+    top, bottom = _rational_function(expression, parameter)
+    return (bottom.degree() == 0 and top.degree() <= maximum
+            and all(c.is_Rational is True for poly in (top, bottom) for c in poly.all_coeffs()))
+
+
+def _replace_bound(ast, name, replacement):
+    if not isinstance(ast, list):
+        return ast
+    if ast[:2] == ["bound", name]:
+        return deepcopy(replacement)
+    return [_replace_bound(child, name, replacement) for child in ast]
+
+
+def _membership_ast(value, domain):
+    """Translate the notation's real set constructors into semialgebraic atoms."""
+    kind = domain[0]
+    if kind == "real":
+        # The tautology still reads value, retaining its original denominator.
+        return ["=", value, value]
+    if kind == "empty_set":
+        return ["!=", value, value]
+    if kind == "interval":
+        conditions = []
+        for endpoint, closed, lower in ((domain[3], domain[1], True), (domain[4], domain[2], False)):
+            if endpoint[0] == "infinity":
+                if endpoint[1] != (-1 if lower else 1):
+                    conditions.append(["!=", value, value])
+                continue
+            operator = (">=" if closed else ">") if lower else ("<=" if closed else "<")
+            conditions.append([operator, value, endpoint])
+        return ["and", *conditions] if conditions else ["=", value, value]
+    if kind == "set":
+        return ["or", *[["=", value, member] for member in domain[1:]]]
+    if kind in ("∪", "∩"):
+        return ["or" if kind == "∪" else "and", *[_membership_ast(value, member) for member in domain[1:]]]
+    if kind == "set_builder":
+        # Undefined predicate values are outside this set, not outside the
+        # entire problem. Keep the binder boundary when substituting a member.
+        return ["locally_defined", ["and", _membership_ast(value, domain[2]),
+                                    _replace_bound(domain[3], domain[1], value)]]
+    raise VerificationGap("unsupported_constraint:semialgebraic_membership_required")
+
+
+def _constraint_tree(ast, algebra, source_ref):
+    kind = ast[0]
+    common = {"source_ref": source_ref}
+    if kind == "locally_defined":
+        outer_denominators = algebra.denominators
+        algebra.denominators = []
+        try:
+            child = _constraint_tree(ast[1], algebra, source_ref)
+            local_denominators = algebra.denominators
+        except NotationError as exc:
+            if exc.code != "algebra.zero_denominator":
+                raise
+            # A constant member can land exactly on a predicate pole during
+            # substitution. Membership is then false, including under ∉;
+            # the member's own outer definedness has already been retained.
+            return {**common, "kind": "relation", "expression": sp.S.Zero,
+                    "operator": "!=", "origin": "set_builder_definedness"}
+        finally:
+            algebra.denominators = outer_denominators
+        guards = []
+        for denominator in local_denominators:
+            _rational_function(denominator, algebra.parameter)
+            # Explicit atoms retain even canceled holes in both the local
+            # predicate and its critical partition, underneath any complement.
+            guards.append({**common, "kind": "relation", "expression": denominator,
+                           "operator": "!=", "origin": "set_builder_definedness"})
+        return {**common, "kind": "and", "children": [*guards, child]}
+    if kind in ("and", "or"):
+        return {**common, "kind": kind,
+                "children": [_constraint_tree(child, algebra, source_ref) for child in ast[1:]]}
+    if kind in ("∈", "∉"):
+        # Read the member even for an empty set: definedness is not short-circuited.
+        _rational_function(algebra.expr(ast[1]), algebra.parameter)
+        child = _constraint_tree(_membership_ast(ast[1], ast[2]), algebra, source_ref)
+        return child if kind == "∈" else {**common, "kind": "not", "children": [child]}
+    if kind in ("<", "<=", ">", ">=", "=", "!="):
+        difference = bounded_expand(algebra.expr(ast[1]) - algebra.expr(ast[2]))
+        _rational_function(difference, algebra.parameter)
+        return {**common, "kind": "relation", "expression": difference, "operator": kind}
+    raise VerificationGap("unsupported_constraint:" + source_ref)
+
+
+def _constraint_atoms(constraint):
+    if constraint["kind"] in ("and", "or", "not"):
+        return [atom for child in constraint["children"] for atom in _constraint_atoms(child)]
+    return [constraint]
 
 
 def _flatten(ast):
@@ -265,8 +381,8 @@ def read_problem(candidate, target_ref, constraint_context=None):
     # The identically zero polynomial has degree -oo and is included as well.
     if polynomial.degree() > 2:
         raise VerificationGap("verification_incomplete:polynomial_degree_at_most_two_required")
-    for coefficient in polynomial.all_coeffs():
-        _poly(coefficient, algebra.parameter)
+    legacy_coefficients = [_legacy_polynomial(coefficient, algebra.parameter) for coefficient in polynomial.all_coeffs()]
+    extended = not all(legacy_coefficients)
     for entry, atom in atoms:
         source_ref = entry["source_ref"]
         if atom is main:
@@ -276,31 +392,29 @@ def read_problem(candidate, target_ref, constraint_context=None):
             continue
         if atom[0] == "default_domain" and atom[1] == goal["target"] and atom[2] == "real":
             processing.append({"source_ref": source_ref, "status": "redundant_real_domain"})
-        elif atom[0] == "∈" and atom[1] == goal["target"]:
+        elif (atom[0] == "∈" and atom[1] == goal["target"]
+              and atom[2][0] in ("real", "interval")
+              and not any(node[0] in ("ref", "bound") for node, _ in _walk(atom[2]))):
             parameter_domain = _interval(atom[2], algebra)
             constraints.append({"source_ref": source_ref, "kind": "membership", "set": parameter_domain})
             processing.append({"source_ref": source_ref, "status": "parameter_constraint",
                                "set": math_value(parameter_domain)})
-        elif atom[0] in ("<", "<=", ">", ">=", "=", "!="):
-            difference = bounded_expand(algebra.expr(atom[1]) - algebra.expr(atom[2]))
-            if _poly(difference, algebra.parameter).degree() > 1:
-                raise VerificationGap("unsupported_constraint:nonlinear_parameter_condition")
-            constraints.append({"source_ref": source_ref, "kind": "relation", "expression": difference,
-                                "operator": atom[0]})
-            processing.append({"source_ref": source_ref, "status": "parameter_constraint"})
         else:
-            raise VerificationGap("unsupported_constraint:" + source_ref)
+            constraint = _constraint_tree(atom, algebra, source_ref)
+            constraints.append(constraint)
+            extended = extended or constraint["kind"] != "relation" or not _legacy_polynomial(
+                constraint["expression"], algebra.parameter, maximum=1)
+            processing.append({"source_ref": source_ref, "status": "parameter_constraint"})
         denominator_sources.extend((d, source_ref) for d in algebra.denominators)
         algebra.denominators.clear()
     for denominator, _ in denominator_sources:
         if algebra.x in denominator.free_symbols:
             raise VerificationGap("verification_incomplete:bound_variable_denominator")
-        numerator, denominator_part = sp.fraction(sp.cancel(denominator))
-        _poly(numerator, algebra.parameter)
-        _poly(denominator_part, algebra.parameter)
+        _rational_function(denominator, algebra.parameter)
     return OriginalProblem(original, algebra, expression, main_entry["source_ref"], constraints,
                            denominator_sources, processing, strict=main[4][0] in (">", "<"),
-                           quantifier=main[1], domain=domain)
+                           quantifier=main[1], domain=domain,
+                           extended_coefficients_or_constraints=extended)
 
 
 def _relation(expression, operator):
@@ -510,15 +624,61 @@ def _contains_exact(domain, value):
     raise VerificationGap("verification_incomplete:set_membership")
 
 
+def _constraint_holds(constraint, parameter, value):
+    kind = constraint["kind"]
+    if kind == "membership":
+        return _contains_exact(constraint["set"], value)
+    if kind == "relation":
+        numerator, denominator = sp.fraction(sp.cancel(constraint["expression"]))
+        denominator_sign = _algebraic_sign(denominator.subs(parameter, value))
+        # A pole makes this atom false. Set-builder definedness guards remain
+        # inside their membership predicate, so its complement can include the
+        # pole; only outer arithmetic denominators exclude it problem-wide.
+        if denominator_sign == 0:
+            return False
+        sign = _algebraic_sign(numerator.subs(parameter, value)) * denominator_sign
+        return _relation_holds(sp.Integer(sign), constraint["operator"])
+    if kind == "not":
+        return not _constraint_holds(constraint["children"][0], parameter, value)
+    if kind in ("and", "or"):
+        truths = [_constraint_holds(child, parameter, value) for child in constraint["children"]]
+        return all(truths) if kind == "and" else any(truths)
+    raise VerificationGap("verification_incomplete:constraint_predicate")
+
+
+def _constraint_sources(constraint, parameter):
+    sources = []
+    for atom in _constraint_atoms(constraint):
+        if atom["kind"] == "relation":
+            sources.append((atom["expression"], atom["source_ref"], "parameter_condition"))
+        elif atom["kind"] == "membership":
+            for boundary in _set_boundaries(atom["set"]):
+                expression = _sympy_call("boundary_minimal_polynomial", sp.minpoly, boundary, parameter)
+                sources.append((expression, atom["source_ref"], "parameter_domain_boundary"))
+    return sources
+
+
+def _predicate_set(points, predicate):
+    accepted = []
+    for index, (left, right) in enumerate(pairwise([-sp.oo, *points, sp.oo])):
+        if predicate(_rational_between(left, right)):
+            accepted.append(sp.Interval.open(left, right))
+        if index < len(points) and predicate(points[index]):
+            accepted.append(sp.FiniteSet(points[index]))
+    return sp.Union(*accepted)
+
+
 def _constraint_set(constraint, parameter):
     if constraint["kind"] == "membership":
         return constraint["set"]
-    relation = _relation(constraint["expression"], constraint["operator"])
-    if relation is sp.true:
-        return sp.S.Reals
-    if relation is sp.false:
-        return sp.S.EmptySet
-    return sp.solve_univariate_inequality(relation, parameter, relational=False)
+    points, _ = _critical_sources(_constraint_sources(constraint, parameter), parameter)
+    return _predicate_set(points, lambda value: _constraint_holds(constraint, parameter, value))
+
+
+def _denominator_zero_set(expression, parameter):
+    numerator, _ = sp.fraction(sp.cancel(expression))
+    points, _ = _critical_sources([(numerator, "", "denominator_zero")], parameter)
+    return _predicate_set(points, lambda value: _algebraic_sign(numerator.subs(parameter, value)) == 0)
 
 
 @_sympy_gap_boundary
@@ -533,9 +693,7 @@ def apply_visible_constraints(candidate, target_ref, constraint_context, feasibl
         processing.append({"source_ref": constraint["source_ref"], "status": "intersected",
                            "constraint_set": math_value(domain), "result": math_value(result)})
     for expression, source in problem.denominators:
-        zeros = sp.solveset(expression, problem.parameter, domain=sp.S.Reals)
-        if zeros.has(sp.ConditionSet):
-            raise VerificationGap("verification_incomplete:denominator_zeros")
+        zeros = _denominator_zero_set(expression, problem.parameter)
         result = result - zeros
         processing.append({"source_ref": source, "status": "original_denominator_nonzero",
                            "denominator": math_value(expression), "excluded": math_value(zeros)})
@@ -620,8 +778,7 @@ def _point(problem, value):
         if not holds:
             return False, evidence
     for constraint in problem.constraints:
-        holds = (_contains_exact(constraint["set"], value) if constraint["kind"] == "membership"
-                 else _relation_holds(constraint["expression"].subs(problem.parameter, value), constraint["operator"]))
+        holds = _constraint_holds(constraint, problem.parameter, value)
         evidence.append({"source_ref": constraint["source_ref"], "kind": "parameter_constraint", "holds": holds})
         if not holds:
             return False, evidence
@@ -724,16 +881,14 @@ def _critical(problem):
                         problem.main_ref, "stationary_point_boundary"))
     if len(endpoint_values) == 2:
         sources.append((endpoint_values[0] - endpoint_values[1], problem.main_ref, "endpoint_value_order"))
-    for c in problem.constraints:
-        if c["kind"] == "relation":
-            sources.append((c["expression"], c["source_ref"], "parameter_condition"))
-        elif isinstance(c["set"], sp.Interval):
-            for boundary in (c["set"].start, c["set"].end):
-                if boundary not in (-sp.oo, sp.oo):
-                    # Algebraic endpoints have a rational minimal polynomial.
-                    expression = _sympy_call("boundary_minimal_polynomial", sp.minpoly, boundary, parameter)
-                    sources.append((expression, c["source_ref"], "parameter_domain_boundary"))
+    for constraint in problem.constraints:
+        sources.extend(_constraint_sources(constraint, parameter))
     sources.extend((d, ref, "original_denominator") for d, ref in problem.denominators)
+    return _critical_sources(sources, parameter)
+
+
+def _critical_sources(sources, parameter):
+    """All real roots of rational/algebraic source numerators and denominators."""
     records, roots = [], []
     for expression, source, kind in sources:
         numerator, denominator = sp.fraction(sp.cancel(expression))
@@ -843,7 +998,9 @@ def verify(candidate, target_ref, constraint_context, feasible_set):
                     accepted.append(sp.FiniteSet(point))
         reconstructed = sp.Union(*accepted)
         result["proof"] = {
-            "category": ("rational-polynomial-coefficients-quantified-affine/v1"
+            "category": ("real-algebraic-rational-coefficients-semialgebraic-constraints/v1"
+                         if problem.extended_coefficients_or_constraints
+                         else "rational-polynomial-coefficients-quantified-affine/v1"
                          if sp.Poly(problem.expression, problem.x).degree() < 2
                          else "rational-polynomial-coefficients-universal-real-quadratic/v2"
                          if problem.quantifier == "∀" and problem.domain == sp.S.Reals

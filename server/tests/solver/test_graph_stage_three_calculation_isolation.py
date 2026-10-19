@@ -36,7 +36,7 @@ def test_route_parent_never_constructs_or_renders_symbolic_objects(tmp_path, mon
         (driver, ("create_state", "can_execute", "advance", "export_values", "append_endpoint")),
         (trajectory, ("encode_value", "decode_value")),
         (verification, ("apply_visible_constraints", "verify", "endpoint_check", "math_value")),
-        (calculations, ("finalize_goal", "consistency")),
+        (calculations, ("finalize_goal_with_evidence", "verify_goal_answer", "append_goal_finalization", "consistency")),
     ):
         for name in names:
             monkeypatch.setattr(module, name, forbidden)

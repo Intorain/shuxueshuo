@@ -11,6 +11,28 @@ const methodNames = {discriminant: '判别式法', extremum: '分离参数法', 
 const stoppedLabels = {capability_gap: '暂时无法继续这一步', math_failed: '这条解法未通过数学检查', execution_error: '计算遇到问题'};
 const expressionText = value => typeof value === 'string' ? value : value?.latex || value?.display || value?.expression || '';
 
+function answerSummary(answer) {
+  if (answer.kind === 'find_range' && answer.status === 'set') {
+    const formula = expressionText(answer.set);
+    return formula ? {label: '参数范围：', formula} : null;
+  }
+  if (!['find_minimum', 'find_maximum'].includes(answer.kind)) return null;
+  const minimum = answer.kind === 'find_minimum';
+  const name = minimum ? '最小值' : '最大值';
+  if (answer.status === 'attained' || answer.status === 'not_attained') {
+    const value = answer.status === 'attained' ? answer.value : answer.bound;
+    const formula = expressionText(value);
+    if (!formula || ['Infinity', 'NegativeInfinity'].includes(value?.exact?.$math)) return null;
+    return {label: answer.status === 'attained' ? `${name}：`
+      : `${name}不存在；${minimum ? '下确界' : '上确界'}为：`, formula};
+  }
+  if (answer.status === (minimum ? 'unbounded_below' : 'unbounded_above')) {
+    return {label: `${name}不存在：可行集没有${minimum ? '下' : '上'}界。`, formula: ''};
+  }
+  if (answer.status === 'empty_feasible_set') return {label: `没有满足题设的参数，${name}不存在。`, formula: ''};
+  return null;
+}
+
 export function createEventConsumer(identity, hooks = {}) {
   const run = {run_id: identity.run_id, lesson_version: identity.lesson_version, stream_id: identity.stream_id || identity.run_id};
   if (!run.run_id || !run.lesson_version) throw new Error('stream.missing_identity');
@@ -310,14 +332,15 @@ export function mountStageThreeStream(container, identity, options = {}) {
   function completed(target, route, payload) {
     const nodes = routeNode(target, route);
     const answer = payload.answer || {};
-    const formula = answer.status === 'set' ? expressionText(answer.set) : expressionText(answer.value);
-    const label = answer.status === 'set' ? '参数范围：' : answer.kind === 'find_minimum' ? '最小值：' : '最大值：';
-    const statuses = {not_attained: '最值不存在：边界没有取得。', unbounded_below: '最小值不存在：没有下界。',
-      unbounded_above: '最大值不存在：没有上界。', empty_feasible_set: '没有满足题设的参数。'};
-    nodes.completion.replaceChildren(text('span', formula ? label : statuses[answer.status] || '答案已通过数学验证。'));
-    if (formula) { const node = text('span', formula, 'stage-three-answer'); node.dataset.mathFormula = 'true'; nodes.completion.append(node); }
-    nodes.complete = true;
-    nodes.status.textContent = '本路线已完成数学验证。';
+    const summary = answerSummary(answer);
+    nodes.section.dataset.answerStatus = summary ? answer.status : 'unknown';
+    nodes.completion.replaceChildren(text('span', summary?.label || '目标答案尚未确定。'));
+    if (summary?.formula) {
+      const node = text('span', summary.formula, 'stage-three-answer');
+      node.dataset.mathFormula = 'true'; nodes.completion.append(node);
+    }
+    nodes.complete = Boolean(summary);
+    nodes.status.textContent = summary ? '本路线已完成数学验证。' : '目标答案尚未确定，暂不发布完成结论。';
     options.renderMath?.(nodes.completion);
     reveal();
   }

@@ -162,7 +162,6 @@ def test_affine_original_constraints_and_canceled_denominator_are_retained():
 @pytest.mark.parametrize("facts", [
     ["∀t∈[0,1]:t^3+a>=0"],
     ["∀t∈[0,a]:t+a>=0"],
-    ["∀t∈[0,1]:t+1/a>=0"],
     ["∀t∈[0,1]:a/t>=0"],
     ["b>0", "∀t∈[0,1]:t+a>=0"],
 ])

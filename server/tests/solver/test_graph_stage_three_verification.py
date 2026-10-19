@@ -155,8 +155,7 @@ def test_negative_power_definition_condition_survives_simplification():
 
 
 @pytest.mark.parametrize("facts", [
-    ["∀x∈ℝ:x^2+1/a>=0"], ["∀x∈ℝ:x^3+a>0"],
-    ["∀x∈[0,a]:x^2+a>=0"], ["a^2<1", "∀x∈ℝ:x^2+a>=0"],
+    ["∀x∈ℝ:x^3+a>0"], ["∀x∈[0,a]:x^2+a>=0"],
     ["∀x∈ℝ:x^2+a>=0", "∀t∈ℝ:t^2+a>=0"],
     ["b>0", "∀x∈ℝ:x^2+a>=0"], ["∀x∈ℝ:x^2+x/x+a>=0"],
 ])
@@ -215,8 +214,10 @@ def test_endpoint_evidence_and_typed_range_closure_include_empty_set():
     assert finalize_goal({"kind": "find_range"}, sp.S.EmptySet) == {
         "kind": "find_range", "status": "set", "set": {"expression": "EmptySet", "latex": r"\emptyset"}
     }
-    with pytest.raises(VerificationGap, match="unsupported_kind"):
-        finalize_goal({"kind": "find_minimum"}, sp.Interval(0, 1))
+    assert finalize_goal({"kind": "find_minimum"}, sp.Interval(0, 1)) == {
+        "kind": "find_minimum", "status": "attained",
+        "value": {"expression": "0", "latex": "0", "exact": {"$math": "Integer", "value": "0"}},
+    }
 
 
 def test_algebraic_parameter_domain_is_partitioned_at_its_exact_boundary():

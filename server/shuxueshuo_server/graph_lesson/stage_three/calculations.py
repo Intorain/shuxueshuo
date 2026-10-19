@@ -7,7 +7,8 @@ the mathematical worker. The parent persists and publishes JSON only.
 from functools import lru_cache
 
 from . import driver, execution_contracts, verification
-from .goals import finalize_goal
+from .goals import equivalent_answers, finalize_goal_with_evidence, verify_goal_answer
+from .presentation import append_goal_finalization
 from .trajectory import decode_value, encode_value
 
 
@@ -55,15 +56,11 @@ def consistency(feasible, answer, previous):
         earlier_answer = route["answer"]
         if mismatch is not None:
             return "conflict"
-        if answer.get("kind") == "find_range" and answer.get("status") == "set":
-            # The proved feasible sets ARE the range answers. Their expression
-            # and LaTeX strings may differ, e.g. Reals vs Interval(-oo, oo).
-            if {key: value for key, value in answer.items() if key != "set"} != {
-                key: value for key, value in earlier_answer.items() if key != "set"
-            }:
+        try:
+            if not equivalent_answers(answer, earlier_answer):
                 return "conflict"
-        elif answer != earlier_answer:
-            return "conflict"
+        except verification.VerificationGap:
+            return "unknown"
     return "consistent"
 
 
@@ -91,7 +88,9 @@ def dispatch(payload):
         state = driver.append_endpoint(payload["state"], feasible, evidence)
         return {"state": state, "evidence": evidence}
     if operation == "finish":
-        answer = finalize_goal(payload["goal"], feasible)
+        answer, _ = finalize_goal_with_evidence(payload["goal"], feasible)
+        evidence = verify_goal_answer(payload["goal"], feasible, answer)
+        state = append_goal_finalization(payload["state"], answer, evidence)
         return {"answer": answer, "feasible_set": verification.math_value(feasible),
-                "consistency": consistency(feasible, answer, payload["previous"])}
+                "state": state, "consistency": consistency(feasible, answer, payload["previous"])}
     raise ValueError("calculation.unknown_operation:" + operation)

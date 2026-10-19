@@ -449,7 +449,16 @@
                   "null"
                 ]
               },
-              "answer": {}
+              "answer": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/goalAnswer"
+                  }
+                ]
+              }
             }
           }
         },
@@ -460,7 +469,16 @@
           }
         },
         "feasible_set": {},
-        "answer": {},
+        "answer": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/goalAnswer"
+            }
+          ]
+        },
         "diagnostics": {
           "type": "array",
           "items": {
@@ -673,6 +691,213 @@
           "minItems": 1
         }
       }
+    },
+    "mathValue": {
+      "type": "object",
+      "required": [
+        "expression",
+        "latex"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "latex": {
+          "type": "string"
+        },
+        "exact": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "exactScalar": {
+      "type": "object",
+      "required": [
+        "expression",
+        "latex",
+        "exact"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "latex": {
+          "type": "string"
+        },
+        "exact": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "goalAnswer": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "set"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_range"
+            },
+            "status": {
+              "const": "set"
+            },
+            "set": {
+              "$ref": "#/$defs/mathValue"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "attained"
+            },
+            "value": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "bound"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "not_attained"
+            },
+            "bound": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "empty_feasible_set"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "unbounded_below"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "attained"
+            },
+            "value": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "bound"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "not_attained"
+            },
+            "bound": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "empty_feasible_set"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "unbounded_above"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

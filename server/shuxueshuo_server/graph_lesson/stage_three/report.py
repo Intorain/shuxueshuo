@@ -49,6 +49,40 @@ def _math_text(value):
                    for part in re.split(r'(\$[^$]+\$)', str(value)))
 
 
+def _answer_math(value):
+    if not isinstance(value, dict):
+        return ""
+    formula = value.get("latex") or value.get("display") or value.get("expression")
+    return '<span class="math">' + escape(formula) + '</span>' if isinstance(formula, str) and formula else ""
+
+
+def _goal_answer(answer, feasible_set):
+    """Display supplied typed closure only; never infer or compute an extremum."""
+    if not isinstance(answer, dict) or answer.get("kind") not in ("find_minimum", "find_maximum"):
+        return ""
+    minimum = answer["kind"] == "find_minimum"
+    name, direction = ("最小值", "下") if minimum else ("最大值", "上")
+    status = answer.get("status")
+    if status == "attained":
+        formula = _answer_math(answer.get("value"))
+        explanation = name + "：" + formula if formula else None
+    elif status == "not_attained":
+        formula = _answer_math(answer.get("bound"))
+        explanation = name + "不存在；" + direction + "确界为 " + formula + "，该界不属于可行集。" if formula else None
+    elif status == ("unbounded_below" if minimum else "unbounded_above"):
+        explanation = name + "不存在：可行集没有" + direction + "界。"
+    elif status == "empty_feasible_set":
+        explanation = "没有满足题设的参数，" + name + "不存在。"
+    else:
+        explanation = None
+    if explanation is None:
+        status, explanation = "unknown", "目标答案尚未确定，暂不发布完成结论。"
+    feasible = _answer_math(feasible_set)
+    return ('<div class="goal-answer" data-answer-status="' + escape(status) + '">'
+            + ('<p>完整可行集：' + feasible + '</p>' if feasible else '')
+            + '<p>' + explanation + '</p></div>')
+
+
 def _math_step(step, seq):
     body = '<article class="math-card" data-math-seq="' + str(seq) + '"><h4>'
     body += escape(str(step['ordinal'])) + '. ' + _math_text(step['title']) + '</h4>'
@@ -92,6 +126,8 @@ def _route_details(directory, goal, events):
         body += _details('验证预算与各阶段耗时', artifact.get('verification_timing'))
         body += _details('方法求解预算与各阶段耗时', artifact.get('solve_timing'))
         body += _details('实际用量、保留额度与剩余预算', artifact.get('budget_accounting'))
+        route_result = artifact.get('result') or {}
+        body += _goal_answer(route_result.get('answer'), route_result.get('feasible_set'))
         body += _details('路线结果与诊断', {'result': artifact.get('result'), 'diagnostics': artifact.get('diagnostics')})
     return body
 
@@ -191,6 +227,7 @@ def render_result(directory):
     for number, goal in enumerate(result["goals"], 1):
         body += '<section id="goal-' + str(number) + '"><h2>' + escape(goal["label"] or f"目标 {number}") + '</h2>'
         body += '<p>' + _label(goal["status"]) + ' · <code>' + escape(goal["target_ref"]) + '</code></p>'
+        body += _goal_answer(goal.get('answer'), goal.get('feasible_set'))
         body += '<p>主要归属：' + escape(str(goal["primary"])) + ' · 来源：' + escape(str(goal["primary_source"])) + '</p>'
         body += _details("原始目标", goal["goal"]) + _details("诊断", goal["diagnostics"])
         body += '<h3>完整原始题设与来源</h3><p>各路线的处理记录见下方路线详情。</p>' + _json(goal["constraint_context"])

@@ -109,6 +109,22 @@
         "after"
       ]
     },
+    "goal_minimum": {
+      "title": "确定最小值",
+      "explanation": "从已验证的完整可行集读取下确界，再根据有界性和成员关系确定最小值是否存在。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    },
+    "goal_maximum": {
+      "title": "确定最大值",
+      "explanation": "从已验证的完整可行集读取上确界，再根据有界性和成员关系确定最大值是否存在。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
+    },
     "divided": {
       "title": "分离参数",
       "explanation": "先证明除数在给定区间恒正，再两边同除，不等号方向保持不变。",

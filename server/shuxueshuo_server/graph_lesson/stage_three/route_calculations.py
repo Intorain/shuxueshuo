@@ -6,7 +6,7 @@ from time import monotonic, sleep
 
 from shuxueshuo_server.problem_understanding.identity import revision
 
-from . import bounded, calculations, verification
+from . import bounded, calculations, goals, verification
 from .budget import BudgetExhausted, BudgetLedger, BudgetPending
 
 _ACCOUNTING = {"compute_seconds", "verification_seconds", "solve_timing", "verification_timing", "budget_accounting"}
@@ -28,6 +28,8 @@ def _raise_receipt(receipt, bucket, operation):
             raise verification.VerificationGap("verification_incomplete:timeout:" + operation)
         raise TimeoutError("execution.solve_timeout:" + operation)
     error = receipt.get("error", {})
+    if error.get("exception_module") == goals.__name__ and error.get("exception_type") == "GoalClosureMismatch":
+        raise goals.GoalClosureMismatch(error["message"])
     if error.get("exception_module") == verification.__name__:
         if error.get("exception_type") == "ContextMismatch":
             raise verification.ContextMismatch(error["message"])

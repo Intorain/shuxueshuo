@@ -1,0 +1,52 @@
+{
+  "contract": "graph-stage-three-extrema-answer-gold/v1",
+  "source": "Q13 原题及显式构造变式的独立数学解答；不从程序结果生成",
+  "common_derivation": "在 0<x≤1/2 上，x>0，原不等式等价于 a≥-x-1/x。函数 -x-1/x 递增，在 x=1/2 取得最大值 -5/2，故原题参数集合为 [-5/2,+∞)。以下目标收束与变式均从这个计算独立推出。",
+  "cases": {
+    "q13": {
+      "evidence_kind": "real_recorded_image_and_review",
+      "facts": ["∀x∈(0,1/2]:x^2+a*x+1>=0"],
+      "goal": {"kind": "find_minimum", "expression": "a"},
+      "feasible_set": {"intervals": [{"lower": "-5/2", "upper": "oo", "left_closed": true, "right_closed": false}]},
+      "answer": {"kind": "find_minimum", "status": "attained", "value": "-5/2"},
+      "routes": ["interval", "extremum"],
+      "authored_basis": "完整可行集为 [-5/2,+∞)，其有限下界 -5/2 属于集合；a=-5/2 时原式 (x-1/2)(x-2) 在给定区间非负，最小值取得。"
+    },
+    "maximum": {
+      "evidence_kind": "constructed_non_llm",
+      "facts": ["∀x∈(0,1/2]:x^2-a*x+1>=0"],
+      "goal": {"kind": "find_maximum", "expression": "a"},
+      "feasible_set": {"intervals": [{"lower": "-oo", "upper": "5/2", "left_closed": false, "right_closed": true}]},
+      "answer": {"kind": "find_maximum", "status": "attained", "value": "5/2"},
+      "routes": ["interval", "extremum"],
+      "authored_basis": "原关系等价于 a≤x+1/x 对所有给定 x 成立。x+1/x 在给定区间递减，最小值 5/2 在 x=1/2 取得，故参数集合 (-∞,5/2]，最大值 5/2 取得。"
+    },
+    "strict_minimum": {
+      "evidence_kind": "constructed_non_llm",
+      "facts": ["∀x∈(0,1/2]:x^2+a*x+1>0"],
+      "goal": {"kind": "find_minimum", "expression": "a"},
+      "feasible_set": {"intervals": [{"lower": "-5/2", "upper": "oo", "left_closed": false, "right_closed": false}]},
+      "answer": {"kind": "find_minimum", "status": "not_attained", "bound": "-5/2"},
+      "routes": ["interval", "extremum"],
+      "authored_basis": "严格关系要求 a>-x-1/x，右侧最大值 -5/2 在 x=1/2 取得，故 a>-5/2。参数集合有下确界 -5/2，但该值不在集合中，所以最小值不存在。"
+    },
+    "unbounded_maximum": {
+      "evidence_kind": "constructed_non_llm",
+      "facts": ["∀x∈(0,1/2]:x^2+a*x+1>=0"],
+      "goal": {"kind": "find_maximum", "expression": "a"},
+      "feasible_set": {"intervals": [{"lower": "-5/2", "upper": "oo", "left_closed": true, "right_closed": false}]},
+      "answer": {"kind": "find_maximum", "status": "unbounded_above"},
+      "routes": ["interval", "extremum"],
+      "authored_basis": "原题可行集 [-5/2,+∞) 向上无界；求最大值时答案是不存在，不能把 +∞ 当作取得的值。"
+    },
+    "empty_minimum": {
+      "evidence_kind": "constructed_non_llm",
+      "facts": ["a<-3", "∀x∈(0,1/2]:x^2+a*x+1>=0"],
+      "goal": {"kind": "find_minimum", "expression": "a"},
+      "feasible_set": {"intervals": []},
+      "answer": {"kind": "find_minimum", "status": "empty_feasible_set"},
+      "routes": ["interval", "extremum"],
+      "authored_basis": "原题要求 a≥-5/2，附加 a<-3 后交集为空。没有满足条件的参数；这与非空集合向上/向下无界不同。"
+    }
+  }
+}

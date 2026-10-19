@@ -206,6 +206,81 @@ test('completion renders readable mathematical answers and calls the shared math
   assert.equal(find('stage-three-evidence').length, 0);
 });
 
+const exactValue = (value, latex = value) => ({expression: value, latex,
+  exact: value.includes('/') ? {$math: 'Rational', p: value.split('/')[0], q: value.split('/')[1]} : {$math: 'Integer', value}});
+for (const [kind, status, field, label, formula] of [
+  ['find_minimum', 'attained', 'value', '最小值：', '-5/2'],
+  ['find_maximum', 'attained', 'value', '最大值：', '5/2'],
+  ['find_minimum', 'not_attained', 'bound', '最小值不存在；下确界为：', '-5/2'],
+  ['find_maximum', 'not_attained', 'bound', '最大值不存在；上确界为：', '5/2'],
+  ['find_minimum', 'unbounded_below', null, '最小值不存在：可行集没有下界。', null],
+  ['find_maximum', 'unbounded_above', null, '最大值不存在：可行集没有上界。', null],
+  ['find_minimum', 'empty_feasible_set', null, '没有满足题设的参数，最小值不存在。', null],
+  ['find_maximum', 'empty_feasible_set', null, '没有满足题设的参数，最大值不存在。', null],
+]) test(`typed ${kind}/${status} distinguishes an extremum from its bound or absence`, () => {
+  const {container, find} = documentFixture();
+  const view = mountStageThreeStream(container, identity);
+  view.consumer.accept(mathEvent(1));
+  const completion = doneEvent(2);
+  completion.payload.answer = {kind, status, ...(field ? {[field]: exactValue(formula)} : {})};
+  view.consumer.accept(completion);
+  const node = find('stage-three-completion')[0];
+  assert.equal(node.hidden, false);
+  assert.equal(node.children[0].textContent, label);
+  assert.deepEqual(find('stage-three-answer').map(value => value.textContent), formula ? [formula] : []);
+  assert.equal(container.children[0].dataset.answerStatus, status);
+  assert.deepEqual(view.consumer.view().completions[0].answer, completion.payload.answer);
+});
+
+for (const answer of [
+  {kind: 'find_minimum', status: 'unknown', value: exactValue('2')},
+  {kind: 'find_minimum', status: 'attained'},
+  {kind: 'find_maximum', status: 'not_attained'},
+  {kind: 'find_maximum', status: 'unbounded_below'},
+  {kind: 'find_minimum', status: 'unbounded_above'},
+  {kind: 'find_range', status: 'attained', value: exactValue('2')},
+  {kind: 'unrecognized', status: 'attained', value: exactValue('2')},
+  {kind: 'find_minimum', status: 'attained', value: {expression: '-oo', latex: '-\\infty', exact: {$math: 'NegativeInfinity'}}},
+]) test(`an unsupported or incomplete answer is never displayed as successful: ${JSON.stringify(answer)}`, () => {
+  const {container, find} = documentFixture();
+  const view = mountStageThreeStream(container, identity);
+  view.consumer.accept(mathEvent(1));
+  const completion = doneEvent(2);
+  completion.payload.answer = answer;
+  view.consumer.accept(completion);
+  assert.equal(find('stage-three-completion')[0].hidden, true);
+  assert.equal(find('stage-three-answer').length, 0);
+  assert.equal(container.children[0].dataset.answerStatus, 'unknown');
+  assert.match(container.children[0].children[1].textContent, /目标答案尚未确定/);
+});
+
+test('an extremum completion waits for the appended goal card and survives snapshot/QA without changing prior math', () => {
+  const {container, find} = documentFixture();
+  const view = mountStageThreeStream(container, identity, {mode: 'practice'});
+  view.consumer.accept(mathEvent(1));
+  const original = find('stage-three-math-step')[0];
+  const closure = {...step(2), title: '确定最小值', display_unit: 'goal_finalization',
+    source_refs: ['/finalization/3'], explanation: '下确界不属于完整可行集，因此最小值不存在。'};
+  view.consumer.accept(mathEvent(2, closure));
+  const completion = doneEvent(3);
+  completion.payload.answer = {kind: 'find_minimum', status: 'not_attained', bound: exactValue('-5/2', '-\\frac{5}{2}')};
+  view.consumer.accept(completion);
+  assert.equal(find('stage-three-completion')[0].hidden, true);
+  view.revealThrough(target, route, 2);
+  assert.equal(find('stage-three-completion')[0].hidden, false);
+  view.consumer.accept(qaEvent(4));
+  view.consumer.hydrate({...identity, last_seq: 5, math_steps: [step(), closure], goals: {},
+    handoffs: [{target_ref: target, route_id: route, available: true, answer: completion.payload.answer,
+      feasible_set: '(−5/2,+∞)', verified_route_sha256: 'route-hash'}], qa: [qa()]});
+  assert.equal(find('stage-three-math-step')[0], original);
+  assert.equal(find('stage-three-math-step')[1].children[0].textContent, '确定最小值');
+  assert.equal(find('stage-three-answer')[0].textContent, '-\\frac{5}{2}');
+  assert.equal(find('stage-three-completion')[0].hidden, false);
+  view.consumer.accept(event(6, 'lesson.goal_status', {status: 'conflict', available: false}));
+  assert.equal(find('stage-three-completion')[0].hidden, true);
+  assert.equal(find('stage-three-math-step')[0], original);
+});
+
 test('selection chunks and committed call evidence survive snapshot hydration', () => {
   const consumer = createEventConsumer(identity), d3 = {id: 'D3'}, d4 = {id: 'D4'};
   consumer.accept(event(1, 'lesson.chunk_ready', {kind: 'D3', chunk: d3}));

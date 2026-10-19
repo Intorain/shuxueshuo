@@ -79,7 +79,7 @@ def can_execute(method, features, context):
         return False
 
 
-def create_state(
+def empty_state(
     *,
     features,
     context,
@@ -92,7 +92,6 @@ def create_state(
     revisions=None,
     solve_budget_seconds=10,
 ):
-    contracts = execution_contracts.load_contracts()
     state = {
         "run_id": run_id,
         "lesson_version": lesson_version,
@@ -128,6 +127,14 @@ def create_state(
         },
     }
     state["trajectory"]["revisions"] = deepcopy(state["revisions"])
+    return state
+
+
+def create_state(**arguments):
+    """Prepare all mathematical bindings inside the calculation worker."""
+    state = empty_state(**arguments)
+    method, features, context = (arguments[key] for key in ("method", "features", "context"))
+    contracts = execution_contracts.load_contracts()
     try:
         if method not in contracts or not can_execute(method, features, context):
             raise CapabilityGap("method_input_class_unavailable")

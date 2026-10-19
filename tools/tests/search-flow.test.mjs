@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 function setup(file, search = '') {
   const nodes = new Map();
+  const delays = [];
   const element = selector => {
     if (!nodes.has(selector)) nodes.set(selector, {
       hidden: true, disabled: false, innerHTML: '', textContent: '', dataset: {}, style: {}, children: [],
@@ -18,7 +19,7 @@ function setup(file, search = '') {
   const location = {search, href: '', reloads: 0, reload() { this.reloads++; }};
   const context = vm.createContext({
     URLSearchParams, location, performance: {now: () => 0}, window: {},
-    setTimeout: (callback, delay) => { if (delay !== 2400) callback(); return 1; }, clearTimeout() {},
+    setTimeout: (callback, delay) => { delays.push(delay); if (delay !== 2400) callback(); return 1; }, clearTimeout() {},
     sessionStorage: {getItem() { return null; }, setItem() {}, removeItem() {}},
     document: {
       body: {dataset: {}}, querySelector: element,
@@ -27,7 +28,7 @@ function setup(file, search = '') {
     },
   });
   vm.runInContext(fs.readFileSync(new URL(`../../site/lab/search/${file}`, import.meta.url), 'utf8'), context);
-  return {context, element, location};
+  return {context, element, location, delays};
 }
 
 const crop = {page_id: '123456789abc', box: [0, 0, 1, 1]};
@@ -102,4 +103,167 @@ for (const mode of ['terminal', 'transient', 'lost']) test(`polling and retry pr
   await context.retry();
   assert.equal(location.reloads, mode === 'lost' ? 1 : 0);
   assert.deepEqual(posted, mode === 'lost' ? [] : [crop]);
+});
+
+test('stage-two readiness keeps monitoring execution after the mathematical stream has an identity', async () => {
+  const {context, delays} = setup('problem.js', '?search=0123456789ab');
+  const shown = [], requests = [];
+  context.showLesson = lesson => shown.push(lesson);
+  context.fetch = async (url, options = {}) => {
+    requests.push({url, options});
+    assert.ok(requests.length <= 3);
+    return response({lesson: {status: 'completed', goals: [{target_ref: '/root/goals/0'}],
+      execution_status: ['starting', 'running', 'completed'][requests.length - 1],
+      stream: requests.length === 1 ? null : {run_id: 'same-run'}}});
+  };
+  await context.pollLesson();
+  assert.equal(shown.length, 3);
+  assert.equal(shown.at(-1).stream.run_id, 'same-run');
+  assert.deepEqual(delays, [800, 800, 3000]);
+  assert.ok(requests.every(request => !request.options.method), 'metadata polling is read-only');
+});
+
+test('an explicit continuation resumes the current run without discarding its stream view', async () => {
+  const {context, element} = setup('problem.js', '?search=0123456789ab');
+  const requests = [];
+  const monitoring = deferred();
+  context.monitoring = monitoring.promise;
+  context.refreshed = 0;
+  context.fetch = async (url, options) => { requests.push({url, options}); return response({status: 'running'}); };
+  vm.runInContext(`lesson.data = {stream: {run_id: 'preserved-run', snapshot_url: '/api/search/problems/0123456789ab/lesson/preserved-run/snapshot'}};
+    pollLesson = () => monitoring; streamTransport = {refresh: async () => { refreshed++; }};`, context);
+  const continuing = context.continueCalculation();
+  await tick();
+  try {
+    assert.equal(context.refreshed, 1, 'snapshot refresh must not wait for the execution monitor to finish');
+    assert.equal(element('#pq-stream-action').disabled, false);
+  } finally { monitoring.resolve(); }
+  await continuing;
+  assert.deepEqual(JSON.parse(JSON.stringify(requests)), [{url: '/api/search/problems/0123456789ab/lesson/preserved-run/resume', options: {method: 'POST'}}]);
+  assert.equal(vm.runInContext('lesson.data.stream.run_id', context), 'preserved-run');
+  assert.equal(element('#pq-stream-action').disabled, false);
+});
+
+function streamedLesson(execution_status) {
+  return {status: 'completed', execution_status,
+    stream: {run_id: 'same-run', lesson_version: 'v1'},
+    goals: [{target_ref: '/root/goals/0', scope: '/root', status: 'resolved',
+      walk: {bundle: {bundleVersion: 'v1'}}}]};
+}
+
+function seedOpenStream(context, element) {
+  context.initialLesson = streamedLesson('running');
+  context.remounts = 0;
+  context.lost = 0;
+  vm.runInContext(`lesson.data = initialLesson; lesson.part = 0; lesson.opened = true; lesson.mounted = true;
+    openPart = () => { remounts++; }; lessonLost = () => { lost++; };`, context);
+  element('#pq-stream').hidden = false;
+  element('#pq-stream').innerHTML = 'committed mathematical cards';
+}
+
+for (const terminal of ['interrupted', 'error', 'completed', 'partial', 'failed']) {
+  test(`a quiet stream notices ${terminal} without remounting committed cards`, async () => {
+    const {context, element, delays} = setup('problem.js', '?search=0123456789ab');
+    seedOpenStream(context, element);
+    let gets = 0;
+    context.fetch = async (url, options) => {
+      assert.equal(url, '/api/search/problems/0123456789ab');
+      assert.equal(options.method, undefined, 'monitoring must not resume computation');
+      assert.ok(++gets <= 2, 'execution terminal state ends metadata monitoring');
+      return response({lesson: streamedLesson(gets === 1 ? 'running' : terminal)});
+    };
+    await context.pollLesson();
+    assert.equal(vm.runInContext('lesson.data.execution_status', context), terminal);
+    assert.equal(element('#pq-stream-action').hidden, !['interrupted', 'error'].includes(terminal));
+    assert.equal(element('#pq-stream-action').textContent, '继续计算');
+    assert.equal(context.remounts, 0);
+    assert.equal(context.lost, 0);
+    assert.equal(element('#pq-stream').innerHTML, 'committed mathematical cards');
+    assert.equal(element('#pq-stream').hidden, false);
+    assert.deepEqual(delays, [3000, 3000]);
+  });
+}
+
+test('opening a page with an existing running stream starts metadata monitoring', async () => {
+  const {context, element} = setup('problem.js', '?search=0123456789ab');
+  seedOpenStream(context, element);
+  context.settle = () => {};
+  context.devCheck = () => {};
+  const pollLesson = context.pollLesson;
+  let monitoring;
+  context.pollLesson = () => (monitoring = pollLesson());
+  let gets = 0;
+  context.fetch = async (_url, options) => {
+    assert.equal(options.method, undefined);
+    assert.ok(++gets <= 2);
+    return response({state: 'done', outcome: 'ok', lesson: streamedLesson(gets === 1 ? 'running' : 'interrupted')});
+  };
+  await context.runLive();
+  assert.ok(monitoring, 'initially readable streams still need execution monitoring');
+  await monitoring;
+  assert.equal(element('#pq-stream-action').hidden, false);
+  assert.equal(context.remounts, 0);
+});
+
+test('metadata outages preserve the stream and keep monitoring until an interruption is visible', async () => {
+  const {context, element, delays} = setup('problem.js', '?search=0123456789ab');
+  seedOpenStream(context, element);
+  let gets = 0;
+  context.fetch = async () => {
+    if (++gets <= 12) throw new TypeError('Failed to fetch');
+    assert.equal(gets, 13);
+    return response({lesson: streamedLesson('interrupted')});
+  };
+  await context.pollLesson();
+  assert.equal(gets, 13);
+  assert.equal(context.lost, 0);
+  assert.equal(context.remounts, 0);
+  assert.equal(element('#pq-stream').innerHTML, 'committed mathematical cards');
+  assert.equal(element('#pq-stream-action').hidden, false);
+  assert.deepEqual(delays, Array(13).fill(3000));
+});
+
+test('a replaced status monitor cannot overwrite newer execution metadata', async () => {
+  const {context, element} = setup('problem.js', '?search=0123456789ab');
+  seedOpenStream(context, element);
+  const old = deferred();
+  let gets = 0;
+  context.fetch = async () => ++gets === 1 ? old.promise : response({lesson: streamedLesson('error')});
+  const first = context.pollLesson();
+  await tick();
+  await context.pollLesson();
+  old.resolve(response({lesson: streamedLesson('running')}));
+  await first;
+  assert.equal(gets, 2);
+  assert.equal(vm.runInContext('lesson.data.execution_status', context), 'error');
+  assert.equal(element('#pq-stream-action').hidden, false);
+});
+
+test('reconnecting the metadata monitor preserves an existing stream view', async () => {
+  const {context, element} = setup('problem.js', '?search=0123456789ab');
+  seedOpenStream(context, element);
+  context.monitors = 0;
+  context.pollLesson = async () => { context.monitors++; };
+  context.resumeLesson();
+  assert.equal(context.monitors, 1);
+  assert.equal(vm.runInContext('lesson.data.stream.run_id', context), 'same-run');
+  assert.equal(element('#pq-stream').hidden, false);
+  assert.equal(context.remounts, 0);
+});
+
+test('late selection for a previous question cannot replace an unsupported or different current question', () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  context.updates = 0;
+  vm.runInContext(`lesson.part = 1;
+    lesson.data = {stream: {run_id: 'run'}, goals: [{target_ref: '/root/goals/0', walk: {}},
+      {target_ref: '/root/children/0/goals/0', status: 'unsupported'}]};
+    lesson.engine = {walkView: () => ({target_ref: '/root/goals/0'}), updateStreamSelection: async () => { updates++; }};`, context);
+  context.updateStreamView({run_id: 'run'});
+  assert.equal(context.updates, 0);
+  vm.runInContext(`lesson.data.goals[1].walk = {};`, context);
+  context.updateStreamView({run_id: 'run'});
+  assert.equal(context.updates, 0);
+  vm.runInContext(`lesson.part = 0;`, context);
+  context.updateStreamView({run_id: 'run'});
+  assert.equal(context.updates, 1);
 });

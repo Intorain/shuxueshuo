@@ -4,6 +4,7 @@ import json
 import math
 import shutil
 import traceback
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
@@ -15,6 +16,7 @@ from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
 from ..stage_two import runner as stage_two_runner
 from ..stage_two.contracts import ROOT, targets
+from .budget import BudgetConflict
 from .context import build_context
 from .contracts import (
     INPUT_MANIFEST_CONTRACT,
@@ -188,6 +190,10 @@ def run_sample(source, output, *, reference_base=None, milestone=MILESTONE, resu
                     _execute_goal(candidate, goal, folder, store, milestone=milestone, hooks=hooks,
                                   solve_budget_seconds=solve_budget_seconds,
                                   verification_budget_seconds=verification_budget_seconds)
+                except BudgetConflict:
+                    # A concurrent resume does not invalidate the live owner's
+                    # already published route. It must retry after that lease.
+                    raise
                 except Exception as exc:  # noqa: BLE001 — preserve all other goals and the durable prefix
                     _target_failure(goal, exc, "execute_goal", store)
             for name, value in (("selection", goal["selection"]), ("d3", goal["d3"]),
@@ -212,15 +218,28 @@ def run_sample(source, output, *, reference_base=None, milestone=MILESTONE, resu
 
 
 def _execute_goal(candidate, goal, folder, store, *, milestone, hooks, **budgets):
-    from .driver import can_execute
-    from .execution import execute_route
+    with ExitStack() as stack:
+        return _execute_goal_in_session(candidate, goal, folder, store, stack=stack,
+                                        milestone=milestone, hooks=hooks, **budgets)
+
+
+def _execute_goal_in_session(candidate, goal, folder, store, *, stack, milestone, hooks, **budgets):
+    from .execution import execute_route, prepare_route
+    from .route_calculations import RouteCalculations
 
     allowed = {"method-discriminant"} if milestone == "1b-1" else {"method-discriminant", "method-separation"}
+    prepared, calculators = {}, {}
     for branch in goal["selection"]["branches"]:
         if branch["route_plan"] == "not_planned":
             continue
-        if branch["target"] in allowed and can_execute(branch["target"], goal["features"], goal["constraint_context"]):
-            branch.update(route_plan="planned", missing_capabilities=[])
+        if branch["target"] in allowed:
+            route_id = branch["route_id"]
+            calculator = stack.enter_context(RouteCalculations(store, goal["target_ref"], route_id,
+                                                               hooks=hooks, **budgets))
+            prepared[route_id] = prepare_route(goal, branch, store, calculator)
+            calculators[route_id] = calculator
+            if prepared[route_id]["status"] != "capability_gap":
+                branch.update(route_plan="planned", missing_capabilities=[])
     for option in goal["d4"]["options"]:
         branch = next(row for row in goal["selection"]["branches"] if row["route_id"] == option["route_id"])
         option["route_plan"] = branch["route_plan"]
@@ -230,9 +249,10 @@ def _execute_goal(candidate, goal, folder, store, *, milestone, hooks, **budgets
                         commit_id=goal["target_ref"] + ":selection")
     for branch in goal["selection"]["branches"]:
         if branch["route_plan"] == "planned":
-            route = execute_route(candidate, goal, branch, folder, store, previous=goal["routes"], hooks=hooks, **budgets)
+            route = execute_route(candidate, goal, branch, folder, store, previous=goal["routes"], hooks=hooks,
+                                  calculator=calculators[branch["route_id"]], prepared=prepared[branch["route_id"]], **budgets)
             goal["routes"].append(route)
-    snapshot = store.snapshot()
+    snapshot, retained_events = store.snapshot_with_events()
     status = snapshot["goals"].get(goal["target_ref"])
     if status:
         goal["status"] = status["status"]
@@ -244,7 +264,7 @@ def _execute_goal(candidate, goal, folder, store, *, milestone, hooks, **budgets
         store.commit_events([{"type": "lesson.goal_status", "target_ref": goal["target_ref"], "route_id": None,
                               "payload": {"status": goal["status"]}}], commit_id=goal["target_ref"] + ":final-status")
     goal["route_status"] = [{"route_id": event["route_id"], "seq": event["seq"], **event["payload"]}
-                            for event in store.events(snapshot["minimum_seq"] - 1)
+                            for event in retained_events
                             if event["type"] == "lesson.route_status" and event["target_ref"] == goal["target_ref"]]
 
 

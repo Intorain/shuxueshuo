@@ -25,6 +25,72 @@ function viewContext() {
   return {context, nodes, run: code => vm.runInContext(code, context)};
 }
 
+test('stream arrival preserves the AI replay reading position and chooses an executable route', async () => {
+  const {context, run} = viewContext();
+  const bridge = source.slice(source.indexOf('function streamReplay()'), source.indexOf('/** The same safe text/LaTeX renderer'));
+  vm.runInContext(bridge.replace(/^export /gm, ''), context);
+  context.extendStreamBundle = value => structuredClone(value);
+  context.replayState = (_bundle, _replay, position) => ({introCompleted: [], run: {route: 'discriminant'}, readingPosition: position});
+  run(`options = {bundle: {problemId: 'sample', bundleVersion: 'stable', graph: {nodes: [], edges: []},
+      intro: [{id: 'D3', expected_answer: {cell: ['real', 'free']}, interaction: {methods: [
+        {value: 'discriminant', route: 'discriminant'}, {value: 'unsupported', route: 'unsupported'}]}}, {id: 'D4'}],
+      routes: {discriminant: {route_plan: 'planned'}, unsupported: {route_plan: 'capability_gap'}}},
+      stream: {run_id: 'run', lesson_version: 'version', target_ref: '/root/goals/0'},
+      replay: {actions: [{decision: 'D1'}, {decision: 'D2'}]}};
+    bundle = options.bundle; actor = 'replay'; replayPosition = 1;
+    state = {introCompleted: [], run: {route: 'unsupported'}};
+    renderGraph = () => {};`);
+  assert.equal(run('streamReplay().routes[0]'), 'discriminant');
+  await run(`updateStreamSelection({run_id: 'run', lesson_version: 'version'})`);
+  assert.equal(run('replayPosition'), 1);
+  assert.equal(run('state.readingPosition'), 1);
+  const parkSource = source.slice(source.indexOf('export function parkWalk()'), source.indexOf('/* The actor the walk'));
+  vm.runInContext(parkSource.replace(/^export /gm, ''), context);
+  let compiled = 0;
+  context.extendStreamBundle = value => { compiled++; return structuredClone(value); };
+  run('stopReplay = () => {}; park = () => {};');
+  const pending = run(`updateStreamSelection({run_id: 'run', lesson_version: 'version'})`);
+  run('parkWalk()');
+  await pending;
+  assert.equal(compiled, 0, 'parked questions reject queued updates before recompiling or rendering');
+});
+
+for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream migration preserves AI playback intent: ${mode}`, async () => {
+  const {context, nodes, run} = viewContext();
+  const bridge = source.slice(source.indexOf('function streamReplay()'), source.indexOf('/** The same safe text/LaTeX renderer'));
+  vm.runInContext(bridge.replace(/^export /gm, ''), context);
+  context.document.body = {dataset: {}};
+  context.PracticeMath = {render() {}};
+  context.createState = value => ({bundleVersion: value.bundleVersion, introCompleted: [], run: {route: null}, events: []});
+  context.replayState = (value, recording, position) => ({bundleVersion: value.bundleVersion,
+    introCompleted: recording.actions.slice(0, position), run: {route: position === 4 ? 'discriminant' : null}, events: []});
+  context.migrateStageTwoState = (_base, value, state) => ({...state, bundleVersion: value.bundleVersion});
+  context.extendStreamBundle = value => ({...structuredClone(value), bundleVersion: 'stream-version',
+    intro: [...value.intro, {id: 'D3', expected_answer: {cell: ['real', 'free']},
+      interaction: {methods: [{value: 'discriminant', route: 'discriminant'}]}}, {id: 'D4'}],
+    routes: {discriminant: {route_plan: 'planned'}}});
+  run(`options = {bundle: {problemId: 'sample', bundleVersion: 'base-version', graphVersion: 'graph',
+      graph: {nodes: [], edges: [], layout: {}}, templates: {}, problem: {text: ''},
+      intro: [{id: 'D1'}, {id: 'D2'}], routes: {}},
+      stream: {run_id: 'run', lesson_version: 'version', target_ref: '/root/goals/0'},
+      replay: {actions: [{decision: 'D1'}, {decision: 'D2'}]}};
+    bundle = options.bundle; publicGraph = {}; actor = 'replay';
+    studentState = state = createState(bundle); replay = options.replay;
+    render = () => {}; updatePlayButton = () => {}; toggleSteps = () => {};
+    mountProblemBar = () => {}; mountCaption = () => {}; mountPlayer = () => {};
+    createGraph = async () => ({destroy() {}});`);
+  for (const selector of ['#gw-graph-panel', '#gw-student', '#gw-ai']) {
+    context.document.querySelector(selector);
+    Object.assign(nodes.get(selector), {classList: {contains: () => false}, setAttribute() {}});
+  }
+  run(`replayPosition = ${mode === 'at-end' ? 2 : 1}; replayPlaying = ${mode === 'playing'};`);
+  await run('load()');
+  assert.equal(run('bundle.bundleVersion'), 'stream-version');
+  assert.equal(run('replayPosition'), mode === 'paused' ? 1 : 4);
+  assert.equal(run('state.introCompleted.length'), mode === 'paused' ? 1 : 4);
+  assert.equal(nodes.get('#gw-error')?.hidden, true);
+});
+
 test('draft choices do not reveal checklist notes or wrong-attempt calculations', () => {
   const {run} = viewContext();
   run(`testDecision = {id: 'draft', board: null, interaction: {type: 'checklist', slots: [

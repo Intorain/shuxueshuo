@@ -103,7 +103,8 @@ function optionFeedback(decision, answer) {
     component.slots[index]?.options.find(option => option.value === value)?.feedback).filter(Boolean).join(' ');
 }
 
-const routeOf = (decision, answer) => decision.interaction.methods?.find(method => method.value === answer?.[2])?.route;
+const routeOf = (decision, answer) => decision.route_by_answer?.[answer] ||
+  decision.interaction.methods?.find(method => method.value === answer?.[2])?.route;
 const methodChoice = bundle => bundle.intro.find(decision => decision.interaction.type === 'plane');
 
 function completeDecision(bundle, next, decision, answer, reason) {
@@ -117,7 +118,7 @@ function completeDecision(bundle, next, decision, answer, reason) {
   };
   if (next.introCompleted.length < bundle.intro.length) {
     next.introCompleted.push(entry);
-    if (decision.interaction.type === 'plane') {
+    if (decision.interaction.type === 'plane' || decision.route_by_answer) {
       const route = routeOf(decision, answer);
       if (!bundle.routes[route]) throw new Error('此路线尚未提供完整交互。');
       next.run.route = route;
@@ -126,7 +127,8 @@ function completeDecision(bundle, next, decision, answer, reason) {
     next.run.completed.push(entry);
   }
   next.done = next.introCompleted.length === bundle.intro.length &&
-    Boolean(next.run.route) && next.run.completed.length === bundle.routes[next.run.route].steps.length;
+    Boolean(next.run.route) && !bundle.routes[next.run.route].streaming &&
+    next.run.completed.length === bundle.routes[next.run.route].steps.length;
 }
 
 export function submitAnswer(bundle, state, action) {
@@ -153,6 +155,20 @@ export function switchRoute(bundle, state, route) {
     throw new Error('请先完成题型和选法判断。');
   }
   const next = copy(state);
+  if (bundle.stream) {
+    const choice = methodChoice(bundle);
+    const method = choice?.interaction.methods.find(item => item.route === route);
+    const confirmation = bundle.intro.find(item => item.route_by_answer?.[route] === route);
+    if (!method || !confirmation) throw new Error('这条路线暂不支持，请选择可用路线。');
+    next.introCompleted = next.introCompleted.map(entry => entry.decision === choice.id
+      ? {...entry, answer: [...choice.expected_answer.cell, method.value]}
+      : entry.decision === confirmation.id ? {...entry, answer: route} : entry);
+    next.run = {id: next.nextRun++, route, completed: []};
+    next.lastFeedback = null;
+    next.done = false;
+    next.events.push({kind: 'switch_route', route, status: 'passed', runId: next.run.id});
+    return next;
+  }
   if (next.run.completed.length) next.archives.push(copy(next.run));
   next.run = {id: next.nextRun++, route: null, completed: []};
   const decision = methodChoice(bundle);
@@ -185,7 +201,8 @@ function publicInteraction(component) {
     if (component[key] !== undefined) result[key] = copy(component[key]);
   }
   if (component.methods) {
-    result.methods = component.methods.map(({value, label, cells, route}) => ({value, label, cells: copy(cells), implemented: Boolean(route)}));
+    result.methods = component.methods.map(({value, label, cells, route, route_plan}) =>
+      ({value, label, cells: copy(cells), implemented: Boolean(route) && route_plan !== 'capability_gap'}));
   }
   const options = list => list.map(({value, label}) => ({value, label}));
   if (component.options) result.options = options(component.options);
@@ -289,6 +306,187 @@ export function graphState(bundle, state) {
     logs: confirmed.logs,
     archivedEdges: [...archivedEdges],
   };
+}
+
+const streamStepKey = step => JSON.stringify([step.route_id, step.step_id]);
+const sameStream = (identity, value) => identity.run_id === value.run_id &&
+  identity.lesson_version === value.lesson_version && identity.target_ref === value.target_ref;
+
+/** Preserve work done before the server could expose its stage-three identity.
+ * Only a genuine D1/D2 state from this exact base bundle may enter the new run.
+ */
+export function migrateStageTwoState(baseBundle, streamBundle, state) {
+  const invalid = () => { throw new Error('stream.invalid_stage_two_progress'); };
+  if (!streamBundle.stream || baseBundle.stream || state?.bundleVersion !== baseBundle.bundleVersion ||
+      streamBundle.stream.base_bundle_version !== baseBundle.bundleVersion ||
+      baseBundle.problemId !== streamBundle.problemId || !baseBundle.intro.every(item => ['D1', 'D2'].includes(item.id)) ||
+      state.run?.route !== null || state.run?.completed?.length !== 0 || state.archives?.length !== 0 ||
+      !Array.isArray(state.events)) invalid();
+  let verified = createState(baseBundle);
+  for (const event of state.events) {
+    if (event.kind !== 'answer' || !['D1', 'D2'].includes(event.action?.decision)) invalid();
+    verified = submitAnswer(baseBundle, verified, event.action);
+  }
+  // Undo intentionally removes the feedback while preserving its event prefix.
+  if (state.lastFeedback === null) verified.lastFeedback = null;
+  const normalize = value => Array.isArray(value) ? value.map(normalize)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize(value[key])])) : value;
+  if (JSON.stringify(normalize(verified)) !== JSON.stringify(normalize(state))) invalid();
+  return {...copy(state), bundleVersion: streamBundle.bundleVersion};
+}
+
+function sourceCalls(view, step) {
+  const checkpoint = view.checkpoints?.find(item => item.target_ref === step.target_ref && item.route_id === step.route_id);
+  const trajectory = view.trajectories?.find(item => item.target_ref === step.target_ref && item.route_id === step.route_id);
+  const records = trajectory?.steps || checkpoint?.driver_state?.trajectory?.steps || [];
+  const calls = [];
+  for (const source of step.source_refs || []) {
+    const match = /^\/steps\/(\d+)\/calls\/(\d+)$/.exec(source);
+    if (!match) continue;
+    // Streaming solver events carry a one-based seq, even if earlier records
+    // have not arrived. Snapshot trajectories use the same sequence identity.
+    const record = records.find(item => item.seq === Number(match[1]) + 1);
+    const call = record?.calls?.[Number(match[2])];
+    if (!call?.public_ref || !call.postconditions?.every(check => check.passed === true)) continue;
+    calls.push({method: record.method, step: record.step, ref: call.public_ref,
+      usedBasis: copy(call.used_basis || []), source});
+  }
+  return calls;
+}
+
+/** Add selection and graph evidence without changing the mathematical DOM.
+ * The version includes the run identity from the first snapshot; later chunks
+ * cannot reset D1/D2 answers, drafts or an independently stored reading cursor.
+ */
+export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph) {
+  const identity = {run_id: view.run_id, lesson_version: view.lesson_version,
+    stream_id: view.stream_id || view.run_id, target_ref: targetRef};
+  if (!identity.run_id || !identity.lesson_version || !targetRef) throw new Error('stream.missing_identity');
+  if (base.stream && (!sameStream(identity, base.stream) || identity.stream_id !== base.stream.stream_id)) {
+    throw new Error('stream.bundle_identity_mismatch');
+  }
+  const bundle = copy(base);
+  const baseVersion = base.stream?.base_bundle_version || base.bundleVersion;
+  bundle.bundleVersion = JSON.stringify(['stream', baseVersion, identity.lesson_version, identity.run_id, targetRef]);
+  const chunks = (view.selection_chunks || []).filter(item => item.target_ref === targetRef);
+  const d3 = chunks.find(item => item.kind === 'D3')?.chunk || base.stream?.d3;
+  const d4 = chunks.find(item => item.kind === 'D4')?.chunk || base.stream?.d4;
+  for (const [kind, chunk] of [['d3', d3], ['d4', d4]]) {
+    if (base.stream?.[kind] && JSON.stringify(base.stream[kind]) !== JSON.stringify(chunk)) {
+      throw new Error('stream.immutable_selection');
+    }
+  }
+  const mathSteps = (view.math_steps || []).filter(step => sameStream(identity, step) && step.local_check === 'passed');
+  const knownSteps = new Map(mathSteps.map(step => [streamStepKey(step), step]));
+  for (const previous of base.stream?.math_steps || []) {
+    const current = knownSteps.get(streamStepKey(previous));
+    if (current && JSON.stringify(current) !== JSON.stringify(previous)) throw new Error('stream.immutable_math_step');
+    if (!current) { mathSteps.push(copy(previous)); knownSteps.set(streamStepKey(previous), previous); }
+  }
+  const stepCalls = copy(base.stream?.step_calls || {});
+  for (const step of mathSteps) {
+    const calls = sourceCalls(view, step);
+    if (calls.length) stepCalls[streamStepKey(step)] = calls;
+  }
+  bundle.stream = {...identity, base_bundle_version: baseVersion, d3: copy(d3 || null), d4: copy(d4 || null),
+    math_steps: copy(mathSteps), step_calls: stepCalls};
+
+  const nodes = new Map((fullGraph?.nodes || []).map(node => [node.id, node]));
+  for (const node of base.graph.nodes) if (!nodes.has(node.id)) nodes.set(node.id, node);
+  const edges = new Map([...(fullGraph?.edges || []), ...base.graph.edges].map(edge => [edge.id, edge]));
+  const ids = new Set(base.graph.nodes.map(node => node.id));
+  for (const step of mathSteps) {
+    for (const ref of [step.method_ref, ...(step.used_basis || [])]) if (ref && nodes.has(nodeId(ref))) ids.add(nodeId(ref));
+    for (const call of stepCalls[streamStepKey(step)] || []) {
+      for (const ref of [call.method, call.ref, ...call.usedBasis]) if (nodes.has(nodeId(ref))) ids.add(nodeId(ref));
+    }
+  }
+  if (d3 && d4) {
+    const ruleEdges = [...edges.values()].filter(edge => edge.type === 'method_rule' && edge.from === d3.query.from);
+    const rules = new Set(ruleEdges.map(edge => edge.to));
+    const selectedByBranch = new Map();
+    for (const edge of edges.values()) if (edge.type === 'selects' && rules.has(edge.from)) {
+      for (const occurrence of edge.occurrences || []) selectedByBranch.set(occurrence.branch, edge.to);
+    }
+    const options = d4.options || [];
+    const methods = Object.entries(d3.interaction.coverage).map(([branch, cells]) => {
+      const option = options.find(item => item.branch === branch);
+      const target = option?.method || selectedByBranch.get(branch);
+      if (!target || !nodes.has(target)) throw new Error('stream.unknown_method');
+      ids.add(target);
+      return {value: branch, label: nodes.get(target).label, target, cells: copy(cells),
+        ...(option ? {route: option.route_id, route_plan: option.route_plan} : {})};
+    });
+    for (const id of rules) ids.add(id);
+    const alternatives = {};
+    for (const method of methods) if (!method.route) alternatives[method.value] = {
+      message: options.find(item => item.branch === method.value)?.message ||
+        d3.verdicts?.[method.value]?.message || '这条思路本次不展开。', href: `/knowledge/${method.target}/`,
+    };
+    const selection = {...copy(d3), source: 'authored', interaction: {...copy(d3.interaction), methods}, alternatives,
+      candidateNodes: [...rules, ...methods.map(method => method.target)],
+      effects: {nodes: [...rules], edges: ruleEdges.map(edge => edge.id), calls: [], results: [], log: '根据本题条件选择解题方法。'}};
+    const routeChoices = options.map(option => ({value: option.route_id, label: nodes.get(option.method)?.label || option.method}));
+    const routeByAnswer = Object.fromEntries(options.filter(option => option.route_plan === 'planned').map(option => [option.route_id, option.route_id]));
+    const confirmation = {id: 'D4', title: d4.title, source: 'authored', question: '选择这一轮要阅读的解题路线。',
+      submit_label: '开始阅读解题步骤', interaction: {type: 'choice', field: 'route', options: routeChoices},
+      expected_answer: {one_of: Object.keys(routeByAnswer)}, route_by_answer: routeByAnswer,
+      alternatives: Object.fromEntries(options.filter(option => option.route_plan !== 'planned').map(option =>
+        [option.route_id, {message: option.message || '详细步骤暂不支持', href: `/knowledge/${option.method}/`}])),
+      feedback: {answer: '请选择一条当前可以展开的路线。'}, candidateNodes: options.map(option => option.method),
+      effects: {nodes: [], edges: [], calls: [], results: [], log: '已确认本轮解题路线。'}};
+    bundle.intro = [...bundle.intro.filter(item => !['D3', 'D4'].includes(item.id)), selection, confirmation];
+    bundle.routes = Object.fromEntries(options.map(option => [option.route_id, {
+      id: option.route_id, method: option.method, label: nodes.get(option.method)?.label || option.method,
+      streaming: true, route_plan: option.route_plan, steps: [], takeaway: '',
+    }]));
+    bundle.pending = {title: '解题步骤', status: '正在计算', text: '已完成的数学步骤会逐步显示。'};
+  }
+  bundle.graph = {...bundle.graph, nodes: [...ids].map(id => copy(nodes.get(id))),
+    edges: [...edges.values()].filter(edge => ids.has(edge.from) && ids.has(edge.to)).map(copy)};
+  // Newly encountered skills/bases use the same public lane layout as D1/D2.
+  if (bundle.graph.lanes) {
+    const covered = new Set(bundle.graph.lanes.flatMap(lane => lane.ids || []));
+    for (const lane of bundle.graph.lanes) for (const node of bundle.graph.nodes) if (node.kind === lane.kind) covered.add(node.id);
+    const extra = bundle.graph.nodes.filter(node => !covered.has(node.id)).map(node => node.id);
+    if (extra.length) bundle.graph.lanes.push({label: '本步调用与依据', ids: extra});
+  }
+  return bundle;
+}
+
+/** Only explicitly reached mathematical cards contribute to the learning graph. */
+export function streamGraphState(bundle, state, {steps = [], route = state.run.route} = {}) {
+  const view = graphState(bundle, state);
+  if (!bundle.stream || route !== state.run.route || state.introCompleted.length < bundle.intro.length) return view;
+  const known = new Map(bundle.stream.math_steps.map(step => [streamStepKey(step), step]));
+  const used = new Set(view.usedBasis);
+  const edge = id => { if (id in view.edges) view.edges[id] = 'chosen'; };
+  const light = ref => { if (ref && nodeId(ref) in view.nodes) view.nodes[nodeId(ref)] = 'confirmed'; };
+  const seen = new Set();
+  for (const passed of steps) {
+    const key = streamStepKey(passed), step = known.get(key);
+    if (!step || seen.has(key) || !sameStream(bundle.stream, passed) || passed.route_id !== route ||
+        passed.math_step_sha256 !== step.math_step_sha256) continue;
+    seen.add(key);
+    light(step.method_ref);
+    for (const basis of step.used_basis || []) if (nodeId(basis) in view.nodes) { light(basis); used.add(basis); }
+    const calls = bundle.stream.step_calls[key] || [];
+    for (const [index, call] of calls.entries()) {
+      if (!(call.method in view.nodes) || !(nodeId(call.ref) in view.nodes)) continue;
+      light(call.method); light(call.ref);
+      const relation = `${call.method}|calls|${nodeId(call.ref)}`;
+      edge(relation);
+      for (const basis of call.usedBasis) {
+        if (nodeId(basis) in view.nodes) { light(basis); used.add(basis); edge(`${nodeId(call.ref)}|uses|${nodeId(basis)}`); }
+      }
+      const occurrence = bundle.graph.edges.find(item => item.id === relation)?.occurrences?.findIndex(item => item.step === call.step);
+      view.calls.push({...copy(call), edge: relation, occurrence: occurrence >= 0 ? occurrence : 0,
+        runId: state.run.id, decision: step.step_id, executionIndex: index});
+    }
+    view.logs.push({decision: step.step_id, text: `已阅读：${step.title}`});
+  }
+  view.usedBasis = [...used].sort();
+  return view;
 }
 
 // A replay walks `routes` in order: the AI picks the first route itself at the method plane,

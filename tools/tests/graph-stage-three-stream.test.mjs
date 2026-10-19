@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createEventConsumer, mountStageThreeStream} from '../../site/assets/graph-walk/stage-three-stream.mjs';
+import {createEventConsumer, mountStageThreeStream, connectStageThreeStream} from '../../site/assets/graph-walk/stage-three-stream.mjs';
 
 const identity = {run_id: 'run-01', lesson_version: 'lesson-01', stream_id: 'run-01'};
 const target = '/root/goals/0';
@@ -56,6 +56,19 @@ test('committed first steps render while the route has no completion or QA', () 
   assert.equal(find('stage-three-qa')[0].hidden, true);
   assert.equal(view.consumer.last_seq, 2);
   assert.deepEqual(view.consumer.view().completions, []);
+});
+
+test('failed mathematical rendering retries before publishing the DOM card', () => {
+  const {container, find} = documentFixture();
+  let fail = true;
+  const view = mountStageThreeStream(container, identity, {renderMath() { if (fail) throw new Error('renderer loading'); }});
+  assert.throws(() => view.consumer.accept(mathEvent(1)), /renderer loading/);
+  assert.equal(find('stage-three-math-step').length, 0);
+  assert.equal(view.consumer.last_seq, 0);
+  fail = false;
+  view.consumer.accept(mathEvent(1));
+  assert.equal(find('stage-three-math-step').length, 1);
+  assert.equal(view.consumer.last_seq, 1);
 });
 
 test('duplicate, out-of-order and old-run deliveries cannot duplicate or mix cards', () => {
@@ -152,6 +165,7 @@ test('refresh snapshot restores exact math while keeping existing DOM and readin
   const {container, find} = documentFixture();
   const view = mountStageThreeStream(container, identity, {mode: 'practice'});
   view.consumer.accept(mathEvent(1));
+  view.consumer.accept(mathEvent(2, step(2)));
   view.revealThrough(target, route, 2);
   const first = find('stage-three-math-step')[0];
   view.consumer.hydrate({...identity, last_seq: 10, math_steps: [step(), step(2)], goals: {}, checkpoints: [], handoffs: [], qa: []});
@@ -190,4 +204,126 @@ test('completion renders readable mathematical answers and calls the shared math
   assert.equal(rendered.at(-1), find('stage-three-completion')[0]);
   assert.equal(container.children[0].children[0].textContent, '判别式法');
   assert.equal(find('stage-three-evidence').length, 0);
+});
+
+test('selection chunks and committed call evidence survive snapshot hydration', () => {
+  const consumer = createEventConsumer(identity), d3 = {id: 'D3'}, d4 = {id: 'D4'};
+  consumer.accept(event(1, 'lesson.chunk_ready', {kind: 'D3', chunk: d3}));
+  consumer.hydrate({...identity, last_seq: 3, selection_chunks: [{target_ref: target, kind: 'D3', chunk: d3},
+    {target_ref: target, kind: 'D4', chunk: d4}], math_steps: [], goals: {},
+    checkpoints: [{target_ref: target, route_id: route, driver_state: {trajectory: {steps: [{seq: 1, calls: [{public_ref: 'skill-example'}]}]}}}]});
+  assert.equal(consumer.view().selection_chunks.length, 2);
+  assert.equal(consumer.view().trajectories[0].steps[0].calls[0].public_ref, 'skill-example');
+  assert.throws(() => consumer.accept(event(4, 'lesson.chunk_ready', {kind: 'D3', chunk: {id: 'different'}})), /immutable_selection/);
+});
+
+test('a failed QA mount can retry the same sequence without losing the attachment', () => {
+  let count = 0;
+  const consumer = createEventConsumer(identity, {onQA() { if (++count === 1) throw new Error('temporary render failure'); }});
+  consumer.accept(mathEvent(1)); consumer.accept(doneEvent(2));
+  assert.throws(() => consumer.accept(qaEvent(3)), /temporary/);
+  assert.equal(consumer.last_seq, 2);
+  assert.equal(consumer.view().qa.length, 0);
+  consumer.accept(qaEvent(3));
+  assert.equal(consumer.last_seq, 3);
+  assert.equal(consumer.view().qa.length, 1);
+  assert.equal(count, 2);
+});
+
+test('only arrived reading positions persist across a full page refresh', () => {
+  const values = new Map(), storage = {getItem: key => values.get(key), setItem: (key, value) => values.set(key, value)};
+  const first = documentFixture();
+  const view = mountStageThreeStream(first.container, identity, {mode: 'practice', storage});
+  view.consumer.accept(mathEvent(1));
+  view.revealThrough(target, route, 50);
+  view.consumer.accept(mathEvent(2, step(2)));
+  assert.equal(first.find('stage-three-math-step')[1].hidden, true);
+  view.revealThrough(target, route, 2);
+  const refreshed = documentFixture();
+  const restored = mountStageThreeStream(refreshed.container, identity, {mode: 'practice', storage});
+  restored.consumer.hydrate({...identity, last_seq: 3, math_steps: [step(), step(2), step(3)], goals: {}});
+  assert.deepEqual(refreshed.find('stage-three-math-step').map(node => node.hidden), [false, false, true]);
+  const newer = documentFixture();
+  const other = mountStageThreeStream(newer.container, {...identity, run_id: 'new'}, {mode: 'practice', storage});
+  assert.equal(other.readingPosition(target, route), 1);
+});
+
+const descriptor = {...identity, snapshot_url: '/snapshot', events_url: '/events', websocket_url: '/ws'};
+const emptySnapshot = () => ({...identity, last_seq: 0, math_steps: [], goals: {}});
+const response = (value, status = 200) => ({ok: status === 200, status, json: async () => value});
+class Socket {
+  static instances = [];
+  constructor(url) { this.url = url; Socket.instances.push(this); }
+  message(value) { this.onmessage?.({data: JSON.stringify(value)}); }
+  close(code = 1000) { this.onclose?.({code}); }
+}
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+test('WebSocket and HTTP fallback share a cursor and deduplicate delivery', async () => {
+  Socket.instances.length = 0;
+  const consumer = createEventConsumer(identity), requested = [];
+  let delivered = false;
+  const transport = connectStageThreeStream(consumer, descriptor, {WebSocket: Socket, pollInterval: 100000,
+    fetch: async address => {
+      const url = new URL(address); requested.push(url.pathname + url.search);
+      return response(url.pathname === '/snapshot' ? emptySnapshot() : {events: delivered ? [mathEvent(1), mathEvent(2, step(2))] : []});
+    }});
+  try {
+    await transport.start();
+    assert.match(Socket.instances[0].url, /\/ws\?after=0/);
+    Socket.instances[0].message({events: [mathEvent(1)]}); await flush();
+    delivered = true; Socket.instances[0].close(); await flush();
+    await transport.pollOnce();
+    assert.equal(consumer.last_seq, 2);
+    assert.equal(consumer.view().math_steps.length, 2);
+    assert.ok(requested.some(value => value === '/events?after_seq=1'));
+  } finally { transport.stop(); }
+});
+
+test('unavailable WebSocket does not report a disconnection while HTTP fallback succeeds', async () => {
+  const consumer = createEventConsumer(identity), errors = [];
+  let failHTTP = false, updates = 0, connections = 0;
+  class UnavailableSocket { constructor() { connections++; throw new Error('WebSocket unavailable'); } }
+  const transport = connectStageThreeStream(consumer, descriptor, {WebSocket: UnavailableSocket, pollInterval: 100000,
+    onError: error => errors.push(error.message), onUpdate: () => { updates++; },
+    fetch: async address => {
+      if (failHTTP) throw new Error('HTTP unavailable');
+      return response(new URL(address).pathname === '/snapshot' ? emptySnapshot() : {events: [mathEvent(1)]});
+    }});
+  try {
+    await transport.start();
+    assert.ok(connections >= 2, 'both initial and retry socket failures use the fallback');
+    assert.equal(consumer.last_seq, 1);
+    assert.deepEqual(errors, []);
+    failHTTP = true;
+    await assert.rejects(transport.pollOnce(), /HTTP unavailable/);
+    assert.deepEqual(errors, ['HTTP unavailable']);
+    const previousUpdates = updates;
+    failHTTP = false;
+    await transport.pollOnce();
+    assert.equal(updates, previousUpdates + 1, 'HTTP recovery reports a normal successful update');
+  } finally { transport.stop(); }
+});
+
+test('HTTP cursor expiry refetches selection and QA without replacing math cards', async () => {
+  const {container, find} = documentFixture(), view = mountStageThreeStream(container, identity);
+  view.consumer.accept(mathEvent(1));
+  const original = find('stage-three-math-step')[0];
+  let snapshots = 0;
+  const transport = connectStageThreeStream(view.consumer, descriptor, {WebSocket: null,
+    fetch: async address => {
+      const url = new URL(address);
+      if (url.pathname === '/events') return response({cursor_expired: true}, 409);
+      snapshots++;
+      return response({...identity, last_seq: 5, math_steps: [step()], goals: {},
+        selection_chunks: [{target_ref: target, kind: 'D3', chunk: {id: 'D3'}}],
+        handoffs: [{target_ref: target, route_id: route, available: true, status: 'partial', verified_route_sha256: 'route-hash'}], qa: [qa()]});
+    }});
+  try {
+    await transport.pollOnce();
+    assert.equal(snapshots, 1);
+    assert.equal(view.consumer.last_seq, 5);
+    assert.equal(find('stage-three-math-step')[0], original);
+    assert.equal(find('stage-three-qa')[0].hidden, false);
+  } finally { transport.stop(); }
 });

@@ -119,3 +119,24 @@
 .pq-viewer::backdrop { background: rgba(0, 0, 0, .7); }
 .pq-viewer img { display: block; max-width: 100%; max-height: 70vh; }
 .pq-viewer button { width: 100%; margin-top: 10px; }
+
+/* Stage-three fragments share the walk's safe mathematical renderer. */
+#pq-stream { display: grid; gap: 14px; margin-top: 14px; }
+.stage-three-route-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.stage-three-route-tabs button { padding: 8px 14px; border: 1px solid var(--sq-line); border-radius: 999px; background: #fff; color: var(--sq-ink); font: inherit; cursor: pointer; }
+.stage-three-route-tabs button[aria-pressed="true"] { border-color: var(--sq-teal); background: #e3f1ec; color: var(--sq-teal-dark); }
+.stage-three-route { display: grid; gap: 10px; }
+.stage-three-route > h2 { font-size: 18px; margin: 0; }
+.stage-three-route-status, .pq-stream-status { color: var(--sq-muted); font-size: 14px; line-height: 1.6; }
+.stage-three-route > div { display: grid; gap: 12px; }
+.stage-three-math-step { padding: 18px 20px; border: 1px solid var(--sq-line); border-radius: 18px; background: #fff; }
+.stage-three-math-step h3 { margin: 0 0 10px; font-size: 17px; }
+.stage-three-math-step p { margin: 7px 0; line-height: 1.8; overflow-wrap: anywhere; }
+.stage-three-before, .stage-three-after { overflow-x: auto; }
+.stage-three-before { color: var(--sq-muted); }
+.stage-three-after { color: var(--sq-teal-dark); }
+.stage-three-qa { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--sq-line); }
+.stage-three-qa strong { color: var(--sq-teal-dark); font-size: 14px; }
+.stage-three-next { justify-self: start; padding: 10px 18px; border: 0; border-radius: 12px; background: var(--sq-teal); color: #fff; font: inherit; cursor: pointer; }
+.stage-three-next:disabled { background: #edf2ef; color: var(--sq-muted); cursor: default; }
+.stage-three-completion { padding: 16px; border-radius: 14px; background: #e3f1ec; color: var(--sq-teal-dark); line-height: 1.8; }

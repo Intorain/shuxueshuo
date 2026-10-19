@@ -1,6 +1,6 @@
 # 图谱交互课程阶段③实现计划：选法评估、方法驱动求解与数学步骤逐步交付
 
-> 状态：批次 1a 已实现；1b-1、1b-2 的上一轮 P1/P2、P3#1/P3#7 修复已有自动回归记录，本轮嵌套根式、精确集合比较和验证收束截止修复已通过回归：阶段③ 364 passed，相关回归合计 801 passed、1 skipped，新报告见 12.2。Demo 例外仍待统一人工确认；完整计算隔离与中断预算收尾是进入 1c 前的门槛，其余 P3 见 12.2（2026-10-19 修订）。
+> 状态：批次 1a、1b-1、1b-2 已实现；路线求解／验证隔离及中断预算恢复的历史验收见 12.2，隔离不包含入口题意准入、`build_context` 和 D3 选法。批次 1c 的本机开发拍题入口主链路已通过验收：持久流、D1–D4、Q01 双路线阅读及构造问答附加可用；审查前 Python 回归合计 923 passed、1 skipped，前端 93 passed。审查发现的状态轮询提前退出 P2 已修复，相关前端 102 项回归及浏览器复核通过；修复验收与剩余台账见 12.3。阶段④真实生成及正式学生服务的登录、归属与额度尚未完成。Demo 例外继续待人工确认，其余 P3 见 12.2、12.3（2026-10-19 修订）。
 > 设计依据：[四阶段交互课程生成设计](graph-guided-interactive-lesson-design.md)第 6–9 节。
 > 输入依据：[阶段②实现计划](graph-guided-stage-two-implementation-plan.md)。阶段③读取阶段②已确认归属的目标，不重新判型、不重新提取题意或计算阶段①特征。
 > 执行器选择：在 `graph_lesson/stage_three` 新建轻量外层驱动器和能力函数，只复用 `math_kernel`、`notation_semantics` 里的纯代数部件；轨迹使用本阶段自己的契约，预留到 ExplanationSnapshot 的映射（第 9.4 节）。理由见第 1 节。
@@ -245,13 +245,17 @@ Q08、Q09 中前三个分支以给出范围的字母为主元，而本题给出�
 - **路线收束**：方法返回主关系解集后，检查全部题设的处理记录并求交，独立验证完整可行集，再按原目标生成范围或极值答案（第 10.2 节）。任何未处理题设、未验证的集合或未知极值判定都不能发布为 `solved`。
 - **逐步提交**：完成的输出、上下文增量、局部检查、数学片段及其事件以同一次逻辑提交登记；未提交内容不可被推送或轮询读到。发布器读取已提交事件，不由求解驱动器直接持有浏览器连接；求解不等待前端确认。详细协议见 11.2。
 - **中断恢复**：在每个可发布的调用／子调用完成边界持久化帧、下一子调用位置、情况路径、输出引用、已分配步骤 ID 和事件水位。恢复核对题意哈希与轨迹 `revisions` 中的全部版本（含展示注册表，因为标题和说明模板变化会使同一步骤 ID 的正文不同），任一不符即拒绝原地续跑、需新建运行版本；全部相符则继续最后一次已提交状态；未提交的调用可重算，已发布步骤不生成新 ID 或重复业务事件。仅有日志但不能恢复绑定时，不冒充继续执行，应明确失败或启动新的运行版本。
-- **隔离与预算**：每条路线从共享只读输入新建状态，不读取其他路线的中间结果。方法求解默认 10 秒，验证收束另有默认 20 秒，均可配置；测试钩子、屏障、持久化提交、事件发布与进程停机期间不计时。验证收束的计时包含子进程启动和数据传输，不能称为仅统计代数运算的纯计算耗时。求解预算仍逐调用事后检查，超时或异常记为 `execution_error`；验证收束超时为 `capability_gap`（`verification_incomplete`，诊断保留超时原因），保留已提交前缀，不发布 `verified` 或阶段④交接。
+- **隔离与预算**：每条路线从共享只读输入新建状态，不读取其他路线的中间结果。方法求解默认 10 秒，验证收束另有默认 20 秒，均可配置；执行预算由隔离会话与持久账本实施，不能只依赖 `driver` 内逐调用的事后检查。计算计时含进程启动、编码、计算和传输，测试钩子、屏障、持久化提交、事件发布及会话空闲期间不计时。求解超时或异常记为 `execution_error`；验证收束超时为 `capability_gap`（`verification_incomplete`，诊断保留超时原因），保留已提交前缀，不发布 `verified` 或阶段④交接。
 
-本轮已将验证收束的约束求交、`verify`、`endpoint_check`、目标收束及路线一致性计算移到 `spawn` 子进程中，四个边界使用剩余验证预算设置硬截止，超时终止并回收子进程。预算配置从首次 `start` checkpoint 即保存；`verification_seconds` 累计各阶段用量，阶段完成及超时返回的消耗随 checkpoint 持久化，恢复后只使用剩余预算，不再遗漏约束求交和端点检查，也不以新一次验证耗时覆盖旧值。
+**本轮隔离实现。** 每条路线使用持久 JSON 会话，由独立监督进程管理数学 worker。初始 `can_execute/create_state`、每次 `advance`、精确数学对象的解码／编码、数学文案渲染，以及约束求交、独立验证、端点展示、目标收束与一致性这四个验证边界，全部在数学 worker 内执行。父进程在这条路线边界上只处理受大小、深度和节点数限制的 JSON，不再用 pickle 重建 SymPy 对象；每次计算使用所属预算桶的剩余额度设置硬截止，超时终止并回收 worker。
 
-硬截止覆盖数学调用、子进程内的结果序列化和 pipe 传输；父进程对可信 pickle 输入的编码及结果重建仍同步执行，只在返回后检查耗时。因此不能承诺任意大小的编解码也可被硬截止，这部分仍属完整计算隔离的边界限制。
+数学 worker 返回结果后，父进程须在同一截止时间前完成 JSON 接收并 ACK；监督进程收到 ACK 后才写入成功的 `returned` 回执。结果还未送达或 ACK 已超时，不能留下可在恢复时绕过截止的成功回执。父通道断开时先比较共享截止时间：已到期按 `timeout`，只有提前失去父进程才记 `parent_lost`，防止正常超时与 EOF 的竞态误归类。
 
-该修复仅覆盖验证收束。`driver` 的 `solve` 仍在同步调用返回后检查预算，不能中断未返回的方法能力；`bounded_expand` 等局部保护不等于硬时限。完整计算隔离，以及外部中断时未结算用量的保存、恢复与超时子进程清理，提升为 **1c 前必须完成的门槛**（12.3），不能把 P3#6 整项记为已解决。`cases` 的完整分支执行、隔离与结果合并仍须先通过 12.4 的门槛才能扩大支持类别。
+**持久预算与恢复。** SQLite 账本按目标、路线及 `solve/verification` 桶保存预算；每次计算先取得路线租约并登记带输入哈希的 attempt，再启动工作，防止两个恢复进程同时消费同一路线。监督进程原子保存带 attempt 身份的 receipt，账本结算实际耗时；checkpoint 同步 `compute_seconds/verification_seconds` 和逐操作计时。已测实际用量 `actual` 与回执尚未知时的保留上界 `reserved` 分开记录，准入按两者之和扣预算，不能将未知用量冒充零或实际测量值。
+
+父进程被 SIGKILL 后，监督进程回收数学 worker 并保存 `parent_lost` 的实际耗时；恢复先核对和导入回执，再按剩余额度重试。回执暂不可得时保留预算上界，不能重复恢复以重置消耗。若计算已 `returned` 但数学步骤／事件尚未提交，恢复复用相同输入哈希下的回执，不重新计算；步骤和完成态仍须通过原子的发布提交，已发布事件不重复。
+
+该隔离边界明确为**路线求解与验证**。入口的 Notation 准入、`build_context` 和 D3 选法仍走现有父进程路径，不能概括为阶段③所有数学都已移出父进程。P3#6 在上述路线边界内已通过全量回归、真实 SIGKILL 恢复与浏览器验收，证据见 12.2；1c 的页面接线与问答附加验收另见 12.3，不计入此前的通过结论。`cases` 的完整分支执行、隔离与结果合并仍须先通过 12.4 的门槛才能扩大支持类别。
 
 ## 7. 能力函数
 
@@ -476,7 +480,7 @@ Demo 原稿每个课程步骤的 `effects.calls` 为 `{method, step, ref, usedBa
 
 ### 11.2 事件、快照与网页接线
 
-沿用产品服务的持久事件与游标订阅；离线 CLI 使用相同语义的持久日志适配器，HTTP 轮询和 WebSocket 读取同一份已提交事件。事件信封至少含协议版本、`event_id`、流 ID、流内单调 `seq`、`lesson_version/run_id`、事件类型和负载；所有目标／路线消息携带 `target_ref`，路线消息另带 `route_id`，步骤消息再带 `step_id` 与内容哈希。片段身份与幂等键保留完整目标命名空间；整题级消息才允许 `target_ref=null`。`seq` 是传输水位，`ordinal` 是数学展示顺序，不能混用。事件类别：
+线上接线与离线 CLI 共用阶段③的持久事件、游标和快照语义。当前 1c 由本机开发拍题 API 为同一 SQLite `EventStore` 提供 HTTP 轮询和 WebSocket 适配；不把事件复制进第二个存储，也不从导出的 JSONL 恢复执行。正式产品服务现有的 build/problem/batch 流使用产品数据库与授权边界，当前开发接线不等于已完成该服务的学生账号接入。事件信封至少含协议版本、`event_id`、流 ID、流内单调 `seq`、`lesson_version/run_id`、事件类型和负载；所有目标／路线消息携带 `target_ref`，路线消息另带 `route_id`，步骤消息再带 `step_id` 与内容哈希。片段身份与幂等键保留完整目标命名空间；整题级消息才允许 `target_ref=null`。`seq` 是传输水位，`ordinal` 是数学展示顺序，不能混用。事件类别：
 
 | 事件 | 触发与用途 |
 | --- | --- |
@@ -488,13 +492,13 @@ Demo 原稿每个课程步骤的 `effects.calls` 为 `{method, step, ref, usedBa
 | `lesson.chunk_ready`，`kind=step_qa` | 阶段④生成的单步补充问答校验通过，仅挂接到精确匹配的数学片段 |
 | `lesson.enrichment_status` | 阶段④问答生成进度、部分失败或完成；数学内容继续可用 |
 
-D1–D4 沿用原有 `lesson.chunk_ready` 片段协议。持久化输出、上下文增量、快照推进与事件登记须形成可恢复的逻辑提交；单纯写 JSONL 后立即发消息不构成执行恢复保证。离线适配器也必须区分已提交记录与中断尾部，恢复后不能把同一计算或片段登记两次。网络通知失败可重发，不回滚已提交计算。
+D1–D4 沿用原有 `lesson.chunk_ready` 片段协议。快照在同一只读事务中恢复已发布的 `selection_chunks`；即使传输事件已被保留策略裁剪，也从未裁剪的提交回执取得 D3/D4。D1/D2 的题意引文、正确项、错误反馈和替代思路继续由固定阶段②结果生成，不为阶段③重做判型。持久化输出、上下文增量、快照推进与事件登记须形成可恢复的逻辑提交；单纯写 JSONL 后立即发消息不构成执行恢复保证。离线适配器也必须区分已提交记录与中断尾部，恢复后不能把同一计算或片段登记两次。网络通知失败可重发，不回滚已提交计算。
 
 完成态和阶段④任务登记须与当前 `goal_status` 的发布门槛在同一提交中核对。后来目标变为不可用时追加 `lesson.goal_status`，取消尚未执行的问答任务，并拒绝已在途任务的迟到发布；已保存问答与数学片段保留为证据但不再作为可用答案展示。目标冲突不伪装成某条路线的 `math_failed`，一致性未知也不冒充已证明冲突。
 
 首次加载返回当前快照及同一一致性水位 `last_seq`，随后 WebSocket 以 `after=last_seq` 订阅，HTTP 以 `after_seq=last_seq` 轮询；两者表达同一事件水位。客户端按版本与事件 ID 去重、按序补缺，迟到的旧运行事件不能污染当前课程。游标过期则明确要求重取快照。刷新和断线后不重跑题意提取或已完成求解；同一运行恢复读取提交状态，版本改变时新建运行。快照与事件不可有读取空窗。
 
-网页以独立数学片段增量更新，不需要重新加载整份 bundle。计算进度与学生阅读／作答进度分开：“看 AI 解题”按到达的数学步骤展示，“自己做”只显示学生已到达的步骤，图谱不提前点亮后续节点。问答尚未就绪不阻塞阅读；附加问答不得替换 DOM 中的数学卡片、重置作答或跳动当前步骤。片段事件可以小批量发送，但不得积压到整条路线结束才交付；慢客户端可按游标补读，求解不等待其确认。
+网页以独立数学片段增量更新，不需要重新加载整份 bundle。D1–D4 仍由原 graphwalk 引擎负责作答；数学片段使用独立 DOM 追加，不伪造成学生答对的题目。bundle 的进度身份从首份流身份起固定，后来到达的 D3/D4、数学片段和问答不改变该身份。计算进度与学生阅读／作答进度分开：“看 AI 解题”按到达的数学步骤展示，“自己做”只显示学生已到达的步骤，图谱不提前点亮后续节点。图谱的公共调用从对应数学片段的 `source_refs` 解引用已提交轨迹，依据取 `used_basis`，只点亮已阅读片段涉及的真实节点和边，不能从方法的全部可能连线推测已经调用的技能。问答尚未就绪不阻塞阅读；附加问答不得替换 DOM 中的数学卡片、重置作答或跳动当前步骤。片段事件可以小批量发送，但不得积压到整条路线结束才交付；慢客户端可按游标补读，求解不等待其确认。
 
 ### 11.3 文件与报告
 
@@ -508,7 +512,8 @@ D1–D4 沿用原有 `lesson.chunk_ready` 片段协议。持久化输出、上�
   stage-one-input.json           # 清单引用的阶段①副本，重跑仍须核对哈希与准入
   run.json                      # 本运行身份、输入哈希与计算预算；恢复时不重新分配 ID
   frozen.json                   # 能力、方法、展示与输入相关实现的版本哈希
-  events.sqlite3                # 离线适配器的权威提交库：状态、数学片段、事件、交接同事务
+  events.sqlite3                # 权威提交库：状态／数学片段／事件／交接同事务，另含计算租约与预算账本
+  calculation-budget/receipts/  # 监督进程原子写入的计算回执，按 attempt 身份导入账本
   events.jsonl                  # 导出的已提交事件，与在线事件具有相同语义
   checkpoint.json              # 同一水位的状态导出；恢复读取 SQLite，不用导出文件代替提交库
   goals/goal-001/selection.json
@@ -571,14 +576,20 @@ Q13 学生上传录制作为单独入口回归：批次 1a 即检查准入与选
 | P3#3：关系方向 | `quadratic_sign_condition` 仅接收表达式，不知道关系方向；目前由正首项准入挡住翻转情况。放宽前必须传递类型化关系，覆盖归一化乘负数后方向反转的变式 | 尚未完成；批次 2 放宽支持类别前的必过门槛 |
 | P3#4：方法与文案硬编码 | `can_execute`、输入绑定及展示说明含方法／模板分支，`append_boundary` 固定选择 `merge/restore`；通用规则尚未全部进入契约与展示注册表。后续迁移可复用部分并补新增方法与同类变式回归 | 剩余项；当前不声称仅增加契约就能新增方法 |
 | P3#5：解析独立性 | 路线求交的 `apply_visible_constraints` 位于 `verification.py`，直接复用验证的 `read_problem`，同一题设读取错误可能影响双方；须拆出路线求交输入，并补独立预期、等价表示和解析反例的交叉校验 | 剩余项；不声称路线求交与验证的题设读取完全独立 |
-| P3#6：计算截止与预算恢复 | 四个验证收束边界已使用 `spawn` 子进程硬截止并超时回收；预算从首次 start checkpoint 保存，阶段耗时含启动／传输并累计持久化，恢复用剩余，钩子与持久化不计。父进程可信 pickle 编解码仍同步、事后核时，`driver.solve` 仍每调用事后检查，外部中断在途预算尚未结算 | 验证收束部分已通过真实超时、恢复和浏览器回归；完整计算隔离、中断累计和恢复清理仍为 1c 前必过门槛，整项不能标已解决 |
+| P3#6：计算截止与预算恢复 | 路线初始化、advance、数学编解码／展示及四个验证边界均在受监督数学 worker 内；父进程只处理有界 JSON，ACK 前不落成功回执。SQLite 租约、attempt 与 receipt 实施累计预算，区分 actual 与未知 reserved；parent_lost 回收后按余量重试，returned 在发布前可复用不重算 | 路线求解／验证边界内已通过全量回归、真实 SIGKILL 恢复与浏览器验收；入口 Notation 准入、上下文与 D3 选法不在此隔离范围，1c 页面接线验收见 12.3 |
 | P3#7：失败后已发布片段 | 从权威提交回执中的选择事务恢复已发布 D3/D4，保留当前选法调试信息，同时撤销答案与可用状态；事件保留策略裁剪后仍可用提交回执恢复，失败目标不重新执行 | 已修复；执行失败、恢复失败及事件裁剪后的结果一致性回归通过 |
-| P3#8：重复加载与全量导出 | 运行中重复加载配置／输入及全量导出累计状态，随步骤和事件增加会放大开销；后续缓存同版本只读配置、减少非必要重载，并将调试导出与必要增量读取区分 | 剩余项；当前未完成长路线的性能验收 |
+| P3#8：重复加载与全量导出 | 运行中重复加载配置／输入及全量导出累计状态；`snapshot()` 每次扫描全部 `commits` 重建 `selection_chunks`，`export()` 调用快照也承担该开销，随步骤和事件增加会放大成本。后续缓存同版本只读配置、减少非必要重载，并将调试导出与必要增量读取区分 | 剩余项；1c 审查再次确认，当前未完成长路线的性能验收 |
 | P3#9：显示与条件引用 | 数学片段使用 `display`、部分结果使用 `latex`，显示字段尚未统一；`premise_refs` 当前累积全部历史判断，混入与本片段无关的前提，应只引用本片段实际依赖的判断 | 剩余项；统一显示字段并补前提相关性回归，不能以历史判断的全集充当片段依赖 |
 
 上一轮复测记录（新增嵌套根式 P2 之前）：阶段③ **307 passed**；连同阶段②、阶段①特征和 Q13 录制回归共 **744 passed、1 skipped**，Ruff 与 `git diff --check` 通过，新增 LLM 调用为 0。两批各 22 份录制已在新目录完整重跑：[1b-1 报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-review-20261019-01/1b-1/index.html)、[1b-2 报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-review-20261019-01/1b/index.html)。[代数数端点报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-review-20261019-01/algebraic-endpoints/index.html)保留正确／错误候选的完整分区证据与端点检查。真实浏览器复测仍为完成前 4 张卡片、完成后 10 张卡片、2 份交接，刷新恢复成功且无脚本错误，[记录在此](../internal/solver-runs/graph-guided-stage-three/browser-1b-review-20261019-01/browser-evidence.json)。当时额外只读终审的 19 个精确代数探针未发现新增阻断问题；此历史记录不包含本轮嵌套根式和硬截止修复，本轮记录另列如下。其余剩余项按上述门槛继续实施，不因 Q01 两条路线通过而标为完成。
 
-本轮复测记录（嵌套根式与验证收束截止修复后）：阶段③ **364 passed**；连同阶段②、阶段①特征和 Q13 录制回归共 **801 passed、1 skipped**（179.43 秒），Ruff 与 `git diff --check` 通过，新增 LLM 调用为 0。两批各 22 份录制全部重跑：[1b-1 报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-budget-20261019-01/1b-1/index.html)、[1b-2 报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-budget-20261019-01/1b/index.html)。[嵌套根式与预算调试报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-budget-20261019-01/budget-probes/index.html)保留复现脚本、四组正确／错误候选的证明与端点证据、正常路线及超时路线：嵌套根式完整路线约 4.89 秒得到 `verified`；注入的 60 秒验证调用在 3 秒累计预算下终止并回收，验证累计耗时约 3.01 秒，路线为 `capability_gap`，保留 4 张数学卡片且无交接。预算回归覆盖四个收束边界、首次提交保存自定义预算、累计恢复与程序错误分类；进程测试覆盖线程调用、真实超时、父进程中断及清理。真实浏览器仍为完成前 4 张卡片、完成后 10 张卡片、2 份交接，刷新恢复成功且无脚本错误，[记录在此](../internal/solver-runs/graph-guided-stage-three/browser-1b-budget-20261019-01/browser-evidence.json)。`separation-restore-normalize` 例外继续保留 `pending_human_confirmation`，本轮自动测试不代替人工确认。
+历史复测记录（嵌套根式与验证收束截止修复后，持久 JSON 会话与预算账本实现前）：阶段③ **364 passed**；连同阶段②、阶段①特征和 Q13 录制回归共 **801 passed、1 skipped**（179.43 秒），Ruff 与 `git diff --check` 通过，新增 LLM 调用为 0。两批各 22 份录制全部重跑：[1b-1 报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-budget-20261019-01/1b-1/index.html)、[1b-2 报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-budget-20261019-01/1b/index.html)。[嵌套根式与预算调试报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1b-budget-20261019-01/budget-probes/index.html)保留复现脚本、四组正确／错误候选的证明与端点证据、正常路线及超时路线：嵌套根式完整路线约 4.89 秒得到 `verified`；注入的 60 秒验证调用在 3 秒累计预算下终止并回收，验证累计耗时约 3.01 秒，路线为 `capability_gap`，保留 4 张数学卡片且无交接。预算回归覆盖四个收束边界、首次提交保存自定义预算、累计恢复与程序错误分类；进程测试覆盖线程调用、真实超时、父进程中断及清理。真实浏览器仍为完成前 4 张卡片、完成后 10 张卡片、2 份交接，刷新恢复成功且无脚本错误，[记录在此](../internal/solver-runs/graph-guided-stage-three/browser-1b-budget-20261019-01/browser-evidence.json)。此记录不包含本轮持久会话、ACK 截止及真实 SIGKILL 预算恢复，新全量计数和产物另行补记。`separation-restore-normalize` 例外继续保留 `pending_human_confirmation`，自动测试不代替人工确认。
+
+**本轮验收记录（1c 前路线隔离门槛，2026-10-19）：** 阶段③ **404 passed**；连同阶段②、阶段①特征和 Q13 录制回归共 **841 passed、1 skipped**（219.07 秒），Ruff 干净。[验收总报告](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/index.html)汇总 [1b-1 的 22 份录制](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/1b-1/index.html)和 [1b-2 的 22 份录制](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/1b/index.html)，保留正常、故障、预算和恢复诊断。旧的 364/801 记录及报告继续保留，作为本轮扩展前的对照。
+
+真实 SIGKILL 覆盖两个恢复位置：计算在途时回收 worker、结算已耗预算并按剩余额度恢复，见 [inflight 运行报告](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/process-recovery/inflight/run/index.html)和[恢复证据](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/process-recovery/inflight/recovery-evidence.json)；计算已返回但发布尚未提交时复用回执、不重复数学计算或发布，见 [returned 运行报告](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/process-recovery/returned/run/index.html)和[恢复证据](../internal/solver-runs/graph-guided-stage-three/acceptance-pre1c-isolation-20261019-01/process-recovery/returned/recovery-evidence.json)。
+
+[本轮真实浏览器证据](../internal/solver-runs/graph-guided-stage-three/browser-pre1c-isolation-20261019-01/browser-evidence.json)记录完成前 4 张、完成后 10 张数学卡片，交接任务由 0 份增至 2 份，`refresh_restored=true`，浏览器错误列表为空。这组历史验证使用开发预览和共用事件消费者；随后 1c 的本机拍题页面、WebSocket 及问答附加验收另见 12.3。上一阶段代码已提交为 `c0868eae`，未 push；本轮新增的隔离与 1c 开发保留未提交，供审查。Demo 例外继续为 `pending_human_confirmation`。
 
 #### 12.2.1 批次 1b-1：判别式法完整纵向闭环
 
@@ -610,14 +621,41 @@ Q13 学生上传录制作为单独入口回归：批次 1a 即检查准入与选
 
 ### 12.3 批次 1c：Q01 网页逐步展示与问答附加接口
 
-**进入本批前的门槛：** 完成 P3#6 的剩余计算隔离，使方法求解能力也能在硬截止后终止并回收，并补齐父进程同步编解码的时限边界；补齐外部中断时预算用量的结算与恢复，不因重复恢复重置已消耗预算。测试须覆盖求解与验证的长时间调用、累计预算耗尽、子进程运行中断后恢复和清理，以及超时后已提交前缀保留、无完成态或阶段④交接。本轮针对验证收束的子进程修复，不能替代此整体验收。
+**前置门槛验收记录：** 第 6 节的路线求解／验证隔离、受限 JSON 传输、父 ACK 后确认成功、持久预算和外部中断回执恢复已通过完整回归、真实 SIGKILL 恢复与浏览器验收（第 12.2 节）。门槛验证覆盖长时间调用、累计预算耗尽、计算完成而发布未提交、进程运行中断后的清理与恢复，以及超时保留前缀、无完成态或阶段④交接。此门槛不包含入口准入／选法隔离；下述 1c 页面功能单独验收。
 
-内容：在 1a 后并行开发、1b-1 已完成提前展示冒烟的前端消费者基础上，完成双路线与恢复的全面接入。复用产品持久事件通道接 WebSocket 与游标轮询，页面按数学片段增量渲染，支持快照恢复；单片段编译由共用编译入口承担。开发拍题入口同步接入阶段③事件，不另建一套求解流程；具体入口见[学生拍题学页面设计](student-problem-search-design.md)。阶段④以固定录制或构造的合格附加片段测试接口，本批不调用真实 LLM。
+内容：在 1a 后并行开发、1b-1 已完成提前展示冒烟的前端消费者基础上，完成双路线与恢复的全面接入。HTTP／WebSocket 共同读取阶段③持久流，页面按数学片段增量渲染，支持快照恢复；单片段编译由共用编译入口承担。开发拍题入口同步接入阶段③事件，不另建一套求解流程；具体入口见[学生拍题学页面设计](student-problem-search-design.md) 3.8 与第 6 节。阶段④以固定录制或构造的合格附加片段测试接口，本批不调用真实 LLM。
+
+**本轮实现状态：本机开发入口已实现并通过验收。** 每个已保存的 `stage-two-<n>` 对应一个 `stage-three` 运行目录；页面获得其固定 `run_id/lesson_version/stream_id` 和运行限定的快照、HTTP 事件及 WebSocket 地址。读取不触发识图、判型或求解；显式 start 启动已有阶段②结果，显式 resume 先核对最新判型批次和冻结版本，重试判型另建批次。开发入口通过文件锁防止重复排队或跨进程并行改写同一题。本轮覆盖 Q01 双路线、D1–D4、独立数学阅读进度、快照恢复和构造问答附加；真实阶段④生成、正式登录／归属／额度与全部 S1–S5 上线验收仍是后续工作。
+
+**审查前回归记录（2026-10-19）：** 阶段③ **405 passed**；阶段③、阶段②与阶段①特征相关回归合计 **841 passed、1 skipped**（290.22 秒，此计数不含学生拍题 `search` 测试）。[1c 验收总入口](../internal/solver-runs/graph-guided-stage-three/acceptance-1c-20261019-01/index.html)汇总录制与浏览器证据；其中[判别式闭环报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1c-20261019-01/1b-1/index.html)和[双路线报告](../internal/solver-runs/graph-guided-stage-three/acceptance-1c-20261019-01/1b/index.html)各保留 22 份完整录制产物。
+
+学生拍题后端最终回归 **82 passed**（65.36 秒），覆盖运行身份固定、旧批次读取不混入新批次状态，以及 start／resume 的排队与锁竞争；与上述核心测试合计 **923 passed、1 skipped**，两组独立运行、测试项不重复。前端最终回归 **93 passed**，覆盖阶段②进度迁移、双路线及跨小问切换、后台增量不打断 AI 回放、已读图谱、快照／重连与问答附加身份。修改文件的 Ruff 检查通过；全 `search` 目录另有 3 个既有检查问题，不属于本轮修改。
+
+[真实浏览器验收报告](../internal/solver-runs/graph-guided-stage-three/browser-1c-20261019-05/index.html)与[机器可读证据](../internal/solver-runs/graph-guided-stage-three/browser-1c-20261019-05/browser-evidence.json)使用录制 Q01，从真实 `/lab/search/problem.html` 入口运行。完整验证前已有 **4 张**数学卡片；第一条路线单独完成后已有 **1 份**交接，最终为 **10 张**数学卡片、**2 份**交接及 **5 张**问答附加。学生模式实际阅读 **2 张**卡片后刷新，进度恢复成功；问答附加保持数学 DOM，目标冲突会撤销完成态与旧问答。记录包含 **20 帧** WebSocket、**1 次**游标过期及 **3 次**快照读取，浏览器错误列表为空，新增 LLM 调用为 **0**。[刷新后截图](../internal/solver-runs/graph-guided-stage-three/browser-1c-20261019-05/04-refreshed.png)保留人可复核的页面状态。
+
+本轮只验收 Q01 已支持路线的开发入口交付，不扩大数学支持类别。Demo 的 `separation-restore-normalize` 例外仍待人工确认；批次 2 放宽支持类别前必须完成下节的分支隔离／合并与关系方向门槛。本轮隔离及 1c 新增代码尚未提交，保留供审查。
+
+**1c 审查修订（2026-10-19）：** 页面此前在已有目标与可读流后停止题目状态轮询，只依赖数学事件推进；求解在发布终态前中断时，流可能不再增长，页面仍显示运行中而没有“继续计算”。现已将状态监控与片段消费分开：已有流时每 3 秒只读请求题目状态，`starting/running` 继续监控；初次打开已有流也启动同一监控。`interrupted/error` 且流身份可读时显示“继续计算”，显式恢复请求成功后立即后台监控并刷新快照，不等路线结束才恢复按钮。状态请求失败时保留已到达的数学 DOM、流身份与阅读进度，继续重试，不回到清空步骤的失败页。修复回归结果单独补记，以上历史计数不作为新增反例通过的证据。
+
+| 本轮审查项 | 当前处理与后续要求 | 状态／门槛 |
+| --- | --- | --- |
+| P2：状态轮询提前退出 | 补齐已有流持续监控、初次进入已有流、`interrupted/error` 恢复入口、恢复请求后及时解禁及断线保留前缀 | 已修复；相关前端 102 passed，真实浏览器复核通过，此 P2 关闭 |
+| 浏览器复测新增：裁剪与导出竞争 | `export()` 原先分别读取快照和事件，裁剪恰好发生在两次读取之间时抛出 `CursorExpired`，使运行中的路线被误记为 `execution_error`；导出与路线收尾现共用同一读事务的快照／事件读取，公开事件接口仍拒绝过期游标 | 已修复并补确定性并发回归，完整浏览器重跑通过；全量扫描的性能 P3 仍保留 |
+| P3：快照全量扫描 | `snapshot()/export()` 扫描全部提交重建 `selection_chunks`，长路线成本随提交数增长 | 归入 12.2 的 P3#8，尚未优化 |
+| P3：WebSocket 准入顺序 | 开发接口先 `accept()` 再查询运行；正式服务须在建立连接前校验运行，并检查登录与归属 | 本机开发入口保留；正式服务接入前处理 |
+| P3：父进程边界 | 入口 Notation 准入、`build_context` 和 D3 选法仍在父进程 | 与第 6 节及 12.2 一致；不得表述为阶段③所有数学均已隔离 |
+| P3：批次 2 与人工对齐 | 分支隔离／合并、关系方向仍未完成；`separation-restore-normalize` 仍为 `pending_human_confirmation` | 批次 2 放宽类别前通过两项门槛；自动测试不代替人工确认 |
+| P3：正式服务与阶段④ | 正式登录、归属、额度及真实阶段④生成仍未接入 | 不在本批范围；构造问答通过不代表真实生成或产品上线完成 |
+
+**审查修复验收：** 相关前端回归 **102 passed**，其中拍题流程 **18 passed**，覆盖已有流与初次打开的状态监控、`interrupted/error`、终态停止轮询、连续 12 次元数据请求失败仍保留步骤、过时响应隔离与显式恢复不等待整条路线结束。新增[浏览器报告](../internal/solver-runs/graph-guided-stage-three/browser-1c-review-20261019-04/index.html)及[中断态截图](../internal/solver-runs/graph-guided-stage-three/browser-1c-review-20261019-04/01a-interrupted-prefix.png)记录：验证屏障暂停期间不增加事件，页面无需刷新即出现“继续计算”；显式恢复请求 1 次，原数学 DOM 保留。该探针只构造执行状态响应与恢复回执，不宣称模拟了真实进程崩溃；进程恢复沿用既有后端测试。完整浏览器链路仍得到 4 张前缀卡片、10 张完整数学卡片、2 份交接、5 张问答，学生阅读 2 张后的刷新恢复成功；21 帧 WebSocket、1 次游标过期和 4 次快照读取，浏览器错误为空，新增 LLM 调用为 0。
+
+本次后端针对性回归 **61 passed**：事件存储 **31 passed**（0.69 秒，含两个确定性并发裁剪用例），路线执行与拍题阶段③ API **30 passed**（134.50 秒）。并发用例在读取旧水位后由另一连接裁剪旧事件并提交新步骤，确认导出仍为完整旧快照，而公开旧游标仍被拒绝。修改的后端文件与浏览器验收脚本 Ruff、JS 语法检查、`git diff --check` 通过。本次没有重跑此前全部 923 项 Python 用例，不将两次计数累加为新全量结果。1c 本轮 P2 及复测发现的并发问题已关闭，剩余 P3 和人工例外按上述台账继续处理。
 
 验收：
 
 - 最后一步仍被屏障暂停时，网页已经显示前面的可读数学步骤，不能只显示进度条；全路线验证后出现答案与完成态。浏览器关闭或暂停消费不阻塞求解。
 - WebSocket 和 `after_seq` 游标轮询得到相同的片段序列；断线、刷新、重复事件、乱序到达、旧版本迟到事件及游标过期均正确恢复，不重复卡片或漏步。
+- 已有流且执行仍在 `starting/running` 时继续低频监控题目状态；无新事件的 `interrupted/error` 也显示恢复入口。状态连接失败和显式恢复均保留数学 DOM 与阅读进度，恢复按钮不等待整条路线计算完成才可用。
 - 进程在提交前／后中断并恢复，已提交片段、上下文、步骤 ID 与连续运行一致；未提交的半成品不能出现在网页。
 - 一条路线 `verified` 即可交接阶段④，其他路线仍运行不阻塞；已知数学失败或冲突的路线不得启动问答。
 - 构造问答按原 `step_id` 与双重内容哈希附加；错版本、错步骤或数学内容修改被拒绝。问答完成、部分失败、重试均不改变正文、顺序、数学完成态、阅读位置与已作答记录。
@@ -708,7 +746,7 @@ Q13 学生上传录制作为单独入口回归：批次 1a 即检查准入与选
 | 产品／拍题服务与网页对应测试目录 | 事件投递、恢复和真实浏览器增量渲染测试，阶段④接口用固定片段，不调用 LLM |
 | `server/tests/solver/fixtures/graph-guided-stage-three/` | `selection.gold.json`、`answers.gold.json`、`demo-step-alignment.json`、`demo-alignment-exceptions.json`、构造反例输入 |
 | `internal/schemas/graph-stage-three-result-v1.schema.json`、`graph-stage-three-route-v1.schema.json`、`graph-method-selection-v1.schema.json`、`graph-method-execution-v1.schema.json` | 结果（含 D3/D4 定义）、轨迹、选法契约与执行契约 |
-| `internal/schemas/graph-math-step-v1.schema.json`、`graph-stage-three-event-v1.schema.json`、`graph-stage-three-checkpoint-v1.schema.json` | 数学片段、离线／在线共用事件负载与可恢复执行快照；传输信封沿用产品事件协议 |
+| `internal/schemas/graph-math-step-v1.schema.json`、`graph-stage-three-event-v1.schema.json`、`graph-stage-three-checkpoint-v1.schema.json` | 数学片段、离线／在线共用事件负载与可恢复执行快照；本机 HTTP／WebSocket 适配读取相同 EventStore |
 | `internal/solver-runs/graph-guided-stage-three/` | 运行输出（gitignore） |
 
 选法金标和答案金标按各题原文、人工课程与 Demo 原稿独立编写，不从程序输出抄回来再标为正确。人工路线引用直接读取 `topics/quadratic-always.json`，不复制。
@@ -771,7 +809,7 @@ Q13 学生上传录制作为单独入口回归：批次 1a 即检查准入与选
 
 `resume --run <运行目录>` 核对输入、契约、能力及展示版本后，从 SQLite 最后一次提交恢复；已终态路线不重新计算，重复恢复不会重复步骤、事件或交接任务。`events --run <运行目录> --after-seq <序号>` 读取已提交增量。`serve --run <运行目录> --port 8783` 提供仅监听 `127.0.0.1` 的只读开发预览，网页轮询 `/events?after_seq=…` 并通过 `/snapshot` 恢复；计算仍由另一个 `run`／`resume` 进程推进，不等待网页消费。离线报告事件播放只重建视图，不重新计算或触发阶段④。
 
-`run` 可配置 `--solve-budget-seconds`（默认 10）与 `--verification-budget-seconds`（默认 20）。验证收束四个边界已使用 `spawn` 子进程硬截止并累计 `verification_seconds`，预算从首次 start checkpoint 保存，阶段完成及超时用量持久化，恢复使用剩余预算；耗时含启动／传输，测试钩子与持久化不计。超时回收进程，保留前缀并输出 `capability_gap/verification_incomplete`，不交接阶段④。父进程可信 pickle 输入编码与结果重建仍同步、事后检查耗时，不能承诺任意编解码硬截止；方法求解仍逐调用事后检查预算，完整计算隔离和外部中断预算恢复是 1c 前门槛（第 6、12.3 节）。运行时仍按已注册数学类别限制输入；尚未支持的区间、退化、存在量词或极值收束如实报告缺口，不由 LLM 补算。
+`run` 可配置 `--solve-budget-seconds`（默认 10）与 `--verification-budget-seconds`（默认 20）。路线初始化、方法推进及验证收束通过受监督的持久 JSON 数学会话执行，SQLite 账本保存预算与逐次 attempt／receipt；`compute_seconds`、`verification_seconds` 累计实际用量，未知回执的保留上界另存，恢复不能重置消耗。耗时含启动、编码和传输，测试钩子、持久化与空闲等待不计；超时回收数学 worker，保留前缀且不交接阶段④。验证超时为 `capability_gap/verification_incomplete`，求解超时为 `execution_error`。父进程在路线边界只接收有界 JSON；入口 Notation 准入、`build_context` 与 D3 选法仍走现有路径（第 6 节）。1c 本机开发拍题页面接线的实现与验收状态见 12.3，正式学生服务接入尚未完成。运行时仍按已注册数学类别限制输入；尚未支持的区间、退化、存在量词或极值收束如实报告缺口，不由 LLM 补算。
 
 Q13 的学生录制集成测试复用 `test_parameter_extremum_recorded.py` 的 `revalidate_recording()`，核验历史真实提取与复核证据，再经学生拍题入口生成阶段②输入并调用 `run`；沿用 `student_upload` 准入，不补造评测通过状态、不冒充阶段①验收批次格式。批次 1a 验收其选法和原始 `find_minimum` 目标保真，最小值计算仍属于批次 6。
 

@@ -90,6 +90,8 @@ def _route_details(directory, goal, events):
         body += _details('完整约束处理、独立分区证明与目标收束', artifact.get('finalization'))
         body += _details('路线题设处理记录', artifact.get('constraint_context'))
         body += _details('验证预算与各阶段耗时', artifact.get('verification_timing'))
+        body += _details('方法求解预算与各阶段耗时', artifact.get('solve_timing'))
+        body += _details('实际用量、保留额度与剩余预算', artifact.get('budget_accounting'))
         body += _details('路线结果与诊断', {'result': artifact.get('result'), 'diagnostics': artifact.get('diagnostics')})
     return body
 

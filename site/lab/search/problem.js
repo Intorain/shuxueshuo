@@ -325,8 +325,65 @@ function withdraw(fail) {
    student picks 自己做 or 看 AI 解题; the problem card then moves into the walk layout and the
    Demo engine renders the steps and the graph. Part buttons switch bundles; the engine keeps each
    part's progress. */
-const WALK = '/assets/graph-walk/walk.mjs?v=20261018-reset';
+const WALK = '/assets/graph-walk/walk.mjs?v=20261019-stream';
+const STREAM = '/assets/graph-walk/stage-three-stream.mjs?v=20261019-stream';
 const lesson = {data: null, actor: null, part: -1, engine: null, opened: false};
+let streamMount = null, streamTransport = null, streamIdentity = '', streamTicket = 0, partTicket = 0;
+let streamProjection = '', streamPreparing = null;
+const pageProgressKey = `search-walk:${searchId || demo}`;
+
+function savePageProgress(view) {
+  const goal = goals()[lesson.part];
+  if (lesson.data?.stream && (!goal?.walk || view.target_ref !== goal.target_ref)) return;
+  lesson.actor = view.actor;
+  try { localStorage.setItem(pageProgressKey, JSON.stringify({actor: view.actor, part: lesson.part,
+    run_id: lesson.data?.stream?.run_id, lesson_version: lesson.data?.stream?.lesson_version})); } catch {}
+  if (!streamMount) return;
+  streamMount.setMode(view.actor === 'student' ? 'practice' : 'explain');
+  streamMount.setSelection(view.target_ref, view.route, view.intro_complete);
+}
+
+function updateStreamView(view) {
+  if (!lesson.engine || !lesson.data?.stream || view.run_id !== lesson.data.stream.run_id) return;
+  const goal = goals()[lesson.part];
+  if (!goal?.walk || lesson.engine.walkView().target_ref !== goal.target_ref) return;
+  const projection = JSON.stringify([view.run_id, lesson.part, view.selection_chunks, view.math_steps, view.trajectories]);
+  if (projection !== streamProjection) {
+    streamProjection = projection;
+    void lesson.engine.updateStreamSelection(view).catch(() => {
+      if (streamProjection !== projection) return;
+      streamProjection = '';
+      $('#pq-stream-status').hidden = false;
+      $('#pq-stream-status').textContent = '解题过程暂时无法更新，正在重新连接。';
+    });
+  }
+}
+
+async function prepareStream() {
+  const descriptor = lesson.data?.stream;
+  if (!descriptor) { $('#pq-stream').hidden = true; return; }
+  const key = JSON.stringify([descriptor.run_id, descriptor.lesson_version]);
+  if (key === streamIdentity && streamMount) return streamPreparing;
+  const ticket = ++streamTicket;
+  streamTransport?.stop(); streamMount?.stop(); streamMount = null; streamProjection = '';
+  streamIdentity = key;
+  const host = $('#pq-stream'); host.replaceChildren(); host.hidden = false;
+  const module = await import(STREAM);
+  if (ticket !== streamTicket) return;
+  streamMount = module.mountStageThreeStream(host, descriptor, {
+    mode: lesson.actor === 'student' ? 'practice' : 'explain', readingEnabled: false, routeControls: true,
+    renderMath: root => lesson.engine.renderStreamMath(root),
+    onReading: progress => lesson.engine?.setStreamProgress(progress),
+    onRouteSelect: (_target, route) => lesson.engine?.chooseStreamRoute(route),
+  });
+  streamTransport = module.connectStageThreeStream(streamMount.consumer, descriptor, {
+    onUpdate: view => { if (ticket === streamTicket) { updateStreamView(view); $('#pq-stream-status').hidden = true; } },
+    onError: () => { if (ticket === streamTicket) { $('#pq-stream-status').hidden = false;
+      $('#pq-stream-status').textContent = '连接暂时中断，已到达的步骤可以继续阅读，正在重连。'; } },
+  });
+  streamPreparing = streamTransport.start();
+  await streamPreparing;
+}
 
 function goalName(goal) {
   return goal.label && /^[（(]\d+[）)]$/.test(goal.label) ? partName(goal.label) : goal.label;
@@ -385,6 +442,8 @@ const WAITING = '<p class="gw-ai-status is-thinking" role="status"><span class="
 
 /* In walk mode a note replaces the steps and hides the graph; before it, notes sit under the card. */
 function showNote(html) {
+  $('#pq-stream').hidden = true;
+  streamMount?.setSelection(null, null, false);
   if (!lesson.opened) { $('#pq-lesson').innerHTML = html; renderMath($('#pq-lesson')); return; }
   lesson.engine?.parkWalk();
   document.body.dataset.part = 'note';
@@ -403,7 +462,11 @@ function offerStart() {
 }
 
 function showLesson(data) {
-  if (data.status === 'running') {
+  const action = $('#pq-stream-action');
+  action.hidden = !searchId || !(data.execution_status === 'not_started' ||
+    (data.stream && ['interrupted', 'error'].includes(data.execution_status)));
+  action.textContent = data.execution_status === 'not_started' ? '生成解题步骤' : '继续计算';
+  if (data.status === 'running' && !data.goals?.length) {
     lesson.data = null;
     renderTabs();
     $('#pq-start-note').hidden = false;
@@ -419,6 +482,7 @@ function showLesson(data) {
     showNote(noteHtml(null));
     return;
   }
+  const previous = lesson.data;
   lesson.data = data;
   renderTabs();
   const first = data.goals.findIndex(goal => goal.walk);
@@ -430,8 +494,18 @@ function showLesson(data) {
   }
   if (lesson.part < 0 || !data.goals[lesson.part]) lesson.part = first;
   markPartTabs();
-  if (lesson.opened) openPart(lesson.part);
-  else offerStart();
+  if (lesson.opened) {
+    const same = previous?.stream?.run_id === data.stream?.run_id && previous?.stream?.lesson_version === data.stream?.lesson_version &&
+      previous?.goals?.[lesson.part]?.walk?.bundle.bundleVersion === data.goals[lesson.part]?.walk?.bundle.bundleVersion;
+    if (!same || !lesson.mounted) openPart(lesson.part);
+  } else {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(pageProgressKey) || 'null'); } catch {}
+    if (data.stream && saved?.run_id === data.stream.run_id && saved?.lesson_version === data.stream.lesson_version) {
+      if (data.goals[saved.part]) lesson.part = saved.part;
+      void enterWalk(saved.actor === 'replay' ? 'replay' : 'student');
+    } else offerStart();
+  }
 }
 
 function lessonLost() {
@@ -469,6 +543,7 @@ async function enterWalk(actor) {
 }
 
 async function openPart(index) {
+  const ticket = ++partTicket;
   lesson.part = index;
   markPartTabs();
   const goal = goals()[index];
@@ -478,8 +553,14 @@ async function openPart(index) {
   // The first bundle opens on the chosen actor; later ones keep whatever the student switched to.
   const actor = lesson.mounted ? lesson.engine.walkActor() : lesson.actor;
   lesson.mounted = true;
+  await prepareStream();
+  if (ticket !== partTicket) return;
+  const stream = lesson.data.stream ? {...streamMount.consumer.view(), target_ref: goal.target_ref} : null;
+  $('#pq-stream').hidden = !stream;
   await lesson.engine.mountWalk({bundle: goal.walk.bundle, replay: goal.walk.replay, actor,
-    revealGraph: true, practicePage: null});
+    revealGraph: true, practicePage: null, stream, onState: savePageProgress});
+  if (ticket !== partTicket) return;
+  if (stream) { streamProjection = ''; updateStreamView(streamMount.consumer.view()); savePageProgress(lesson.engine.walkView()); }
 }
 
 async function retryLesson() {
@@ -489,26 +570,51 @@ async function retryLesson() {
   resumeLesson();
 }
 
+async function continueCalculation() {
+  const descriptor = lesson.data?.stream;
+  if (!searchId) return;
+  const action = $('#pq-stream-action'); action.disabled = true;
+  const url = descriptor ? descriptor.snapshot_url.replace(/\/snapshot$/, '/resume') : `/api/search/problems/${searchId}/lesson/start`;
+  try {
+    const response = await fetch(url, {method: 'POST'});
+    if (!response.ok) throw new Error('resume rejected');
+    action.hidden = true;
+    void pollLesson();
+    await streamTransport?.refresh();
+  } catch { toast('暂时无法继续计算，请稍后重试'); }
+  finally { action.disabled = false; }
+}
+
 const LESSON_MISSES = 10;
+const LESSON_STATUS_POLL_MS = 3000;
 let lessonPoll = 0;
+const lessonNeedsPolling = data => data.status === 'running' || ['starting', 'running'].includes(data.execution_status);
 
 async function pollLesson() {
   const ticket = ++lessonPoll;
-  for (let misses = 0; misses < LESSON_MISSES;) {
-    await wait(800);
+  let hasStream = Boolean(lesson.data?.stream);
+  // A quiet event stream cannot report a worker that died before its final
+  // commit. Keep monitoring execution metadata without remounting its cards.
+  for (let misses = 0; misses < LESSON_MISSES || hasStream;) {
+    await wait(hasStream ? LESSON_STATUS_POLL_MS : 800);
     if (ticket !== lessonPoll) return;
     const response = await fetch(`/api/search/problems/${searchId}`, {cache: 'no-store'}).catch(() => null);
     const status = response?.ok ? await response.json().catch(() => null) : null;
     if (ticket !== lessonPoll) return;
     if (!status) { misses += 1; continue; }
     misses = 0;
-    if (status.lesson && status.lesson.status !== 'running') return showLesson(status.lesson);
+    if (status.lesson && (status.lesson.status !== 'running' || status.lesson.goals?.length)) {
+      showLesson(status.lesson);
+      hasStream = Boolean(status.lesson.stream);
+      if (lessonNeedsPolling(status.lesson)) continue;
+      return;
+    }
   }
   lessonLost();
 }
 
 function resumeLesson() {
-  showLesson({status: 'running'});
+  if (!lesson.data?.stream) showLesson({status: 'running'});
   pollLesson();
 }
 
@@ -606,7 +712,7 @@ async function runLive() {
   devCheck(status, '#pq-result');
   if (status.lesson) {
     showLesson(status.lesson);
-    if (status.lesson.status === 'running') pollLesson();
+    if (lessonNeedsPolling(status.lesson)) pollLesson();
   }
 }
 
@@ -670,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const button = event.target.closest('[data-actor]');
     if (button) enterWalk(button.dataset.actor);
   });
+  $('#pq-stream-action').addEventListener('click', continueCalculation);
   document.addEventListener('click', event => {
     if (event.target.closest('[data-retry]')) retry();
     if (event.target.closest('[data-lesson-retry]')) retryLesson();

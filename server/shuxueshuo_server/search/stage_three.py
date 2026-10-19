@@ -1,0 +1,179 @@
+"""Local search adapter over the existing stage-three runner and authoritative store.
+
+Each stage-two attempt owns one immutable run directory. Reads never create or
+resume work; explicit retry makes a new stage-two attempt, and explicit resume
+continues the selected existing run after checking its frozen implementation.
+"""
+
+import fcntl
+import json
+import re
+import sqlite3
+from contextlib import closing, contextmanager
+from pathlib import Path
+
+from shuxueshuo_server.graph_lesson.stage_three import runner
+from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetConflict
+from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
+from shuxueshuo_server.graph_lesson.stage_three.runner import fingerprint
+from shuxueshuo_server.problem_understanding.workflow_ledger import save
+
+from .lesson import RESULT, attempts
+
+RUN_ID = re.compile(r"^[0-9a-f]{32}$")
+
+
+class LessonBusy(RuntimeError):
+    pass
+
+
+class LessonConflict(ValueError):
+    pass
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def acquire_problem(directory):
+    """Reserve a local problem before queueing mutations, across router processes."""
+    stream = (Path(directory) / ".lesson.lock").open("a+b")
+    try:
+        fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        stream.close()
+        raise LessonBusy("lesson.running") from exc
+    return stream
+
+
+def release_problem(stream):
+    fcntl.flock(stream, fcntl.LOCK_UN)
+    stream.close()
+
+
+def _locked(path):
+    try:
+        stream = path.open("rb")
+    except FileNotFoundError:
+        return False
+    with stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(stream, fcntl.LOCK_UN)
+        return False
+
+
+@contextmanager
+def _run_lock(stage_two_directory):
+    stream = (Path(stage_two_directory) / ".stage-three.lock").open("a+b")
+    try:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise LessonBusy("lesson.running") from exc
+        yield
+    finally:
+        stream.close()
+
+
+def latest_attempt(directory):
+    values = attempts(directory)
+    return values[-1] if values else None
+
+
+def run_stage_three(stage_two_directory, *, hooks=None):
+    """Start exactly once from already saved stage two; existing runs are never rerun."""
+    stage_two_directory = Path(stage_two_directory)
+    with _run_lock(stage_two_directory):
+        output = stage_two_directory / "stage-three"
+        if output.exists():
+            if (output / "stage-three-result.json").is_file():
+                return read(output / "stage-three-result.json")
+            raise LessonConflict("lesson.resume_required")
+        try:
+            return runner.run_sample(stage_two_directory / RESULT, output, milestone="1b", hooks=hooks)
+        except Exception as exc:
+            save(stage_two_directory / "stage-three-error.json", {"type": type(exc).__name__, "message": str(exc)})
+            raise
+
+
+def find_run(directory, run_id):
+    if RUN_ID.fullmatch(run_id) is None:
+        raise FileNotFoundError("lesson.run_not_found")
+    for attempt in attempts(directory):
+        output = attempt / "stage-three"
+        path = output / "run.json"
+        if path.is_file() and read(path).get("run_id") == run_id:
+            return output
+    raise FileNotFoundError("lesson.run_not_found")
+
+
+def stream_descriptor(search_id, output):
+    """Use stored identity; old streams remain readable after a code update."""
+    if not (output / "run.json").is_file() or not (output / "events.sqlite3").is_file():
+        return None
+    # EventStore first reserves the file, then commits its identity. Exposing
+    # the URL between those operations would make a harmless poll race fail.
+    with closing(sqlite3.connect((output / "events.sqlite3").resolve().as_uri() + "?mode=ro", uri=True)) as db:
+        if not db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'").fetchone():
+            return None
+        if not db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone():
+            return None
+    seed = read(output / "run.json")
+    base = f"/api/search/problems/{search_id}/lesson/{seed['run_id']}"
+    return {"run_id": seed["run_id"], "lesson_version": seed["lesson_version"], "stream_id": seed["run_id"],
+            "snapshot_url": base + "/snapshot", "events_url": base + "/events", "websocket_url": base + "/ws"}
+
+
+def presentation(directory, search_id, *, running=False, attempt=None):
+    # A status response pins its stage-two material and stream to one attempt.
+    # A concurrent explicit retry may advance latest while that response renders.
+    attempt = attempt if attempt is not None else latest_attempt(directory)
+    if attempt is None:
+        return {"execution_status": "not_started", "stream": None}
+    running = running or _locked(Path(directory) / ".lesson.lock") or _locked(attempt / ".stage-three.lock")
+    output = attempt / "stage-three"
+    if (output / "stage-three-result.json").is_file():
+        status = read(output / "stage-three-result.json")["status"]
+    elif running:
+        status = "running" if output.exists() else "starting"
+    elif (attempt / "stage-three-error.json").is_file():
+        status = "error"
+    else:
+        status = "interrupted" if output.exists() else "not_started"
+    return {"execution_status": status, "stream": stream_descriptor(search_id, output)}
+
+
+def event_page(output, after_seq):
+    store = open_store(output)
+    events = store.events(after_seq)
+    return {"run_id": store.identity["run_id"], "lesson_version": store.identity["lesson_version"],
+            "stream_id": store.identity["run_id"], "events": events,
+            "last_seq": events[-1]["seq"] if events else after_seq}
+
+
+def assert_current_attempt(directory, attempt):
+    if attempt != latest_attempt(directory):
+        raise LessonConflict("lesson.stale_run")
+
+
+def assert_resumable(directory, output):
+    assert_current_attempt(directory, output.parent)
+    frozen = read(output / "frozen.json")
+    if frozen["implementation"] != fingerprint():
+        raise LessonConflict("checkpoint.revisions_changed")
+
+
+def resume_stage_three(directory, run_id, *, hooks=None):
+    output = find_run(directory, run_id)
+    with _run_lock(output.parent):
+        assert_resumable(directory, output)
+        completed = output / "stage-three-result.json"
+        if completed.is_file():
+            return read(completed)
+        try:
+            return runner.resume_sample(output, hooks=hooks)
+        except BudgetConflict as exc:
+            raise LessonBusy(str(exc)) from exc

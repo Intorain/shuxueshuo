@@ -268,14 +268,32 @@ class EventStore:
         """Materialized content and its cursor come from the same read snapshot."""
         with closing(self._connect()) as db:
             db.execute("BEGIN")
-            result = {"contract": "graph-stage-three-snapshot/v1", **deepcopy(self.identity),
-                      "stream_id": self.identity["run_id"], "last_seq": self._watermark(db)}
-            for name, table in (("checkpoints", "checkpoints"), ("math_steps", "steps"), ("handoffs", "handoffs"), ("qa", "qa")):
-                order = "target,route,ordinal" if table == "steps" else "target,route"
-                result[name] = [json.loads(row[0]) for row in db.execute(f"SELECT value FROM {table} ORDER BY {order}")]
-            result["goals"] = {row[0]: json.loads(row[1]) for row in db.execute("SELECT target,value FROM goals ORDER BY target")}
-            result["minimum_seq"] = int(db.execute("SELECT value FROM metadata WHERE key='minimum_seq'").fetchone()[0])
-            return result
+            return self._snapshot(db)
+
+    def _snapshot(self, db):
+        result = {"contract": "graph-stage-three-snapshot/v1", **deepcopy(self.identity),
+                  "stream_id": self.identity["run_id"], "last_seq": self._watermark(db)}
+        for name, table in (("checkpoints", "checkpoints"), ("math_steps", "steps"), ("handoffs", "handoffs"), ("qa", "qa")):
+            order = "target,route,ordinal" if table == "steps" else "target,route"
+            result[name] = [json.loads(row[0]) for row in db.execute(f"SELECT value FROM {table} ORDER BY {order}")]
+        result["goals"] = {row[0]: json.loads(row[1]) for row in db.execute("SELECT target,value FROM goals ORDER BY target")}
+        # Selection is immutable commit evidence, too. Cursor retention can
+        # remove its delivery events; recover it inside this same read
+        # transaction so a fresh browser never loses D1–D4 at resync.
+        selections = {}
+        for row in db.execute("SELECT result FROM commits"):
+            for event in json.loads(row[0])["events"]:
+                payload = event["payload"]
+                if event["type"] == "lesson.chunk_ready" and payload.get("kind") in {"D1", "D2", "D3", "D4"}:
+                    key = (event["target_ref"], payload["kind"])
+                    if key not in selections or event["seq"] > selections[key]["seq"]:
+                        selections[key] = event
+        result["selection_chunks"] = [
+            {"target_ref": event["target_ref"], "kind": event["payload"]["kind"], "chunk": event["payload"]["chunk"]}
+            for event in sorted(selections.values(), key=lambda event: event["seq"])
+        ]
+        result["minimum_seq"] = int(db.execute("SELECT value FROM metadata WHERE key='minimum_seq'").fetchone()[0])
+        return result
 
     def prune_events(self, through_seq):
         """Retention never drops materialized steps/checkpoints needed for resync."""
@@ -292,10 +310,17 @@ class EventStore:
 
     def export(self):
         """Export committed evidence, never read these files to resume execution."""
-        snapshot = self.snapshot()
-        events = self.events(snapshot["minimum_seq"] - 1)
-        # A concurrent commit may have arrived after snapshot(); keep the export at its waterline.
-        events = [event for event in events if event["seq"] <= snapshot["last_seq"]]
+        snapshot, events = self.snapshot_with_events()
         export_json(self.directory / "checkpoint.json", snapshot)
         atomic_write(self.directory / "events.jsonl", "".join(_dump(event) + "\n" for event in events))
         return snapshot
+
+    def snapshot_with_events(self):
+        """Read materialized state and retained delivery events at one waterline."""
+        with closing(self._connect()) as db:
+            db.execute("BEGIN")
+            snapshot = self._snapshot(db)
+            # Retention and new commits cannot change the events belonging to
+            # this snapshot while the read transaction is open.
+            events = [json.loads(row[0]) for row in db.execute("SELECT value FROM events ORDER BY seq")]
+            return snapshot, events

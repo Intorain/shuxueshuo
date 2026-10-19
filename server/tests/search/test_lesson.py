@@ -205,7 +205,9 @@ def start(client, monkeypatch, case):
 def wait(client, sid):
     for _ in range(100):
         status = client.get(f"/api/search/problems/{sid}").json()
-        if status["state"] == "done" and status.get("lesson", {}).get("status") != "running":
+        lesson = status.get("lesson", {})
+        if (status["state"] == "done" and lesson.get("status") != "running"
+                and lesson.get("execution_status") not in {"starting", "running"}):
             return status
         time.sleep(0.05)
     raise AssertionError("stage two did not finish")

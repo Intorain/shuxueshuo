@@ -7,10 +7,17 @@ import pytest
 import sympy as sp
 
 from shuxueshuo_server.graph_lesson.stage_one.features import extract_features
-from shuxueshuo_server.graph_lesson.stage_three import capabilities, runner
+from shuxueshuo_server.graph_lesson.stage_three import runner
 from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
 from shuxueshuo_server.graph_lesson.stage_three.trajectory import decode_value
 from shuxueshuo_server.graph_lesson.stage_two.runner import run_result
+from tests.solver.graph_stage_three_faults import (
+    advance_error,
+    advance_gap,
+    failed_local_check,
+    later_conflict,
+    later_unknown,
+)
 from tests.solver.test_graph_stage_three_contracts import accepted, upstream
 
 TARGET = "/root/goals/0"
@@ -110,18 +117,9 @@ def test_first_route_publishes_before_second_is_verified_and_values_stay_isolate
     assert {s["step_id"] for s in first["math_steps"]}.isdisjoint(s["step_id"] for s in second["math_steps"])
 
 
-def test_local_postcondition_failure_keeps_readable_prefix_and_other_route_runs(tmp_path, monkeypatch):
-    original = capabilities.execute
-
-    def broken(capability, inputs):
-        result = original(capability, inputs)
-        if capability == "quadratic_sign_condition" and inputs["mode"] == "delta":
-            result["checks"] = [{"kind": "injected_failure", "passed": False}]
-        return result
-
-    monkeypatch.setattr(capabilities, "execute", broken)
+def test_local_postcondition_failure_keeps_readable_prefix_and_other_route_runs(tmp_path):
     output = tmp_path / "out"
-    result = runner.run_sample(upstream(tmp_path), output)
+    result = runner.run_sample(upstream(tmp_path), output, hooks={"calculation_dispatch": failed_local_check})
     routes = {r["route_id"]: r for r in result["goals"][0]["routes"]}
     assert routes["discriminant"]["status"] == "math_failed", result
     assert routes["extremum"]["status"] == "verified"
@@ -185,22 +183,12 @@ def test_resume_rejects_changed_input_and_implementation(tmp_path, monkeypatch, 
         runner.resume_sample(output)
 
 
-@pytest.mark.parametrize("failure", ["math_failed", "capability_gap", "execution_error"])
-def test_failed_operation_recovers_terminal_status_after_commit_interruption(tmp_path, monkeypatch, failure):
-    original = capabilities.execute
-
-    def broken(capability, inputs):
-        if capability == "quadratic_sign_condition" and inputs["mode"] == "delta":
-            if failure == "capability_gap":
-                raise capabilities.CapabilityGap("injected_gap")
-            if failure == "execution_error":
-                raise KeyError("injected bug")
-            result = original(capability, inputs)
-            result["checks"] = [{"kind": "injected_failure", "passed": False}]
-            return result
-        return original(capability, inputs)
-
-    monkeypatch.setattr(capabilities, "execute", broken)
+@pytest.mark.parametrize("failure,dispatch", [
+    ("math_failed", failed_local_check),
+    ("capability_gap", advance_gap),
+    ("execution_error", advance_error),
+])
+def test_failed_operation_recovers_terminal_status_after_commit_interruption(tmp_path, failure, dispatch):
     output = tmp_path / "out"
 
     def interrupt_failed_operation(state, durable):
@@ -210,7 +198,7 @@ def test_failed_operation_recovers_terminal_status_after_commit_interruption(tmp
 
     with pytest.raises(Interrupted):
         runner.run_sample(upstream(tmp_path), output, milestone="1b-1",
-                          hooks={"after_commit": interrupt_failed_operation})
+                          hooks={"after_commit": interrupt_failed_operation, "calculation_dispatch": dispatch})
     interrupted = store(output).checkpoint(TARGET, "discriminant")
     assert interrupted["status"] == "running" and interrupted["driver_state"]["status"] == failure
     result = runner.resume_sample(output)
@@ -274,21 +262,10 @@ def test_orchestration_error_after_first_route_invalidates_published_goal(tmp_pa
         assert read(output / "goals/goal-001" / (kind + ".json")) == published[kind]
 
 
-def _later_conflict(feasible, answer, prior):
-    return "conflict" if prior else "consistent"
-
-
-def _later_unknown(feasible, answer, prior):
-    return "unknown" if prior else "consistent"
-
-
-@pytest.mark.parametrize("decision,status", [(_later_conflict, "conflict"), (_later_unknown, "no_verified_route")])
-def test_later_consistency_failure_revokes_earlier_completion(tmp_path, monkeypatch, decision, status):
-    from shuxueshuo_server.graph_lesson.stage_three import execution
-
-    monkeypatch.setattr(execution, "_consistency", decision)
+@pytest.mark.parametrize("dispatch,status", [(later_conflict, "conflict"), (later_unknown, "no_verified_route")])
+def test_later_consistency_failure_revokes_earlier_completion(tmp_path, dispatch, status):
     output = tmp_path / "out"
-    result = runner.run_sample(upstream(tmp_path), output)
+    result = runner.run_sample(upstream(tmp_path), output, hooks={"calculation_dispatch": dispatch})
     goal = result["goals"][0]
     assert all(route["status"] == "verified" for route in goal["routes"])
     assert goal["status"] == status and goal["answer"] is None

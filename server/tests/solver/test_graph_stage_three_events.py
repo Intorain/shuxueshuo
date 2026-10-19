@@ -176,6 +176,74 @@ def test_expired_cursor_requires_snapshot_without_losing_checkpoint(tmp_path):
         store.events(3)
 
 
+@pytest.mark.parametrize("reader", ["export", "snapshot_with_events"])
+def test_snapshot_and_events_stay_consistent_during_retention_and_new_commits(tmp_path, monkeypatch, reader):
+    store, first = store_with_step(tmp_path)
+    original_events = store.events()
+    writer = EventStore(tmp_path, IDENTITY)
+    watermark = store._watermark
+    interrupted = False
+
+    def write_after_read_snapshot_begins(db):
+        nonlocal interrupted
+        value = watermark(db)
+        if not interrupted:
+            interrupted = True
+            # A second connection commits while export still holds its old
+            # read snapshot. Its old minimum cursor is no longer public.
+            writer.prune_events(2)
+            writer.commit_route(checkpoint(position=2), commit_id="second",
+                                math_steps=[fragment(ordinal=2)], events=[operation()])
+        return value
+
+    monkeypatch.setattr(store, "_watermark", write_after_read_snapshot_begins)
+    if reader == "export":
+        exported = store.export()
+        assert json.loads((tmp_path / "checkpoint.json").read_text()) == exported
+        events = [json.loads(line) for line in (tmp_path / "events.jsonl").read_text().splitlines()]
+    else:
+        exported, events = store.snapshot_with_events()
+    assert interrupted
+    assert exported["minimum_seq"] == 1 and exported["last_seq"] == 2
+    assert exported["math_steps"] == [first]
+    assert events == original_events
+
+    current = writer.snapshot()
+    assert current["minimum_seq"] == 3 and current["last_seq"] == 4
+    assert len(current["math_steps"]) == 2
+    with pytest.raises(CursorExpired) as failure:
+        store.events(0)
+    assert failure.value.minimum_seq == 3
+    assert [event["seq"] for event in store.events(2)] == [3, 4]
+
+
+def test_selection_snapshot_survives_retention_and_never_reads_uncommitted_choices(tmp_path):
+    store, step = store_with_step(tmp_path)
+    first = {"target_ref": TARGET, "kind": "D3", "chunk": {"id": "D3", "title": "选择方法"}}
+    second = {"target_ref": "/root/children/0/goals/0", "kind": "D4",
+              "chunk": {"id": "D4", "options": [{"route_id": "discriminant"}]}}
+
+    def publish(chunk, commit_id, **hooks):
+        return store.commit_events([{"type": "lesson.chunk_ready", "target_ref": chunk["target_ref"],
+                                     "route_id": None, "payload": {"kind": chunk["kind"], "chunk": chunk["chunk"]}}],
+                                   commit_id=commit_id, **hooks)
+
+    publish(first, "first-selection")
+    def before_commit():
+        before = store.snapshot()
+        assert before["selection_chunks"] == [first]
+        assert before["last_seq"] == 3
+
+    publish(second, "second-selection", before_commit=before_commit)
+    store.prune_events(4)
+    with pytest.raises(CursorExpired):
+        store.events(0)
+    snapshot = EventStore(tmp_path, IDENTITY).snapshot()
+    assert snapshot["selection_chunks"] == [first, second]
+    assert snapshot["last_seq"] == 4
+    assert snapshot["math_steps"] == [step]
+
+
 def test_verified_route_completion_and_handoff_are_one_idempotent_commit(tmp_path):
     store, step = store_with_step(tmp_path)
     result = finish(store)

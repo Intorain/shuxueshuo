@@ -93,6 +93,7 @@ def _install_child_expiration(deadline):
         timer = threading.Timer(remaining, os._exit, args=(_WATCHDOG_EXIT,))
         timer.daemon = True
         timer.start()
+        return timer
 
 
 def _worker(connection, function, args, deadline):
@@ -260,3 +261,11 @@ def run_bounded(function, *args, timeout_seconds):
         error.elapsed_seconds = elapsed
         raise error
     return result, elapsed
+
+def __getattr__(name):
+    # The supervisor is independently importable under spawn; keep this public
+    # convenience export lazy so its import cannot form a process-start cycle.
+    if name == "JsonCalculationSession":
+        from .json_bounded import JsonCalculationSession
+        return JsonCalculationSession
+    raise AttributeError(name)

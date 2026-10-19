@@ -5,9 +5,23 @@ import time
 import pytest
 import sympy as sp
 
-from shuxueshuo_server.graph_lesson.stage_three import execution, runner, verification
+from shuxueshuo_server.graph_lesson.stage_three import runner, verification
+from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetLedger
 from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
+from shuxueshuo_server.graph_lesson.stage_three.route_calculations import (
+    RouteCalculations,
+)
+from tests.solver.graph_stage_three_faults import (
+    constraints_error,
+    constraints_gap,
+    constraints_mismatch,
+    slow_constraints,
+    slow_endpoints,
+    slow_finish,
+    slow_verify,
+)
 from tests.solver.test_graph_stage_three_contracts import upstream
+from tests.solver.test_graph_stage_three_events import IDENTITY
 from tests.solver.test_graph_stage_three_execution import (
     TARGET,
     Interrupted,
@@ -17,23 +31,6 @@ from tests.solver.test_graph_stage_three_execution import (
     simple,
     store,
 )
-
-
-def slow_calculation(*args):
-    time.sleep(60)
-    raise AssertionError("a timed-out worker must never reach this statement")
-
-
-def unavailable_calculation(*args):
-    raise verification.VerificationGap("verification_incomplete:injected_sympy_failure")
-
-
-def mismatched_context(*args):
-    raise verification.ContextMismatch("injected_context_mismatch")
-
-
-def broken_calculation(*args):
-    raise KeyError("local_programming_bug")
 
 
 def test_nested_radical_parameter_domain_finishes_within_route_budget(tmp_path):
@@ -52,12 +49,15 @@ def test_nested_radical_parameter_domain_finishes_within_route_budget(tmp_path):
         assert any("verification_incomplete" in item["code"] for item in route["diagnostics"])
 
 
-@pytest.mark.parametrize("operation", ["apply_visible_constraints", "verify", "endpoint_check", "_finish_answer"])
-def test_each_verification_phase_has_a_real_deadline_and_cannot_publish_completion(tmp_path, monkeypatch, operation):
-    monkeypatch.setattr(execution if operation == "_finish_answer" else verification, operation, slow_calculation)
+@pytest.mark.parametrize("operation,dispatch", [
+    ("constraints", slow_constraints), ("verify", slow_verify),
+    ("endpoints", slow_endpoints), ("finish", slow_finish),
+])
+def test_each_verification_phase_has_a_real_deadline_and_cannot_publish_completion(tmp_path, operation, dispatch):
     output = tmp_path / "out"
     started = time.monotonic()
-    result = runner.run_sample(upstream(tmp_path), output, milestone="1b-1", verification_budget_seconds=3)
+    result = runner.run_sample(upstream(tmp_path), output, milestone="1b-1", verification_budget_seconds=3,
+                               hooks={"calculation_dispatch": dispatch})
     elapsed = time.monotonic() - started
     route, = result["goals"][0]["routes"]
     assert route["status"] == "capability_gap", route
@@ -70,22 +70,21 @@ def test_each_verification_phase_has_a_real_deadline_and_cannot_publish_completi
     assert state["verification_timing"][-1]["status"] == "timeout"
     assert state["verification_seconds"] == pytest.approx(sum(t["elapsed_seconds"] for t in state["verification_timing"]))
     assert not durable.snapshot()["handoffs"]
-    assert len(durable.snapshot()["math_steps"]) == (5 if operation == "_finish_answer" else 4)
+    assert len(durable.snapshot()["math_steps"]) == (5 if operation == "finish" else 4)
     committed = events(output)
     runner.resume_sample(output)
     assert events(output) == committed
     assert durable.checkpoint(TARGET, "discriminant")["driver_state"]["verification_seconds"] == state["verification_seconds"]
 
 
-@pytest.mark.parametrize("calculation,status", [
-    (unavailable_calculation, "capability_gap"),
-    (mismatched_context, "math_failed"),
-    (broken_calculation, "execution_error"),
+@pytest.mark.parametrize("dispatch,status", [
+    (constraints_gap, "capability_gap"),
+    (constraints_mismatch, "math_failed"),
+    (constraints_error, "execution_error"),
 ])
-def test_worker_failure_preserves_gap_mismatch_and_programming_error_categories(tmp_path, monkeypatch, calculation, status):
-    monkeypatch.setattr(verification, "apply_visible_constraints", calculation)
+def test_worker_failure_preserves_gap_mismatch_and_programming_error_categories(tmp_path, dispatch, status):
     output = tmp_path / "out"
-    result = runner.run_sample(upstream(tmp_path), output, milestone="1b-1")
+    result = runner.run_sample(upstream(tmp_path), output, milestone="1b-1", hooks={"calculation_dispatch": dispatch})
     route, = result["goals"][0]["routes"]
     assert route["status"] == status, route
     artifact = read(output / route["trajectory"])
@@ -126,16 +125,22 @@ def test_resume_keeps_committed_budget_and_passes_only_remaining_time(tmp_path):
     assert state["verification_seconds"] == pytest.approx(consumed)
 
 
-def test_exhausted_accumulated_budget_does_not_start_another_worker(monkeypatch):
+def test_exhausted_accumulated_budget_does_not_start_another_worker(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("budget is already exhausted")
 
-    monkeypatch.setattr(execution.bounded, "run_bounded", forbidden)
-    state = {"verification_seconds": 2, "verification_budget_seconds": 2}
-    with pytest.raises(verification.VerificationGap, match="budget_exhausted"):
-        execution._run_verification(state, "endpoint_check", verification.endpoint_check)
+    durable = EventStore(tmp_path, IDENTITY, create=True)
+    ledger = BudgetLedger(durable)
+    ledger.configure(TARGET, "discriminant", "verification", 2, initial_seconds=2)
+    with RouteCalculations(durable, TARGET, "discriminant", solve_budget_seconds=10,
+                           verification_budget_seconds=2) as calculation:
+        monkeypatch.setattr(calculation.session, "run", forbidden)
+        with pytest.raises(verification.VerificationGap, match="verification_incomplete:budget_unavailable"):
+            calculation.call("endpoint_check", {"operation": "endpoints"}, bucket="verification")
+        state = calculation.sync_state({})
     assert state["verification_seconds"] == 2
-    assert state["verification_timing"][-1]["status"] == "timeout"
+    assert not state["verification_timing"]
+    assert ledger.summary(TARGET, "discriminant", "verification")["remaining_seconds"] == 0
 
 
 def test_custom_budget_is_durable_from_first_route_commit(tmp_path):

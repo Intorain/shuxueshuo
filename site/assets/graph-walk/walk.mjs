@@ -1,4 +1,4 @@
-import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState} from './walk-state.mjs';
+import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState} from './walk-state.mjs';
 import {createWalkGraph, nodeHref} from './walk-graph.mjs?v=20261015-view-tabs';
 
 const BUNDLE_URL = '/data/graph-walk/quadratic-always-q01.json';
@@ -23,6 +23,8 @@ let preview = null, previewTimer = null, story = null, replayStatuses = {replay:
 let options = {bundleUrl: BUNDLE_URL, practicePage: PRACTICE_PAGE, bundle: null, replay: null, actor: null, revealGraph: false};
 let bound = false;
 const saved = new Map();
+let streamView = null, streamProgress = {steps: [], route: null}, publicGraph = null, streamUpdateTicket = 0;
+let streamUpdateQueue = Promise.resolve(), mountTicket = 0, streamParked = false;
 
 function readGraphMode() {
   // Phones always open in 3D: its camera follows the current step, which a small screen needs.
@@ -200,7 +202,7 @@ function planeHTML(decision, answer, interactive = true) {
   if (!interactive) return plane;
   const {here} = planeChoice(decision, answer);
   const picker = valueX && valueY
-    ? `<div class="gw-plane-methods" role="group" aria-label="这一格能用的方法"><p>这一格能用的方法，选一种开始解：</p><div>${here.map(method => `<button type="button" data-plane-method="${escapeHTML(method.value)}" data-method="${escapeHTML(method.value)}" aria-pressed="${method.value === value}">${escapeHTML(method.label)}${method.route ? '' : '<small>本 Demo 未展开</small>'}</button>`).join('')}</div></div>`
+    ? `<div class="gw-plane-methods" role="group" aria-label="这一格能用的方法"><p>这一格能用的方法，选一种开始解：</p><div>${here.map(method => `<button type="button" data-plane-method="${escapeHTML(method.value)}" data-method="${escapeHTML(method.value)}" aria-pressed="${method.value === value}">${escapeHTML(method.label)}${method.route_plan === 'capability_gap' ? '<small>详细步骤暂不支持</small>' : method.route ? '' : '<small>本 Demo 未展开</small>'}</button>`).join('')}</div></div>`
     : '<p class="gw-plane-hint">先在坐标图里点一格。</p>';
   return plane + picker;
 }
@@ -344,7 +346,7 @@ function callStepTitle(call) {
 
 /* Graph state plus every node the walk has reached or offered so far, for the 3D growth view. */
 function viewFor(shown) {
-  const view = graphState(bundle, shown);
+  const view = bundle.stream && !preview ? streamGraphState(bundle, shown, streamProgress) : graphState(bundle, shown);
   const seen = new Set(Object.keys(view.nodes).filter(id => view.nodes[id] !== 'idle'));
   for (const run of [{completed: shown.introCompleted}, ...(shown.archives || []), shown.run]) {
     for (const record of run.completed || []) for (const id of anyDecision(record.decision)?.candidateNodes || []) seen.add(id);
@@ -597,7 +599,8 @@ function render({focus = false, scroll = focus} = {}) {
   // The AI's cards appear only as it submits: a step it has not reached yet stays a one-line placeholder.
   const shown = current && (actor === 'student' || submitted?.decision === current.id);
   const pending = actor === 'replay' && !shown ? replayPendingHTML(current) : '';
-  const waiting = !current && !state.done ? waitingHTML(introCount + (state.run?.completed?.length || 0) + 1) : '';
+  const waiting = !current && !state.done && !(bundle.stream && bundle.intro.some(item => item.id === 'D4'))
+    ? waitingHTML(introCount + (state.run?.completed?.length || 0) + 1) : '';
   $('#gw-steps').innerHTML = intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending || waiting);
   revealGraph();
   const lastCompleted = [...(state.introCompleted || []), ...(state.run?.completed || [])].at(-1)?.decision;
@@ -613,6 +616,7 @@ function render({focus = false, scroll = focus} = {}) {
   const target = $('#gw-current-title') || $('#gw-completion h2');
   if (target && focus) { target.tabIndex = -1; target.focus({preventScroll: true}); }
   if (scroll) revealStep();
+  if (options.stream) { park(); options.onState?.(walkView()); }
 }
 
 function revealStep(behavior = reduced.matches ? 'auto' : 'smooth') {
@@ -711,6 +715,7 @@ function changeDraft(action) {
   ensureDraft(decision); submitted = null;
   action(decision);
   renderInteraction(decision);
+  if (options.stream) park();
 }
 
 function submit() {
@@ -867,6 +872,11 @@ function chooseActor(next, {autoplay = true} = {}) {
   $('#gw-ai').setAttribute('aria-pressed', String(next === 'replay'));
   draftKey = ''; submitted = null;
   state = next === 'student' ? studentState : createState(bundle);
+  if (options.stream && next === 'replay') {
+    replay = streamReplay(); replayPosition = autoplay ? replay.actions.length : Math.min(replayPosition, replay.actions.length);
+    state = replayState(bundle, replay, replayPosition);
+    render(); return;
+  }
   if (next === 'replay' && replay) {
     try { applyReplayPosition(replayPosition); } catch (error) { notifyReplay(error.message); return; }
     if (autoplay) playReplay();
@@ -910,23 +920,40 @@ function park() {
   if (!bundle) return;
   const previous = saved.get(bundle.problemId);
   const draftNow = actor === 'student' && draftKey ? {key: draftKey, draft: structuredClone(draft), submitted} : keptDraft;
-  saved.set(bundle.problemId, {bundleVersion: bundle.bundleVersion, studentState, replayPosition,
-    draft: draftNow ?? (previous?.bundleVersion === bundle.bundleVersion ? previous.draft : null)});
+  const value = {bundleVersion: bundle.bundleVersion, studentState, replayPosition, actor,
+    draft: draftNow ?? (previous?.bundleVersion === bundle.bundleVersion ? previous.draft : null)};
+  saved.set(bundle.problemId, value);
+  if (options.stream) try { localStorage.setItem(`graph-walk:${bundle.problemId}:${bundle.bundleVersion}`, JSON.stringify(value)); } catch {}
 }
 
 async function load() {
   const ticket = ++loadTicket;
+  // A stage-two replay can already be playing when the stream identity arrives.
+  // Capture its intent before stopping the old timer for the bundle migration.
+  const replayWasFollowing = actor === 'replay' && Boolean(replayPlaying ||
+    replay && replayPosition === replay.actions.length);
   stopReplay(); ++replayTicket; clearTimeout(commitTimer); busy = false;
   park();
   $('#gw-loading').hidden = false; $('#gw-error').hidden = true;
   try {
-    const value = await withLayout(options.bundle || await readJSON(options.bundleUrl));
+    let value = options.bundle || await readJSON(options.bundleUrl);
+    if (options.stream) {
+      publicGraph ||= await readJSON('/knowledge/graph.json');
+      value = extendStreamBundle(value, streamView || options.stream, options.stream.target_ref, publicGraph);
+    }
+    value = await withLayout(value);
     if (ticket !== loadTicket) return;
     if (!value.bundleVersion || !value.templates || !value.intro?.length || !value.routes || !value.graph) throw new Error('Demo 快照不完整，请重新构建后重试。');
     bundle = value; graphView = bundle.graph;
-    const kept = saved.get(bundle.problemId);
-    const resume = kept?.bundleVersion === bundle.bundleVersion;
-    studentState = state = resume ? kept.studentState : createState(bundle);
+    let kept = saved.get(bundle.problemId);
+    if (!kept && options.stream) try { kept = JSON.parse(localStorage.getItem(`graph-walk:${bundle.problemId}:${bundle.bundleVersion}`) || 'null'); } catch {}
+    // Stage two may be readable a moment before stage three publishes its run identity.
+    // Carry those same-version D1/D2 answers into that run, never across an old run.
+    let resume = kept?.bundleVersion === bundle.bundleVersion, restoredState = kept?.studentState, migrated = false;
+    if (!resume && options.stream && kept?.bundleVersion === options.bundle?.bundleVersion) try {
+      restoredState = migrateStageTwoState(options.bundle, bundle, kept.studentState); resume = true; migrated = true;
+    } catch { /* Unrelated or invalid progress starts this run at D1. */ }
+    studentState = state = resume ? restoredState : createState(bundle);
     replay = null; replayPosition = resume ? kept.replayPosition : 0; replayNotice = null;
     keptDraft = resume ? kept.draft : null;
     draftKey = ''; submitted = null;
@@ -940,7 +967,8 @@ async function load() {
     if (ticket !== loadTicket) return;
     mountCaption(); mountPlayer();
     // A phone opens on the AI player, paused at the start; the visitor presses ▶ to watch.
-    if (options.actor) chooseActor(options.actor);
+    if (options.stream && kept?.actor) chooseActor(kept.actor, {autoplay: migrated && replayWasFollowing});
+    else if (options.actor) chooseActor(options.actor);
     else if (narrow.matches) chooseActor('replay', {autoplay: false}); else render();
   } catch (error) {
     if (ticket !== loadTicket) return;
@@ -1024,18 +1052,100 @@ if (document.readyState === 'loading') await new Promise(resolve => document.add
 
 /* Mount (or switch to) a bundle on a page that hosts the walk markup. Each bundle keeps its own progress. */
 export async function mountWalk(next) {
+  const ticket = ++mountTicket;
+  streamParked = true; ++streamUpdateTicket;
+  if (next.stream?.run_id !== options.stream?.run_id || next.stream?.target_ref !== options.stream?.target_ref) {
+    streamView = next.stream || null; streamProgress = {steps: [], route: null}; ++streamUpdateTicket;
+  }
   options = {...options, ...next};
   if (!bound) { bind(); bound = true; }
+  await streamUpdateQueue.catch(() => {});
+  if (ticket !== mountTicket) return;
+  streamParked = false;
   await load();
 }
 
 /* Leave the walk without a bundle, e.g. for a part with nothing to walk; its progress stays parked. */
 export function parkWalk() {
+  streamParked = true; ++streamUpdateTicket; ++mountTicket;
   stopReplay(); ++replayTicket; ++loadTicket; clearTimeout(commitTimer); busy = false;
   park();
 }
 
 /* The actor the walk currently shows, so a host can carry it across bundles. */
 export const walkActor = () => actor;
+
+function streamReplay() {
+  const actions = structuredClone(options.replay?.actions || []);
+  const plane = bundle.intro.find(item => item.id === 'D3'), routes = bundle.intro.find(item => item.id === 'D4');
+  const route = state?.run?.route && bundle.routes[state.run.route]?.route_plan === 'planned' ? state.run.route
+    : Object.keys(bundle.routes).find(id => bundle.routes[id].route_plan === 'planned');
+  const method = plane?.interaction.methods.find(item => item.route === route);
+  if (method) actions.push({decision: 'D3', answer: [...plane.expected_answer.cell, method.value]});
+  if (routes && method) actions.push({decision: 'D4', answer: route});
+  return {schemaVersion: 2, problemId: bundle.problemId, bundleVersion: bundle.bundleVersion,
+    status: 'partial', routes: method ? [route] : [], actions};
+}
+
+export function walkView() {
+  return {actor, route: state?.run?.route || null, target_ref: options.stream?.target_ref,
+    intro_complete: Boolean(bundle?.intro.some(item => item.id === 'D4') && state?.introCompleted.length === bundle.intro.length),
+    intro_completed: state?.introCompleted.map(item => item.decision) || []};
+}
+
+/** Extend the same decision engine; existing answers/draft retain their identity. */
+export function updateStreamSelection(view) {
+  // HTTP and WebSocket may deliver independently; serialize graph replacement.
+  const update = streamUpdateQueue.catch(() => {}).then(() => applyStreamSelection(view));
+  streamUpdateQueue = update;
+  return update;
+}
+
+async function applyStreamSelection(view) {
+  if (streamParked || !options.stream || view.run_id !== options.stream.run_id || view.lesson_version !== options.stream.lesson_version || !bundle) return;
+  streamView = view;
+  const signature = graph => JSON.stringify([graph.nodes, graph.edges, graph.lanes]);
+  const ticket = ++streamUpdateTicket, previousGraph = signature(bundle.graph);
+  const next = extendStreamBundle(options.bundle, view, options.stream.target_ref, publicGraph);
+  const decisionsChanged = JSON.stringify(next.intro) !== JSON.stringify(bundle.intro);
+  if (signature(next.graph) !== previousGraph) {
+    delete next.graph.layout;
+    const laidOut = await withLayout(next);
+    if (ticket !== streamUpdateTicket) return;
+    bundle = laidOut; graphView = bundle.graph;
+    graph?.destroy(); graph = await createGraph();
+    if (ticket !== streamUpdateTicket) return;
+    mountCaption();
+  } else bundle = {...bundle, ...next, graph: bundle.graph};
+  if (actor === 'replay') {
+    const followedEnd = replay && replayPosition === replay.actions.length;
+    replay = streamReplay();
+    replayPosition = followedEnd ? replay.actions.length : Math.min(replayPosition, replay.actions.length);
+    state = replayState(bundle, replay, replayPosition);
+  }
+  if (decisionsChanged) render();
+  else { renderGraph(); options.onState?.(walkView()); }
+}
+
+export function setStreamProgress(value) {
+  streamProgress = {route: value.route_id || value.route || null, steps: value.steps || []};
+  if (bundle?.stream && graph && state) renderGraph();
+}
+
+export function chooseStreamRoute(route) {
+  if (!bundle?.stream || !walkView().intro_complete || !bundle.routes[route]) return;
+  state = switchRoute(bundle, state, route);
+  if (actor === 'student') studentState = state;
+  render();
+}
+
+/** The same safe text/LaTeX renderer used by authored walk steps. */
+export function renderStreamMath(root) {
+  for (const node of root.querySelectorAll('[data-math-formula]:not([data-math-rendered])')) {
+    PracticeMath.render(node, `$${node.textContent}$`); node.dataset.mathRendered = 'true';
+  }
+  for (const node of root.querySelectorAll('.stage-three-qa p')) node.dataset.mathText = 'true';
+  renderMath(root);
+}
 
 if (document.body.dataset.walk !== 'mount') await mountWalk({});

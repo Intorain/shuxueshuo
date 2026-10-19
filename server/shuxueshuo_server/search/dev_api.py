@@ -1,13 +1,16 @@
-"""Loopback-only student search endpoints for run_site.py: segment a page, run stage one on a crop.
+"""Loopback-only student search: crop, understand, classify, then stream verified mathematics.
 
 Not the production API (no login, quota or database); it exists to test
-segmentation and the crop handoff to stage one end to end. Everything a run
-produces stays under ``root`` for inspection:
+the recorded and live development workflow end to end. Everything a run
+produces stays under ``root`` for inspection; stage-three HTTP/WS reads share
+the runner's authoritative SQLite stream:
 
     <root>/<page_id>/page.png, ocr.json, segments.json
     <root>/<page_id>/problems/<search_id>/question.png, crop.json, result.json, workflow/
+    <root>/<page_id>/problems/<search_id>/stage-two-<n>/stage-three/
 """
 
+import asyncio
 import json
 import os
 import re
@@ -17,19 +20,26 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
+from shuxueshuo_server.graph_lesson.stage_three.events import CursorExpired
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
-from .lesson import latest, present_lesson, run_stage_two
+from . import stage_three
+from .lesson import present_lesson, run_stage_two
 from .ocr_client import OcrClient, OcrWorkerError
 from .question_image import question_png
 from .segmentation import segment
-from .stage_one import RESULT_FILE, ledger_calls, reviewing_candidate, run_question_image
+from .stage_one import (
+    RESULT_FILE,
+    ledger_calls,
+    reviewing_candidate,
+    run_question_image,
+)
 
 MAX_UPLOAD = 20 * 1024 * 1024
 ID = re.compile(r"^[0-9a-f]{12}$")
@@ -41,7 +51,7 @@ class ProblemRequest(BaseModel):
     box: list[float] = Field(min_length=4, max_length=4)
 
 
-def create_search_router(root):
+def create_search_router(root, *, stage_three_hooks=None):
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     ocr = OcrClient()
@@ -113,7 +123,9 @@ def create_search_router(root):
         (output / "question.png").write_bytes(png)
 
         def work():
-            from shuxueshuo_server.problem_understanding.batch_smoke import live_provider_factory
+            from shuxueshuo_server.problem_understanding.batch_smoke import (
+                live_provider_factory,
+            )
 
             try:
                 result = run_question_image(png, output, live_provider_factory("deepseek")(), problem_id=search_id)
@@ -134,33 +146,45 @@ def create_search_router(root):
         runs.submit(work)
         return {"search_id": search_id, "crop_size": size}
 
-    def judge(search_id, directory, result):
+    def judge(search_id, directory, result, lease=None):
         """Stage two: usually program-only; one LLM call only when several types hold."""
-        from shuxueshuo_server.graph_lesson.stage_two.selection import live_provider_factory
+        from shuxueshuo_server.graph_lesson.stage_two.selection import (
+            live_provider_factory,
+        )
 
         with errors_lock:
             judging.add(search_id)
             lesson_errors.pop(search_id, None)
         try:
+            lease = lease or stage_three.acquire_problem(directory)
             run_stage_two(directory, result, provider=live_provider_factory(),
                           unsupported_root=root / "unsupported")
+            stage_three.run_stage_three(stage_three.latest_attempt(directory), hooks=stage_three_hooks)
         except Exception as exc:  # noqa: BLE001 - surfaced to the page as a judging failure
             with errors_lock:
                 lesson_errors[search_id] = _message(exc)
         finally:
+            if lease is not None:
+                stage_three.release_problem(lease)
             with errors_lock:
                 judging.discard(search_id)
 
     def lesson(search_id, directory, result):
-        stage_two = latest(directory)
+        attempt = stage_three.latest_attempt(directory)
+        stage_two = (stage_three.read(attempt / stage_three.RESULT)
+                     if attempt is not None and (attempt / stage_three.RESULT).is_file() else None)
         with errors_lock:
             running, error = search_id in judging, lesson_errors.get(search_id)
-        if running:
-            return {"status": "running"}
         if stage_two is None:
+            if running:
+                return {"status": "running", "execution_status": "not_started", "stream": None}
             return {"status": "error", "message": error or "stage_two.missing"}
-        return present_lesson(stage_two, result.get("features", []),
-                              (result.get("candidate") or {}).get("original_text", ""), search_id)
+        presented = present_lesson(stage_two, result.get("features", []),
+                                   (result.get("candidate") or {}).get("original_text", ""), search_id)
+        presented.update(stage_three.presentation(directory, search_id, running=running, attempt=attempt))
+        if error:
+            presented["execution_error"] = error
+        return presented
 
     @router.post("/problems/{search_id}/lesson")
     def retry_lesson(search_id: str):
@@ -174,9 +198,133 @@ def create_search_router(root):
         with errors_lock:
             if search_id in judging:
                 return {"status": "running"}
+            try:
+                lease = stage_three.acquire_problem(directory)
+            except stage_three.LessonBusy as exc:
+                raise HTTPException(409, str(exc)) from exc
             judging.add(search_id)
-        runs.submit(judge, search_id, directory, result)
+        runs.submit(judge, search_id, directory, result, lease)
         return {"status": "running"}
+
+    def queue_execution(search_id, directory, operation, *, validate=None):
+        with errors_lock:
+            if search_id in judging:
+                raise HTTPException(409, "lesson.running")
+            try:
+                lease = stage_three.acquire_problem(directory)
+            except stage_three.LessonBusy as exc:
+                raise HTTPException(409, str(exc)) from exc
+            # The request may have read the previous attempt just before a
+            # retry acquired this lease. Validate its identity while reserved,
+            # before queueing work or changing the in-memory running marker.
+            try:
+                if validate is not None:
+                    validate()
+            except stage_three.LessonConflict as exc:
+                stage_three.release_problem(lease)
+                raise HTTPException(409, str(exc)) from exc
+            except BaseException:
+                stage_three.release_problem(lease)
+                raise
+            judging.add(search_id)
+            lesson_errors.pop(search_id, None)
+
+        def work():
+            try:
+                operation()
+            except Exception as exc:  # noqa: BLE001 - persist the failure without replacing committed mathematics.
+                with errors_lock:
+                    lesson_errors[search_id] = _message(exc)
+            finally:
+                stage_three.release_problem(lease)
+                with errors_lock:
+                    judging.discard(search_id)
+
+        runs.submit(work)
+
+    def locate_run(search_id, run_id):
+        directory = problem_dir(search_id)
+        try:
+            return directory, stage_three.find_run(directory, run_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(404, "lesson.run_not_found") from exc
+
+    @router.post("/problems/{search_id}/lesson/start")
+    def start_existing_lesson(search_id: str):
+        """Explicitly start stage three for an already saved stage-two attempt."""
+        directory = problem_dir(search_id)
+        attempt = stage_three.latest_attempt(directory)
+        if attempt is None or not (attempt / stage_three.RESULT).is_file():
+            raise HTTPException(409, "stage_two.not_done")
+        if (attempt / "stage-three").exists():
+            return stage_three.presentation(directory, search_id)
+        queue_execution(search_id, directory, lambda: stage_three.run_stage_three(attempt, hooks=stage_three_hooks),
+                        validate=lambda: stage_three.assert_current_attempt(directory, attempt))
+        return {"status": "running", **stage_three.presentation(directory, search_id, running=True)}
+
+    @router.post("/problems/{search_id}/lesson/{run_id}/resume")
+    def resume_lesson(search_id: str, run_id: str):
+        directory, output = locate_run(search_id, run_id)
+        try:
+            stage_three.assert_resumable(directory, output)
+        except stage_three.LessonConflict as exc:
+            raise HTTPException(409, str(exc)) from exc
+        if (output / "stage-three-result.json").is_file():
+            return {"status": "completed", **stage_three.presentation(directory, search_id)}
+        queue_execution(search_id, directory,
+                        lambda: stage_three.resume_stage_three(directory, run_id, hooks=stage_three_hooks),
+                        validate=lambda: stage_three.assert_resumable(directory, output))
+        return {"status": "running", "stream": stage_three.stream_descriptor(search_id, output)}
+
+    @router.get("/problems/{search_id}/lesson/{run_id}/snapshot")
+    def lesson_snapshot(search_id: str, run_id: str):
+        _directory, output = locate_run(search_id, run_id)
+        if stage_three.stream_descriptor(search_id, output) is None:
+            raise HTTPException(409, "lesson.stream_not_ready")
+        return JSONResponse(stage_three.open_store(output).snapshot(), headers={"Cache-Control": "no-store"})
+
+    def expired_payload(exc):
+        return {"error": "events.cursor_expired", "cursor_expired": True, "minimum_seq": exc.minimum_seq}
+
+    @router.get("/problems/{search_id}/lesson/{run_id}/events")
+    def lesson_events(search_id: str, run_id: str, after_seq: int = 0):
+        _directory, output = locate_run(search_id, run_id)
+        if stage_three.stream_descriptor(search_id, output) is None:
+            raise HTTPException(409, "lesson.stream_not_ready")
+        try:
+            payload = stage_three.event_page(output, after_seq)
+        except CursorExpired as exc:
+            return JSONResponse(expired_payload(exc), status_code=409, headers={"Cache-Control": "no-store"})
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return JSONResponse(payload, headers={"Cache-Control": "no-store"})
+
+    @router.websocket("/problems/{search_id}/lesson/{run_id}/ws")
+    async def lesson_websocket(websocket: WebSocket, search_id: str, run_id: str, after: int = 0):
+        await websocket.accept()
+        try:
+            _directory, output = locate_run(search_id, run_id)
+            if stage_three.stream_descriptor(search_id, output) is None:
+                raise HTTPException(409, "lesson.stream_not_ready")
+            first = True
+            while True:
+                payload = await run_in_threadpool(stage_three.event_page, output, after)
+                if first or payload["events"]:
+                    await websocket.send_json(payload)
+                    after = payload["last_seq"]
+                    first = False
+                try:
+                    await asyncio.wait_for(websocket.receive_text(), timeout=0.15)
+                except TimeoutError:
+                    pass
+        except CursorExpired as exc:
+            await websocket.send_json(expired_payload(exc))
+            await websocket.close(code=4009)
+        except (HTTPException, ValueError) as exc:
+            await websocket.send_json({"error": exc.detail if isinstance(exc, HTTPException) else str(exc)})
+            await websocket.close(code=4404 if isinstance(exc, HTTPException) and exc.status_code == 404 else 4400)
+        except WebSocketDisconnect:
+            pass
 
     @router.get("/problems/{search_id}")
     def problem_status(search_id: str):

@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-three-event/v1",
+  "type": "object",
+  "required": [
+    "contract",
+    "event_id",
+    "stream_id",
+    "seq",
+    "lesson_version",
+    "run_id",
+    "target_ref",
+    "route_id",
+    "type",
+    "payload"
+  ],
+  "properties": {
+    "contract": {
+      "const": "graph-stage-three-event/v1"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stream_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lesson_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_ref": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "route_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "type": {
+      "enum": [
+        "solver.step_completed",
+        "lesson.chunk_ready",
+        "lesson.route_status",
+        "lesson.goal_status",
+        "lesson.enrichment_status"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "solver.step_completed",
+              "lesson.route_status",
+              "lesson.enrichment_status"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "target_ref": {
+            "type": "string",
+            "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+          },
+          "route_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.goal_status"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "target_ref": {
+            "type": "string",
+            "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.chunk_ready"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "D1",
+                  "D2",
+                  "D3",
+                  "D4",
+                  "math_step",
+                  "step_qa",
+                  "route_completion"
+                ]
+              }
+            }
+          },
+          "target_ref": {
+            "type": "string",
+            "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.chunk_ready"
+          },
+          "payload": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "math_step",
+                  "step_qa",
+                  "route_completion"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "route_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.chunk_ready"
+          },
+          "payload": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "math_step",
+                  "step_qa"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": [
+              "step_id",
+              "math_step_sha256"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "math_step_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.chunk_ready"
+          },
+          "payload": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "step_qa",
+                  "route_completion"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": [
+              "verified_route_sha256"
+            ],
+            "properties": {
+              "verified_route_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,459 @@
+{
+  "schema_version": "graph-stage-three-selection-expectations/v1",
+  "authored_basis": "Plan section 3.5; independent original-problem mathematics and authored course route ordering. Batch 1a route availability is intentionally capability_gap.",
+  "cases": {
+    "q01": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "real",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "superseded",
+            "route_plan": "not_planned"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q02": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "real",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "superseded",
+            "route_plan": "not_planned"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "not_applicable",
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q03": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "real",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "superseded",
+            "route_plan": "not_planned"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "not_applicable",
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q04": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q05": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q06": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q07": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q08": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "given"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "separation": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "swap": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          }
+        }
+      }
+    ],
+    "q09": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "given"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "separation": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "swap": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          }
+        }
+      }
+    ],
+    "q10": [
+      {
+        "target_ref": "/root/children/0/goals/0",
+        "cell": [
+          "real",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "superseded",
+            "route_plan": "not_planned"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "not_applicable",
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      },
+      {
+        "target_ref": "/root/children/1/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q11": [
+      {
+        "target_ref": "/root/children/1/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ],
+    "q13": [
+      {
+        "target_ref": "/root/goals/0",
+        "cell": [
+          "interval",
+          "free"
+        ],
+        "branches": {
+          "discriminant": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          },
+          "interval": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "optional",
+            "route_plan": "capability_gap"
+          },
+          "separation": {
+            "trigger": "triggered",
+            "applicability": "applicable",
+            "recommendation": "preferred",
+            "route_plan": "capability_gap"
+          },
+          "swap": {
+            "trigger": "not_triggered",
+            "applicability": null,
+            "recommendation": null,
+            "route_plan": "not_planned"
+          }
+        }
+      }
+    ]
+  }
+}

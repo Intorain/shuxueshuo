@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-three-route/v1",
+  "type": "object",
+  "required": [
+    "contract",
+    "lesson_version",
+    "run_id",
+    "target_ref",
+    "route_id",
+    "branch",
+    "method",
+    "revisions",
+    "status",
+    "steps",
+    "math_steps",
+    "constraint_context",
+    "finalization",
+    "result",
+    "diagnostics"
+  ],
+  "properties": {
+    "contract": {
+      "const": "graph-stage-three-route/v1"
+    },
+    "lesson_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_ref": {
+      "type": "string",
+      "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revisions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "status": {
+      "enum": [
+        "verified",
+        "capability_gap",
+        "math_failed",
+        "execution_error"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "seq",
+          "method",
+          "step",
+          "depth",
+          "parent_call",
+          "case_path",
+          "calls",
+          "skipped_calls",
+          "judgments"
+        ],
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "parent_call": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "case_path": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "skipped_calls": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "judgments": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "math_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step_id",
+          "math_step_sha256",
+          "source_refs",
+          "file"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "math_step_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "constraint_context": {
+      "type": "object"
+    },
+    "finalization": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "result": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-math-step/v1",
+  "type": "object",
+  "required": [
+    "contract",
+    "lesson_version",
+    "run_id",
+    "target_ref",
+    "route_id",
+    "step_id",
+    "ordinal",
+    "method_ref",
+    "source_refs",
+    "case_path",
+    "title",
+    "before",
+    "after",
+    "explanation",
+    "premise_refs",
+    "used_basis",
+    "local_check",
+    "revisions",
+    "math_step_sha256"
+  ],
+  "properties": {
+    "contract": {
+      "const": "graph-math-step/v1"
+    },
+    "lesson_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_ref": {
+      "type": "string",
+      "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "step_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "method_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "case_path": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "before": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "expression",
+          "display"
+        ],
+        "properties": {
+          "expression": {
+            "type": "string",
+            "minLength": 1
+          },
+          "display": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "after": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "expression",
+          "display"
+        ],
+        "properties": {
+          "expression": {
+            "type": "string",
+            "minLength": 1
+          },
+          "display": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "premise_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "used_basis": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "local_check": {
+      "const": "passed"
+    },
+    "revisions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "math_step_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

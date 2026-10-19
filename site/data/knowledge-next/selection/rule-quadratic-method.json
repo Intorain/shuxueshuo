@@ -1,0 +1,342 @@
+{
+  "schema_version": "graph-method-selection/v1",
+  "rule": "rule-quadratic-method",
+  "branches": [
+    {
+      "branch": "discriminant",
+      "target": "method-discriminant",
+      "route_id": "discriminant",
+      "trigger": [
+        {
+          "feature": "quantifier",
+          "equals": "∀"
+        },
+        {
+          "feature": "domain_kind",
+          "equals": "real"
+        },
+        {
+          "feature": "degree_in_bound",
+          "path": [
+            "degree"
+          ],
+          "equals": 2
+        },
+        {
+          "feature": "range_var_is_principal",
+          "equals": true
+        }
+      ],
+      "premises": [
+        "degenerate_branches"
+      ],
+      "plane": [
+        [
+          "real",
+          "free"
+        ]
+      ],
+      "messages": {
+        "fit": "对所有实数 ${bound}$ 成立，原关系关于 ${bound}$ 的二次项系数为 ${original_coefficient}$，确定非零。",
+        "degenerate": "对所有实数 ${bound}$ 成立；二次项系数为零的参数集合为 ${zero_set}$，需要单独讨论退化情况。",
+        "not_triggered": "本选法分支未触发：判别式法要求全实数上的全称二次关系。",
+        "fails": {}
+      }
+    },
+    {
+      "branch": "interval",
+      "target": "method-interval-extremum",
+      "route_id": "interval",
+      "trigger": [
+        {
+          "feature": "quantifier",
+          "in": [
+            "∀",
+            "∃"
+          ]
+        },
+        {
+          "feature": "domain_kind",
+          "in": [
+            "real",
+            "bounded_interval",
+            "half_infinite_interval"
+          ]
+        },
+        {
+          "feature": "range_var_is_principal",
+          "equals": true
+        }
+      ],
+      "premises": [
+        "extremum_computable"
+      ],
+      "plane": [
+        [
+          "interval",
+          "free"
+        ]
+      ],
+      "messages": {
+        "superseded": "$\\mathbb R$ 也是区间，区间最值法在数学上可行；本题全实数上的全称关系优先采用判别式法。",
+        "not_triggered": "本选法分支未触发：给定范围的字母不是二次式主元。",
+        "fails": {},
+        "leading_coefficient_requires_cases": "规范化后的二次项系数为 ${coefficient}$，其符号尚不能统一确定，需要分类讨论开口方向与退化情况。",
+        "parameter_vertex_requires_cases": "规范化后的二次式开口{opening}，需判断{bound_kind}；对称轴 ${bound}={axis}$ 含参数，需要按它与定义域的位置关系分类。",
+        "vertex": "规范化后的二次式开口{opening}，需判断{bound_kind}；对称轴为 ${bound}={axis}$，无需按参数分类，结合定义域判断顶点及边界是否取得。",
+        "endpoints": "规范化后的二次式开口{opening}，需判断{bound_kind}；考察端点值或端点极限，无需按对称轴位置分类，并须检查边界是否取得。",
+        "linear_extremum_no_vertex": "规范化后是一次式或常数，无需按对称轴位置分类；结合系数符号、定义域及端点是否包含来判断界值。",
+        "case_split_unknown": "关于 ${bound}$ 的多项式可求界值，但是否需要按参数分类尚不能确定，不能据此宣称无需分类。"
+      }
+    },
+    {
+      "branch": "separation",
+      "target": "method-separation",
+      "route_id": "extremum",
+      "trigger": [
+        {
+          "feature": "quantifier",
+          "in": [
+            "∀",
+            "∃"
+          ]
+        },
+        {
+          "feature": "domain_kind",
+          "in": [
+            "real",
+            "bounded_interval",
+            "half_infinite_interval"
+          ]
+        },
+        {
+          "feature": "range_var_is_principal",
+          "equals": true
+        }
+      ],
+      "premises": [
+        "param_separable",
+        "divisor_sign"
+      ],
+      "plane": [
+        [
+          "interval",
+          "free"
+        ],
+        [
+          "real",
+          "free"
+        ]
+      ],
+      "messages": {
+        "separated": "参数式 ${parameter_expression}$ 已在一边，另一边只含 ${bound}$，无需除以含变量的式子。",
+        "not_triggered": "本选法分支未触发：要求的字母与给出范围的主元角色不匹配。",
+        "fails": {
+          "param_separable": "参数 ${parameter}$ 在不同次幂项中的系数不成比例，不能这样分离参数。",
+          "divisor_sign": "除数 ${divisor}$ 在给定范围内变号或可为零，不能在整个范围内直接相除。"
+        },
+        "no_division": "移项后可把参数式 ${parameter_expression}$ 单独放在一边，无需除以含变量的式子。",
+        "positive": "可分离参数，给定范围内除数 ${divisor}>0$，两边同除以它时不等号方向不变。",
+        "negative": "可分离参数，给定范围内除数 ${divisor}<0$，两边同除以它时不等号反向。"
+      }
+    },
+    {
+      "branch": "swap",
+      "target": "method-variable-swap",
+      "route_id": "variable",
+      "trigger": [
+        {
+          "feature": "quantifier",
+          "in": [
+            "∀",
+            "∃"
+          ]
+        },
+        {
+          "feature": "domain_kind",
+          "in": [
+            "real",
+            "bounded_interval",
+            "half_infinite_interval"
+          ]
+        },
+        {
+          "feature": "range_var_is_principal",
+          "equals": false
+        }
+      ],
+      "premises": [
+        "swap_linearity"
+      ],
+      "plane": [
+        [
+          "interval",
+          "given"
+        ],
+        [
+          "real",
+          "given"
+        ]
+      ],
+      "messages": {
+        "fit": "给出范围的是 ${bound}$，要求的是 ${parameter}$；关于 ${bound}$ 是一次式或常数，可更换主元研究端点。",
+        "not_triggered": "更换主元的本选法分支未触发；本题给出范围的是 ${bound}$，要求的是参数 ${parameter}$。",
+        "fails": {
+          "swap_linearity": "按给出范围的字母 ${bound}$ 整理后不是一次式或常数。"
+        }
+      }
+    }
+  ],
+  "plane_axes": {
+    "x": {
+      "feature": "domain_kind",
+      "label": "${bound}$ 取全体实数吗？",
+      "options": [
+        {
+          "value": "interval",
+          "label": "否",
+          "note": "${bound}$ 在某个区间内"
+        },
+        {
+          "value": "real",
+          "label": "是",
+          "note": "${bound}\\in\\mathbb R$"
+        }
+      ],
+      "feedback": {
+        "real": "再看横轴：${bound}$ 取遍全体实数。",
+        "interval": "再看横轴：${bound}$ 只在题目给定区间内变化。"
+      },
+      "values": {
+        "real": "real",
+        "bounded_interval": "interval",
+        "half_infinite_interval": "interval"
+      }
+    },
+    "y": {
+      "feature": "range_var_is_principal",
+      "label": "参数有给定范围吗？",
+      "options": [
+        {
+          "value": "given",
+          "label": "有",
+          "note": "给定参数范围，求主元的范围"
+        },
+        {
+          "value": "free",
+          "label": "没有",
+          "note": "要求的就是参数"
+        }
+      ],
+      "feedback": {
+        "free": "再看纵轴：${parameter}$ 是所求参数。",
+        "given": "再看纵轴：给出范围的是 ${bound}$，要求的是 ${parameter}$。"
+      }
+    }
+  },
+  "recommendation": {
+    "priority": [
+      "discriminant",
+      "swap",
+      "interval",
+      "separation"
+    ],
+    "rules": [
+      {
+        "id": "discriminant-first",
+        "when": {
+          "applicable": "discriminant"
+        },
+        "preferred": "discriminant",
+        "superseded": [
+          "interval"
+        ]
+      },
+      {
+        "id": "swap-first",
+        "when": {
+          "applicable": "swap"
+        },
+        "preferred": "swap"
+      },
+      {
+        "id": "interval-without-cases",
+        "when": {
+          "all": [
+            {
+              "feature": "domain_kind",
+              "in": [
+                "bounded_interval",
+                "half_infinite_interval"
+              ]
+            },
+            {
+              "applicable": "interval"
+            },
+            {
+              "case_split": "fails"
+            }
+          ]
+        },
+        "preferred": "interval"
+      },
+      {
+        "id": "separation-avoids-cases",
+        "when": {
+          "all": [
+            {
+              "feature": "domain_kind",
+              "in": [
+                "bounded_interval",
+                "half_infinite_interval"
+              ]
+            },
+            {
+              "applicable": "interval"
+            },
+            {
+              "case_split": "holds"
+            },
+            {
+              "applicable": "separation"
+            }
+          ]
+        },
+        "preferred": "separation"
+      },
+      {
+        "id": "interval-with-cases",
+        "when": {
+          "all": [
+            {
+              "feature": "domain_kind",
+              "in": [
+                "bounded_interval",
+                "half_infinite_interval"
+              ]
+            },
+            {
+              "applicable": "interval"
+            },
+            {
+              "case_split": "holds"
+            }
+          ]
+        },
+        "preferred": "interval"
+      },
+      {
+        "id": "single-applicable",
+        "when": {
+          "applicable_count": 1
+        }
+      },
+      {
+        "id": "priority-fallback",
+        "when": {
+          "fallback": true
+        }
+      }
+    ]
+  }
+}

@@ -40,6 +40,10 @@ def initial_bindings(features, context):
         "strict": relation["strict"],
         "goal": deepcopy(context["goal"]),
         "constraint_context": deepcopy(context),
+        "interval_function": parse_expression(relation["lhs"]) - parse_expression(relation["rhs"]),
+        "interval_operator": {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[relation["operator"]],
+        "zero": sp.S.Zero,
+        "relation_kind": "inequality",
     }
     return values
 
@@ -47,12 +51,14 @@ def initial_bindings(features, context):
 def can_execute(method, features, context):
     try:
         values = initial_bindings(features, context)
-        if values["quantifier"] != "∀" or values["domain"] != sp.S.Reals:
+        if values["quantifier"] not in ("∀", "∃"):
             return False
         poly = capabilities.polynomial(values["expression"], values["x"])
         if poly.degree() != 2:
             return False
         if method == "method-discriminant":
+            if values["quantifier"] != "∀" or values["domain"] != sp.S.Reals:
+                return False
             # Degree and rational-coefficient shape only; every zero of the
             # leading coefficient is handled by a separate contract frame.
             for coefficient in poly.all_coeffs():
@@ -65,22 +71,18 @@ def can_execute(method, features, context):
                     return False
             return True
         if method == "method-separation":
-            if (
-                values["strict"]
-                or not poly.LC().is_Rational
-                or poly.LC().is_positive is not True
-            ):
-                return False
-            # Admission only inspects the supported shape. The actual role
-            # bindings and equivalence check belong to the first traced call.
-            lhs, rhs = values["relation"].lhs, values["relation"].rhs
-            if not lhs.has(values["x"]) and not rhs.has(values["parameter"]):
-                function = rhs
-            elif not rhs.has(values["x"]) and not lhs.has(values["parameter"]):
-                function = lhs
-            else:
-                return False
-            judgments.range_skill(function, values["x"], values["domain"])
+            separated = capabilities.inspect_separation(
+                values["relation"], values["parameter"], values["x"], values["domain"]
+            )["outputs"]
+            capabilities.polynomial(separated["parameter_expression"], values["parameter"])
+            judgments.range_skill(separated["function"], values["x"], values["domain"])
+            return True
+        if method == "method-interval-extremum":
+            policy = capabilities.select_quantifier_policy(
+                values["quantifier"], values["interval_operator"], values["domain"]
+            )["outputs"]["policy"]
+            judgments.interval_skill(values["interval_function"], values["x"], values["parameter"],
+                                     values["domain"], policy)
             return True
         return False
     except (CapabilityGap, UnknownPremise):
@@ -469,6 +471,8 @@ def _advance(state, contracts):
                 "action_id": action["id"],
             }
         )
+        if action.get("rule_ref"):
+            trace["skipped_calls"][-1].update(rule_ref=action["rule_ref"], branch=action.get("branch"))
         if not action.get("outputs"):
             _publish(state, frame, step, action, bindings)
         frame["call_index"] += 1
@@ -527,6 +531,8 @@ def _advance(state, contracts):
                 "case_path": deepcopy(frame["case_path"]),
             }
         )
+        if action.get("rule_ref"):
+            trace["judgments"][-1]["rule_ref"] = action["rule_ref"]
         state["premise_refs"].append(
             f"/steps/{frame['step_trace']}/judgments/{len(trace['judgments']) - 1}"
         )
@@ -552,6 +558,8 @@ def _advance(state, contracts):
                 }
             ),
         }
+        if action.get("rule_ref"):
+            call.update(rule_ref=action["rule_ref"], branch=action["branch"])
         if action["capability"] == "submethod":
             trace["calls"].append(call)
             frame["pending_child"] = {

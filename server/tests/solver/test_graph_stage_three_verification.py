@@ -155,8 +155,8 @@ def test_negative_power_definition_condition_survives_simplification():
 
 
 @pytest.mark.parametrize("facts", [
-    ["∀x∈ℝ:x^2+1/a>=0"], ["∀x∈ℝ:x^3+a>0"], ["∃x∈ℝ:x^2+a>=0"],
-    ["∀x∈[0,1]:x^2+a>=0"], ["a^2<1", "∀x∈ℝ:x^2+a>=0"],
+    ["∀x∈ℝ:x^2+1/a>=0"], ["∀x∈ℝ:x^3+a>0"],
+    ["∀x∈[0,a]:x^2+a>=0"], ["a^2<1", "∀x∈ℝ:x^2+a>=0"],
     ["∀x∈ℝ:x^2+a>=0", "∀t∈ℝ:t^2+a>=0"],
     ["b>0", "∀x∈ℝ:x^2+a>=0"], ["∀x∈ℝ:x^2+x/x+a>=0"],
 ])

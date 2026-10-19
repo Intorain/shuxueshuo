@@ -41,6 +41,13 @@ ANSWERS = {
     "q02": sp.Interval.Lopen(-1, 0),
     "q03": sp.Interval.Lopen(-sp.Rational(3, 5), 1),
 }
+# Q10(1): x²-2ax+3≥0 for every real x iff a²≤3.
+# Q10(2): on [1,2], min((x²+3)/(2x))=√3 is attained at x=√3;
+# strict negativity at some x therefore requires a>√3.
+Q10_ANSWERS = {
+    "/root/children/0/goals/0": sp.Interval(-sp.sqrt(3), sp.sqrt(3)),
+    "/root/children/1/goals/0": sp.Interval.open(sp.sqrt(3), sp.oo),
+}
 REQUIRED_REFS = {
     "method-discriminant#degree",
     "linear-interval-extremum",
@@ -123,11 +130,15 @@ def test_all_recordings_preserve_selection_and_q01_q02_q03_publish_exact_routes(
             if case not in ANSWERS:
                 for route in goal["routes"]:
                     if route["status"] == "verified":
-                        # Q10(1) reuses the already available whole-real
-                        # discriminant route. Later interval/existential routes
-                        # keep an explicit capability gap at this milestone.
-                        assert case == "q10" and goal["target_ref"] == "/root/children/0/goals/0"
-                        assert decode_value(route["feasible_set_exact"]) == sp.Interval(-sp.sqrt(3), sp.sqrt(3))
+                        # Milestones restrict method families, not historical
+                        # capability implementations. Batch 3 extends the
+                        # existing separation family to Q04/Q05 and Q10(2).
+                        reusable = {"q04": {TARGET: sp.Interval.open(-sp.oo, -5)},
+                                    "q05": {TARGET: sp.Interval.open(-5, sp.oo)},
+                                    "q10": Q10_ANSWERS}
+                        assert case in reusable
+                        assert goal["target_ref"] in reusable[case]
+                        assert decode_value(route["feasible_set_exact"]) == reusable[case][goal["target_ref"]]
         assert (sample / "index.html").is_file()
         assert (sample / "source.png").is_file()
         seen.add((case, row["sample_id"]))

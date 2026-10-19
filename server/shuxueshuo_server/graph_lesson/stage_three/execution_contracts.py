@@ -15,6 +15,7 @@ DIRECTORY = DATA / "execution"
 METHODS = (
     "method-discriminant",
     "method-separation",
+    "method-interval-extremum",
     "quadratic-inequality-solve",
     "method-square-extremum",
 )
@@ -28,6 +29,16 @@ def schema_validator():
 
 def read(name):
     return json.loads((DIRECTORY / f"{name}.json").read_text())
+
+
+def route_methods():
+    """Executable top-level routes come from selection contracts, not child calls."""
+    methods = set()
+    for path in sorted((DATA / "selection").glob("*.json")):
+        selection = json.loads(path.read_text())
+        if selection.get("schema_version") == "graph-method-selection/v1":
+            methods.update(branch["target"] for branch in selection["branches"])
+    return methods.intersection(METHODS)
 
 
 def actions(step):
@@ -137,6 +148,9 @@ def validate_contract(contract, nodes=None):
 
     def validate_step(step, node, env):
         allowed = {c["ref"] for c in node.get("calls", [])}
+        rule = nodes.get(node.get("rule"))
+        rule_targets = {branch["id"]: branch["target"] for branch in rule["branches"]} if rule else {}
+        allowed.update(rule_targets.values())
         ids, executed_refs = set(), set()
         ordered = actions(step)
         if len({action["order"] for action in ordered}) != len(ordered):
@@ -207,11 +221,28 @@ def validate_contract(contract, nodes=None):
                         or len(set(choices)) != len(choices)
                     ):
                         raise ValueError("execution.judgment_options")
+                    if action.get("rule_ref") and (
+                        action["rule_ref"] != node.get("rule") or set(choices) != set(rule_targets)
+                    ):
+                        raise ValueError("execution.rule_decision_options")
                 else:
                     ref, cap = action["public_ref"], action["capability"]
                     if ref is not None:
                         if ref not in allowed or not valid_ref(ref, nodes):
                             raise ValueError("execution.public_call_position")
+                        if ref in rule_targets.values():
+                            branch = action.get("branch")
+                            if action.get("rule_ref") != node["rule"] or rule_targets.get(branch) != ref:
+                                raise ValueError("execution.rule_branch_source")
+                            decision = next((j for j in step["judgments"]
+                                             if j.get("rule_ref") == node["rule"]), None)
+                            if not decision or branch not in {o["id"] for o in decision["options"]}:
+                                raise ValueError("execution.rule_branch_decision")
+                            choice_bindings = [name for name, value in decision["outputs"].items() if value == "choice"]
+                            if len(choice_bindings) != 1 or not _atoms({"ref": choice_bindings[0], "equals": branch}) <= _atoms(active_guard):
+                                raise ValueError("execution.rule_branch_guard")
+                        elif action.get("rule_ref") or action.get("branch"):
+                            raise ValueError("execution.unexpected_rule_source")
                         if cap not in mappings["skills"].get(ref, []):
                             raise ValueError("execution.capability_mapping")
                         executed_refs.add(ref)
@@ -282,6 +313,12 @@ def validate_contract(contract, nodes=None):
 
 def load_contracts():
     nodes = load_nodes()
+    boundary_steps = read("presentation-registry").get("boundary_steps", {})
+    if not isinstance(boundary_steps, dict):
+        raise TypeError("execution.invalid_boundary_step")
+    missing = route_methods().difference(boundary_steps)
+    if missing:
+        raise ValueError("execution.missing_boundary_step:" + ",".join(sorted(missing)))
     contracts = {name: validate_contract(read(name), nodes) for name in METHODS}
 
     def visit(name, path):
@@ -305,6 +342,9 @@ def load_contracts():
     for refs in read("basis-operations")["operations"].values():
         if not all(valid_ref(ref, nodes) for ref in refs):
             raise ValueError("execution.invalid_basis")
+    for method, anchor in boundary_steps.items():
+        if not valid_ref(method + "#" + anchor, nodes):
+            raise ValueError("execution.invalid_boundary_step")
     return contracts
 
 

@@ -71,12 +71,50 @@ def make_fragment(
 
 def render_unit(state, frame, step, unit, bindings, source_refs, used_basis):
     explanation = None
+    before, after = list(bindings["before"]), list(bindings["after"])
     if unit["template"] == "policy":
         policy = bindings["policy"]
         name = "上确界" if policy["bound"] == "sup" else "下确界"
+        quantifier = "对所有" if policy["quantifier"] == "∀" else "至少存在一个"
         explanation = (
-            f"对所有 ${sp.latex(bindings['x'])}$ 均成立，参数式 ${sp.latex(bindings['parameter_expression'])}$ "
+            f"{quantifier} ${sp.latex(bindings['x'])}$ 使关系成立，比较式 ${sp.latex(bindings['parameter_expression'])}$ "
             f"需要与函数 ${sp.latex(bindings['function'])}$ 的{name}比较。先确定策略，下一步再计算数值和是否取到。"
+        )
+    elif unit["template"] == "divided":
+        explanation = (
+            f"在给定范围内，除数 ${sp.latex(bindings['divisor'])}>0$。"
+            "将参数项移到一边，再两边同除以这个正数，不等号不变，得到等价关系。"
+        )
+    elif unit["template"] == "numeric_range":
+        bounds = bindings["range"]
+        details = []
+        for key, label in (("inf", "下确界"), ("sup", "上确界")):
+            attained = "能取得" if bounds[key + "_attained"] else "不能取得"
+            details.append(f"{label}为 ${sp.latex(bounds[key])}$，{attained}")
+        explanation = (
+            f"只在题目给定的 ${sp.latex(bindings['domain'])}$ 上求值，"
+            "比较端点的值或极限，并检查区间内的转折点。" + "；".join(details) + "。"
+        )
+    elif unit["template"] == "endpoint_bounds":
+        bounds = bindings["range"]
+        label = "上确界" if bounds["bound"] == "sup" else "下确界"
+        opening = "向上" if bounds["bound"] == "sup" else "向下"
+        details = []
+        for candidate in bounds["candidates"]:
+            attained = "端点在区间中" if candidate["attained"] else "端点不在区间中，只能趋近"
+            details.append(f"${sp.latex(bindings['x'])}={sp.latex(candidate['point'])}$ 时的候选值为 ${sp.latex(candidate['value'])}$，{attained}")
+            after.append(candidate["value"])
+        explanation = (
+            f"二次函数开口{opening}，所需{label}由两个端点候选决定，无需按含参对称轴分类。"
+            + "；".join(details) + "。"
+        )
+    elif unit["template"] == "interval_conditions":
+        before.extend(bindings["conditions"])
+        after = [*bindings["solutions"], *after]
+        logical, operation = ("两端条件都要满足", "交集") if bindings["combiner"] == "all" else ("至少一端条件满足", "并集")
+        explanation = (
+            f"将已选量词策略应用到端点候选及其可达性，{logical}。"
+            f"分别解出下列参数条件后取{operation}；开放端点的极限值不当作已取得的最值。"
         )
     elif unit["template"] == "square_range":
         explanation = (
@@ -126,8 +164,8 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis):
         unit_id=unit["id"],
         method_ref=frame["method"] + "#" + step["id"],
         template=unit["template"],
-        before=bindings["before"],
-        after=bindings["after"],
+        before=before,
+        after=after,
         source_refs=source_refs,
         used_basis=used_basis,
         explanation=explanation,
@@ -173,7 +211,7 @@ def append_boundary(state, evidence, *, feasible_set=None):
         unit_id="boundary",
         method_ref=updated["method"]
         + "#"
-        + ("merge" if updated["method"] == "method-discriminant" else "restore"),
+        + read("presentation-registry")["boundary_steps"][updated["method"]],
         template="boundary",
         after=([feasible_set] if feasible_set is not None else []),
         source_refs=[f"/finalization/{index}"],

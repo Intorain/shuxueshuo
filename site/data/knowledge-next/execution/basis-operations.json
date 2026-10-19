@@ -50,6 +50,21 @@
     ],
     "union_disjoint_cases": [
       "method-discriminant#merge"
+    ],
+    "multiply_positive": [
+      "inequality-properties#multiplication"
+    ],
+    "interval_extrema": [
+      "quadratic-interval-extremum"
+    ],
+    "reciprocal_extrema": [
+      "reciprocal-sum-function"
+    ],
+    "existential": [
+      "quantifiers#existential"
+    ],
+    "quantified_condition_sets": [
+      "method-interval-extremum#conditions"
     ]
   }
 }

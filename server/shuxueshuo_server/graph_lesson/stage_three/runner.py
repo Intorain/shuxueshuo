@@ -27,8 +27,8 @@ from .contracts import (
 )
 from .selection import evaluate_goal
 
-MILESTONE = "2"
-MILESTONES = ("1a", "1b-1", "1b", "2")
+MILESTONE = "3"
+MILESTONES = ("1a", "1b-1", "1b", "2", "3")
 
 
 def fingerprint():
@@ -228,6 +228,8 @@ def _execute_goal_in_session(candidate, goal, folder, store, *, stack, milestone
     from .route_calculations import RouteCalculations
 
     allowed = {"method-discriminant"} if milestone == "1b-1" else {"method-discriminant", "method-separation"}
+    if milestone == "3":
+        allowed.add("method-interval-extremum")
     prepared, calculators = {}, {}
     for branch in goal["selection"]["branches"]:
         if branch["route_plan"] == "not_planned":

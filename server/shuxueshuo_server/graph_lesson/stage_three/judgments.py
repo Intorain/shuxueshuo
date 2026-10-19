@@ -2,7 +2,7 @@
 
 import sympy as sp
 
-from .capabilities import CapabilityGap, polynomial, residual
+from .capabilities import CapabilityGap, execute, polynomial, residual
 from .capabilities.cases import partition_cases
 
 
@@ -58,18 +58,40 @@ def polynomial_relation(relation, variable):
 
 
 def range_skill(expression, variable, domain):
-    poly = polynomial(expression, variable)
-    if (
-        domain != sp.S.Reals
-        or poly.degree() != 2
-        or expression.free_symbols - {variable}
-    ):
+    if expression.free_symbols - {variable}:
         raise CapabilityGap("range_skill_unavailable")
+    if not expression.is_polynomial(variable):
+        execute("reciprocal_range", {"expression": expression, "variable": variable, "domain": domain})
+        choice = "reciprocal"
+        degree = None
+    else:
+        poly = polynomial(expression, variable)
+        if poly.degree() != 2:
+            raise CapabilityGap("range_skill_unavailable")
+        degree = 2
+        choice = "square" if domain == sp.S.Reals else "interval"
+        if choice == "interval":
+            execute("quadratic_interval_range", {"expression": expression, "variable": variable, "domain": domain})
     return {
-        "selected": "square",
-        "choice": "square",
-        "evidence": {"degree": 2, "domain": domain},
+        "selected": choice,
+        "choice": choice,
+        "evidence": {"degree": degree, "domain": domain},
     }
+
+
+def interval_skill(expression, variable, parameter, domain, policy):
+    poly = polynomial(expression, variable)
+    if poly.degree() != 2:
+        raise CapabilityGap("interval_skill_unavailable")
+    parametric = expression.has(parameter)
+    inputs = {"expression": expression, "variable": variable, "domain": domain}
+    if parametric:
+        execute("endpoint_values_extremum", {**inputs, "parameter": parameter, "policy": policy})
+    else:
+        execute("quadratic_interval_range", inputs)
+    return {"selected": "quadratic", "choice": "quadratic", "parametric": parametric,
+            "evidence": {"degree": 2, "domain": domain, "parameter_cases": False,
+                         "reason": "endpoint_envelope" if parametric else "constant_coefficients"}}
 
 
 def interval_requirement(domain):
@@ -87,5 +109,5 @@ def interval_requirement(domain):
 REGISTRY = {
     fn.__name__: fn
     for fn in (nondegenerate, degenerate_branches, parameter_solver,
-               polynomial_relation, range_skill, interval_requirement)
+               polynomial_relation, range_skill, interval_requirement, interval_skill)
 }

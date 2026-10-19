@@ -203,14 +203,18 @@ def start(client, monkeypatch, case):
 
 
 def wait(client, sid):
-    for _ in range(100):
+    # Stage two now starts stage three automatically, including both Q10
+    # targets. Use the same bounded wait as the stage-three API tests.
+    deadline = time.monotonic() + 30
+    status = None
+    while time.monotonic() < deadline:
         status = client.get(f"/api/search/problems/{sid}").json()
         lesson = status.get("lesson", {})
         if (status["state"] == "done" and lesson.get("status") != "running"
                 and lesson.get("execution_status") not in {"starting", "running"}):
             return status
         time.sleep(0.05)
-    raise AssertionError("stage two did not finish")
+    raise AssertionError(f"lesson did not finish: {status}")
 
 
 def test_status_carries_the_lesson_after_stage_two(client, monkeypatch, tmp_path):

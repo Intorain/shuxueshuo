@@ -177,6 +177,8 @@ class OriginalProblem:
     denominators: list
     processing: list
     strict: bool = False
+    quantifier: str = "∀"
+    domain: sp.Set = sp.S.Reals
 
     @property
     def parameter(self):
@@ -185,10 +187,6 @@ class OriginalProblem:
     @property
     def x(self):
         return self.algebra.x
-
-
-def _real_domain(ast):
-    return ast == ["real"] or (ast[0] == "interval" and ast[3:] == [["infinity", -1], ["infinity", 1]])
 
 
 def _interval(ast, algebra):
@@ -233,9 +231,12 @@ def read_problem(candidate, target_ref, constraint_context=None):
     if len(quantified) != 1:
         raise VerificationGap("unsupported_constraint:single_quantifier_required")
     main_entry, main = quantified[0]
-    if main[1] != "∀" or not _real_domain(main[3]) or main[4][0] not in (">=", "<=", ">", "<"):
-        raise VerificationGap("verification_incomplete:universal_full_real")
+    if main[1] not in ("∀", "∃") or main[4][0] not in (">=", "<=", ">", "<"):
+        raise VerificationGap("verification_incomplete:quantified_order_relation")
     algebra = _Arithmetic(original["symbols"], goal["target"][1], main[2])
+    domain = _interval(main[3], algebra)
+    if any(point.is_algebraic is not True for point in _set_boundaries(domain)):
+        raise VerificationGap("verification_incomplete:algebraic_quantifier_domain")
     processing, constraints, denominator_sources = [], [], []
     for entry, atom in atoms:
         if atom[0] == "function_definition":
@@ -273,9 +274,10 @@ def read_problem(candidate, target_ref, constraint_context=None):
         if atom[0] == "default_domain" and atom[1] == goal["target"] and atom[2] == "real":
             processing.append({"source_ref": source_ref, "status": "redundant_real_domain"})
         elif atom[0] == "∈" and atom[1] == goal["target"]:
-            domain = _interval(atom[2], algebra)
-            constraints.append({"source_ref": source_ref, "kind": "membership", "set": domain})
-            processing.append({"source_ref": source_ref, "status": "parameter_constraint", "set": math_value(domain)})
+            parameter_domain = _interval(atom[2], algebra)
+            constraints.append({"source_ref": source_ref, "kind": "membership", "set": parameter_domain})
+            processing.append({"source_ref": source_ref, "status": "parameter_constraint",
+                               "set": math_value(parameter_domain)})
         elif atom[0] in ("<", "<=", ">", ">=", "=", "!="):
             difference = bounded_expand(algebra.expr(atom[1]) - algebra.expr(atom[2]))
             if _poly(difference, algebra.parameter).degree() > 1:
@@ -294,7 +296,8 @@ def read_problem(candidate, target_ref, constraint_context=None):
         _poly(numerator, algebra.parameter)
         _poly(denominator_part, algebra.parameter)
     return OriginalProblem(original, algebra, expression, main_entry["source_ref"], constraints,
-                           denominator_sources, processing, strict=main[4][0] in (">", "<"))
+                           denominator_sources, processing, strict=main[4][0] in (">", "<"),
+                           quantifier=main[1], domain=domain)
 
 
 def _relation(expression, operator):
@@ -536,6 +539,74 @@ def apply_visible_constraints(candidate, target_ref, constraint_context, feasibl
     return result, processing
 
 
+def _extended_compare(left, right):
+    if left == right:
+        return 0
+    if left is -sp.oo or right is sp.oo:
+        return -1
+    if left is sp.oo or right is -sp.oo:
+        return 1
+    return _algebraic_sign(left - right)
+
+
+def _interval_predicate(problem, a, b, c):
+    """Independent range certificate for a fixed original parameter value.
+
+    Quadratic continuity, its derivative, and endpoint limits exhaust its
+    range on an interval. Excluded endpoints contribute bounds but never
+    attained values. No inequality solver or method range is trusted here.
+    """
+    domain = problem.domain
+    if domain is sp.S.EmptySet:
+        return problem.quantifier == "∀", {"kind": "empty_quantifier_domain", "domain": math_value(domain),
+                                            "quantifier": problem.quantifier}
+    leading_sign, slope_sign = _algebraic_sign(a), _algebraic_sign(b)
+    candidates = []
+
+    def add(point, attained, kind):
+        if point in (-sp.oo, sp.oo):
+            sign = leading_sign or (slope_sign if point is sp.oo else -slope_sign)
+            value = sp.oo if sign > 0 else -sp.oo if sign < 0 else c
+        else:
+            value = _algebraic_value(a*point**2 + b*point + c)
+        candidates.append({"point": point, "value": value, "attained": attained, "kind": kind})
+
+    if isinstance(domain, sp.FiniteSet):
+        for point in domain:
+            add(point, True, "domain_point")
+    elif leading_sign == 0 and slope_sign == 0:
+        # A constant is attained everywhere even on a wholly open interval.
+        add(_rational_between(domain.start, domain.end), True, "constant_value")
+    else:
+        add(domain.start, not domain.left_open, "left_endpoint_limit")
+        add(domain.end, not domain.right_open, "right_endpoint_limit")
+        if leading_sign:
+            vertex = _algebraic_value(-b / (2*a))
+            if _contains_exact(domain, vertex):
+                add(vertex, True, "stationary_point")
+
+    lower = min((row["value"] for row in candidates), key=cmp_to_key(_extended_compare))
+    upper = max((row["value"] for row in candidates), key=cmp_to_key(_extended_compare))
+    lower_attained = any(row["attained"] and _extended_compare(row["value"], lower) == 0 for row in candidates)
+    upper_attained = any(row["attained"] and _extended_compare(row["value"], upper) == 0 for row in candidates)
+    if problem.quantifier == "∀":
+        sign = _extended_compare(lower, sp.S.Zero)
+        holds = sign > 0 or sign == 0 and (not problem.strict or not lower_attained)
+    else:
+        sign = _extended_compare(upper, sp.S.Zero)
+        holds = sign > 0 or sign == 0 and not problem.strict and upper_attained
+    certificate = {
+        "kind": "interval_polynomial_range", "quantifier": problem.quantifier,
+        "domain": math_value(domain), "strict": problem.strict,
+        "coefficients": [math_value(coefficient) for coefficient in (a, b, c)],
+        "lower_bound": math_value(lower), "lower_attained": lower_attained,
+        "upper_bound": math_value(upper), "upper_attained": upper_attained,
+        "candidates": [{**row, "point": math_value(row["point"]), "value": math_value(row["value"])}
+                       for row in candidates],
+    }
+    return holds, certificate
+
+
 def _point(problem, value):
     evidence = []
     for expression, source in problem.denominators:
@@ -557,6 +628,11 @@ def _point(problem, value):
     # This independently constructed square identity uses no method outputs.
     polynomial = sp.Poly(problem.expression.subs(problem.parameter, value), problem.x)
     a, b, c = (_algebraic_value(polynomial.nth(i)) for i in (2, 1, 0))
+    if problem.quantifier != "∀" or problem.domain != sp.S.Reals:
+        holds, certificate = _interval_predicate(problem, a, b, c)
+        evidence.append({"source_ref": problem.main_ref, "kind": "quantified_predicate", "holds": holds,
+                         "certificate": certificate})
+        return holds, evidence
     leading_sign = _algebraic_sign(a)
     if leading_sign == 0:
         slope_sign = _algebraic_sign(b)
@@ -636,6 +712,15 @@ def _critical(problem):
     polynomial = sp.Poly(problem.expression, x)
     sources = [(c, problem.main_ref, "coefficient") for c in polynomial.all_coeffs()]
     sources.append((sp.discriminant(polynomial.as_expr(), x), problem.main_ref, "discriminant"))
+    endpoint_values = []
+    for boundary in _set_boundaries(problem.domain):
+        value = bounded_expand(problem.expression.subs(x, boundary))
+        endpoint_values.append(value)
+        sources.append((value, problem.main_ref, "quantifier_endpoint_value"))
+        sources.append((bounded_expand(sp.diff(problem.expression, x).subs(x, boundary)),
+                        problem.main_ref, "stationary_point_boundary"))
+    if len(endpoint_values) == 2:
+        sources.append((endpoint_values[0] - endpoint_values[1], problem.main_ref, "endpoint_value_order"))
     for c in problem.constraints:
         if c["kind"] == "relation":
             sources.append((c["expression"], c["source_ref"], "parameter_condition"))
@@ -650,13 +735,25 @@ def _critical(problem):
     for expression, source, kind in sources:
         numerator, denominator = sp.fraction(sp.cancel(expression))
         for part, value in (("numerator", numerator), ("denominator", denominator)):
-            poly = _poly(value, parameter)
+            # Rational input coefficients can become algebraic after substituting
+            # an exact interval endpoint. The algebraic-field norm has rational
+            # coefficients and contains all real zeros of the original expression.
+            # Extra conjugate roots only refine the invariant partition.
+            if value.has(sp.CRootOf) or any(coefficient.is_Rational is not True
+                                           for coefficient in sp.Poly(value, parameter).all_coeffs()):
+                algebraic_poly = _sympy_call("algebraic_endpoint_polynomial", sp.Poly,
+                                            value, parameter, extension=True)
+                rational_poly = _sympy_call("algebraic_endpoint_norm", algebraic_poly.norm)
+                poly = _poly(rational_poly.as_expr(), parameter)
+            else:
+                poly = _poly(value, parameter)
             real_roots = [] if poly.is_zero or poly.degree() == 0 else _sympy_call("real_roots", poly.real_roots)
             isolation = [] if not real_roots else [
                 {"lower": math_value(bounds[0]), "upper": math_value(bounds[1]), "multiplicity": multiplicity}
                 for bounds, multiplicity in _sympy_call("root_isolation", poly.intervals)
             ]
             record = {"source_ref": source, "kind": kind, "part": part, "polynomial": math_value(value),
+                      "root_polynomial": math_value(poly.as_expr()),
                       "identically_zero": bool(poly.is_zero), "roots": [math_value(r) for r in real_roots],
                       "isolating_intervals": isolation}
             records.append(record)
@@ -743,14 +840,16 @@ def verify(candidate, target_ref, constraint_context, feasible_set):
                     accepted.append(sp.FiniteSet(point))
         reconstructed = sp.Union(*accepted)
         result["proof"] = {
-            "category": "rational-polynomial-coefficients-universal-real-quadratic/v2",
+            "category": ("rational-polynomial-coefficients-universal-real-quadratic/v2"
+                         if problem.quantifier == "∀" and problem.domain == sp.S.Reals
+                         else "rational-polynomial-coefficients-quantified-interval-quadratic/v1"),
             "source_refs": [e["source_ref"] for e in problem.original["entries"]],
             "critical_polynomials": critical,
             "critical_points": [{**math_value(p), "sources": [
                 {"source_ref": item["source_ref"], "kind": item["kind"], "part": item["part"]}
                 for item in critical if math_value(p) in item["roots"]
             ]} for p in points],
-            "invariance": {"proved": True, "reason": "All coefficient, discriminant, condition and original-denominator signs are fixed between their complete exact real roots; critical points are checked independently for quadratic, affine and constant predicates with the original strictness."},
+            "invariance": {"proved": True, "reason": "All coefficient, discriminant, endpoint-value, stationary-point boundary, endpoint-order, condition and original-denominator signs are fixed between their complete exact real roots (or rational norm roots for algebraic endpoints); critical points are checked independently for quadratic, affine and constant predicates with the original quantifier, domain and strictness."},
             "cells": cells, "reconstructed_set": math_value(reconstructed), "candidate_set": math_value(feasible_set),
         }
         sample = _set_mismatch(reconstructed, feasible_set)

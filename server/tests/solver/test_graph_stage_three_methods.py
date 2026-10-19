@@ -102,12 +102,6 @@ def test_q01_exact_result_and_checkpoint_round_trip(method):
 )
 def test_role_based_variants(fact, symbol, expected, method):
     value = candidate(fact, symbol)
-    if method == "method-separation" and fact in ("∀x∈ℝ:x^2+a>=0",):
-        # Transforming an entangled sum is a later supported class.
-        assert not driver.can_execute(
-            method, extract_features(value)["features"], build_context(value, TARGET)
-        )
-        return
     state = finish(start(value, method))
     if method == "method-separation" and state["status"] == "capability_gap":
         assert state["trajectory"]["gap"]["code"] == "method_input_class_unavailable"
@@ -510,9 +504,15 @@ def test_separation_binding_is_a_checked_contract_call_not_initial_state(monkeyp
         "direction_residual",
     }
     assert all(check["passed"] for check in call["postconditions"])
-    assert "parameter_expression" in decode_value(state["frames"][0]["bindings"])
+    bindings = decode_value(state["frames"][0]["bindings"])
+    assert "parameter_expression" in bindings["separation_candidate"]
+    assert "parameter_expression" not in bindings  # Merged only after the branch completes.
     state = finish(state)
     for skipped in state["trajectory"]["steps"][0]["skipped_calls"]:
+        if skipped["public_ref"] == "skill-equality-transform":
+            assert skipped["reason"] == "not_applicable"
+            assert skipped["guard_bindings"] == {"relation_kind": "inequality"}
+            continue
         assert skipped["reason"] == "already_satisfied"
         assert skipped["guard"] == {"ref": "already_separated", "equals": False}
         assert skipped["guard_bindings"] == {"already_separated": True}

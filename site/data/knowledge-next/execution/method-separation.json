@@ -27,6 +27,9 @@
     },
     "constraint_context": {
       "role": "constraint_context"
+    },
+    "relation_kind": {
+      "role": "relation_kind"
     }
   },
   "steps": [
@@ -40,14 +43,12 @@
           "inputs": {
             "relation": "$relation",
             "parameter": "$parameter",
-            "variable": "$x"
+            "variable": "$x",
+            "domain": "$domain"
           },
           "outputs": {
-            "parameter_expression": "parameter_expression",
-            "function": "function",
-            "operator": "operator",
-            "already_separated": "already_separated",
-            "separated_relation": "separated_relation"
+            "separation_candidate": "candidate",
+            "already_separated": "already_separated"
           },
           "order": -1
         },
@@ -55,8 +56,16 @@
           "id": "inequality",
           "capability": "separation_division",
           "public_ref": "skill-inequality-transform",
-          "inputs": {},
-          "outputs": {},
+          "inputs": {
+            "relation": "$relation",
+            "parameter": "$parameter",
+            "variable": "$x",
+            "domain": "$domain",
+            "prepared": "$separation_candidate"
+          },
+          "outputs": {
+            "applied_separation": "candidate"
+          },
           "guard": {
             "ref": "already_separated",
             "equals": false
@@ -68,13 +77,18 @@
           "id": "equality",
           "capability": "separation_division",
           "public_ref": "skill-equality-transform",
-          "inputs": {},
+          "inputs": {
+            "relation": "$relation",
+            "parameter": "$parameter",
+            "variable": "$x",
+            "domain": "$domain"
+          },
           "outputs": {},
           "guard": {
-            "ref": "already_separated",
-            "equals": false
+            "ref": "relation_kind",
+            "equals": "equality"
           },
-          "skip_reason": "already_satisfied",
+          "skip_reason": "not_applicable",
           "order": 1
         }
       ],
@@ -82,19 +96,98 @@
       "display_units": [
         {
           "id": "separated",
-          "after": "equality",
+          "after": "inspect",
           "template": "separated",
           "bindings": {
             "before": [
               "$relation"
             ],
             "after": [
-              "$separated_relation"
+              "$separation_candidate.separated_relation"
             ]
           },
           "depends_on": [
             "relation",
-            "separated_relation"
+            "separation_candidate"
+          ],
+          "guard": {
+            "ref": "already_separated",
+            "equals": true
+          }
+        },
+        {
+          "id": "divided",
+          "after": "inequality",
+          "template": "divided",
+          "bindings": {
+            "before": [
+              "$relation"
+            ],
+            "after": [
+              "$applied_separation.separated_relation"
+            ],
+            "divisor": "$applied_separation.divisor"
+          },
+          "depends_on": [
+            "applied_separation",
+            "relation"
+          ],
+          "guard": {
+            "ref": "applied_separation.transformation",
+            "equals": "positive_division"
+          }
+        },
+        {
+          "id": "moved",
+          "after": "inequality",
+          "template": "moved",
+          "bindings": {
+            "before": [
+              "$relation"
+            ],
+            "after": [
+              "$applied_separation.separated_relation"
+            ]
+          },
+          "depends_on": [
+            "applied_separation",
+            "relation"
+          ],
+          "guard": {
+            "ref": "applied_separation.transformation",
+            "equals": "move_terms"
+          }
+        }
+      ],
+      "merges": [
+        {
+          "id": "separation_result",
+          "order": 2,
+          "branches": [
+            {
+              "guard": {
+                "ref": "already_separated",
+                "equals": true
+              },
+              "bindings": {
+                "parameter_expression": "$separation_candidate.parameter_expression",
+                "function": "$separation_candidate.function",
+                "operator": "$separation_candidate.operator",
+                "separated_relation": "$separation_candidate.separated_relation"
+              }
+            },
+            {
+              "guard": {
+                "ref": "already_separated",
+                "equals": false
+              },
+              "bindings": {
+                "parameter_expression": "$applied_separation.parameter_expression",
+                "function": "$applied_separation.function",
+                "operator": "$applied_separation.operator",
+                "separated_relation": "$applied_separation.separated_relation"
+              }
+            }
           ]
         }
       ]
@@ -147,8 +240,14 @@
           "id": "interval",
           "capability": "quadratic_interval_range",
           "public_ref": "quadratic-interval-extremum",
-          "inputs": {},
-          "outputs": {},
+          "inputs": {
+            "expression": "$function",
+            "variable": "$x",
+            "domain": "$domain"
+          },
+          "outputs": {
+            "interval_range": "range"
+          },
           "guard": {
             "ref": "range_choice",
             "equals": "interval"
@@ -173,8 +272,14 @@
           "id": "reciprocal",
           "capability": "reciprocal_range",
           "public_ref": "skill-reciprocal-range",
-          "inputs": {},
-          "outputs": {},
+          "inputs": {
+            "expression": "$function",
+            "variable": "$x",
+            "domain": "$domain"
+          },
+          "outputs": {
+            "reciprocal_range": "range"
+          },
           "guard": {
             "ref": "range_choice",
             "equals": "reciprocal"
@@ -242,29 +347,87 @@
       "display_units": [
         {
           "id": "range",
-          "after": "range_result",
+          "after": "square",
           "template": "square_range",
           "bindings": {
             "before": [
               "$function"
             ],
             "after": [
-              "$square",
-              "$extremum"
+              "$square_square",
+              "$square_extremum"
             ],
             "function": "$function",
-            "square": "$square",
+            "square": "$square_square",
             "x": "$x",
-            "vertex": "$vertex",
-            "extremum": "$extremum"
+            "vertex": "$square_vertex",
+            "extremum": "$square_extremum"
           },
           "depends_on": [
-            "extremum",
             "function",
-            "square",
-            "vertex",
+            "square_extremum",
+            "square_square",
+            "square_vertex",
             "x"
-          ]
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "square"
+          }
+        },
+        {
+          "id": "interval_range",
+          "after": "interval",
+          "template": "numeric_range",
+          "bindings": {
+            "before": [
+              "$function"
+            ],
+            "after": [
+              "$interval_range.set"
+            ],
+            "range": "$interval_range",
+            "domain": "$domain",
+            "function": "$function",
+            "x": "$x"
+          },
+          "depends_on": [
+            "domain",
+            "function",
+            "interval_range",
+            "x"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "interval"
+          }
+        },
+        {
+          "id": "reciprocal_range",
+          "after": "reciprocal",
+          "template": "numeric_range",
+          "bindings": {
+            "before": [
+              "$function"
+            ],
+            "after": [
+              "$reciprocal_range.set"
+            ],
+            "range": "$reciprocal_range",
+            "domain": "$domain",
+            "function": "$function",
+            "x": "$x"
+          },
+          "depends_on": [
+            "domain",
+            "function",
+            "reciprocal_range",
+            "x"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "reciprocal"
+          }
         }
       ],
       "merges": [
@@ -278,10 +441,25 @@
                 "equals": "square"
               },
               "bindings": {
-                "function_range": "$square_function_range",
-                "square": "$square_square",
-                "vertex": "$square_vertex",
-                "extremum": "$square_extremum"
+                "function_range": "$square_function_range"
+              }
+            },
+            {
+              "guard": {
+                "ref": "range_choice",
+                "equals": "interval"
+              },
+              "bindings": {
+                "function_range": "$interval_range"
+              }
+            },
+            {
+              "guard": {
+                "ref": "range_choice",
+                "equals": "reciprocal"
+              },
+              "bindings": {
+                "function_range": "$reciprocal_range"
               }
             }
           ]

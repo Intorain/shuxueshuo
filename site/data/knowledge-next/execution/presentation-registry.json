@@ -23,17 +23,34 @@
     "case_basis": {
       "title": "确定分类条件",
       "explanation": "先求二次项系数为零的全部参数值，逐一检查退化情况；其余参数按二次式处理。",
-      "required_bindings": ["before", "after", "coefficient", "parameter"]
+      "required_bindings": [
+        "before",
+        "after",
+        "coefficient",
+        "parameter"
+      ]
     },
     "degenerate_case": {
       "title": "检查退化情况",
       "explanation": "将本情况的参数值代回原关系，判断一次式或常数能否对全部实数成立。",
-      "required_bindings": ["before", "after", "parameter", "value", "holds", "linear_coefficient", "constant"]
+      "required_bindings": [
+        "before",
+        "after",
+        "parameter",
+        "value",
+        "holds",
+        "linear_coefficient",
+        "constant"
+      ]
     },
     "merge_cases": {
       "title": "合并各情况",
       "explanation": "每种情况的结果先与其分类条件取交集，再合并全部情况；检查分类无遗漏且条件彼此不重叠。",
-      "required_bindings": ["before", "after", "case_results"]
+      "required_bindings": [
+        "before",
+        "after",
+        "case_results"
+      ]
     },
     "discriminant": {
       "title": "建立判别式条件",
@@ -91,6 +108,63 @@
         "before",
         "after"
       ]
+    },
+    "divided": {
+      "title": "分离参数",
+      "explanation": "先证明除数在给定区间恒正，再两边同除，不等号方向保持不变。",
+      "required_bindings": [
+        "before",
+        "after",
+        "divisor"
+      ]
+    },
+    "numeric_range": {
+      "title": "计算区间值域",
+      "explanation": "按端点极限及区间内的转折点求上下确界，并记录边界是否取得。",
+      "required_bindings": [
+        "before",
+        "after",
+        "range",
+        "domain",
+        "function",
+        "x"
+      ]
+    },
+    "endpoint_bounds": {
+      "title": "计算端点候选",
+      "explanation": "根据开口方向，所需确界来自两个端点；开放端点只给极限，不能当作已经取得的最值。",
+      "required_bindings": [
+        "before",
+        "after",
+        "range",
+        "function",
+        "x",
+        "domain"
+      ]
+    },
+    "interval_conditions": {
+      "title": "求解并合并参数条件",
+      "explanation": "将量词策略应用到确界及其可达性，分别求出参数条件并按逻辑组合。",
+      "required_bindings": [
+        "before",
+        "after",
+        "conditions",
+        "combiner",
+        "solutions"
+      ]
+    },
+    "moved": {
+      "title": "移项分离参数",
+      "explanation": "将含参数的项留在一边，其余项移到另一边，不等号方向不变，得到等价关系。",
+      "required_bindings": [
+        "before",
+        "after"
+      ]
     }
+  },
+  "boundary_steps": {
+    "method-discriminant": "merge",
+    "method-separation": "restore",
+    "method-interval-extremum": "verify"
   }
 }

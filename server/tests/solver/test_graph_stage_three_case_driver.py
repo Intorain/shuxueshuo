@@ -7,7 +7,6 @@ import pytest
 import sympy as sp
 
 from shuxueshuo_server.graph_lesson.stage_three import (
-    capabilities,
     driver,
     execution_contracts,
     judgments,
@@ -109,19 +108,9 @@ def test_range_judgment_controls_child_execution(monkeypatch):
         return {"selected": "interval", "choice": "interval"}
 
     monkeypatch.setitem(judgments.REGISTRY, "range_skill", choose_interval)
-    monkeypatch.setattr(
-        capabilities, "PLANNED", capabilities.PLANNED - {"quadratic_interval_range"}
-    )
-    monkeypatch.setitem(
-        capabilities.REGISTRY,
-        "quadratic_interval_range",
-        lambda: capabilities.result(
-            {}, ["identity"], [{"kind": "test_interval_ran", "passed": True}]
-        ),
-    )
     state = finish(start(method="method-separation"))
-    assert state["status"] == "capability_gap"
-    assert state["diagnostics"][-1]["code"] == "execution.merge_choice_incomplete"
+    assert state["status"] == "method_complete", state["diagnostics"]
+    assert driver.export_values(state)["feasible_set"] == sp.Union(sp.Interval(-sp.oo, -1), sp.Interval(4, sp.oo))
     calls = [call for step in state["trajectory"]["steps"] for call in step["calls"]]
     assert any(call["capability"] == "quadratic_interval_range" for call in calls)
     assert not any(call["public_ref"] == "method-square-extremum" for call in calls)

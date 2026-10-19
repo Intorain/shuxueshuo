@@ -254,83 +254,6 @@ def quadratic_sign_pattern(expression, variable, roots, strict, all_zero=False):
     return result({"solution": sp.Union(*parts)}, ["quadratic_signs"], checks)
 
 
-def separate_parameter(relation, parameter, variable):
-    lhs, rhs = relation.lhs, relation.rhs
-    if not lhs.has(variable) and not rhs.has(parameter):
-        h, g, op = lhs, rhs, relation.rel_op
-    elif not rhs.has(variable) and not lhs.has(parameter):
-        h, g = rhs, lhs
-        op = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[relation.rel_op]
-    else:
-        raise CapabilityGap("separation_transform_unavailable")
-    separated = globals()["relation"](h, op, g)
-    return result(
-        {
-            "parameter_expression": h,
-            "function": g,
-            "operator": op,
-            "already_separated": True,
-            "separated_relation": separated,
-        },
-        checks=[
-            {
-                "kind": "separated_symbol_roles",
-                "passed": not h.has(variable) and not g.has(parameter),
-            },
-            {
-                "kind": "direction_residual",
-                "passed": bounded_expand(residual(separated) - residual(relation)) == 0,
-            },
-        ],
-    )
-
-
-def select_quantifier_policy(quantifier, operator, domain):
-    if operator not in (">", ">=", "<", "<="):
-        raise CapabilityGap("unsupported_comparison")
-    if quantifier != "∀":
-        raise CapabilityGap("existential_policy_not_enabled")
-    if domain == sp.S.EmptySet:
-        return result(
-            {"policy": {"empty": True, "quantifier": quantifier, "operator": operator}},
-            ["universal", "quantified_bound"],
-        )
-    return result(
-        {
-            "policy": {
-                "bound": "sup" if operator in (">", ">=") else "inf",
-                "strict": operator in (">", "<"),
-                "quantifier": quantifier,
-                "operator": operator,
-            }
-        },
-        ["universal", "quantified_bound"],
-    )
-
-
-def apply_quantifier_policy(policy, range, parameter_expression):
-    if policy.get("empty"):
-        return result(
-            {"condition": relation(sp.S.One, ">=")},
-            ["quantified_bound"],
-        )
-    bound = range[policy["bound"]]
-    attained = range[policy["bound"] + "_attained"]
-    if bound in (sp.oo, -sp.oo):
-        raise CapabilityGap("unbounded_policy_not_enabled")
-    strict = policy["strict"] and attained
-    op = (
-        (">" if strict else ">=")
-        if policy["bound"] == "sup"
-        else ("<" if strict else "<=")
-    )
-    condition = relation(parameter_expression, op, bound)
-    return result(
-        {"condition": condition},
-        ["quantified_bound"],
-    )
-
-
 def complete_square(expression, variable):
     poly = polynomial(expression, variable)
     if poly.degree() != 2 or expression.free_symbols - {variable}:
@@ -390,6 +313,14 @@ from .cases import (
     merge_cases,
     solve_parameter_relation,
 )
+from .quantified import (
+    apply_quantifier_policy,
+    select_quantifier_policy,
+    solve_conditions,
+)
+from .ranges import endpoint_values_extremum, quadratic_interval_range, reciprocal_range
+from .separation import inspect_separation as inspect_separation
+from .separation import separate_parameter, separation_division
 
 REGISTRY = {
     fn.__name__: fn
@@ -401,6 +332,11 @@ REGISTRY = {
         solve_quadratic,
         quadratic_sign_pattern,
         separate_parameter,
+        separation_division,
+        reciprocal_range,
+        quadratic_interval_range,
+        endpoint_values_extremum,
+        solve_conditions,
         select_quantifier_policy,
         apply_quantifier_policy,
         complete_square,
@@ -413,10 +349,7 @@ REGISTRY = {
 }
 PLANNED = frozenset(
     {
-        "separation_division",
-        "quadratic_interval_range",
         "linear_range",
-        "reciprocal_range",
         "elimination",
         "substitution",
     }

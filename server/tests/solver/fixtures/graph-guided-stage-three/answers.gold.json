@@ -1,6 +1,6 @@
 {
   "contract": "graph-stage-three-answer-gold/v1",
-  "source": "Q01 原题与人工 Demo；Q02、Q03 原题与人工课程独立解答，不从运行结果生成",
+  "source": "Q01 原题与人工 Demo；Q02–Q05 原题与人工课程独立解答，不从运行结果生成",
   "cases": {
     "q01": {
       "target_ref": "/root/goals/0",
@@ -57,6 +57,38 @@
         ]
       },
       "routes": ["discriminant"]
+    },
+    "q04": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_basis": "f(x)=x²+mx+4 开口向上，在 [1,2] 上的最大值为 max(m+5,2m+8)。恒小于零要求两端值同时小于零，得 m<-5。分离参数后 x+4/x 在 [1,2] 上的最大值 5 在 x=1 取到，同样 m<-5；m=-5 时 f(1)=0，排除。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-oo",
+            "upper": "-5",
+            "left_closed": false,
+            "right_closed": false
+          }
+        ]
+      },
+      "routes": ["interval", "extremum"]
+    },
+    "q05": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_basis": "f(x)=x²+mx+4 在 (1,2) 上的上确界为 max(m+5,2m+8)，两端均不在定义域。存在 f(x)>0 当且仅当 m+5>0 或 2m+8>0，得 m>-5。分离参数后 x+4/x 的值域为 (4,5)，存在 m>-(x+4/x) 也得 m>-5；m=-5 时 f(x)=(x-1)(x-4)<0，排除。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-5",
+            "upper": "oo",
+            "left_closed": false,
+            "right_closed": false
+          }
+        ]
+      },
+      "routes": ["interval", "extremum"]
     }
   }
 }

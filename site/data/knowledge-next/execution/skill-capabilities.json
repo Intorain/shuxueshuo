@@ -4,7 +4,8 @@
     "skill-inequality-transform": [
       "normalize_to_zero",
       "transform_param_inequality",
-      "separation_division"
+      "separation_division",
+      "solve_conditions"
     ],
     "skill-equality-transform": [
       "separation_division"
@@ -26,7 +27,8 @@
       "complete_square"
     ],
     "quadratic-interval-extremum": [
-      "quadratic_interval_range"
+      "quadratic_interval_range",
+      "endpoint_values_extremum"
     ],
     "skill-linear-range": [
       "linear_range"
@@ -49,7 +51,8 @@
   },
   "internal": {
     "apply_quantifier_policy": [
-      "method-separation#restore"
+      "method-separation#restore",
+      "method-interval-extremum#conditions"
     ],
     "square_extremum": [
       "method-square-extremum#range"

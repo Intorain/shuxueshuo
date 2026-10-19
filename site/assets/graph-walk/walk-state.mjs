@@ -356,9 +356,31 @@ function sourceCalls(view, step) {
         (call.case_path && JSON.stringify(call.case_path) !== JSON.stringify(step.case_path || []))) continue;
     const [method, methodStep] = (step.method_ref || '').split('#');
     calls.push({method: record?.method || method, step: record?.step || methodStep, ref: call.public_ref || null,
+      ...('rule_ref' in call ? {rule_ref: call.rule_ref} : {}), ...('branch' in call ? {branch: call.branch} : {}),
       usedBasis: (Array.isArray(call.used_basis) ? call.used_basis : []).filter(ref => typeof ref === 'string' && ref), source});
   }
   return calls;
+}
+
+// A traced public call must follow a real graph occurrence. A rule-directed
+// skill is connected by method -> step rule -> selected skill, not a made-up
+// method -> calls edge. Malformed rule metadata never falls back to that edge.
+function publicCallPath(call, nodes, edges) {
+  if (typeof call.ref !== 'string' || !nodes.has(call.ref) || !nodes.has(call.method)) return null;
+  if ('rule_ref' in call || 'branch' in call) {
+    if (typeof call.rule_ref !== 'string' || typeof call.branch !== 'string' ||
+        !call.branch || nodes.get(call.rule_ref)?.kind !== 'judgment_rule') return null;
+    const stepRule = [...edges.values()].find(item => item.type === 'step_rule' &&
+      item.from === call.method && item.to === call.rule_ref && item.occurrences?.some(part => part.step === call.step));
+    const selection = [...edges.values()].find(item => item.type === 'selects' &&
+      item.from === call.rule_ref && item.to === call.ref);
+    const occurrence = selection?.occurrences?.findIndex(part => part.branch === call.branch) ?? -1;
+    if (!stepRule || !selection || occurrence < 0) return null;
+    return {edge: selection.id, occurrence, edges: [stepRule.id, selection.id], rule: call.rule_ref};
+  }
+  const direct = [...edges.values()].find(item => item.type === 'calls' && item.from === call.method && item.to === call.ref);
+  const occurrence = direct?.occurrences?.findIndex(part => part.step === call.step) ?? -1;
+  return direct && occurrence >= 0 ? {edge: direct.id, occurrence, edges: [direct.id]} : null;
 }
 
 /** Add selection and graph evidence without changing the mathematical DOM.
@@ -390,22 +412,22 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
     if (current && JSON.stringify(current) !== JSON.stringify(previous)) throw new Error('stream.immutable_math_step');
     if (!current) { mathSteps.push(copy(previous)); knownSteps.set(streamStepKey(previous), previous); }
   }
+  const nodes = new Map((fullGraph?.nodes || []).map(node => [node.id, node]));
+  for (const node of base.graph.nodes) if (!nodes.has(node.id)) nodes.set(node.id, node);
+  const edges = new Map([...(fullGraph?.edges || []), ...base.graph.edges].map(edge => [edge.id, edge]));
   const stepCalls = copy(base.stream?.step_calls || {});
   for (const step of mathSteps) {
     const calls = sourceCalls(view, step);
-    if (calls.length) stepCalls[streamStepKey(step)] = calls;
+    if (calls.length) stepCalls[streamStepKey(step)] = calls.filter(call => !call.ref || publicCallPath(call, nodes, edges));
   }
   bundle.stream = {...identity, base_bundle_version: baseVersion, d3: copy(d3 || null), d4: copy(d4 || null),
     math_steps: copy(mathSteps), step_calls: stepCalls};
 
-  const nodes = new Map((fullGraph?.nodes || []).map(node => [node.id, node]));
-  for (const node of base.graph.nodes) if (!nodes.has(node.id)) nodes.set(node.id, node);
-  const edges = new Map([...(fullGraph?.edges || []), ...base.graph.edges].map(edge => [edge.id, edge]));
   const ids = new Set(base.graph.nodes.map(node => node.id));
   for (const step of mathSteps) {
     if (step.method_ref && nodes.has(nodeId(step.method_ref))) ids.add(nodeId(step.method_ref));
     for (const call of stepCalls[streamStepKey(step)] || []) {
-      for (const ref of [call.method, call.ref, ...call.usedBasis]) if (ref && nodes.has(nodeId(ref))) ids.add(nodeId(ref));
+      for (const ref of [call.method, call.ref, call.rule_ref, ...call.usedBasis]) if (ref && nodes.has(nodeId(ref))) ids.add(nodeId(ref));
     }
   }
   if (d3 && d4) {
@@ -467,6 +489,8 @@ export function streamGraphState(bundle, state, {steps = [], route = state.run.r
   if (!bundle.stream || route !== state.run.route || state.introCompleted.length < bundle.intro.length) return view;
   const known = new Map(bundle.stream.math_steps.map(step => [streamStepKey(step), step]));
   const used = new Set(view.usedBasis);
+  const graphNodes = new Map(bundle.graph.nodes.map(node => [node.id, node]));
+  const graphEdges = new Map(bundle.graph.edges.map(item => [item.id, item]));
   const edge = id => { if (id in view.edges) view.edges[id] = 'chosen'; };
   const light = ref => { if (ref && nodeId(ref) in view.nodes) view.nodes[nodeId(ref)] = 'confirmed'; };
   const seen = new Set();
@@ -478,6 +502,8 @@ export function streamGraphState(bundle, state, {steps = [], route = state.run.r
     const calls = bundle.stream.step_calls[key] || [];
     for (const [index, call] of calls.entries()) {
       if (!(call.method in view.nodes)) continue;
+      const path = call.ref ? publicCallPath(call, graphNodes, graphEdges) : null;
+      if (call.ref && !path) continue;
       light(call.method);
       for (const basis of call.usedBasis) {
         if (nodeId(basis) in view.nodes) {
@@ -489,10 +515,10 @@ export function streamGraphState(bundle, state, {steps = [], route = state.run.r
       // invented public skill calls or synthetic edges in the knowledge graph.
       if (!call.ref || !(nodeId(call.ref) in view.nodes)) continue;
       light(call.ref);
-      const relation = `${call.method}|calls|${nodeId(call.ref)}`;
-      edge(relation);
-      const occurrence = bundle.graph.edges.find(item => item.id === relation)?.occurrences?.findIndex(item => item.step === call.step);
-      view.calls.push({...copy(call), edge: relation, occurrence: occurrence >= 0 ? occurrence : 0,
+      if (path.rule) light(path.rule);
+      for (const reference of path.edges) edge(reference);
+      view.calls.push({...copy(call), edge: path.edge, occurrence: path.occurrence,
+        ...(path.rule ? {rule_edges: path.edges} : {}),
         runId: state.run.id, decision: step.step_id, executionIndex: index});
     }
     view.logs.push({decision: step.step_id, text: `已阅读：${step.title}`});

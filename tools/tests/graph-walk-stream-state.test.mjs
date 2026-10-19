@@ -301,3 +301,102 @@ test('Q03 snapshot and committed events give identical internal, public and boun
   assert.throws(() => emit('solver.step_completed', {trajectory: [], finalization: [{index: 2,
     record: {...trajectory.finalization[2], used_basis: ['invented-basis']}}]}, 'discriminant'), /immutable_finalization_source/);
 });
+
+// Minimal Q05 interval-envelope trace: the actual public graph declares this
+// skill under the select-step rule, so there is no direct method/calls edge.
+const intervalCard = {...first, route_id: 'interval', method_ref: 'method-interval-extremum#select',
+  source_refs: ['/steps/1/calls/0'], used_basis: ['quadratic-interval-extremum'], title: '区间端点候选'};
+const intervalRecord = {seq: 2, method: 'method-interval-extremum', step: 'select', case_path: [], calls: [{
+  public_ref: 'quadratic-interval-extremum', rule_ref: 'rule-interval-skill', branch: 'quadratic',
+  used_basis: ['quadratic-interval-extremum'], postconditions: [{passed: true}],
+}]};
+const intervalView = {...identity, math_steps: [intervalCard], selection_chunks: [
+  {target_ref: target, kind: 'D3', chunk: {...structuredClone(d3), expected_answer: {cell: ['interval', 'free']}}},
+  {target_ref: target, kind: 'D4', chunk: {id: 'D4', title: '解题路线', options: [
+    {branch: 'interval', route_id: 'interval', method: 'method-interval-extremum', route_plan: 'planned', recommendation: 'preferred'},
+  ]}},
+], checkpoints: [{target_ref: target, route_id: 'interval', driver_state: {trajectory: {steps: [intervalRecord]}}}]};
+const intervalRuleEdge = 'method-interval-extremum|step_rule|rule-interval-skill';
+const intervalSkillEdge = 'rule-interval-skill|selects|quadratic-interval-extremum';
+const syntheticIntervalEdge = 'method-interval-extremum|calls|quadratic-interval-extremum';
+const intervalReached = snapshot => {
+  const bundle = extendStreamBundle(original.bundle, snapshot, target, graph);
+  return streamGraphState(bundle, selected(bundle, 'interval'), {steps: snapshot.math_steps});
+};
+
+test('read checked rule calls light the real method/rule/skill path with no synthetic calls edge', () => {
+  const bundle = extendStreamBundle(original.bundle, intervalView, target, graph);
+  const state = selected(bundle, 'interval');
+  const unread = streamGraphState(bundle, state);
+  assert.equal(unread.nodes['rule-interval-skill'], 'idle');
+  assert.equal(unread.edges[intervalRuleEdge], 'idle');
+  assert.equal(unread.edges[intervalSkillEdge], 'idle');
+  const reached = streamGraphState(bundle, state, {steps: [intervalCard]});
+  assert.equal(reached.nodes['rule-interval-skill'], 'confirmed');
+  assert.equal(reached.nodes['quadratic-interval-extremum'], 'confirmed');
+  assert.equal(reached.edges[intervalRuleEdge], 'chosen');
+  assert.equal(reached.edges[intervalSkillEdge], 'chosen');
+  assert.equal(reached.edges[syntheticIntervalEdge], undefined);
+  assert.equal(reached.calls.length, 1);
+  assert.equal(reached.calls[0].rule_ref, 'rule-interval-skill');
+  assert.equal(reached.calls[0].branch, 'quadratic');
+  assert.equal(reached.calls[0].edge, intervalSkillEdge);
+  assert.deepEqual(reached.calls[0].rule_edges, [intervalRuleEdge, intervalSkillEdge]);
+  assert.equal(reached.calls[0].occurrence, 0);
+});
+
+test('wrong rule, branch, method step, target and unchecked or skipped sources cannot invent a rule path', () => {
+  const mutations = [
+    record => record.calls[0].rule_ref = 'rule-quadratic-method',
+    record => record.calls[0].rule_ref = 'rule-interval-skill#invented',
+    record => record.calls[0].branch = 'linear',
+    record => record.calls[0].branch = '',
+    record => delete record.calls[0].rule_ref,
+    record => delete record.calls[0].branch,
+    record => { delete record.calls[0].rule_ref; delete record.calls[0].branch; },
+    record => record.step = 'conditions',
+    record => record.calls[0].public_ref = 'skill-reciprocal-range',
+    record => record.calls[0].postconditions = [],
+    record => record.calls[0].postconditions[0].passed = false,
+  ];
+  for (const mutate of mutations) {
+    const snapshot = structuredClone(intervalView);
+    mutate(snapshot.checkpoints[0].driver_state.trajectory.steps[0]);
+    const reached = intervalReached(snapshot);
+    assert.equal(reached.calls.length, 0);
+    assert.notEqual(reached.nodes['rule-interval-skill'], 'confirmed');
+    assert.notEqual(reached.edges[intervalRuleEdge], 'chosen');
+    assert.notEqual(reached.edges[intervalSkillEdge], 'chosen');
+    assert.equal(reached.edges[syntheticIntervalEdge], undefined);
+  }
+  const skipped = structuredClone(intervalView);
+  skipped.math_steps[0].source_refs = ['/steps/1/skipped_calls/0'];
+  assert.equal(intervalReached(skipped).calls.length, 0);
+  const wrongGraph = structuredClone(graph);
+  wrongGraph.edges.find(item => item.id === intervalRuleEdge).occurrences[0].step = 'other';
+  const bundle = extendStreamBundle(original.bundle, intervalView, target, wrongGraph);
+  assert.equal(streamGraphState(bundle, selected(bundle, 'interval'), {steps: [intervalCard]}).calls.length, 0);
+});
+
+test('rule metadata never falls back to a valid direct method/skill edge', () => {
+  const snapshot = structuredClone(withMath);
+  const call = snapshot.checkpoints[0].driver_state.trajectory.steps[0].calls[0];
+  Object.assign(call, {rule_ref: 'rule-interval-skill', branch: 'quadratic'});
+  const bundle = extendStreamBundle(original.bundle, snapshot, target, graph);
+  const reached = streamGraphState(bundle, selected(bundle), {steps: [first]});
+  assert.equal(reached.calls.length, 0);
+  assert.notEqual(reached.edges['method-discriminant|calls|skill-inequality-transform'], 'chosen');
+});
+
+test('rule-directed snapshot and per-event reconstruction retain identical checked paths', () => {
+  const snapshot = {...intervalView, last_seq: 0, minimum_seq: 0};
+  const consumer = createEventConsumer(snapshot);
+  let seq = 0;
+  const emit = (type, payload, route_id = null) => consumer.accept({...identity,
+    event_id: `rule-event-${++seq}`, seq, type, target_ref: target, route_id, payload});
+  for (const {kind, chunk} of snapshot.selection_chunks) emit('lesson.chunk_ready', {kind, chunk});
+  emit('solver.step_completed', {trajectory: [intervalRecord]}, 'interval');
+  emit('lesson.chunk_ready', {kind: 'math_step', chunk: intervalCard,
+    step_id: intervalCard.step_id, math_step_sha256: intervalCard.math_step_sha256}, 'interval');
+  assert.deepEqual(intervalReached(consumer.view()), intervalReached(snapshot));
+});

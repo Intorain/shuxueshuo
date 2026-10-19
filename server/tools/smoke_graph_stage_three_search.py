@@ -45,6 +45,17 @@ CASE_EXPECTATIONS = {
     "q05": {"routes": ["interval", "extremum"], "prefix_cards": 3,
             "completed_cards": 9, "qa_cards": 4,
             "internal_basis": {"ref": "method-interval-extremum#conditions", "read_cards": 3}},
+    "q06": {"routes": ["interval", "extremum"], "prefix_cards": 7,
+            "completed_cards": 13, "qa_cards": 8, "interval_cases": 2,
+            "internal_basis": {"ref": "method-interval-extremum#conditions", "read_cards": 4},
+            "separation": {"division": "negative", "range_unit": "reciprocal_range",
+                           "range_capability": "reciprocal_range", "basis": ["reciprocal-sum-function"]}},
+    "q07": {"routes": ["interval", "extremum"], "prefix_cards": 9,
+            "completed_cards": 16, "qa_cards": 10, "interval_cases": 3, "constant_case": True,
+            "internal_basis": {"ref": "method-interval-extremum#conditions", "read_cards": 4},
+            "separation": {"division": "positive", "range_unit": "inverse_range",
+                           "range_capability": "reciprocal_of_range",
+                           "basis": ["function-monotonicity", "skill-inequality-transform#reciprocal"]}},
 }
 
 
@@ -183,6 +194,10 @@ def main():
                    ("04-refreshed.png", "刷新恢复同一运行与阅读位置")]
     if expectations.get("internal_basis"):
         screenshots.append(("05-internal-basis.png", "阅读条件求解卡后，内部调用的真实依据进入图谱"))
+    if expectations.get("interval_cases"):
+        screenshots.append(("06-interval-cases.png", "逐个阅读真实分类卡，常数与二次分支按实际调用点亮图谱"))
+    if expectations.get("separation"):
+        screenshots.append(("07-separation-range.png", "分离路线的除法方向与范围计算均来自实际执行证据"))
     figures = "".join(f'<figure><figcaption>{escape(title)}</figcaption><a href="{name}"><img src="{name}"></a></figure>'
                       for name, title in screenshots)
     (output / "index.html").write_text(

@@ -81,8 +81,8 @@ def can_execute(method, features, context):
             policy = capabilities.select_quantifier_policy(
                 values["quantifier"], values["interval_operator"], values["domain"]
             )["outputs"]["policy"]
-            judgments.interval_skill(values["interval_function"], values["x"], values["parameter"],
-                                     values["domain"], policy)
+            judgments.interval_case_plan(values["interval_function"], values["x"], values["parameter"],
+                                         values["domain"], policy)
             return True
         return False
     except (CapabilityGap, UnknownPremise):
@@ -140,13 +140,13 @@ def empty_state(
     return state
 
 
-def create_state(**arguments):
+def create_state(*, contracts=None, **arguments):
     """Prepare all mathematical bindings inside the calculation worker."""
     state = empty_state(**arguments)
     method, features, context = (
         arguments[key] for key in ("method", "features", "context")
     )
-    contracts = execution_contracts.load_contracts()
+    contracts = execution_contracts.load_contracts() if contracts is None else contracts
     try:
         if method not in contracts or not can_execute(method, features, context):
             raise CapabilityGap("method_input_class_unavailable")
@@ -473,10 +473,14 @@ def _advance(state, contracts):
         )
         if action.get("rule_ref"):
             trace["skipped_calls"][-1].update(rule_ref=action["rule_ref"], branch=action.get("branch"))
+        fragment_count = len(state["fragments"])
         if not action.get("outputs"):
             _publish(state, frame, step, action, bindings)
         frame["call_index"] += 1
-        return
+        # An unselected call with no visible output needs a trace entry, but
+        # not its own round trip of the entire growing checkpoint. A skipped
+        # call that publishes a card still ends this atomic transition.
+        return len(state["fragments"]) == fragment_count
     if action["kind"] == "merge":
         selected = [
             branch for branch in action["branches"] if _guard(branch["guard"], bindings)
@@ -620,19 +624,23 @@ def _advance(state, contracts):
     frame["call_index"] += 1
 
 
-def advance(state):
+def advance(state, *, contracts=None):
     """Return a new checkpoint. Caller atomically commits it with fragment deltas."""
     if state["status"] != "running":
         return deepcopy(state)
     updated = deepcopy(state)
     started = perf_counter()
     try:
-        # Contract/graph I/O and readiness validation are preparation, not algebra.
-        contracts = execution_contracts.load_contracts()
+        # Direct callers validate afresh; the isolated session supplies its
+        # already validated configuration pinned to these route revisions.
+        contracts = execution_contracts.load_contracts() if contracts is None else contracts
         started = perf_counter()
         if updated["compute_seconds"] >= updated["solve_budget_seconds"]:
             raise TimeoutError("solve_budget_exhausted")
-        _advance(updated, contracts)
+        while _advance(updated, contracts) is True:
+            if updated["compute_seconds"] + perf_counter() - started > updated["solve_budget_seconds"]:
+                updated = deepcopy(state)
+                raise TimeoutError("solve_budget_exhausted")
         elapsed = perf_counter() - started
         if updated["compute_seconds"] + elapsed > updated["solve_budget_seconds"]:
             # The uncommitted operation (including fragments) is discarded on timeout.

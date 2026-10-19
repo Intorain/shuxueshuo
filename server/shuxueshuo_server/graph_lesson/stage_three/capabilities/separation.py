@@ -1,4 +1,4 @@
-"""Role-based positive division, with an explicit scaled-residual certificate."""
+"""Role-based division with a strict sign and scaled-residual certificate."""
 
 import sympy as sp
 
@@ -8,15 +8,23 @@ from . import relation as make_relation
 from .ranges import quadratic_interval_range
 
 
-def _positive_divisor(divisor, variable, domain):
+def _divisor_sign(divisor, variable, domain):
     if domain is None:
-        if divisor.is_positive is not True:
-            raise CapabilityGap("positive_divisor_domain_required")
-        return
+        if divisor.is_positive is True:
+            return "positive"
+        if divisor.is_negative is True:
+            return "negative"
+        raise CapabilityGap("strict_divisor_domain_required")
     bounds = quadratic_interval_range(divisor, variable, domain)["outputs"]["range"]
-    if not (bounds["inf"].is_positive is True or
-            (bounds["inf"] == 0 and bounds["inf_attained"] is False)):
-        raise CapabilityGap("positive_divisor_required")
+    if bounds["inf"].is_positive is True or (bounds["inf"] == 0 and bounds["inf_attained"] is False):
+        return "positive"
+    if bounds["sup"].is_negative is True or (bounds["sup"] == 0 and bounds["sup_attained"] is False):
+        return "negative"
+    raise CapabilityGap("strict_divisor_sign_required")
+
+
+def _reverse(operator):
+    return {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[operator]
 
 
 def inspect_separation(relation, parameter, variable, domain=None):
@@ -24,11 +32,11 @@ def inspect_separation(relation, parameter, variable, domain=None):
     lhs, rhs = relation.lhs, relation.rhs
     if not lhs.has(variable) and not rhs.has(parameter):
         h, g, op = lhs, rhs, relation.rel_op
-        divisor, already = sp.S.One, True
+        divisor, already, sign = sp.S.One, True, "positive"
     elif not rhs.has(variable) and not lhs.has(parameter):
         h, g = rhs, lhs
-        op = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[relation.rel_op]
-        divisor, already = sp.S.One, True
+        op = _reverse(relation.rel_op)
+        divisor, already, sign = sp.S.One, True, "positive"
     else:
         expression = bounded_expand(lhs - rhs)
         coefficients = polynomial(expression, parameter, maximum=48)
@@ -47,20 +55,21 @@ def inspect_separation(relation, parameter, variable, domain=None):
         g = sp.cancel(-coefficients.nth(0) / divisor)
         if g.has(parameter) or h.has(variable):
             raise CapabilityGap("separated_symbol_roles_required")
-        op = relation.rel_op
+        sign = _divisor_sign(divisor, variable, domain)
+        op = relation.rel_op if sign == "positive" else _reverse(relation.rel_op)
         already = False
-        _positive_divisor(divisor, variable, domain)
     separated = make_relation(h, op, g)
-    identity = sp.cancel(residual(separated) * divisor - residual(relation))
+    scale = divisor if sign == "positive" else -divisor
+    identity = sp.cancel(residual(separated) * scale - residual(relation))
     return {
         "outputs": {"parameter_expression": h, "function": g, "operator": op,
          "already_separated": already, "separated_relation": separated,
-         "divisor": divisor, "divisor_sign": "positive"},
+         "divisor": divisor, "divisor_sign": sign},
         "checks": [
             {"kind": "separated_symbol_roles", "passed": not h.has(variable) and not g.has(parameter)},
             {"kind": "direction_residual" if already else "positive_scaled_residual",
-             "passed": bounded_expand(identity) == 0, "divisor": divisor},
-            *([] if already else [{"kind": "strict_positive_divisor", "passed": True,
+             "passed": bounded_expand(identity) == 0, "divisor": divisor, "positive_scale": scale},
+            *([] if already else [{"kind": f"strict_{sign}_divisor", "passed": True,
                                    "divisor": divisor, "domain": domain}]),
         ],
     }
@@ -78,17 +87,20 @@ def separation_division(relation, parameter, variable, domain, prepared=None):
               if prepared is None else dict(prepared))
     h, g, divisor = (values[key] for key in ("parameter_expression", "function", "divisor"))
     separated = values["separated_relation"]
-    _positive_divisor(divisor, variable, domain)
+    sign = _divisor_sign(divisor, variable, domain)
+    scale = divisor if sign == "positive" else -divisor
     checks = [
         {"kind": "separated_symbol_roles", "passed": (
             not h.has(variable) and not g.has(parameter)
             and separated.lhs == h and separated.rhs == g and separated.rel_op == values["operator"]
             and (separated.rel_op in ("<", ">")) == (relation.rel_op in ("<", ">"))
+            and values["divisor_sign"] == sign
         )},
         {"kind": "positive_scaled_residual", "passed":
-         sp.cancel(residual(separated) * divisor - residual(relation)) == 0, "divisor": divisor},
-        {"kind": "strict_positive_divisor", "passed": True, "divisor": divisor, "domain": domain},
+         sp.cancel(residual(separated) * scale - residual(relation)) == 0,
+         "divisor": divisor, "positive_scale": scale},
+        {"kind": f"strict_{sign}_divisor", "passed": True, "divisor": divisor, "domain": domain},
     ]
-    values["transformation"] = "move_terms" if divisor == 1 else "positive_division"
-    operations = ["add_both_sides"] + ([] if divisor == 1 else ["multiply_positive"])
+    values["transformation"] = "move_terms" if divisor == 1 else f"{sign}_division"
+    operations = ["add_both_sides"] + ([] if divisor == 1 else [f"multiply_{sign}"])
     return result({**values, "candidate": values}, operations, checks)

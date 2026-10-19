@@ -160,6 +160,85 @@
         "before",
         "after"
       ]
+    },
+    "negative_divided": {
+      "title": "除以负数分离参数",
+      "explanation": "除数在定义域上严格为负，两边同除时不等号反向。",
+      "required_bindings": [
+        "before",
+        "after",
+        "divisor"
+      ]
+    },
+    "range_evidence": {
+      "title": "求区间值域",
+      "explanation": "比较端点极限和区间内的转折点。",
+      "required_bindings": [
+        "before",
+        "after",
+        "range",
+        "domain",
+        "function",
+        "x",
+        "points",
+        "endpoints"
+      ]
+    },
+    "inverse_range": {
+      "title": "取倒数的范围",
+      "explanation": "倒数函数在同号范围内递减，上下端逆序取倒数，保留对应端点可达性。",
+      "required_bindings": [
+        "before",
+        "after",
+        "sign"
+      ]
+    },
+    "interval_cases": {
+      "title": "确定完整分类",
+      "explanation": "按开口、退化情形和对称轴位置确定互不重叠且覆盖全部参数的情况。",
+      "required_bindings": [
+        "before",
+        "after",
+        "cases",
+        "parameter"
+      ]
+    },
+    "classified_range": {
+      "title": "求本情况的确界",
+      "explanation": "结合当前参数条件、端点和对称轴位置求确界，记录是否取到。",
+      "required_bindings": [
+        "before",
+        "after",
+        "range",
+        "condition",
+        "vertex",
+        "coefficient",
+        "x",
+        "domain"
+      ]
+    },
+    "case_linear_range": {
+      "title": "检验一次或常数情况",
+      "explanation": "将当前参数代入，按一次式或常数在原区间上的范围计算。",
+      "required_bindings": [
+        "before",
+        "after",
+        "range",
+        "condition",
+        "kind",
+        "domain",
+        "x"
+      ]
+    },
+    "interval_merge": {
+      "title": "合并各情况",
+      "explanation": "各情况互不重叠并覆盖全部参数，把每个情况内求得的参数集取并集。",
+      "required_bindings": [
+        "before",
+        "after",
+        "cases",
+        "solutions"
+      ]
     }
   },
   "boundary_steps": {

@@ -123,37 +123,63 @@ def reciprocal_coefficients(expression, variable):
     return a, c, b
 
 
+def nonzero_interval_sign(domain):
+    """A single interval must stay strictly on one side of the reciprocal pole."""
+    interval_domain(domain)
+    lower, upper = _sign(domain.start), _sign(domain.end)
+    if lower > 0 or (lower == 0 and domain.left_open):
+        return 1
+    if upper < 0 or (upper == 0 and domain.right_open):
+        return -1
+    raise CapabilityGap("strict_nonzero_interval_required")
+
+
 def reciprocal_range(expression, variable, domain):
-    """Range of A*x+B/x+C on x>0, from derivative roots and one-sided limits."""
-    interval_domain(domain, positive=True)
+    """Range of A*x+B/x+C on either half-axis, with one-sided pole limits."""
+    domain_sign = nonzero_interval_sign(domain)
     a, c, b = reciprocal_coefficients(expression, variable)
     endpoints = []
     for point, closed in ((domain.start, not domain.left_open),
                           (domain.end, not domain.right_open)):
         if point == 0:
-            value = _sign(b) * sp.oo
-        elif point is sp.oo:
-            value = c if a == 0 else _sign(a) * sp.oo
+            value = domain_sign * _sign(b) * sp.oo
+        elif point in (-sp.oo, sp.oo):
+            value = c if a == 0 else _sign(point) * _sign(a) * sp.oo
         else:
             endpoints.append(_finite_endpoint(expression, variable, point, closed))
             continue
         endpoints.append({"point": point, "value": value, "attained": False})
     critical = []
     if a != 0 and _sign(b / a) > 0:
-        point = sp.sqrt(b / a)
+        point = domain_sign * sp.sqrt(b / a)
         if _contains(domain, point):
             critical.append(_finite_endpoint(expression, variable, point, True))
     derivative = a - b / variable**2
     return result(
         {"range": _bounds([*endpoints, *critical]), "endpoint_values": endpoints,
-         "critical_points": critical, "derivative": derivative},
+         "critical_points": critical, "derivative": derivative,
+         "domain_sign": "positive" if domain_sign > 0 else "negative"},
         ["reciprocal_extrema"],
         [{"kind": "reciprocal_identity", "passed": sp.cancel(
             expression - (a * variable + b / variable + c)) == 0},
-         {"kind": "positive_domain_no_poles", "passed": True, "domain": domain},
+         {"kind": "positive_domain_no_poles" if domain_sign > 0 else "negative_domain_no_poles",
+          "passed": True, "domain": domain},
          {"kind": "complete_critical_points", "passed": True,
           "derivative": derivative, "points": critical},
          {"kind": "endpoint_limits_and_attainment", "passed": True, "values": endpoints}],
+    )
+
+
+def linear_range(expression, variable, domain):
+    """Numeric affine range, including a constant attained on an open interval."""
+    poly = polynomial(expression, variable, maximum=1)
+    computed = quadratic_interval_range(expression, variable, domain)
+    constant = poly.nth(1) == 0
+    return result(
+        {**computed["outputs"], "slope": poly.nth(1), "constant": poly.nth(0)},
+        ["constant_range" if constant else "linear_interval_extrema"],
+        [*computed["checks"], {"kind": "constant_affine_range" if constant else "affine_monotonicity",
+                              "passed": True, "slope": poly.nth(1), "domain": domain}],
     )
 
 

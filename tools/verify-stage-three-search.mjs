@@ -40,6 +40,54 @@ try {
     assert.ok(response.ok(), `${method} ${path}: ${response.status()} ${await response.text()}`);
     return response.json();
   };
+  const checked = call => call.postconditions?.length && call.postconditions.every(item => item.passed === true);
+  const trajectoryFor = (snapshot, route) => {
+    const checkpoint = snapshot.checkpoints.find(item => item.route_id === route);
+    assert.ok(checkpoint?.driver_state?.trajectory, `missing durable trajectory for ${route}`);
+    return checkpoint.driver_state.trajectory;
+  };
+  const callsFor = trajectory => trajectory.steps.flatMap((record, stepIndex) =>
+    record.calls.filter(checked).map(call => ({record, call,
+      source_ref: `/steps/${stepIndex}/calls/${record.calls.indexOf(call)}`})));
+  const cardForCall = (snapshot, route, source) => {
+    const cards = snapshot.math_steps.filter(card => card.route_id === route && card.source_refs.includes(source));
+    assert.equal(cards.length, 1, `checked call ${route}:${source} must belong to one visible mathematical card`);
+    return cards[0];
+  };
+  const collectRulePaths = (snapshot, route) => {
+    const grouped = new Map();
+    for (const {record, call, source_ref} of callsFor(trajectoryFor(snapshot, route)).filter(item => item.call.rule_ref)) {
+      const card = cardForCall(snapshot, route, source_ref);
+      const key = JSON.stringify([record.method, call.rule_ref, call.branch, call.public_ref]);
+      const path = grouped.get(key) || {method: record.method, rule: call.rule_ref, branch: call.branch,
+        skill: call.public_ref, read_cards: card.ordinal, case_paths: [], source_refs: [],
+        edges: [`${record.method}|step_rule|${call.rule_ref}`, `${call.rule_ref}|selects|${call.public_ref}`]};
+      path.read_cards = Math.min(path.read_cards, card.ordinal);
+      path.case_paths.push(record.case_path); path.source_refs.push(source_ref);
+      grouped.set(key, path);
+    }
+    return [...grouped.values()];
+  };
+  const assertRulePathsAt = async (paths, readCards) => {
+    // The method→rule edge is shared by cases. A later skill branch must stay
+    // idle until the first actual source card that invokes that branch is read.
+    const thresholds = new Map();
+    for (const path of paths) for (const edge of path.edges) {
+      thresholds.set(edge, Math.min(thresholds.get(edge) ?? Infinity, path.read_cards));
+    }
+    const expected = [...thresholds].map(([edge, ordinal]) => [edge, ordinal <= readCards ? 'chosen' : 'idle']);
+    await page.waitForFunction(rows => rows.every(([edge, state]) => [...document.querySelectorAll('[data-edge]')]
+      .some(node => node.dataset.edge === edge && node.dataset.state === state)), expected);
+    for (const path of paths) {
+      assert.equal(await page.locator(`[data-edge=${JSON.stringify(`${path.method}|calls|${path.skill}`)}]`).count(), 0,
+        'rule-selected skills must not receive synthetic direct method edges');
+    }
+  };
+  const basisLinkFor = ref => {
+    const [node, anchor] = ref.split('#');
+    const href = `/knowledge/${encodeURIComponent(node)}/${anchor ? '#' + encodeURIComponent(anchor) : ''}`;
+    return page.locator(`#gw-used a[href=${JSON.stringify(href)}]`);
+  };
   await api(base + '/lesson/start', 'POST');
   await page.goto(`${origin}/lab/search/problem.html?search=${searchId}`);
   await page.locator('[data-actor="replay"]').click();
@@ -159,29 +207,17 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('.stage-three-math-step')].filter(node => node.getClientRects().length).length === 1);
   assert.equal(await page.locator('.stage-three-math-step:visible').count(), 1,
     'completed computation does not advance the student reading position');
-  let rulePath = null;
+  let rulePaths = [];
   if (config.internal_basis) {
-    const traced = completed.checkpoints.find(item => item.route_id === firstRoute).driver_state.trajectory.steps
-      .flatMap(record => record.calls.filter(call => call.rule_ref).map(call => ({record, call})));
-    assert.equal(traced.length, 1, 'this acceptance route has one rule-selected range call');
-    const {record, call} = traced[0];
-    rulePath = {method: record.method, rule: call.rule_ref, branch: call.branch, skill: call.public_ref,
-      edges: [`${record.method}|step_rule|${call.rule_ref}`, `${call.rule_ref}|selects|${call.public_ref}`]};
-    for (const id of rulePath.edges) {
-      assert.equal(await page.locator(`[data-edge=${JSON.stringify(id)}]`).getAttribute('data-state'), 'idle',
-        'unread range card must not activate its method/rule/skill path');
-    }
+    rulePaths = collectRulePaths(completed, firstRoute);
+    assert.ok(rulePaths.length, 'the interval route must retain its actual rule-selected range calls');
+    if (!config.interval_cases) assert.equal(rulePaths.length, 1);
+    await assertRulePathsAt(rulePaths, 1);
   }
   await page.locator(`[data-stream-next=${JSON.stringify(firstRoute)}]`).click();
   const studentVisible = await page.locator('.stage-three-math-step:visible').count();
   assert.equal(studentVisible, 2);
-  if (rulePath) {
-    await page.waitForFunction(ids => ids.every(id => [...document.querySelectorAll('[data-edge]')]
-      .some(node => node.dataset.edge === id && node.dataset.state === 'chosen')), rulePath.edges);
-    assert.equal(await page.locator(`[data-node=${JSON.stringify(rulePath.rule)}]`).getAttribute('data-state'), 'confirmed');
-    assert.equal(await page.locator(`[data-edge=${JSON.stringify(`${rulePath.method}|calls|${rulePath.skill}`)}]`).count(), 0);
-    rulePath = {...rulePath, absent_before_reading: true, chosen_after_reading: true, no_synthetic_edge: true};
-  }
+  if (rulePaths.length) await assertRulePathsAt(rulePaths, studentVisible);
   const progress = await page.locator('#gw-progress').textContent();
   const readingScroll = await page.locator('.gw-lesson').evaluate(node => node.scrollTop);
   await api('/test/qa/completed', 'POST');
@@ -205,18 +241,15 @@ try {
   assert.equal(restored.snapshot.run_id, completed.run_id);
   assert.deepEqual(restored.snapshot.math_steps.map(step => step.step_id), originalIds);
   assert.equal(restored.snapshot.last_seq, completed.last_seq, 'refresh does not run extraction or solve again');
-  if (rulePath) {
-    await page.waitForFunction(ids => ids.every(id => [...document.querySelectorAll('[data-edge]')]
-      .some(node => node.dataset.edge === id && node.dataset.state === 'chosen')), rulePath.edges);
-    rulePath.refresh_restored = true;
+  if (rulePaths.length) {
+    await assertRulePathsAt(rulePaths, studentVisible);
+    rulePaths = rulePaths.map(path => ({...path, refresh_restored: true}));
   }
   await page.screenshot({path: `${output}/04-refreshed.png`, fullPage: true});
   console.log('Verified refresh restores the same run, steps and reading position.');
   let internalBasis = null;
   if (config.internal_basis) {
-    const [node, anchor] = config.internal_basis.ref.split('#');
-    const href = `/knowledge/${encodeURIComponent(node)}/#${encodeURIComponent(anchor)}`;
-    const basisLink = page.locator(`#gw-used a[href=${JSON.stringify(href)}]`);
+    const basisLink = basisLinkFor(config.internal_basis.ref);
     assert.equal(await basisLink.count(), 0, 'an unread condition card must not light its internal basis');
     while (await page.locator('.stage-three-math-step:visible').count() < config.internal_basis.read_cards) {
       await page.locator(`[data-stream-next=${JSON.stringify(firstRoute)}]`).click();
@@ -225,6 +258,101 @@ try {
     internalBasis = {...config.internal_basis, shown_after_reading: true, absent_before_reading: true};
     await page.screenshot({path: `${output}/05-internal-basis.png`, fullPage: true});
     console.log('Verified checked internal-operation basis appears only after reading its condition card.');
+  }
+  if (rulePaths.length) await assertRulePathsAt(rulePaths, await page.locator('.stage-three-math-step:visible').count());
+  let classification = null, separation = null;
+  if (config.interval_cases) {
+    const trajectory = trajectoryFor(completed, firstRoute);
+    const cases = trajectory.steps.flatMap(record => record.case_results || []);
+    assert.equal(cases.length, config.interval_cases);
+    assert.equal(new Set(cases.map(item => JSON.stringify(item.case_path))).size, cases.length);
+    assert.ok(cases.every(item => item.case_path.length && item.source_refs.length));
+    const firstCards = completed.math_steps.filter(card => card.route_id === firstRoute);
+    assert.equal(firstCards.length, config.qa_cards);
+    const caseCards = firstCards.filter(card => card.case_path.length);
+    assert.ok(cases.every(item => caseCards.some(card => JSON.stringify(card.case_path) === JSON.stringify(item.case_path))),
+      'every collected case must have its own student-visible mathematical source');
+    let constantCase = null;
+    if (config.constant_case) {
+      const constants = callsFor(trajectory).filter(({call}) => call.capability === 'linear_range' &&
+        call.used_basis.includes('skill-linear-range#constant'));
+      assert.equal(constants.length, 1);
+      const {record, call, source_ref} = constants[0];
+      const item = cases.find(value => JSON.stringify(value.case_path) === JSON.stringify(record.case_path));
+      assert.equal(item?.domain.exact.$math, 'FiniteSet');
+      assert.deepEqual(item.domain.exact.args, [{$math: 'Integer', value: '0'}]);
+      assert.equal(call.inputs.expression.expression, '-1');
+      assert.equal(call.outputs.range.inf.expression, '-1');
+      assert.equal(call.outputs.range.sup.expression, '-1');
+      const card = cardForCall(completed, firstRoute, source_ref);
+      constantCase = {case_path: record.case_path, source_ref, step_id: card.step_id,
+        domain: item.domain, expression: '-1', basis: 'skill-linear-range#constant'};
+    }
+    while (await page.locator('.stage-three-math-step:visible').count() < firstCards.length) {
+      await page.locator(`[data-stream-next=${JSON.stringify(firstRoute)}]`).click();
+      await assertRulePathsAt(rulePaths, await page.locator('.stage-three-math-step:visible').count());
+    }
+    for (const card of caseCards) {
+      const shown = page.locator(`.stage-three-math-step[data-step-id=${JSON.stringify(card.step_id)}]`);
+      await shown.waitFor({state: 'visible'});
+      assert.ok(await shown.locator('.katex').count() > 0);
+    }
+    if (constantCase) await basisLinkFor(constantCase.basis).waitFor({state: 'attached'});
+    classification = {case_count: cases.length, distinct_case_paths: cases.map(item => item.case_path),
+      conditions: cases.map(item => item.condition), case_cards: caseCards.map(card => card.step_id),
+      constant_case: constantCase, all_cases_read: true, branch_paths_follow_actual_reading: true};
+    await page.screenshot({path: `${output}/06-interval-cases.png`, fullPage: true});
+    console.log(`Verified ${cases.length} real case frames, their cards, and per-branch graph activation.`);
+  }
+  if (rulePaths.length) {
+    for (const path of rulePaths) {
+      assert.equal(await page.locator(`[data-node=${JSON.stringify(path.rule)}]`).getAttribute('data-state'), 'confirmed');
+    }
+    rulePaths = rulePaths.map(path => ({...path, absent_before_reading: true,
+      chosen_after_reading: true, no_synthetic_edge: true}));
+  }
+  if (config.separation) {
+    const traced = callsFor(trajectoryFor(completed, secondRoute));
+    const divisions = traced.filter(({call}) => call.capability === 'separation_division');
+    const ranges = traced.filter(({call}) => call.capability === config.separation.range_capability);
+    assert.equal(divisions.length, 1); assert.equal(ranges.length, 1);
+    const division = divisions[0], range = ranges[0];
+    assert.equal(division.call.outputs.divisor_sign, config.separation.division);
+    assert.equal(division.call.outputs.transformation, `${config.separation.division}_division`);
+    assert.ok(division.call.operations.includes(`multiply_${config.separation.division}`));
+    if (config.separation.division === 'negative') {
+      assert.ok(division.call.postconditions.some(item => item.kind === 'strict_negative_divisor' && item.passed));
+      assert.equal(division.call.outputs.operator, '<=');
+    } else {
+      assert.equal(range.call.outputs.range.inf.expression, '1/6');
+      assert.equal(range.call.outputs.range.sup.expression, '1/2');
+      assert.ok(range.call.outputs.range.inf_attained && range.call.outputs.range.sup_attained);
+    }
+    for (const basis of config.separation.basis) assert.ok(range.call.used_basis.includes(basis));
+    const divisionCard = cardForCall(completed, secondRoute, division.source_ref);
+    const rangeCard = cardForCall(completed, secondRoute, range.source_ref);
+    assert.equal(rangeCard.display_unit, config.separation.range_unit);
+    await page.locator(`[data-stream-route=${JSON.stringify(secondRoute)}]`).click();
+    await page.waitForFunction(route => [...document.querySelectorAll('.stage-three-route')]
+      .some(node => node.dataset.routeId === route && node.getClientRects().length), secondRoute);
+    assert.equal(await page.locator('.stage-three-math-step:visible').count(), 1);
+    for (const basis of config.separation.basis) {
+      assert.equal(await basisLinkFor(basis).count(), 0, 'an unread range must not activate its later knowledge basis');
+    }
+    while (await page.locator('.stage-three-math-step:visible').count() < rangeCard.ordinal) {
+      await page.locator(`[data-stream-next=${JSON.stringify(secondRoute)}]`).click();
+    }
+    for (const basis of config.separation.basis) await basisLinkFor(basis).waitFor({state: 'attached'});
+    const directEdge = `${range.record.method}|calls|${range.call.public_ref.split('#')[0]}`;
+    await page.waitForFunction(edge => [...document.querySelectorAll('[data-edge]')]
+      .some(node => node.dataset.edge === edge && node.dataset.state === 'chosen'), directEdge);
+    await page.locator(`.stage-three-math-step[data-step-id=${JSON.stringify(rangeCard.step_id)}]`).waitFor({state: 'visible'});
+    separation = {division: config.separation.division, division_source: division.source_ref,
+      division_step_id: divisionCard.step_id, range_source: range.source_ref, range_step_id: rangeCard.step_id,
+      range_capability: range.call.capability, range: range.call.outputs.range,
+      basis: config.separation.basis, absent_before_range_reading: true, actual_direct_edge: directEdge};
+    await page.screenshot({path: `${output}/07-separation-range.png`, fullPage: true});
+    console.log('Verified actual division direction, range card and checked knowledge sources on the second route.');
   }
   assert.equal(await page.locator('.katex-error').count(), 0);
   await api('/test/invalidate', 'POST');
@@ -240,7 +368,8 @@ try {
     qa_cards: completed.qa.length, student_visible: studentVisible, refresh_restored: true,
     interrupted_without_events: true, interruption_fixture: 'execution_metadata_only', explicit_resume_requests: resumeRequests,
     mathematical_dom_preserved: true, conflict_revoked_completion_and_qa: true, internal_basis: internalBasis,
-    rule_path: rulePath, formula_errors: 0, ...events, browser_errors: errors,
+    rule_path: rulePaths.length === 1 ? rulePaths[0] : null, rule_paths: rulePaths,
+    classification, separation, formula_errors: 0, ...events, browser_errors: errors,
   }, null, 2));
 } catch (error) {
   fs.writeFileSync(`${output}/failure.txt`, String(error.stack || error));

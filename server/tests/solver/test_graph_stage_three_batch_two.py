@@ -132,9 +132,12 @@ def test_all_recordings_preserve_selection_and_q01_q02_q03_publish_exact_routes(
                     if route["status"] == "verified":
                         # Milestones restrict method families, not historical
                         # capability implementations. Batch 3 extends the
-                        # existing separation family to Q04/Q05 and Q10(2).
+                        # existing separation family to Q04–Q07 and Q10(2).
                         reusable = {"q04": {TARGET: sp.Interval.open(-sp.oo, -5)},
                                     "q05": {TARGET: sp.Interval.open(-5, sp.oo)},
+                                    "q06": {TARGET: sp.Interval(-sp.oo, 2 * sp.sqrt(2))},
+                                    "q07": {TARGET: sp.Interval.open(-sp.oo, sp.Rational(1, 6))},
+                                    "q11": {"/root/children/1/goals/0": sp.Interval.open(-sp.oo, sp.Rational(6, 7))},
                                     "q10": Q10_ANSWERS}
                         assert case in reusable
                         assert goal["target_ref"] in reusable[case]

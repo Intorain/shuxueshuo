@@ -60,23 +60,71 @@ def polynomial_relation(relation, variable):
 def range_skill(expression, variable, domain):
     if expression.free_symbols - {variable}:
         raise CapabilityGap("range_skill_unavailable")
+    denominator = None
     if not expression.is_polynomial(variable):
-        execute("reciprocal_range", {"expression": expression, "variable": variable, "domain": domain})
-        choice = "reciprocal"
+        from .capabilities.reciprocal import inspect_reciprocal
+
+        try:
+            execute("reciprocal_range", {"expression": expression, "variable": variable, "domain": domain})
+            choice = "reciprocal"
+        except CapabilityGap:
+            denominator = inspect_reciprocal(expression, variable)["denominator"]
+            bounds = execute("quadratic_interval_range", {
+                "expression": denominator, "variable": variable, "domain": domain,
+            })["outputs"]["range"]
+            execute("reciprocal_of_range", {"range": bounds})
+            choice = "inverse"
         degree = None
     else:
         poly = polynomial(expression, variable)
-        if poly.degree() != 2:
-            raise CapabilityGap("range_skill_unavailable")
-        degree = 2
-        choice = "square" if domain == sp.S.Reals else "interval"
+        degree = int(poly.degree()) if poly.degree() != -sp.oo else 0
+        choice = "linear" if degree <= 1 else "square" if domain == sp.S.Reals else "interval"
         if choice == "interval":
             execute("quadratic_interval_range", {"expression": expression, "variable": variable, "domain": domain})
     return {
         "selected": choice,
         "choice": choice,
+        "denominator": denominator,
         "evidence": {"degree": degree, "domain": domain},
     }
+
+
+def interval_case_plan(expression, variable, parameter, domain, policy):
+    """Retain the endpoint shortcut; otherwise prove a complete parameter split."""
+    try:
+        current = interval_skill(expression, variable, parameter, domain, policy)
+    except CapabilityGap:
+        computed = execute("partition_interval_cases", {
+            "expression": expression, "variable": variable, "parameter": parameter,
+            "domain": domain, "policy": policy,
+        })
+        cases = computed["outputs"]["cases"]
+        return {"selected": "classified", "cases": cases, "has_cases": True,
+                "evidence": computed["checks"]}
+    mode = "endpoint" if current["parametric"] else "numeric"
+    return {"selected": "direct", "cases": [{
+        "id": "direct", "kind": "nondegenerate", "condition": sp.true,
+        "domain": sp.S.Reals, "value": None, "mode": mode,
+    }], "has_cases": False, "evidence": current["evidence"]}
+
+
+def interval_case_skill(expression, variable, parameter, case):
+    mode = case.get("mode", "classified")
+    if mode == "parametric":
+        mode = "classified"
+    numeric_expression = expression
+    if case["kind"] in ("linear", "constant"):
+        if case["value"] is not None:
+            numeric_expression = expression.subs(parameter, case["value"])
+        if numeric_expression.has(parameter):
+            raise CapabilityGap("numeric_degenerate_interval_required")
+        mode, choice = "linear", "linear"
+    else:
+        choice = "quadratic"
+    return {"selected": choice, "choice": choice, "mode": mode,
+            "expression": numeric_expression, "evidence": {
+                "kind": case["kind"], "condition": case["condition"], "domain": case["domain"],
+            }}
 
 
 def interval_skill(expression, variable, parameter, domain, policy):
@@ -109,5 +157,6 @@ def interval_requirement(domain):
 REGISTRY = {
     fn.__name__: fn
     for fn in (nondegenerate, degenerate_branches, parameter_solver,
-               polynomial_relation, range_skill, interval_requirement, interval_skill)
+               polynomial_relation, range_skill, interval_requirement, interval_skill,
+               interval_case_plan, interval_case_skill)
 }

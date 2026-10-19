@@ -105,7 +105,7 @@ def test_contract_rejects_unmerged_or_foreign_case_bindings(mutation):
 
 def test_range_judgment_controls_child_execution(monkeypatch):
     def choose_interval(**_):
-        return {"selected": "interval", "choice": "interval"}
+        return {"selected": "interval", "choice": "interval", "denominator": None}
 
     monkeypatch.setitem(judgments.REGISTRY, "range_skill", choose_interval)
     state = finish(start(method="method-separation"))

@@ -146,7 +146,7 @@ def validate_contract(contract, nodes=None):
         raise ValueError("execution.exit_status")
     display_ids = set()
 
-    def validate_step(step, node, env):
+    def validate_step(step, node, env, *, partial=False):
         allowed = {c["ref"] for c in node.get("calls", [])}
         rule = nodes.get(node.get("rule"))
         rule_targets = {branch["id"]: branch["target"] for branch in rule["branches"]} if rule else {}
@@ -267,16 +267,17 @@ def validate_contract(contract, nodes=None):
                     validate_dependencies(unit["depends_on"], required, set(env))
                     _require(guard_references(unit.get("guard")), env, active_guard)
                     _require(required, env, _combine(active_guard, unit.get("guard")))
-        if executed_refs != allowed:
+        if not partial and executed_refs != allowed:
             raise ValueError("execution.missing_public_call")
         if any(unit["after"] not in ids for unit in step["display_units"]):
             raise ValueError("execution.display_trigger")
+        return executed_refs, allowed
 
     index = 0
     while index < len(contract["steps"]):
         step, node = contract["steps"][index], public[index]
-        validate_step(step, node, environment)
         cases = step.get("cases")
+        outer_refs, allowed_refs = validate_step(step, node, environment, partial=bool(cases))
         if not cases:
             index += 1
             continue
@@ -296,7 +297,9 @@ def validate_contract(contract, nodes=None):
         ):
             raise ValueError("execution.invalid_case_scope")
         child = dict(environment, **{cases["binding"]: None})
-        validate_step(dict(cases["entry"], id=step["id"]), node, child)
+        entry_refs, _ = validate_step(dict(cases["entry"], id=step["id"]), node, child, partial=True)
+        if outer_refs | entry_refs != allowed_refs:
+            raise ValueError("execution.missing_public_call")
         for child_index in range(index + 1, end + 1):
             if contract["steps"][child_index].get("cases"):
                 raise ValueError("execution.nested_case_span")

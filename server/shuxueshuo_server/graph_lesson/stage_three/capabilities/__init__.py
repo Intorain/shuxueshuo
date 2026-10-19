@@ -313,12 +313,24 @@ from .cases import (
     merge_cases,
     solve_parameter_relation,
 )
+from .parametric import (
+    merge_interval_cases,
+    parametric_interval_extremum,
+    partition_interval_cases,
+    solve_interval_conditions,
+)
 from .quantified import (
     apply_quantifier_policy,
     select_quantifier_policy,
     solve_conditions,
 )
-from .ranges import endpoint_values_extremum, quadratic_interval_range, reciprocal_range
+from .ranges import (
+    endpoint_values_extremum,
+    linear_range,
+    quadratic_interval_range,
+    reciprocal_range,
+)
+from .reciprocal import reciprocal_of_range
 from .separation import inspect_separation as inspect_separation
 from .separation import separate_parameter, separation_division
 
@@ -334,8 +346,14 @@ REGISTRY = {
         separate_parameter,
         separation_division,
         reciprocal_range,
+        reciprocal_of_range,
+        linear_range,
         quadratic_interval_range,
         endpoint_values_extremum,
+        partition_interval_cases,
+        parametric_interval_extremum,
+        solve_interval_conditions,
+        merge_interval_cases,
         solve_conditions,
         select_quantifier_policy,
         apply_quantifier_policy,
@@ -349,7 +367,6 @@ REGISTRY = {
 }
 PLANNED = frozenset(
     {
-        "linear_range",
         "elimination",
         "substitution",
     }

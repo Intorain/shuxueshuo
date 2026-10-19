@@ -65,6 +65,25 @@
     ],
     "quantified_condition_sets": [
       "method-interval-extremum#conditions"
+    ],
+    "linear_interval_extrema": [
+      "skill-linear-range"
+    ],
+    "constant_range": [
+      "skill-linear-range#constant"
+    ],
+    "reciprocal_of_range": [
+      "skill-inequality-transform#reciprocal",
+      "function-monotonicity"
+    ],
+    "interval_case_partition": [
+      "quadratic-interval-extremum"
+    ],
+    "interval_condition_sets": [
+      "method-interval-extremum#conditions"
+    ],
+    "interval_case_union": [
+      "method-interval-extremum#conditions"
     ]
   }
 }

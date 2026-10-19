@@ -61,6 +61,10 @@
         {
           "ref": "method-square-extremum",
           "when": "另一边可配成常数加减平方，并能验证取等或区间边界时"
+        },
+        {
+          "ref": "skill-inequality-transform",
+          "when": "另一边是符号确定函数的倒数，先求分母范围，再取倒数时"
         }
       ]
     },

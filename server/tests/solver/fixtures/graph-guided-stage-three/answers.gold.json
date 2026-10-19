@@ -1,6 +1,6 @@
 {
   "contract": "graph-stage-three-answer-gold/v1",
-  "source": "Q01 原题与人工 Demo；Q02–Q05 原题与人工课程独立解答，不从运行结果生成",
+  "source": "Q01 原题与人工 Demo；Q02–Q07 原题与人工课程独立解答，不从运行结果生成",
   "cases": {
     "q01": {
       "target_ref": "/root/goals/0",
@@ -83,6 +83,40 @@
           {
             "lower": "-5",
             "upper": "oo",
+            "left_closed": false,
+            "right_closed": false
+          }
+        ]
+      },
+      "routes": ["interval", "extremum"]
+    },
+    "q06": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_source": "Q06 原题与人工课程独立解答，不从运行结果生成",
+      "authored_basis": "令 t=-x>0，原式为 t²-at+2≥0。除以 t 后要求 a≤t+2/t 对所有 t>0 成立；t+2/t 的最小值为 2√2，在 t=√2 取得，故 a≤2√2。区间法在 a≤0 时下确界为2且不取得；a>0 时顶点在 x<0 内，最小值为2-a²/4，合并得到相同集合。a=2√2 时原式为(x+√2)²≥0，保留。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-oo",
+            "upper": "2*sqrt(2)",
+            "left_closed": false,
+            "right_closed": true
+          }
+        ]
+      },
+      "routes": ["interval", "extremum"]
+    },
+    "q07": {
+      "target_ref": "/root/goals/0",
+      "kind": "find_range",
+      "authored_source": "Q07 原题与人工课程独立解答，不从运行结果生成",
+      "authored_basis": "x²-x 在 [2,3] 上递增，值域为 [2,6]，严格为正；取倒数得到 [1/6,1/2]。m(x²-x)-1<0 对所有 x 成立等价于 m<1/(x²-x)，故 m<1/6。区间法 m=0 时原式=-1，保留；m<0 全部成立；m>0 要求最大值6m-1<0，得0<m<1/6，三种情况取并集。m=1/6 时 x=3 取零，排除。",
+      "feasible_set": {
+        "intervals": [
+          {
+            "lower": "-oo",
+            "upper": "1/6",
             "left_closed": false,
             "right_closed": false
           }

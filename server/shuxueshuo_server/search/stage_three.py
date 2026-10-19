@@ -21,6 +21,7 @@ from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from .lesson import RESULT, attempts
 
 RUN_ID = re.compile(r"^[0-9a-f]{32}$")
+RETRY_INTENT = ".lesson-retry.json"
 
 
 class LessonBusy(RuntimeError):
@@ -43,12 +44,44 @@ def acquire_problem(directory):
     except BlockingIOError as exc:
         stream.close()
         raise LessonBusy("lesson.running") from exc
+    try:
+        # An abandoned process may leave intent behind, but a new lease never
+        # inherits it (especially when this operation is a resume, not a retry).
+        (Path(directory) / RETRY_INTENT).unlink(missing_ok=True)
+    except BaseException:
+        stream.close()
+        raise
     return stream
 
 
 def release_problem(stream):
-    fcntl.flock(stream, fcntl.LOCK_UN)
-    stream.close()
+    try:
+        Path(stream.name).with_name(RETRY_INTENT).unlink(missing_ok=True)
+    finally:
+        fcntl.flock(stream, fcntl.LOCK_UN)
+        stream.close()
+
+
+def reserve_retry(directory):
+    """Publish the next attempt while its problem lease is held, before queueing."""
+    directory = Path(directory)
+    name = f"stage-two-{len(attempts(directory)) + 1}"
+    save(directory / RETRY_INTENT, {"attempt": name})
+
+
+def pending_retry(directory):
+    """Cross-router readers must not attach the preceding stream to a new retry."""
+    directory = Path(directory)
+    try:
+        name = read(directory / RETRY_INTENT)["attempt"]
+    except FileNotFoundError:
+        return None
+    if not _locked(directory / ".lesson.lock"):
+        return None
+    attempt = directory / name
+    if (attempt / RESULT).is_file():
+        return None
+    return attempt
 
 
 def _locked(path):
@@ -135,10 +168,12 @@ def presentation(directory, search_id, *, running=False, attempt=None):
         return {"execution_status": "not_started", "stream": None}
     running = running or _locked(Path(directory) / ".lesson.lock") or _locked(attempt / ".stage-three.lock")
     output = attempt / "stage-three"
-    if (output / "stage-three-result.json").is_file():
-        status = read(output / "stage-three-result.json")["status"]
-    elif running:
+    # A completed file can precede the worker's finally/lease release. Keep
+    # polling until that operation can actually accept the student's retry.
+    if running:
         status = "running" if output.exists() else "starting"
+    elif (output / "stage-three-result.json").is_file():
+        status = read(output / "stage-three-result.json")["status"]
     elif (attempt / "stage-three-error.json").is_file():
         status = "error"
     else:

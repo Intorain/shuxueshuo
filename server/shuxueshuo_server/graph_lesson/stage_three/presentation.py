@@ -80,12 +80,14 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis):
             f"{quantifier} ${sp.latex(bindings['x'])}$ 使关系成立，比较式 ${sp.latex(bindings['parameter_expression'])}$ "
             f"需要与函数 ${sp.latex(bindings['function'])}$ 的{name}比较。先确定策略，下一步再计算数值和是否取到。"
         )
-    elif unit["template"] == "divided":
+    elif unit["template"] in ("divided", "negative_divided"):
+        negative = unit["template"] == "negative_divided"
+        sign, noun, direction = ("<", "负", "反向") if negative else (">", "正", "不变")
         explanation = (
-            f"在给定范围内，除数 ${sp.latex(bindings['divisor'])}>0$。"
-            "将参数项移到一边，再两边同除以这个正数，不等号不变，得到等价关系。"
+            f"在给定范围内，除数 ${sp.latex(bindings['divisor'])}{sign}0$。"
+            f"将参数项移到一边，再两边同除以这个{noun}数，不等号{direction}，得到等价关系。"
         )
-    elif unit["template"] == "numeric_range":
+    elif unit["template"] in ("numeric_range", "range_evidence", "case_linear_range"):
         bounds = bindings["range"]
         details = []
         for key, label in (("inf", "下确界"), ("sup", "上确界")):
@@ -95,6 +97,46 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis):
             f"只在题目给定的 ${sp.latex(bindings['domain'])}$ 上求值，"
             "比较端点的值或极限，并检查区间内的转折点。" + "；".join(details) + "。"
         )
+        if unit["template"] == "case_linear_range" and bindings["kind"] == "constant":
+            explanation = f"代入后函数为常数 ${sp.latex(bounds['inf'])}$，在原区间上处处取得该值。"
+        if unit["template"] == "range_evidence":
+            for point in bindings["endpoints"]:
+                if point["attained"]:
+                    explanation += (f"在 ${sp.latex(bindings['x'])}={sp.latex(point['point'])}$ 处，"
+                                    f"函数值为 ${sp.latex(point['value'])}$。")
+                else:
+                    explanation += (f"在定义域内，当 ${sp.latex(bindings['x'])}\\to {sp.latex(point['point'])}$ 时，"
+                                    f"函数趋近 ${sp.latex(point['value'])}$。")
+            for point in bindings["points"]:
+                explanation += (f"区间内转折点为 ${sp.latex(bindings['x'])}={sp.latex(point['point'])}$，"
+                                f"函数值 ${sp.latex(point['value'])}$ 可取得。")
+    elif unit["template"] == "inverse_range":
+        sign = "正" if bindings["sign"] == "positive" else "负"
+        explanation = (
+            f"分母在所求范围内始终为{sign}且不为零。倒数函数在这个同号范围内递减，"
+            "上下端逆序取倒数；无穷端变成不能取得的 0，端点是否取得随对应端点保留。"
+        )
+    elif unit["template"] == "interval_cases":
+        after.extend(case["condition"] for case in bindings["cases"])
+        explanation = ("按二次项系数是否为零、开口方向以及对称轴与端点的位置确定以下情况。"
+                       "这些情况互不重叠并覆盖全部实数参数，分别求确界后再合并参数范围。")
+    elif unit["template"] == "classified_range":
+        bounds = bindings["range"]
+        key = bounds["bound"]
+        value = bounds[key]
+        label = "上确界" if key == "sup" else "下确界"
+        attained = "能取得" if bounds[key + "_attained"] else "不能取得"
+        after.append(value)
+        explanation = f"二次项系数为 ${sp.latex(bindings['coefficient'])}$。"
+        if bindings["vertex"] is not None:
+            explanation += f"对称轴为 ${sp.latex(bindings['x'])}={sp.latex(bindings['vertex'])}$。"
+        explanation += (f"结合当前条件与区间 ${sp.latex(bindings['domain'])}$，"
+                        f"由端点极限和区间内顶点比较得到{label} ${sp.latex(value)}$，{attained}。")
+    elif unit["template"] == "interval_merge":
+        before.extend(bindings["solutions"])
+        details = [f"${sp.latex(case['condition'])}$ 时得到 ${sp.latex(solution)}$"
+                   for case, solution in zip(bindings["cases"], bindings["solutions"], strict=True)]
+        explanation = "；".join(details) + "。把各情况的参数集取并集，随后独立验证并检查边界。"
     elif unit["template"] == "endpoint_bounds":
         bounds = bindings["range"]
         label = "上确界" if bounds["bound"] == "sup" else "下确界"
@@ -111,11 +153,16 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis):
     elif unit["template"] == "interval_conditions":
         before.extend(bindings["conditions"])
         after = [*bindings["solutions"], *after]
-        logical, operation = ("两端条件都要满足", "交集") if bindings["combiner"] == "all" else ("至少一端条件满足", "并集")
-        explanation = (
-            f"将已选量词策略应用到端点候选及其可达性，{logical}。"
-            f"分别解出下列参数条件后取{operation}；开放端点的极限值不当作已取得的最值。"
-        )
+        if len(bindings["conditions"]) == 1:
+            explanation = "将已选量词策略应用到确界及其可达性，得到并解出下面的参数条件。"
+        else:
+            logical, operation = ("两端条件都要满足", "交集") if bindings["combiner"] == "all" else ("至少一端条件满足", "并集")
+            explanation = (
+                f"将已选量词策略应用到端点候选及其可达性，{logical}。"
+                f"分别解出下列参数条件后取{operation}；开放端点的极限值不当作已取得的最值。"
+            )
+        if frame.get("case_path"):
+            explanation += "再与当前情况的参数范围取交集，保留同时满足的参数。"
     elif unit["template"] == "square_range":
         explanation = (
             f"${sp.latex(bindings['function'])}={sp.latex(bindings['square'])}$。平方非负，"

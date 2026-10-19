@@ -114,10 +114,26 @@ def test_positive_division_has_identity_direction_and_domain_evidence(operator, 
     }
 
 
-@pytest.mark.parametrize("domain", [sp.Interval(0, 2), sp.Interval(-2, -1), sp.Interval(-1, 1)])
-def test_zero_or_negative_divisor_is_a_gap_until_negative_division_batch(domain):
-    with pytest.raises(cap.CapabilityGap, match="positive_divisor_required"):
+@pytest.mark.parametrize("domain", [sp.Interval(0, 2), sp.Interval(-1, 1)])
+def test_zero_or_changing_divisor_stays_a_gap(domain):
+    with pytest.raises(cap.CapabilityGap, match="strict_divisor_sign_required"):
         cap.separation_division(cap.relation(x*x + m*x + 4, "<"), m, x, domain)
+
+
+def test_negative_divisor_now_reverses_the_relation_with_an_exact_range():
+    domain = sp.Interval(-2, -1)
+    divided = output("separation_division", relation=cap.relation(x*x + m*x + 4, "<"),
+                     parameter=m, variable=x, domain=domain)
+    assert divided["divisor_sign"] == "negative"
+    assert divided["operator"] == ">"
+    assert divided["transformation"] == "negative_division"
+    assert sp.cancel(divided["function"] + x + 4/x) == 0
+    computed_range = output("reciprocal_range", expression=divided["function"], variable=x,
+                            domain=domain)["range"]
+    assert computed_range["set"] == sp.Interval(4, 5)
+    policy = output("select_quantifier_policy", quantifier="∀", operator=">", domain=domain)["policy"]
+    applied = output("apply_quantifier_policy", policy=policy, range=computed_range, parameter_expression=m)
+    assert applied["condition"] == cap.relation(m, ">", sp.Integer(5))
 
 
 @pytest.mark.parametrize("fact_op,quantifier,domain,expected", [
@@ -163,7 +179,6 @@ def test_parameter_vertex_or_opening_requires_later_classification():
 
 
 @pytest.mark.parametrize("expression,domain", [
-    (x + 4/x, sp.Interval(-2, -1)),
     (x + 4/x, sp.Interval(0, 2)),
     (x + m/x, sp.Interval(1, 2)),
     (x + 1/(x + 1), sp.Interval(1, 2)),
@@ -171,3 +186,11 @@ def test_parameter_vertex_or_opening_requires_later_classification():
 def test_unsupported_reciprocal_shape_never_becomes_numeric_approximation(expression, domain):
     with pytest.raises(cap.CapabilityGap):
         cap.reciprocal_range(expression, x, domain)
+
+
+def test_negative_interval_reciprocal_sum_is_supported_exactly():
+    computed = output("reciprocal_range", expression=x + 4/x, variable=x, domain=sp.Interval(-2, -1))
+    assert computed["domain_sign"] == "negative"
+    assert computed["range"] == {"inf": sp.Integer(-5), "sup": sp.Integer(-4),
+                                 "inf_attained": True, "sup_attained": True,
+                                 "set": sp.Interval(-5, -4)}

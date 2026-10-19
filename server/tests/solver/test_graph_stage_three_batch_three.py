@@ -146,7 +146,7 @@ def test_all_recordings_preserve_selection_and_q04_q05_complete_both_routes(tmp_
         if case == "q10":
             assert {goal["target_ref"] for goal in result["goals"]} == set(Q10_ANSWERS)
             expected_routes = {"/root/children/0/goals/0": {"discriminant"},
-                               "/root/children/1/goals/0": {"extremum"}}
+                               "/root/children/1/goals/0": {"extremum", "interval"}}
             for goal in result["goals"]:
                 assert goal["status"] == "solved", str(sample / "index.html")
                 verified = {route["route_id"]: route for route in goal["routes"] if route["status"] == "verified"}
@@ -213,13 +213,12 @@ def test_independent_verification_rejects_wrong_endpoint_and_missing_interval(ca
 
 
 @pytest.mark.parametrize("case", ["q06", "q07"])
-def test_later_negative_interval_and_parameter_classification_still_report_gaps(tmp_path, case):
+def test_batch_four_capabilities_reuse_the_existing_batch_three_method_families(tmp_path, case):
     result = runner.run_sample(upstream(tmp_path, case), tmp_path / "run", milestone="3")
-    goal, = result["goals"]
-    assert goal["status"] == "no_verified_route", goal
-    assert not any(route["status"] == "verified" for route in goal["routes"])
-    assert all(route["status"] == "capability_gap" for route in goal["routes"])
-    assert not store(tmp_path / "run").snapshot()["handoffs"]
+    routes = _verified_routes(result)
+    expected = sp.Interval(-sp.oo, 2 * sp.sqrt(2)) if case == "q06" else sp.Interval.open(-sp.oo, sp.Rational(1, 6))
+    assert all(decode_value(route["feasible_set_exact"]) == expected for route in routes.values())
+    assert len(store(tmp_path / "run").snapshot()["handoffs"]) == 2
 
 
 @pytest.mark.parametrize("position", ["before_commit", "after_commit"])

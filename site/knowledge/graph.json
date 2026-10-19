@@ -659,7 +659,8 @@
             "quadratic-interval-extremum",
             "skill-linear-range",
             "skill-reciprocal-range",
-            "method-square-extremum"
+            "method-square-extremum",
+            "skill-inequality-transform"
           ]
         },
         {
@@ -1123,7 +1124,7 @@
       "id": "type-amgm-quantified",
       "kind": "problem_type",
       "label": "应用基本不等式的恒成立与存在成立问题",
-      "summary": "不等式要对所有取值（或某个取值）成立，求参数范围；参数另一边式子的最值用基本不等式求，再看最值取不取得到。",
+      "summary": "不等式要对所有取值（或某个取值）成立，求参数范围、最小值或最大值；参数另一边式子的最值用基本不等式求，再看最值取不取得到。",
       "aliases": [],
       "home": "compulsory-1-ch2"
     },
@@ -1163,7 +1164,7 @@
       "id": "type-quantified-quadratic",
       "kind": "problem_type",
       "label": "含参一元二次不等式的恒成立与存在成立问题",
-      "summary": "在给定范围内，二次不等式要对所有取值都成立（或至少一个取值成立），求参数的范围。",
+      "summary": "在给定范围内，二次不等式要对所有取值都成立（或至少一个取值成立），求参数的范围、最小值或最大值。",
       "aliases": [],
       "home": "compulsory-1-ch2"
     },
@@ -1793,6 +1794,10 @@
         {
           "step": "separate",
           "when": ""
+        },
+        {
+          "step": "range",
+          "when": "另一边是符号确定函数的倒数，先求分母范围，再取倒数时"
         },
         {
           "step": "restore",

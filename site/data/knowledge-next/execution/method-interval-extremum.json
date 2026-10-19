@@ -76,104 +76,11 @@
     },
     {
       "id": "select",
-      "calls": [
-        {
-          "id": "endpoints",
-          "capability": "endpoint_values_extremum",
-          "public_ref": "quadratic-interval-extremum",
-          "inputs": {
-            "expression": "$interval_function",
-            "variable": "$x",
-            "parameter": "$parameter",
-            "domain": "$domain",
-            "policy": "$policy"
-          },
-          "outputs": {
-            "endpoint_range": "range",
-            "endpoint_values": "endpoint_values"
-          },
-          "order": 0,
-          "rule_ref": "rule-interval-skill",
-          "branch": "quadratic",
-          "guard": {
-            "all": [
-              {
-                "ref": "skill_choice",
-                "equals": "quadratic"
-              },
-              {
-                "ref": "parametric",
-                "equals": true
-              }
-            ]
-          },
-          "skip_reason": "not_selected"
-        },
-        {
-          "id": "numeric",
-          "capability": "quadratic_interval_range",
-          "public_ref": "quadratic-interval-extremum",
-          "inputs": {
-            "expression": "$interval_function",
-            "variable": "$x",
-            "domain": "$domain"
-          },
-          "outputs": {
-            "numeric_range": "range"
-          },
-          "order": 1,
-          "rule_ref": "rule-interval-skill",
-          "branch": "quadratic",
-          "guard": {
-            "all": [
-              {
-                "ref": "skill_choice",
-                "equals": "quadratic"
-              },
-              {
-                "ref": "parametric",
-                "equals": false
-              }
-            ]
-          },
-          "skip_reason": "not_selected"
-        },
-        {
-          "id": "linear",
-          "capability": "linear_range",
-          "public_ref": "skill-linear-range",
-          "inputs": {},
-          "outputs": {},
-          "order": 2,
-          "rule_ref": "rule-interval-skill",
-          "branch": "linear",
-          "guard": {
-            "ref": "skill_choice",
-            "equals": "linear"
-          },
-          "skip_reason": "not_selected"
-        },
-        {
-          "id": "reciprocal",
-          "capability": "reciprocal_range",
-          "public_ref": "skill-reciprocal-range",
-          "inputs": {},
-          "outputs": {},
-          "order": 3,
-          "rule_ref": "rule-interval-skill",
-          "branch": "reciprocal",
-          "guard": {
-            "ref": "skill_choice",
-            "equals": "reciprocal"
-          },
-          "skip_reason": "not_selected"
-        }
-      ],
+      "calls": [],
       "judgments": [
         {
-          "id": "skill",
-          "function": "interval_skill",
-          "rule_ref": "rule-interval-skill",
+          "id": "plan",
+          "function": "interval_case_plan",
           "inputs": {
             "expression": "$interval_function",
             "variable": "$x",
@@ -182,21 +89,18 @@
             "policy": "$policy"
           },
           "outputs": {
-            "skill_choice": "choice",
-            "parametric": "parametric"
+            "interval_cases": "cases",
+            "has_cases": "has_cases"
           },
           "options": [
             {
-              "id": "quadratic"
+              "id": "direct"
             },
             {
-              "id": "linear"
-            },
-            {
-              "id": "reciprocal"
+              "id": "classified"
             }
           ],
-          "order": -1,
+          "order": 0,
           "depends_on": [
             "domain",
             "interval_function",
@@ -208,80 +112,56 @@
       ],
       "display_units": [
         {
-          "id": "endpoint_bounds",
-          "after": "endpoints",
-          "template": "endpoint_bounds",
+          "id": "interval_cases",
+          "after": "plan",
+          "template": "interval_cases",
           "bindings": {
             "before": [
               "$interval_function"
             ],
             "after": [],
-            "range": "$endpoint_range",
-            "function": "$interval_function",
-            "x": "$x",
-            "domain": "$domain"
+            "cases": "$interval_cases",
+            "parameter": "$parameter"
           },
           "depends_on": [
-            "domain",
-            "endpoint_range",
+            "interval_cases",
             "interval_function",
-            "x"
+            "parameter"
           ],
           "guard": {
-            "all": [
-              {
-                "ref": "skill_choice",
-                "equals": "quadratic"
-              },
-              {
-                "ref": "parametric",
-                "equals": true
-              }
-            ]
-          }
-        },
-        {
-          "id": "numeric_range",
-          "after": "numeric",
-          "template": "numeric_range",
-          "bindings": {
-            "before": [
-              "$interval_function"
-            ],
-            "after": [
-              "$numeric_range.set"
-            ],
-            "range": "$numeric_range",
-            "function": "$interval_function",
-            "x": "$x",
-            "domain": "$domain"
-          },
-          "depends_on": [
-            "domain",
-            "interval_function",
-            "numeric_range",
-            "x"
-          ],
-          "guard": {
-            "all": [
-              {
-                "ref": "skill_choice",
-                "equals": "quadratic"
-              },
-              {
-                "ref": "parametric",
-                "equals": false
-              }
-            ]
+            "ref": "has_cases",
+            "equals": true
           }
         }
       ],
-      "merges": [
-        {
-          "id": "range_result",
-          "order": 4,
-          "branches": [
+      "cases": {
+        "source": "interval_cases",
+        "binding": "case",
+        "through": "conditions",
+        "collect": "interval_case_results",
+        "outputs": {
+          "solution": "$case_solution"
+        },
+        "entry": {
+          "calls": [
             {
+              "id": "endpoints",
+              "capability": "endpoint_values_extremum",
+              "public_ref": "quadratic-interval-extremum",
+              "inputs": {
+                "expression": "$interval_function",
+                "variable": "$x",
+                "parameter": "$parameter",
+                "domain": "$domain",
+                "policy": "$policy"
+              },
+              "outputs": {
+                "endpoint_range": "range",
+                "endpoint_values": "endpoint_values"
+              },
+              "order": 0,
+              "rule_ref": "rule-interval-skill",
+              "branch": "quadratic",
               "guard": {
                 "all": [
                   {
@@ -289,16 +169,213 @@
                     "equals": "quadratic"
                   },
                   {
-                    "ref": "parametric",
-                    "equals": true
+                    "ref": "interval_mode",
+                    "equals": "endpoint"
                   }
                 ]
               },
+              "skip_reason": "not_selected"
+            },
+            {
+              "id": "numeric",
+              "capability": "quadratic_interval_range",
+              "public_ref": "quadratic-interval-extremum",
+              "inputs": {
+                "expression": "$interval_function",
+                "variable": "$x",
+                "domain": "$domain"
+              },
+              "outputs": {
+                "numeric_range": "range"
+              },
+              "order": 1,
+              "rule_ref": "rule-interval-skill",
+              "branch": "quadratic",
+              "guard": {
+                "all": [
+                  {
+                    "ref": "skill_choice",
+                    "equals": "quadratic"
+                  },
+                  {
+                    "ref": "interval_mode",
+                    "equals": "numeric"
+                  }
+                ]
+              },
+              "skip_reason": "not_selected"
+            },
+            {
+              "id": "linear",
+              "capability": "linear_range",
+              "public_ref": "skill-linear-range",
+              "inputs": {
+                "expression": "$case_expression",
+                "variable": "$x",
+                "domain": "$domain"
+              },
+              "outputs": {
+                "linear_range": "range"
+              },
+              "order": 2,
+              "rule_ref": "rule-interval-skill",
+              "branch": "linear",
+              "guard": {
+                "all": [
+                  {
+                    "ref": "skill_choice",
+                    "equals": "linear"
+                  },
+                  {
+                    "ref": "interval_mode",
+                    "equals": "linear"
+                  }
+                ]
+              },
+              "skip_reason": "not_selected"
+            },
+            {
+              "id": "reciprocal",
+              "capability": "reciprocal_range",
+              "public_ref": "skill-reciprocal-range",
+              "inputs": {},
+              "outputs": {},
+              "order": 3,
+              "rule_ref": "rule-interval-skill",
+              "branch": "reciprocal",
+              "guard": {
+                "ref": "skill_choice",
+                "equals": "reciprocal"
+              },
+              "skip_reason": "not_selected"
+            },
+            {
+              "id": "classified",
+              "capability": "parametric_interval_extremum",
+              "public_ref": "quadratic-interval-extremum",
+              "inputs": {
+                "expression": "$interval_function",
+                "variable": "$x",
+                "parameter": "$parameter",
+                "domain": "$domain",
+                "policy": "$policy",
+                "case": "$case"
+              },
+              "outputs": {
+                "classified_range": "range",
+                "case_vertex": "vertex",
+                "case_coefficient": "coefficient"
+              },
+              "order": 4,
+              "rule_ref": "rule-interval-skill",
+              "branch": "quadratic",
+              "guard": {
+                "all": [
+                  {
+                    "ref": "skill_choice",
+                    "equals": "quadratic"
+                  },
+                  {
+                    "ref": "interval_mode",
+                    "equals": "classified"
+                  }
+                ]
+              },
+              "skip_reason": "not_selected"
+            }
+          ],
+          "judgments": [
+            {
+              "id": "skill",
+              "function": "interval_case_skill",
+              "rule_ref": "rule-interval-skill",
+              "inputs": {
+                "expression": "$interval_function",
+                "variable": "$x",
+                "parameter": "$parameter",
+                "case": "$case"
+              },
+              "outputs": {
+                "skill_choice": "choice",
+                "interval_mode": "mode",
+                "case_expression": "expression"
+              },
+              "options": [
+                {
+                  "id": "quadratic"
+                },
+                {
+                  "id": "linear"
+                },
+                {
+                  "id": "reciprocal"
+                }
+              ],
+              "order": -1,
+              "depends_on": [
+                "case",
+                "interval_function",
+                "parameter",
+                "x"
+              ]
+            }
+          ],
+          "display_units": [
+            {
+              "id": "endpoint_bounds",
+              "after": "endpoints",
+              "template": "endpoint_bounds",
               "bindings": {
-                "function_range": "$endpoint_range"
+                "before": [
+                  "$interval_function"
+                ],
+                "after": [],
+                "range": "$endpoint_range",
+                "function": "$interval_function",
+                "x": "$x",
+                "domain": "$domain"
+              },
+              "depends_on": [
+                "domain",
+                "endpoint_range",
+                "interval_function",
+                "x"
+              ],
+              "guard": {
+                "all": [
+                  {
+                    "ref": "skill_choice",
+                    "equals": "quadratic"
+                  },
+                  {
+                    "ref": "interval_mode",
+                    "equals": "endpoint"
+                  }
+                ]
               }
             },
             {
+              "id": "numeric_range",
+              "after": "numeric",
+              "template": "numeric_range",
+              "bindings": {
+                "before": [
+                  "$interval_function"
+                ],
+                "after": [
+                  "$numeric_range.set"
+                ],
+                "range": "$numeric_range",
+                "function": "$interval_function",
+                "x": "$x",
+                "domain": "$domain"
+              },
+              "depends_on": [
+                "domain",
+                "interval_function",
+                "numeric_range",
+                "x"
+              ],
               "guard": {
                 "all": [
                   {
@@ -306,18 +383,167 @@
                     "equals": "quadratic"
                   },
                   {
-                    "ref": "parametric",
-                    "equals": false
+                    "ref": "interval_mode",
+                    "equals": "numeric"
                   }
                 ]
-              },
+              }
+            },
+            {
+              "id": "classified_range",
+              "after": "classified",
+              "template": "classified_range",
               "bindings": {
-                "function_range": "$numeric_range"
+                "before": [
+                  "$interval_function"
+                ],
+                "after": [],
+                "range": "$classified_range",
+                "condition": "$case.condition",
+                "vertex": "$case_vertex",
+                "coefficient": "$case_coefficient",
+                "x": "$x",
+                "domain": "$domain"
+              },
+              "depends_on": [
+                "case",
+                "case_coefficient",
+                "case_vertex",
+                "classified_range",
+                "domain",
+                "interval_function",
+                "x"
+              ],
+              "guard": {
+                "all": [
+                  {
+                    "ref": "skill_choice",
+                    "equals": "quadratic"
+                  },
+                  {
+                    "ref": "interval_mode",
+                    "equals": "classified"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "linear_range",
+              "after": "linear",
+              "template": "case_linear_range",
+              "bindings": {
+                "before": [
+                  "$case_expression"
+                ],
+                "after": [
+                  "$linear_range.set"
+                ],
+                "range": "$linear_range",
+                "condition": "$case.condition",
+                "kind": "$case.kind",
+                "domain": "$domain",
+                "x": "$x"
+              },
+              "depends_on": [
+                "case",
+                "case_expression",
+                "domain",
+                "linear_range",
+                "x"
+              ],
+              "guard": {
+                "all": [
+                  {
+                    "ref": "skill_choice",
+                    "equals": "linear"
+                  },
+                  {
+                    "ref": "interval_mode",
+                    "equals": "linear"
+                  }
+                ]
               }
             }
-          ]
+          ],
+          "merges": [
+            {
+              "id": "range_result",
+              "order": 5,
+              "branches": [
+                {
+                  "guard": {
+                    "all": [
+                      {
+                        "ref": "skill_choice",
+                        "equals": "quadratic"
+                      },
+                      {
+                        "ref": "interval_mode",
+                        "equals": "endpoint"
+                      }
+                    ]
+                  },
+                  "bindings": {
+                    "function_range": "$endpoint_range"
+                  }
+                },
+                {
+                  "guard": {
+                    "all": [
+                      {
+                        "ref": "skill_choice",
+                        "equals": "quadratic"
+                      },
+                      {
+                        "ref": "interval_mode",
+                        "equals": "numeric"
+                      }
+                    ]
+                  },
+                  "bindings": {
+                    "function_range": "$numeric_range"
+                  }
+                },
+                {
+                  "guard": {
+                    "all": [
+                      {
+                        "ref": "skill_choice",
+                        "equals": "quadratic"
+                      },
+                      {
+                        "ref": "interval_mode",
+                        "equals": "classified"
+                      }
+                    ]
+                  },
+                  "bindings": {
+                    "function_range": "$classified_range"
+                  }
+                },
+                {
+                  "guard": {
+                    "all": [
+                      {
+                        "ref": "skill_choice",
+                        "equals": "linear"
+                      },
+                      {
+                        "ref": "interval_mode",
+                        "equals": "linear"
+                      }
+                    ]
+                  },
+                  "bindings": {
+                    "function_range": "$linear_range"
+                  }
+                }
+              ]
+            }
+          ],
+          "id": "select"
         }
-      ]
+      }
     },
     {
       "id": "conditions",
@@ -339,15 +565,16 @@
         },
         {
           "id": "solve",
-          "capability": "solve_conditions",
+          "capability": "solve_interval_conditions",
           "public_ref": "skill-inequality-transform",
           "inputs": {
             "conditions": "$conditions",
             "combiner": "$combiner",
-            "variable": "$parameter"
+            "variable": "$parameter",
+            "case_domain": "$case.domain"
           },
           "outputs": {
-            "candidate_set": "solution",
+            "case_solution": "solution",
             "condition_sets": "solutions"
           },
           "order": 1
@@ -362,14 +589,14 @@
           "bindings": {
             "before": [],
             "after": [
-              "$candidate_set"
+              "$case_solution"
             ],
             "conditions": "$conditions",
             "combiner": "$combiner",
             "solutions": "$condition_sets"
           },
           "depends_on": [
-            "candidate_set",
+            "case_solution",
             "combiner",
             "condition_sets",
             "conditions"
@@ -379,9 +606,47 @@
     },
     {
       "id": "verify",
-      "calls": [],
       "judgments": [],
-      "display_units": []
+      "calls": [
+        {
+          "id": "merge",
+          "capability": "merge_interval_cases",
+          "public_ref": null,
+          "inputs": {
+            "cases": "$interval_cases",
+            "results": "$interval_case_results"
+          },
+          "outputs": {
+            "candidate_set": "solution",
+            "case_solutions": "case_solutions"
+          },
+          "order": 0
+        }
+      ],
+      "display_units": [
+        {
+          "id": "interval_merge",
+          "after": "merge",
+          "template": "interval_merge",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$candidate_set"
+            ],
+            "cases": "$interval_cases",
+            "solutions": "$case_solutions"
+          },
+          "depends_on": [
+            "candidate_set",
+            "case_solutions",
+            "interval_cases"
+          ],
+          "guard": {
+            "ref": "has_cases",
+            "equals": true
+          }
+        }
+      ]
     }
   ],
   "outputs": {

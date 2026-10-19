@@ -157,6 +157,28 @@
             "ref": "applied_separation.transformation",
             "equals": "move_terms"
           }
+        },
+        {
+          "id": "negative_divided",
+          "after": "inequality",
+          "template": "negative_divided",
+          "bindings": {
+            "before": [
+              "$relation"
+            ],
+            "after": [
+              "$applied_separation.separated_relation"
+            ],
+            "divisor": "$applied_separation.divisor"
+          },
+          "depends_on": [
+            "applied_separation",
+            "relation"
+          ],
+          "guard": {
+            "ref": "applied_separation.transformation",
+            "equals": "negative_division"
+          }
         }
       ],
       "merges": [
@@ -259,8 +281,14 @@
           "id": "linear",
           "capability": "linear_range",
           "public_ref": "skill-linear-range",
-          "inputs": {},
-          "outputs": {},
+          "inputs": {
+            "expression": "$function",
+            "variable": "$x",
+            "domain": "$domain"
+          },
+          "outputs": {
+            "linear_range": "range"
+          },
           "guard": {
             "ref": "range_choice",
             "equals": "linear"
@@ -278,7 +306,9 @@
             "domain": "$domain"
           },
           "outputs": {
-            "reciprocal_range": "range"
+            "reciprocal_range": "range",
+            "reciprocal_points": "critical_points",
+            "reciprocal_endpoints": "endpoint_values"
           },
           "guard": {
             "ref": "range_choice",
@@ -308,6 +338,45 @@
             "equals": "square"
           },
           "skip_reason": "not_selected"
+        },
+        {
+          "id": "denominator",
+          "capability": "quadratic_interval_range",
+          "public_ref": "quadratic-interval-extremum",
+          "inputs": {
+            "expression": "$denominator",
+            "variable": "$x",
+            "domain": "$domain"
+          },
+          "outputs": {
+            "denominator_range": "range",
+            "denominator_points": "critical_points",
+            "denominator_endpoints": "endpoint_values"
+          },
+          "guard": {
+            "ref": "range_choice",
+            "equals": "inverse"
+          },
+          "skip_reason": "not_selected",
+          "order": 4
+        },
+        {
+          "id": "inverse",
+          "capability": "reciprocal_of_range",
+          "public_ref": "skill-inequality-transform",
+          "inputs": {
+            "range": "$denominator_range"
+          },
+          "outputs": {
+            "inverse_range": "range",
+            "inverse_sign": "sign"
+          },
+          "guard": {
+            "ref": "range_choice",
+            "equals": "inverse"
+          },
+          "skip_reason": "not_selected",
+          "order": 5
         }
       ],
       "judgments": [
@@ -320,7 +389,8 @@
             "domain": "$domain"
           },
           "outputs": {
-            "range_choice": "choice"
+            "range_choice": "choice",
+            "denominator": "denominator"
           },
           "options": [
             {
@@ -334,6 +404,9 @@
             },
             {
               "id": "reciprocal"
+            },
+            {
+              "id": "inverse"
             }
           ],
           "order": -1,
@@ -405,7 +478,7 @@
         {
           "id": "reciprocal_range",
           "after": "reciprocal",
-          "template": "numeric_range",
+          "template": "range_evidence",
           "bindings": {
             "before": [
               "$function"
@@ -416,11 +489,15 @@
             "range": "$reciprocal_range",
             "domain": "$domain",
             "function": "$function",
-            "x": "$x"
+            "x": "$x",
+            "points": "$reciprocal_points",
+            "endpoints": "$reciprocal_endpoints"
           },
           "depends_on": [
             "domain",
             "function",
+            "reciprocal_endpoints",
+            "reciprocal_points",
             "reciprocal_range",
             "x"
           ],
@@ -428,12 +505,93 @@
             "ref": "range_choice",
             "equals": "reciprocal"
           }
+        },
+        {
+          "id": "linear_range",
+          "after": "linear",
+          "template": "numeric_range",
+          "bindings": {
+            "before": [
+              "$function"
+            ],
+            "after": [
+              "$linear_range.set"
+            ],
+            "range": "$linear_range",
+            "domain": "$domain",
+            "function": "$function",
+            "x": "$x"
+          },
+          "depends_on": [
+            "domain",
+            "function",
+            "linear_range",
+            "x"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "linear"
+          }
+        },
+        {
+          "id": "denominator_range",
+          "after": "denominator",
+          "template": "range_evidence",
+          "bindings": {
+            "before": [
+              "$denominator"
+            ],
+            "after": [
+              "$denominator_range.set"
+            ],
+            "range": "$denominator_range",
+            "domain": "$domain",
+            "function": "$denominator",
+            "x": "$x",
+            "points": "$denominator_points",
+            "endpoints": "$denominator_endpoints"
+          },
+          "depends_on": [
+            "denominator",
+            "denominator_endpoints",
+            "denominator_points",
+            "denominator_range",
+            "domain",
+            "x"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "inverse"
+          }
+        },
+        {
+          "id": "inverse_range",
+          "after": "inverse",
+          "template": "inverse_range",
+          "bindings": {
+            "before": [
+              "$denominator_range.set"
+            ],
+            "after": [
+              "$inverse_range.set"
+            ],
+            "sign": "$inverse_sign"
+          },
+          "depends_on": [
+            "denominator_range",
+            "inverse_range",
+            "inverse_sign"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "inverse"
+          }
         }
       ],
       "merges": [
         {
           "id": "range_result",
-          "order": 4,
+          "order": 6,
           "branches": [
             {
               "guard": {
@@ -460,6 +618,24 @@
               },
               "bindings": {
                 "function_range": "$reciprocal_range"
+              }
+            },
+            {
+              "guard": {
+                "ref": "range_choice",
+                "equals": "linear"
+              },
+              "bindings": {
+                "function_range": "$linear_range"
+              }
+            },
+            {
+              "guard": {
+                "ref": "range_choice",
+                "equals": "inverse"
+              },
+              "bindings": {
+                "function_range": "$inverse_range"
               }
             }
           ]

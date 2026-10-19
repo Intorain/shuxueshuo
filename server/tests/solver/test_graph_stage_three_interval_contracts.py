@@ -10,7 +10,7 @@ from shuxueshuo_server.graph_lesson.stage_three import execution_contracts
 def test_interval_rule_public_calls_have_explicit_branch_sources():
     contract = execution_contracts.read("method-interval-extremum")
     execution_contracts.validate_contract(contract)
-    select = contract["steps"][1]
+    select = contract["steps"][1]["cases"]["entry"]
     targets = {row["id"]: row["target"] for row in
                execution_contracts.load_nodes()["rule-interval-skill"]["branches"]}
     assert {call["branch"] for call in select["calls"]} == set(targets)
@@ -23,7 +23,7 @@ def test_interval_rule_public_calls_have_explicit_branch_sources():
                                      "no_guard", "wrong_guard", "missing_option"])
 def test_interval_rule_rejects_unproven_or_invented_public_calls(mutation):
     contract = execution_contracts.read("method-interval-extremum")
-    select = contract["steps"][1]
+    select = contract["steps"][1]["cases"]["entry"]
     call = select["calls"][0]
     if mutation == "missing_rule":
         del call["rule_ref"]
@@ -34,7 +34,7 @@ def test_interval_rule_rejects_unproven_or_invented_public_calls(mutation):
     elif mutation == "no_guard":
         del call["guard"]
     elif mutation == "wrong_guard":
-        call["guard"] = {"ref": "parametric", "equals": True}
+        call["guard"] = {"ref": "interval_mode", "equals": "endpoint"}
     else:
         select["judgments"][0]["options"].pop()
     with pytest.raises(ValueError, match="execution\\."):
@@ -88,3 +88,14 @@ def test_new_selection_route_requires_a_boundary_without_another_method_list(mon
     monkeypatch.setattr(execution_contracts, "DATA", tmp_path)
     with pytest.raises(ValueError, match="execution\\.missing_boundary_step:quadratic-inequality-solve"):
         execution_contracts.load_contracts()
+
+
+def test_case_entry_can_own_the_public_calls_but_cannot_omit_a_branch():
+    contract = execution_contracts.read("method-interval-extremum")
+    select = contract["steps"][1]
+    assert select["calls"] == []
+    execution_contracts.validate_contract(contract)
+    entry = select["cases"]["entry"]
+    entry["calls"] = [call for call in entry["calls"] if call["branch"] != "reciprocal"]
+    with pytest.raises(ValueError, match="execution\\.missing_public_call"):
+        execution_contracts.validate_contract(contract)

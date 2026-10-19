@@ -170,6 +170,8 @@ def create_search_router(root, *, stage_three_hooks=None):
                 judging.discard(search_id)
 
     def lesson(search_id, directory, result):
+        if stage_three.pending_retry(directory) is not None:
+            return {"status": "running", "execution_status": "starting", "stream": None}
         attempt = stage_three.latest_attempt(directory)
         stage_two = (stage_three.read(attempt / stage_three.RESULT)
                      if attempt is not None and (attempt / stage_three.RESULT).is_file() else None)
@@ -202,8 +204,20 @@ def create_search_router(root, *, stage_three_hooks=None):
                 lease = stage_three.acquire_problem(directory)
             except stage_three.LessonBusy as exc:
                 raise HTTPException(409, str(exc)) from exc
+            try:
+                stage_three.reserve_retry(directory)
+            except BaseException:
+                stage_three.release_problem(lease)
+                raise
             judging.add(search_id)
-        runs.submit(judge, search_id, directory, result, lease)
+            lesson_errors.pop(search_id, None)
+        try:
+            runs.submit(judge, search_id, directory, result, lease)
+        except BaseException:
+            with errors_lock:
+                judging.discard(search_id)
+            stage_three.release_problem(lease)
+            raise
         return {"status": "running"}
 
     def queue_execution(search_id, directory, operation, *, validate=None):

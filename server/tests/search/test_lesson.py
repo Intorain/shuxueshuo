@@ -202,10 +202,11 @@ def start(client, monkeypatch, case):
                                                      "box": page["regions"][0]["box"]}).json()["search_id"]
 
 
-def wait(client, sid):
-    # Stage two now starts stage three automatically, including both Q10
-    # targets. Use the same bounded wait as the stage-three API tests.
-    deadline = time.monotonic() + 30
+def wait(client, sid, *, timeout_seconds=30):
+    # Wait for the background execution to finish before fixtures are torn down.
+    # This wall-clock allowance includes worker startup and persisted exports;
+    # the per-route calculation and verification budgets remain unchanged.
+    deadline = time.monotonic() + timeout_seconds
     status = None
     while time.monotonic() < deadline:
         status = client.get(f"/api/search/problems/{sid}").json()
@@ -219,7 +220,8 @@ def wait(client, sid):
 
 def test_status_carries_the_lesson_after_stage_two(client, monkeypatch, tmp_path):
     sid = start(client, monkeypatch, "q10")
-    status = wait(client, sid)
+    # Both goals now execute three routes, including the classified interval path.
+    status = wait(client, sid, timeout_seconds=90)
     assert status["outcome"] == "ok" and status["lesson"]["status"] == "completed"
     assert [g["label"] for g in status["lesson"]["goals"]] == ["（1）", "（2）"]
     assert all(len(g["d1"]["rows"]) == 3 for g in status["lesson"]["goals"])

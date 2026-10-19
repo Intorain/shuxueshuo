@@ -5,7 +5,9 @@
       "normalize_to_zero",
       "transform_param_inequality",
       "separation_division",
-      "solve_conditions"
+      "solve_conditions",
+      "reciprocal_of_range",
+      "solve_interval_conditions"
     ],
     "skill-equality-transform": [
       "separation_division"
@@ -28,7 +30,8 @@
     ],
     "quadratic-interval-extremum": [
       "quadratic_interval_range",
-      "endpoint_values_extremum"
+      "endpoint_values_extremum",
+      "parametric_interval_extremum"
     ],
     "skill-linear-range": [
       "linear_range"
@@ -71,6 +74,9 @@
     ],
     "merge_cases": [
       "method-discriminant#merge"
+    ],
+    "merge_interval_cases": [
+      "method-interval-extremum#verify"
     ]
   }
 }

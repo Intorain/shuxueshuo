@@ -7,6 +7,7 @@ import pytest
 from shuxueshuo_server.graph_lesson.stage_three import (
     calculations,
     driver,
+    route_constraints,
     runner,
     trajectory,
     verification,
@@ -35,7 +36,8 @@ def test_route_parent_never_constructs_or_renders_symbolic_objects(tmp_path, mon
     for module, names in (
         (driver, ("create_state", "can_execute", "advance", "export_values", "append_endpoint")),
         (trajectory, ("encode_value", "decode_value")),
-        (verification, ("apply_visible_constraints", "verify", "endpoint_check", "math_value")),
+        (verification, ("verify", "endpoint_check", "math_value")),
+        (route_constraints, ("apply_visible_constraints",)),
         (calculations, ("finalize_goal_with_evidence", "verify_goal_answer", "append_goal_finalization", "consistency")),
     ):
         for name in names:

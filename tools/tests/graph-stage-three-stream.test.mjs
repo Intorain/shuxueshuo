@@ -9,7 +9,7 @@ const step = (ordinal = 1, targetRef = target) => ({
   contract: 'graph-math-step/v1', ...identity, target_ref: targetRef, route_id: route,
   step_id: `step-${ordinal}`, ordinal, math_step_sha256: `${targetRef}-${ordinal}-hash`, local_check: 'passed',
   title: ordinal === 1 ? '计算判别式' : '求参数范围',
-  before: [{expression: 'x^2+a', display: 'x^2+a'}], after: [{expression: 'a>=0', display: 'a≥0'}],
+  before: [{expression: 'x^2+a', latex: 'x^2+a'}], after: [{expression: 'a>=0', latex: 'a≥0'}],
   explanation: '根据二次函数性质计算。', premise_refs: ['/root/facts/0'], used_basis: ['skill-quadratic-sign'],
 });
 const event = (seq, type, payload, targetRef = target) => ({
@@ -56,6 +56,28 @@ test('committed first steps render while the route has no completion or QA', () 
   assert.equal(find('stage-three-qa')[0].hidden, true);
   assert.equal(view.consumer.last_seq, 2);
   assert.deepEqual(view.consumer.view().completions, []);
+});
+
+test('legacy saved math is adapted at read boundaries without touching decision.display or saved hashes', () => {
+  const legacy = step();
+  for (const value of [...legacy.before, ...legacy.after]) {
+    value.display = value.latex; delete value.latex;
+  }
+  const original = structuredClone(legacy);
+  const {container, find} = documentFixture();
+  const view = mountStageThreeStream(container, identity);
+  view.consumer.accept(mathEvent(1, legacy));
+  const current = view.consumer.view().math_steps[0];
+  assert.deepEqual(current.before, [{expression: 'x^2+a', latex: 'x^2+a'}]);
+  assert.equal(find('stage-three-before')[0].textContent, 'x^2+a');
+  assert.equal(current.math_step_sha256, legacy.math_step_sha256);
+  const decision = {expression: 'a', display: '<p>{expression}</p>'};
+  view.consumer.accept(event(2, 'lesson.chunk_ready', {kind: 'D1', chunk: {decision}}));
+  assert.deepEqual(view.consumer.view().selection_chunks[0].chunk.decision, decision);
+  view.consumer.hydrate({...identity, last_seq: 3, math_steps: [legacy], goals: {}, checkpoints: [], handoffs: [], qa: []});
+  assert.deepEqual(view.consumer.view().math_steps[0], current);
+  assert.deepEqual(legacy, original);
+  assert.equal(find('stage-three-math-step').length, 1);
 });
 
 test('failed mathematical rendering retries before publishing the DOM card', () => {

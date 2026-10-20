@@ -336,9 +336,12 @@ export function migrateStageTwoState(baseBundle, streamBundle, state) {
 }
 
 function sourceCalls(view, step) {
-  const checkpoint = view.checkpoints?.find(item => item.target_ref === step.target_ref && item.route_id === step.route_id);
   const trajectory = view.trajectories?.find(item => item.target_ref === step.target_ref && item.route_id === step.route_id);
-  const records = trajectory?.steps || checkpoint?.driver_state?.trajectory?.steps || [];
+  // Public v2 snapshots own a compact evidence view. Only legacy saved input
+  // falls back to execution checkpoints; never mix old and new source sets.
+  const legacy = !trajectory && view.checkpoints?.find(item => item.target_ref === step.target_ref && item.route_id === step.route_id)
+    ?.driver_state?.trajectory;
+  const records = trajectory?.steps || legacy?.steps || [];
   const calls = [];
   for (const source of step.source_refs || []) {
     const match = /^\/steps\/(\d+)\/calls\/(\d+)$/.exec(source);
@@ -349,7 +352,7 @@ function sourceCalls(view, step) {
     const record = match ? records.find(item => item.seq === Number(match[1]) + 1) : null;
     const call = match ? record?.calls?.[Number(match[2])]
       : trajectory?.finalization?.find(item => item.index === Number(final[1]))?.record ||
-        checkpoint?.driver_state?.trajectory?.finalization?.[Number(final[1])];
+        (!trajectory ? legacy?.finalization?.[Number(final[1])] : undefined);
     if (!Array.isArray(call?.postconditions) || !call.postconditions.length ||
         !call.postconditions.every(check => check.passed === true) ||
         JSON.stringify(record?.case_path || []) !== JSON.stringify(step.case_path || []) ||

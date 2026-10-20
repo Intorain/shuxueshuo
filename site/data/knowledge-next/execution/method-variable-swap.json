@@ -167,11 +167,11 @@
     },
     {
       "id": "range",
-      "calls": [
+      "calls": [],
+      "judgments": [
         {
-          "id": "linear",
-          "capability": "parameter_linear_range",
-          "public_ref": "skill-linear-range",
+          "id": "plan",
+          "function": "variable_case_plan",
           "inputs": {
             "expression": "$collected",
             "variable": "$x",
@@ -180,74 +180,187 @@
             "policy": "$policy"
           },
           "outputs": {
-            "function_range": "range",
-            "slope_sign": "slope_sign",
-            "endpoint_mode": "endpoint_mode",
-            "slope_certificate": "slope_certificate"
+            "variable_cases": "cases",
+            "has_cases": "has_cases"
           },
-          "order": 0
-        }
-      ],
-      "judgments": [
-        {
-          "id": "sign",
-          "function": "affine_slope_decision",
-          "inputs": {
-            "certificate": "$slope_certificate"
-          },
-          "outputs": {},
           "options": [
             {
-              "id": "positive"
+              "id": "direct"
             },
             {
-              "id": "negative"
-            },
-            {
-              "id": "zero"
-            },
-            {
-              "id": "unknown"
+              "id": "classified"
             }
           ],
-          "order": 1,
+          "order": 0,
           "depends_on": [
-            "slope_certificate"
+            "collected",
+            "domain",
+            "parameter",
+            "policy",
+            "x"
           ]
         }
       ],
       "display_units": [
         {
-          "id": "range",
-          "after": "sign",
-          "template": "variable_range",
+          "id": "variable_cases",
+          "after": "plan",
+          "template": "variable_cases",
           "bindings": {
             "before": [
               "$collected"
             ],
             "after": [],
-            "x": "$x",
+            "cases": "$variable_cases",
             "parameter": "$parameter",
-            "domain": "$domain",
-            "slope": "$slope",
-            "slope_sign": "$slope_sign",
-            "endpoint_mode": "$endpoint_mode",
-            "range": "$function_range",
-            "slope_certificate": "$slope_certificate"
+            "slope": "$slope"
           },
           "depends_on": [
             "collected",
-            "domain",
-            "endpoint_mode",
-            "function_range",
             "parameter",
             "slope",
-            "slope_sign",
-            "x",
-            "slope_certificate"
+            "variable_cases"
+          ],
+          "guard": {
+            "ref": "has_cases",
+            "equals": true
+          }
+        }
+      ],
+      "cases": {
+        "source": "variable_cases",
+        "binding": "case",
+        "through": "solve",
+        "collect": "variable_case_results",
+        "outputs": {
+          "solution": "$case_solution"
+        },
+        "entry": {
+          "id": "range",
+          "calls": [
+            {
+              "id": "linear",
+              "capability": "parameter_linear_case_range",
+              "public_ref": "skill-linear-range",
+              "inputs": {
+                "expression": "$collected",
+                "variable": "$x",
+                "parameter": "$parameter",
+                "domain": "$domain",
+                "policy": "$policy",
+                "case": "$case"
+              },
+              "outputs": {
+                "function_range": "range",
+                "slope_sign": "slope_sign",
+                "endpoint_mode": "endpoint_mode",
+                "slope_certificate": "slope_certificate"
+              },
+              "order": 0
+            }
+          ],
+          "judgments": [
+            {
+              "id": "sign",
+              "function": "affine_slope_decision",
+              "inputs": {
+                "certificate": "$slope_certificate"
+              },
+              "outputs": {},
+              "options": [
+                {
+                  "id": "positive"
+                },
+                {
+                  "id": "negative"
+                },
+                {
+                  "id": "zero"
+                },
+                {
+                  "id": "unknown"
+                }
+              ],
+              "order": 1,
+              "depends_on": [
+                "slope_certificate"
+              ]
+            }
+          ],
+          "display_units": [
+            {
+              "id": "range",
+              "after": "sign",
+              "template": "variable_range",
+              "bindings": {
+                "before": [
+                  "$collected"
+                ],
+                "after": [],
+                "x": "$x",
+                "parameter": "$parameter",
+                "domain": "$domain",
+                "slope": "$slope",
+                "slope_sign": "$slope_sign",
+                "endpoint_mode": "$endpoint_mode",
+                "range": "$function_range",
+                "slope_certificate": "$slope_certificate"
+              },
+              "depends_on": [
+                "collected",
+                "domain",
+                "endpoint_mode",
+                "function_range",
+                "parameter",
+                "slope",
+                "slope_sign",
+                "x",
+                "slope_certificate"
+              ],
+              "guard": {
+                "ref": "has_cases",
+                "equals": false
+              }
+            },
+            {
+              "id": "case_range",
+              "after": "sign",
+              "template": "variable_case_range",
+              "bindings": {
+                "before": [
+                  "$collected"
+                ],
+                "after": [],
+                "x": "$x",
+                "parameter": "$parameter",
+                "domain": "$domain",
+                "slope": "$slope",
+                "slope_sign": "$slope_sign",
+                "endpoint_mode": "$endpoint_mode",
+                "range": "$function_range",
+                "slope_certificate": "$slope_certificate",
+                "condition": "$case.condition"
+              },
+              "depends_on": [
+                "case",
+                "collected",
+                "domain",
+                "endpoint_mode",
+                "function_range",
+                "parameter",
+                "slope",
+                "slope_certificate",
+                "slope_sign",
+                "x"
+              ],
+              "guard": {
+                "ref": "has_cases",
+                "equals": true
+              }
+            }
           ]
         }
-      ]
+      }
     },
     {
       "id": "solve",
@@ -368,6 +481,19 @@
             "condition_sets": "solutions"
           },
           "order": 9
+        },
+        {
+          "id": "intersect",
+          "capability": "intersect_variable_case_solution",
+          "public_ref": null,
+          "inputs": {
+            "solution": "$candidate_set",
+            "case": "$case"
+          },
+          "outputs": {
+            "case_solution": "solution"
+          },
+          "order": 10
         }
       ],
       "judgments": [
@@ -403,12 +529,12 @@
       "display_units": [
         {
           "id": "solution",
-          "after": "combine",
+          "after": "intersect",
           "template": "variable_conditions",
           "bindings": {
             "before": [],
             "after": [
-              "$candidate_set"
+              "$case_solution"
             ],
             "conditions": "$conditions",
             "normalized": "$normalized_conditions",
@@ -417,13 +543,47 @@
             "parameter": "$parameter"
           },
           "depends_on": [
-            "candidate_set",
+            "case_solution",
             "combiner",
             "condition_sets",
             "conditions",
             "normalized_conditions",
             "parameter"
-          ]
+          ],
+          "guard": {
+            "ref": "has_cases",
+            "equals": false
+          }
+        },
+        {
+          "id": "case_solution",
+          "after": "intersect",
+          "template": "variable_case_conditions",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$case_solution"
+            ],
+            "conditions": "$conditions",
+            "normalized": "$normalized_conditions",
+            "combiner": "$combiner",
+            "solutions": "$condition_sets",
+            "parameter": "$parameter",
+            "condition": "$case.condition"
+          },
+          "depends_on": [
+            "case",
+            "case_solution",
+            "combiner",
+            "condition_sets",
+            "conditions",
+            "normalized_conditions",
+            "parameter"
+          ],
+          "guard": {
+            "ref": "has_cases",
+            "equals": true
+          }
         }
       ],
       "merges": [
@@ -485,6 +645,52 @@
           ]
         }
       ]
+    },
+    {
+      "id": "merge",
+      "calls": [
+        {
+          "id": "union",
+          "capability": "merge_variable_cases",
+          "public_ref": null,
+          "inputs": {
+            "cases": "$variable_cases",
+            "results": "$variable_case_results"
+          },
+          "outputs": {
+            "candidate_set": "solution",
+            "case_solutions": "case_solutions"
+          },
+          "order": 0
+        }
+      ],
+      "judgments": [],
+      "display_units": [
+        {
+          "id": "case_union",
+          "after": "union",
+          "template": "variable_case_merge",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$candidate_set"
+            ],
+            "cases": "$variable_cases",
+            "solutions": "$case_solutions",
+            "parameter": "$parameter"
+          },
+          "depends_on": [
+            "candidate_set",
+            "case_solutions",
+            "parameter",
+            "variable_cases"
+          ],
+          "guard": {
+            "ref": "has_cases",
+            "equals": true
+          }
+        }
+      ]
     }
   ],
   "outputs": {
@@ -500,5 +706,49 @@
     "execution_error": {
       "status": "execution_error"
     }
+  },
+  "admission": {
+    "bindings": {
+      "interval_function": {
+        "resolver": "interval_function"
+      },
+      "interval_operator": {
+        "resolver": "interval_operator"
+      },
+      "x": {
+        "resolver": "bound_variable"
+      },
+      "parameter": {
+        "resolver": "parameter"
+      },
+      "domain": {
+        "resolver": "domain"
+      },
+      "quantifier": {
+        "resolver": "quantifier"
+      },
+      "zero": {
+        "resolver": "zero"
+      }
+    },
+    "checks": [
+      {
+        "function": "quantifier",
+        "inputs": {
+          "quantifier": "$quantifier"
+        }
+      },
+      {
+        "function": "linear_parameter_range",
+        "inputs": {
+          "expression": "$interval_function",
+          "variable": "$x",
+          "parameter": "$parameter",
+          "domain": "$domain",
+          "quantifier": "$quantifier",
+          "operator": "$interval_operator"
+        }
+      }
+    ]
   }
 }

@@ -281,7 +281,8 @@
             "conflict",
             "execution_error",
             "unsupported_type",
-            "skipped"
+            "skipped",
+            "capability_gap"
           ]
         },
         "selection": {
@@ -700,10 +701,12 @@
       ],
       "properties": {
         "expression": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "latex": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "exact": {
           "type": "object"

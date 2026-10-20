@@ -9,7 +9,32 @@ const stepKey = step => JSON.stringify([step.target_ref, step.route_id, step.ste
 const unavailable = goal => Boolean(goal && (goal.status === 'conflict' || goal.available === false || goal.reason === 'route_consistency_undecidable'));
 const methodNames = {discriminant: '判别式法', extremum: '分离参数法', interval: '区间最值法', variable: '更换主元法'};
 const stoppedLabels = {capability_gap: '暂时无法继续这一步', math_failed: '这条解法未通过数学检查', execution_error: '计算遇到问题'};
-const expressionText = value => typeof value === 'string' ? value : value?.latex || value?.display || value?.expression || '';
+const expressionText = value => typeof value === 'string' ? value : value?.latex || '';
+const pick = (value, fields) => Object.fromEntries(fields.filter(key => Object.hasOwn(value, key)).map(key => [key, copy(value[key])]));
+const routeSummary = value => pick(value, ['target_ref', 'route_id', 'status', 'phase', 'commit_id', 'last_seq']);
+
+// Normalize legacy/full event records and compact snapshots to the same public
+// evidence. Array positions remain the source_refs identities of checked calls.
+function sourceEvidence(value) {
+  const result = pick(value, ['public_ref', 'rule_ref', 'branch', 'used_basis', 'case_path']);
+  if (Object.hasOwn(value, 'postconditions')) result.postconditions = Array.isArray(value.postconditions)
+    ? value.postconditions.map(check => check && typeof check === 'object' ? pick(check, ['passed']) : {}) : [];
+  return result;
+}
+
+function trajectoryEvidence(value) {
+  return {...pick(value, ['seq', 'method', 'step', 'case_path']), calls: (value.calls || []).map(sourceEvidence)};
+}
+
+/** Adapt saved legacy math values once at the stream read boundary. */
+function readMathValues(value) {
+  if (Array.isArray(value)) return value.map(readMathValues);
+  if (!value || typeof value !== 'object') return value;
+  const legacy = typeof value.expression === 'string' && typeof value.display === 'string'
+    && Object.keys(value).every(key => ['expression', 'display', 'exact'].includes(key));
+  return Object.fromEntries(Object.entries(value).map(([key, child]) =>
+    [legacy && key === 'display' ? 'latex' : key, key === 'decision' ? copy(child) : readMathValues(child)]));
+}
 
 function answerSummary(answer) {
   if (answer.kind === 'find_range' && answer.status === 'set') {
@@ -85,16 +110,16 @@ export function createEventConsumer(identity, hooks = {}) {
 
   function acceptTrajectory(target, route, values, finalization = []) {
     const key = routeKey(target, route), rows = trajectories.get(key) || new Map();
-    for (const value of values || []) rows.set(value.seq, copy(value));
+    for (const value of values || []) rows.set(value.seq, trajectoryEvidence(value));
     trajectories.set(key, rows);
     const operations = finalizations.get(key) || new Map();
     for (const value of finalization) {
       if (!Number.isInteger(value.index) || value.index < 0 || !value.record || typeof value.record !== 'object') {
         throw new Error('stream.invalid_finalization_source');
       }
-      const previous = operations.get(value.index);
-      if (previous && JSON.stringify(previous) !== JSON.stringify(value.record)) throw new Error('stream.immutable_finalization_source');
-      operations.set(value.index, copy(value.record));
+      const record = sourceEvidence(value.record), previous = operations.get(value.index);
+      if (previous && JSON.stringify(previous) !== JSON.stringify(record)) throw new Error('stream.immutable_finalization_source');
+      operations.set(value.index, record);
     }
     finalizations.set(key, operations);
   }
@@ -135,6 +160,7 @@ export function createEventConsumer(identity, hooks = {}) {
   }
 
   function accept(event) {
+    event = readMathValues(event);
     if (!matches(event) || event.stream_id !== run.stream_id) return {ignored: 'different_run', last_seq: lastSeq};
     if (!Number.isInteger(event.seq) || event.seq < 1 || typeof event.event_id !== 'string' || !event.event_id) throw new Error('stream.invalid_event');
     if (event.seq <= lastSeq) {
@@ -156,6 +182,7 @@ export function createEventConsumer(identity, hooks = {}) {
   }
 
   function hydrate(snapshot) {
+    snapshot = readMathValues(snapshot);
     if (!matches(snapshot) || snapshot.stream_id !== run.stream_id) throw new Error('stream.snapshot_identity_mismatch');
     if (!Number.isInteger(snapshot.last_seq) || snapshot.last_seq < lastSeq) throw new Error('stream.stale_snapshot');
     const available = new Map((snapshot.math_steps || []).map(step => [stepKey(step), step]));
@@ -164,11 +191,18 @@ export function createEventConsumer(identity, hooks = {}) {
     }
     goals.clear();
     for (const [target, value] of Object.entries(snapshot.goals || {})) goals.set(target, copy(value));
-    checkpoints = copy(snapshot.checkpoints || []);
-    for (const checkpoint of checkpoints) {
-      const trajectory = checkpoint.driver_state?.trajectory;
-      acceptTrajectory(checkpoint.target_ref, checkpoint.route_id, trajectory?.steps,
-        (trajectory?.finalization || []).map((record, index) => ({index, record})));
+    checkpoints = (snapshot.checkpoints || []).map(routeSummary);
+    if (snapshot.trajectories) {
+      for (const trajectory of snapshot.trajectories) {
+        acceptTrajectory(trajectory.target_ref, trajectory.route_id, trajectory.steps, trajectory.finalization);
+      }
+    } else {
+      // Saved v1 snapshots still carry their evidence inside full checkpoints.
+      for (const checkpoint of snapshot.checkpoints || []) {
+        const trajectory = checkpoint.driver_state?.trajectory;
+        acceptTrajectory(checkpoint.target_ref, checkpoint.route_id, trajectory?.steps,
+          (trajectory?.finalization || []).map((record, index) => ({index, record})));
+      }
     }
     for (const selection of snapshot.selection_chunks || []) acceptSelection(selection.target_ref, selection.kind, selection.chunk);
     for (const step of (snapshot.math_steps || []).slice().sort((left, right) => left.ordinal - right.ordinal)) acceptStep(step);
@@ -286,8 +320,8 @@ export function mountStageThreeStream(container, identity, options = {}) {
     card.className = 'stage-three-math-step'; card.dataset.stepId = step.step_id;
     card.dataset.mathStepSha256 = step.math_step_sha256; card.dataset.ordinal = String(step.ordinal);
     card.append(text('h3', step.title));
-    for (const expression of step.before || []) { const node = text('p', expression.display, 'stage-three-before'); node.dataset.mathFormula = 'true'; card.append(node); }
-    for (const expression of step.after || []) { const node = text('p', expression.display, 'stage-three-after'); node.dataset.mathFormula = 'true'; card.append(node); }
+    for (const expression of step.before || []) { const node = text('p', expression.latex, 'stage-three-before'); node.dataset.mathFormula = 'true'; card.append(node); }
+    for (const expression of step.after || []) { const node = text('p', expression.latex, 'stage-three-after'); node.dataset.mathFormula = 'true'; card.append(node); }
     const explanation = text('p', step.explanation || '', 'stage-three-explanation'); explanation.dataset.mathText = 'true'; card.append(explanation);
     const supplementary = document.createElement('aside');
     supplementary.className = 'stage-three-qa'; supplementary.hidden = true;

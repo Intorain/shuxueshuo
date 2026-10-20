@@ -6,23 +6,23 @@ the mathematical worker. The parent persists and publishes JSON only.
 
 from functools import lru_cache
 
-from . import driver, execution_contracts, verification
+from . import driver, execution_contracts, route_constraints, verification
 from .goals import equivalent_answers, finalize_goal_with_evidence, verify_goal_answer
 from .presentation import append_goal_finalization
+from .revision_manifest import manifest_ref, revision_ref
 from .trajectory import decode_value, encode_value
 
 
 @lru_cache(maxsize=1)
-def _session_contracts(revision_key):
+def _session_contracts(expected_ref):
     """Validate once in this worker; a new process or revision loads afresh.
 
     Only immutable configuration is shared. Capability and judgment dispatch
     stay live; neither this cache nor its key is persisted in checkpoints.
     """
-    expected = dict(revision_key)
     read_revisions = execution_contracts.revisions
     current = read_revisions()
-    if expected.keys() != current.keys():
+    if manifest_ref(current) != expected_ref:
         # Recorded runs freeze the entire pipeline under relative file paths;
         # direct driver sessions use the named execution-only revision map.
         # Preserve either complete identity, rather than reducing to a subset.
@@ -30,18 +30,18 @@ def _session_contracts(revision_key):
 
         read_revisions = fingerprint
         current = read_revisions()
-    if current != expected:
+    if manifest_ref(current) != expected_ref:
         raise ValueError("execution.contract_revisions_changed")
     contracts = execution_contracts.load_contracts()
     # Validation reads several files. Refuse a snapshot changed during those
     # reads instead of publishing it under the checkpoint's earlier revision.
-    if read_revisions() != expected:
+    if manifest_ref(read_revisions()) != expected_ref:
         raise ValueError("execution.contract_revisions_changed")
     return contracts
 
 
-def _contracts(revisions):
-    return _session_contracts(tuple(sorted(revisions.items())))
+def _contracts(value):
+    return _session_contracts(revision_ref(value))
 
 
 def consistency(feasible, answer, previous):
@@ -69,13 +69,13 @@ def dispatch(payload):
     if operation == "initialize":
         arguments = payload["arguments"]
         revisions = arguments.get("revisions") or execution_contracts.revisions()
-        return driver.create_state(contracts=_contracts(revisions), **arguments)
+        return driver.create_state(contracts=_contracts({"revisions": revisions}), **arguments)
     if operation == "advance":
-        return driver.advance(payload["state"], contracts=_contracts(payload["state"]["revisions"]))
+        return driver.advance(payload["state"], contracts=_contracts(payload["state"]))
     if operation == "constraints":
         candidate_set = driver.export_values(payload["state"])["feasible_set"]
-        feasible, processing = verification.apply_visible_constraints(
-            payload["candidate"], payload["target_ref"], payload["context"], candidate_set,
+        feasible, processing = route_constraints.apply_visible_constraints(
+            payload["context"], candidate_set,
         )
         return {"feasible_set_exact": encode_value(feasible), "processing": processing,
                 "feasible_set": verification.math_value(feasible)}

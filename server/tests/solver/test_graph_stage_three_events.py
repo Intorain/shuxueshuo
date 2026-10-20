@@ -37,8 +37,8 @@ def fragment(target=TARGET, *, ordinal=1):
             "lesson_version": IDENTITY["lesson_version"], "revisions": deepcopy(IDENTITY["revisions"]),
             "target_ref": target, "route_id": "discriminant", "step_id": f"step-{ordinal}", "ordinal": ordinal,
             "method_ref": "method-discriminant#conditions", "source_refs": ["/root/facts/0"], "case_path": [],
-            "title": "二次项系数", "before": [{"expression": "x^2+a", "display": "x^2+a"}],
-            "after": [{"expression": "1>0", "display": "1>0"}], "explanation": "开口向上。",
+            "title": "二次项系数", "before": [{"expression": "x^2+a", "latex": "x^2+a"}],
+            "after": [{"expression": "1>0", "latex": "1>0"}], "explanation": "开口向上。",
             "premise_refs": ["/root/facts/0"], "used_basis": ["skill-quadratic-sign"], "local_check": "passed"}
     step["math_step_sha256"] = math_step_hash(step, IDENTITY["revisions"])
     return step

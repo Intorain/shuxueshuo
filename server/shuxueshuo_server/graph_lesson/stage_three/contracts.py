@@ -210,9 +210,9 @@ def validate_result(value):
             goal["d3"] is not None or goal["d4"] is not None or goal["routes"]
         ):
             raise ValueError("result.ineligible_goal_artifacts")
-        if goal["status"] == "execution_error" and not goal["diagnostics"]:
+        if goal["status"] in ("execution_error", "capability_gap") and not goal["diagnostics"]:
             raise ValueError("result.missing_execution_diagnostics")
-        if goal["status"] == "execution_error" and goal["routes"]:
+        if goal["status"] in ("execution_error", "capability_gap") and goal["routes"]:
             # D3/D4 may preserve the already committed selection prefix;
             # interrupted route summaries stay in execution_evidence instead.
             raise ValueError("result.ineligible_goal_artifacts")

@@ -4,96 +4,29 @@ import traceback
 from copy import deepcopy
 from time import perf_counter
 
-import sympy as sp
-
-from . import capabilities, execution_contracts, judgments
+from . import capabilities, execution_contracts, judgments, method_admission
 from .capabilities import CapabilityGap, LocalCheckFailed
-from .premises import FeatureMath, UnknownPremise, parse_expression
+from .premises import UnknownPremise
 from .presentation import render_unit
+from .revision_manifest import manifest_ref
 from .trajectory import decode_value, encode_value, trace_value
 
 
-def _index(features, target_ref=None):
-    if isinstance(features, dict):
-        return features
-    return {
-        row["feature_id"]: row
-        for row in features
-        if target_ref is None or row["target_ref"] == target_ref
-    }
+def initial_bindings(method, features, context, *, contracts=None):
+    contracts = execution_contracts.load_contracts() if contracts is None else contracts
+    if method not in contracts:
+        raise ValueError("execution.unknown_method:" + method)
+    return method_admission.initial_bindings(contracts[method], features, context)
 
 
-def initial_bindings(features, context):
-    math = FeatureMath(_index(features, context["target_ref"]))
-    relation = math.value("relation")
-    values = {
-        "relation": capabilities.relation(
-            parse_expression(relation["lhs"]),
-            relation["operator"],
-            parse_expression(relation["rhs"]),
-        ),
-        "expression": math.expression,
-        "x": math.x,
-        "parameter": math.parameter,
-        "domain": math.domain,
-        "quantifier": math.value("quantifier"),
-        "strict": relation["strict"],
-        "goal": deepcopy(context["goal"]),
-        "constraint_context": deepcopy(context),
-        "interval_function": parse_expression(relation["lhs"]) - parse_expression(relation["rhs"]),
-        "interval_operator": {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[relation["operator"]],
-        "zero": sp.S.Zero,
-        "relation_kind": "inequality",
-    }
-    return values
-
-
-def can_execute(method, features, context):
+def can_execute(method, features, context, *, contracts=None, values=None):
+    contracts = execution_contracts.load_contracts() if contracts is None else contracts
+    if method not in contracts:
+        raise ValueError("execution.unknown_method:" + method)
     try:
-        values = initial_bindings(features, context)
-        if values["quantifier"] not in ("∀", "∃"):
-            return False
-        if method == "method-variable-swap":
-            from .capabilities.variable_swap import validate_variable_swap
-
-            policy = capabilities.select_quantifier_policy(
-                values["quantifier"], values["interval_operator"], values["domain"]
-            )["outputs"]["policy"]
-            validate_variable_swap(values["interval_function"], values["x"], values["parameter"],
-                                   values["domain"], policy)
-            return True
-        poly = capabilities.polynomial(values["expression"], values["x"])
-        if poly.degree() != 2:
-            return False
-        if method == "method-discriminant":
-            if values["quantifier"] != "∀" or values["domain"] != sp.S.Reals:
-                return False
-            # Degree and rational-coefficient shape only; every zero of the
-            # leading coefficient is handled by a separate contract frame.
-            for coefficient in poly.all_coeffs():
-                parameter_poly = capabilities.polynomial(
-                    coefficient, values["parameter"], maximum=48
-                )
-                if parameter_poly.degree() > 48 or any(
-                    not c.is_Rational for c in parameter_poly.all_coeffs()
-                ):
-                    return False
-            return True
-        if method == "method-separation":
-            separated = capabilities.inspect_separation(
-                values["relation"], values["parameter"], values["x"], values["domain"]
-            )["outputs"]
-            capabilities.polynomial(separated["parameter_expression"], values["parameter"])
-            judgments.range_skill(separated["function"], values["x"], values["domain"])
-            return True
-        if method == "method-interval-extremum":
-            policy = capabilities.select_quantifier_policy(
-                values["quantifier"], values["interval_operator"], values["domain"]
-            )["outputs"]["policy"]
-            judgments.interval_case_plan(values["interval_function"], values["x"], values["parameter"],
-                                         values["domain"], policy)
-            return True
-        return False
+        if values is None:
+            values = initial_bindings(method, features, context, contracts=contracts)
+        return method_admission.can_execute(contracts[method], values)
     except (CapabilityGap, UnknownPremise):
         return False
 
@@ -118,18 +51,17 @@ def empty_state(
         "method": method,
         "route_id": route_id,
         "branch": branch,
-        "revisions": revisions or execution_contracts.revisions(),
+        "revisions_ref": manifest_ref(revisions or execution_contracts.revisions()),
         "status": "running",
         "frames": [],
         "fragments": [],
-        "premise_refs": [],
         "result": None,
         "diagnostics": [],
         "compute_seconds": 0.0,
         "solve_budget_seconds": solve_budget_seconds,
         "next_call_seq": 1,
         "trajectory": {
-            "contract": "graph-stage-three-route/v1",
+            "contract": "graph-stage-three-route/v2",
             "run_id": run_id,
             "lesson_version": lesson_version,
             "target_ref": target_ref,
@@ -145,7 +77,7 @@ def empty_state(
             "diagnostics": [],
         },
     }
-    state["trajectory"]["revisions"] = deepcopy(state["revisions"])
+    state["trajectory"]["revisions_ref"] = state["revisions_ref"]
     return state
 
 
@@ -157,9 +89,9 @@ def create_state(*, contracts=None, **arguments):
     )
     contracts = execution_contracts.load_contracts() if contracts is None else contracts
     try:
-        if method not in contracts or not can_execute(method, features, context):
+        values = initial_bindings(method, features, context, contracts=contracts)
+        if not can_execute(method, features, context, contracts=contracts, values=values):
             raise CapabilityGap("method_input_class_unavailable")
-        values = initial_bindings(features, context)
         state["frames"] = [_frame(method, values, None)]
         state["input_values"] = encode_value(values)
     except (CapabilityGap, UnknownPremise) as exc:
@@ -174,6 +106,7 @@ def _frame(method, bindings, parent_call):
         "call_index": 0,
         "bindings": encode_value(bindings),
         "binding_sources": {},
+        "case_source_refs": [],
         "parent_call": parent_call,
         "case_path": [],
         "step_trace": None,
@@ -237,6 +170,46 @@ def _fail(state, status, exc):
     state["diagnostics"].append(evidence)
 
 
+def _binding_sources(frame, names):
+    return {frame["binding_sources"][name] for name in names if name in frame["binding_sources"]}
+
+
+def _operation_sources(frame, step, action):
+    names = (set(execution_contracts.references(action.get("inputs", {})))
+             | execution_contracts.guard_references(action.get("guard"))
+             | execution_contracts.guard_references(step.get("guard")))
+    return _binding_sources(frame, names) | set(frame.get("case_source_refs", []))
+
+
+def _dependency_premises(state, sources):
+    """Follow explicit producers, never the chronological history of judgments."""
+    found, visited = set(), set()
+
+    def visit(reference):
+        if reference in visited:
+            return
+        visited.add(reference)
+        value = state["trajectory"]
+        try:
+            for part in reference.lstrip("/").split("/"):
+                value = value[int(part)] if isinstance(value, list) else value[part]
+        except (KeyError, IndexError, ValueError, TypeError):
+            raise ValueError("execution.missing_dependency_source:" + reference) from None
+        if "/judgments/" in reference:
+            found.add(reference)
+        records = value if isinstance(value, list) else [value]
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            for key in ("source_refs", "evidence_refs", "output_source_refs"):
+                for dependency in record.get(key, []):
+                    visit(dependency)
+
+    for source in sources:
+        visit(source)
+    return sorted(found)
+
+
 def _publish(state, frame, step, action, bindings):
     for unit in step["display_units"]:
         if unit["after"] != action["id"] or not _guard(unit.get("guard"), bindings):
@@ -265,8 +238,13 @@ def _publish(state, frame, step, action, bindings):
                     sources.append(reference)
                     basis.extend(item.get("used_basis", []))
         frame["published_sources"] = sorted(published | set(sources))
+        dependencies = _binding_sources(
+            frame, set(execution_contracts.references(unit["bindings"]))
+            | execution_contracts.guard_references(unit.get("guard")),
+        ) | _operation_sources(frame, step, action)
+        premise_refs = _dependency_premises(state, dependencies)
         fragment = render_unit(
-            state, frame, step, unit, display_bindings, sources, basis
+            state, frame, step, unit, display_bindings, sources, basis, premise_refs
         )
         state["fragments"].append(fragment)
         state["trajectory"]["math_steps"].append(
@@ -290,6 +268,8 @@ def _case_frame(parent, descriptor, specification, step_index, end_index):
         case_specification=deepcopy(specification),
         descriptor=encode_value(descriptor),
         binding_sources=deepcopy(parent["binding_sources"]),
+        case_source_refs=sorted(set(parent.get("case_source_refs", []))
+                                | _binding_sources(parent, {specification["source"]})),
         case_path=parent["case_path"]
         + ([descriptor["id"]] if parent["pending_cases"]["branched"] else []),
     )
@@ -359,6 +339,7 @@ def _advance(state, contracts):
         return
     if frame["step_index"] >= len(contract["steps"]):
         outputs = _resolve(contract["outputs"], bindings)
+        output_sources = _binding_sources(frame, execution_contracts.references(contract["outputs"]))
         state["frames"].pop()
         if not state["frames"]:
             state["result"] = encode_value(outputs)
@@ -377,6 +358,7 @@ def _advance(state, contracts):
             pending["call_index"]
         ]
         call["outputs"] = trace_value(outputs)
+        call["output_source_refs"] = sorted(output_sources)
         call["postconditions"] = [{"kind": "child_completed", "passed": True}]
         parent["pending_child"] = None
         step = contracts[parent["method"]]["steps"][parent["step_index"]]
@@ -451,11 +433,16 @@ def _advance(state, contracts):
                     frame, descriptors[0], specification, frame["step_index"], end
                 )
             )
-            return
+            # Entering a previously computed case only moves the cursor. Keep
+            # it with the next real action instead of transferring a complete
+            # checkpoint for an otherwise empty transition.
+            return True
         frame["step_index"] += 1
         frame["call_index"] = 0
         frame["step_trace"] = None
-        return
+        # No calculation or card was produced. Actual calls, judgments and
+        # cards still stop advance immediately and retain their commit boundary.
+        return True
     action = actions[frame["call_index"]]
     trace = state["trajectory"]["steps"][frame["step_trace"]]
     if not _guard(action.get("guard"), bindings):
@@ -498,12 +485,9 @@ def _advance(state, contracts):
             raise CapabilityGap("execution.merge_choice_incomplete")
         branch = selected[0]
         outputs = _resolve(branch["bindings"], bindings)
-        refs = sorted(
-            {
-                frame["binding_sources"][name]
-                for name in execution_contracts.references(branch["bindings"])
-            }
-        )
+        refs = sorted(_binding_sources(frame, set(execution_contracts.references(branch["bindings"]))
+                                       | execution_contracts.guard_references(branch["guard"]))
+                      | _operation_sources(frame, step, action))
         trace["merges"].append(
             {
                 "id": action["id"],
@@ -541,15 +525,13 @@ def _advance(state, contracts):
                 "selected": output["selected"],
                 "decided_by": "program",
                 "evidence": trace_value(output),
+                "source_refs": sorted(_operation_sources(frame, step, action)),
                 "case_path": deepcopy(frame["case_path"]),
             }
         )
         if action.get("rule_ref"):
             trace["judgments"][-1]["rule_ref"] = action["rule_ref"]
-        state["premise_refs"].append(
-            f"/steps/{frame['step_trace']}/judgments/{len(trace['judgments']) - 1}"
-        )
-        binding_source = state["premise_refs"][-1]
+        binding_source = f"/steps/{frame['step_trace']}/judgments/{len(trace['judgments']) - 1}"
     else:
         seq = state["next_call_seq"]
         state["next_call_seq"] += 1
@@ -563,13 +545,7 @@ def _advance(state, contracts):
             "used_basis": [],
             "postconditions": [],
             "case_path": deepcopy(frame["case_path"]),
-            "source_refs": sorted(
-                {
-                    frame["binding_sources"][name]
-                    for name in execution_contracts.references(action["inputs"])
-                    if name in frame["binding_sources"]
-                }
-            ),
+            "source_refs": sorted(_operation_sources(frame, step, action)),
         }
         if action.get("rule_ref"):
             call.update(rule_ref=action["rule_ref"], branch=action["branch"])
@@ -581,6 +557,14 @@ def _advance(state, contracts):
             }
             child = _frame(action["public_ref"], inputs, seq)
             child["case_path"] = deepcopy(frame["case_path"])
+            child["case_source_refs"] = deepcopy(frame.get("case_source_refs", []))
+            for name, value in action["inputs"].items():
+                input_sources = _binding_sources(frame, execution_contracts.references(value))
+                if input_sources:
+                    call.setdefault("input_sources", {})[name] = {"source_refs": sorted(input_sources)}
+                    child["binding_sources"][name] = (
+                        f"/steps/{frame['step_trace']}/calls/{len(trace['calls']) - 1}/input_sources/{name}"
+                    )
             state["frames"].append(child)
             return
         trace["calls"].append(call)

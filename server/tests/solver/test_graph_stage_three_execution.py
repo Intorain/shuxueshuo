@@ -8,7 +8,7 @@ import sympy as sp
 
 from shuxueshuo_server.graph_lesson.stage_one.features import extract_features
 from shuxueshuo_server.graph_lesson.stage_three import runner
-from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
+from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
 from shuxueshuo_server.graph_lesson.stage_three.trajectory import decode_value
 from shuxueshuo_server.graph_lesson.stage_two.runner import run_result
 from tests.solver.graph_stage_three_faults import (
@@ -33,12 +33,12 @@ def read(path):
 
 
 def events(output):
-    return [json.loads(line) for line in (output / "events.jsonl").read_text().splitlines()]
+    # A running/interrupted route need not have exported any debug files.
+    return store(output).events()
 
 
 def store(output):
-    checkpoint = read(output / "checkpoint.json")
-    return EventStore(output, checkpoint)
+    return open_store(output)
 
 
 def constructed_upstream(tmp_path, candidate):
@@ -216,21 +216,16 @@ def test_failed_operation_recovers_terminal_status_after_commit_interruption(tmp
     assert saved.events() == prior_events
 
 
-def test_one_goal_error_does_not_abort_other_goal_routes(tmp_path, monkeypatch):
+def test_one_goal_error_does_not_abort_other_goal_routes(tmp_path):
+    from tests.solver.stage_three_preparation_probes import hooks
+
     candidate = {"original_text": "（1）∀x∈ℝ:x^2+a>=0，求a。（2）∀x∈ℝ:x^2+b>=0，求b。", "root": {"children": [
         {"label": "（1）", "facts": ["∀x∈ℝ:x^2+a>=0"], "goals": [{"kind": "find_range", "symbol": "a"}]},
         {"label": "（2）", "facts": ["∀x∈ℝ:x^2+b>=0"], "goals": [{"kind": "find_range", "symbol": "b"}]},
     ]}}
     source = constructed_upstream(tmp_path, candidate)
-    actual = runner.build_context
-
-    def broken(value, target):
-        if target == "/root/children/0/goals/0":
-            raise KeyError("injected target failure")
-        return actual(value, target)
-
-    monkeypatch.setattr(runner, "build_context", broken)
-    result = runner.run_sample(source, tmp_path / "out")
+    result = runner.run_sample(source, tmp_path / "out", hooks=hooks(
+        "build_context", target_ref="/root/children/0/goals/0", error="KeyError", message="injected target failure"))
     assert result["status"] == "partial", result
     assert [g["status"] for g in result["goals"]] == ["execution_error", "solved"]
     assert result["goals"][1]["routes"] and all(r["status"] == "verified" for r in result["goals"][1]["routes"])

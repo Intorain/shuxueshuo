@@ -1,11 +1,13 @@
 """Affine quantified-variable envelopes with exact parameter sign evidence.
 
 The variable is the quantified letter; the parameter is the letter being
-solved for. Closed rational intervals support every affine slope. Open finite
-intervals currently require a globally strict slope sign or an identically
-zero slope: a parameter-dependent zero slope changes endpoint attainment and
-must not silently inherit the endpoint's exclusion.
+solved for. Closed rational intervals support every affine slope. Open finite intervals
+with parameter-dependent zero slopes use complete exact slope-root cases;
+zero cases are constant and attained in the interior.
 """
+
+from copy import deepcopy
+from functools import lru_cache
 
 import sympy as sp
 
@@ -85,8 +87,6 @@ def _range_input(expression, variable, parameter, domain, policy):
             or policy.get("empty")):
         raise CapabilityGap("inconsistent_quantifier_policy")
     sign, certificate = _slope_sign(slope, parameter)
-    if sign == "unknown" and (domain.left_open or domain.right_open):
-        raise CapabilityGap("open_interval_parameter_slope_cases_required")
     return slope, intercept, sign, certificate
 
 
@@ -123,6 +123,13 @@ quantifier, while either endpoint supplies an existential witness.
     slope, intercept, sign, certificate = _range_input(
         expression, variable, parameter, domain, policy,
     )
+    if sign == "unknown" and (domain.left_open or domain.right_open):
+        raise CapabilityGap("open_interval_parameter_slope_cases_required")
+    return _signed_linear_range(expression, variable, parameter, domain, policy,
+                                slope, intercept, sign, certificate)
+
+
+def _signed_linear_range(expression, variable, parameter, domain, policy, slope, intercept, sign, certificate):
     endpoints = [
         {"point": point, "value": bounded_expand(slope * point + intercept),
          "attained": attained}
@@ -229,3 +236,76 @@ def combine_variable_solutions(conditions, first, second, combiner, variable):
                                  "solutions": solutions, "combiner": combiner}]
     return result({"solution": checked["outputs"]["solution"], "solutions": solutions},
                   ["variable_condition_sets"], checks)
+
+
+@lru_cache(maxsize=32)
+def _session_variable_cases(expression, variable, parameter, domain, policy_key):
+    """Complete slope roots determine strict sign and zero/constant cases."""
+    from .parametric import _partition_polynomials
+
+    slope, _, sign, certificate = _range_input(expression, variable, parameter, domain, dict(policy_key))
+    if sign != "unknown" or not (domain.left_open or domain.right_open):
+        return [{"id": "variable-direct", "kind": "nondegenerate", "mode": "direct",
+                 "condition": sp.true, "domain": sp.S.Reals, "value": None,
+                 "slope_sign": sign, "certificate": certificate}]
+    cells, critical = _partition_polynomials([("slope", slope)], parameter)
+    cases = []
+    for index, cell in enumerate(cells):
+        sign = {1: "positive", -1: "negative", 0: "zero"}[cell["signs"]["slope"]]
+        cases.append({
+            "id": f"variable-case-{index + 1}", "kind": "constant" if sign == "zero" else "linear",
+            "mode": "classified", "condition": cell["domain"].as_relational(parameter),
+            "domain": cell["domain"], "value": cell["value"], "slope_sign": sign,
+            "certificate": {"kind": "affine_slope_case_certificate", "passed": True,
+                            "slope": slope, "sign": sign, "parameter_domain": cell["domain"],
+                            "cell": cell, "critical_polynomials": critical},
+        })
+    return cases
+
+
+def variable_case_plan(expression, variable, parameter, domain, policy):
+    """Program judgment whose returned cases are explicit contract frames."""
+    cases = deepcopy(_session_variable_cases(expression, variable, parameter, domain, tuple(sorted(policy.items()))))
+    classified = cases[0]["mode"] == "classified"
+    return {"selected": "classified" if classified else "direct", "cases": cases,
+            "has_cases": classified, "evidence": {
+                "kind": "complete_affine_slope_partition", "passed": True,
+                "case_domains": [case["domain"] for case in cases],
+                "certificates": [case["certificate"] for case in cases],
+                "reason": ("All slope roots are isolated; every other parameter cell has a fixed strict slope sign."
+                           if classified else "One globally valid envelope applies; no parameter case split is required."),
+            }}
+
+
+def parameter_linear_case_range(expression, variable, parameter, domain, policy, case):
+    """Check a case certificate, then compute the bound with its actual attainment.
+
+    Keep the original rational parameter formula in a zero case. The case
+    domain proves its slope vanishes; the displayed bound equals the original
+    intercept on that domain. This avoids introducing algebraic coefficients
+    into the public quadratic solve merely by substituting an isolated root.
+    """
+    cases = _session_variable_cases(expression, variable, parameter, domain, tuple(sorted(policy.items())))
+    expected = next((row for row in cases if row["id"] == case.get("id")), None)
+    if expected is None or expected != case:
+        raise LocalCheckFailed("variable_case_certificate_mismatch")
+    slope, intercept, _, _ = _range_input(expression, variable, parameter, domain, policy)
+    return _signed_linear_range(expression, variable, parameter, domain, policy, slope, intercept,
+                                expected["slope_sign"], deepcopy(expected["certificate"]))
+
+
+def intersect_variable_case_solution(solution, case):
+    if not isinstance(solution, sp.Set) or not isinstance(case.get("domain"), sp.Set):
+        raise LocalCheckFailed("variable_case_solution_set_required")
+    computed = solution.intersect(case["domain"])
+    return result({"solution": computed}, ["variable_case_intersection"], [
+        {"kind": "same_case_intersection", "passed": True, "case_id": case["id"],
+         "case_domain": case["domain"], "condition_solution": solution, "solution": computed},
+    ])
+
+
+def merge_variable_cases(cases, results):
+    from .parametric import merge_interval_cases
+
+    computed = merge_interval_cases(cases, results)
+    return result(computed["outputs"], ["variable_case_union"], computed["checks"])

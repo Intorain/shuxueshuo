@@ -6,7 +6,7 @@ from copy import deepcopy
 import pytest
 
 from shuxueshuo_server.graph_lesson.stage_three import driver, execution_contracts
-from tests.solver.test_graph_stage_three_methods import Q01, candidate, start
+from tests.solver.test_graph_stage_three_methods import CORPUS, Q01, candidate, start
 
 
 def _insert_empty_skips(step):
@@ -125,3 +125,54 @@ def test_coalesced_skip_budget_is_checked_and_uncommitted_trace_is_discarded(mon
     assert failed["trajectory"]["steps"] == prefix["trajectory"]["steps"]
     assert failed["fragments"] == prefix["fragments"]
     assert state == prefix
+
+
+def _completed_step(*, cases):
+    """An older checkpoint can stop after its last action, before moving on."""
+    contracts = execution_contracts.load_contracts()
+    value = json.loads((CORPUS / "q03/notation.gold.json").read_text()) if cases else Q01
+    state = start(value, method="method-discriminant" if cases else "method-separation")
+    for _ in range(50):
+        frame = state["frames"][-1]
+        step = contracts[frame["method"]]["steps"][frame["step_index"]]
+        if frame["call_index"] == len(execution_contracts.actions(step)):
+            assert bool(step.get("cases")) == cases
+            return json.loads(json.dumps(state)), contracts
+        driver._advance(state, contracts)
+    raise AssertionError("fixture did not reach the step boundary")
+
+
+def _real_actions(state):
+    return sum(len(step[kind]) for step in state["trajectory"]["steps"]
+               for kind in ("calls", "judgments", "merges"))
+
+
+@pytest.mark.parametrize("cases", [False, True])
+def test_completed_step_restart_stops_at_the_next_real_action(cases):
+    state, contracts = _completed_step(cases=cases)
+    before = deepcopy(state)
+    updated = driver.advance(state, contracts=contracts)
+    assert state == before
+    assert updated["status"] == "running"
+    assert _real_actions(updated) == _real_actions(before) + 1
+    assert updated["fragments"][:len(before["fragments"])] == before["fragments"]
+    assert len(updated["trajectory"]["steps"]) == len(before["trajectory"]["steps"]) + 1
+    if cases:
+        assert updated["frames"][-1]["case_path"] == ["degenerate-0"]
+    else:
+        assert updated["frames"][-1]["step_index"] == before["frames"][-1]["step_index"] + 1
+
+
+@pytest.mark.parametrize("cases", [False, True])
+def test_completed_step_budget_expiry_discards_only_uncommitted_cursor_move(cases, monkeypatch):
+    state, contracts = _completed_step(cases=cases)
+    before = deepcopy(state)
+    times = iter([0.0, 0.0, 20.0, 20.0])
+    monkeypatch.setattr(driver, "perf_counter", lambda: next(times))
+    failed = driver.advance(state, contracts=contracts)
+    assert failed["status"] == "execution_error"
+    assert failed["trajectory"]["error"]["exception_type"] == "TimeoutError"
+    assert failed["trajectory"]["steps"] == before["trajectory"]["steps"]
+    assert failed["fragments"] == before["fragments"]
+    assert failed["frames"] == before["frames"]
+    assert state == before

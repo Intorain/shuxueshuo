@@ -485,6 +485,49 @@ def test_json_large_result_and_input_have_no_pipe_deadlock():
     assert 0 < elapsed < 8
 
 
+def test_json_compressed_delivery_timeout_never_persists_success(tmp_path, monkeypatch):
+    import json
+
+    from shuxueshuo_server.graph_lesson.stage_three import json_bounded
+    original = json_bounded._decode
+    compressed_delivery = []
+
+    def delayed_decode(data):
+        value = original(data)
+        if isinstance(value, dict) and value.get("phase") == "prepared":
+            compressed_delivery.append(data.startswith(json_bounded._COMPRESSED_MAGIC))
+            time.sleep(1)
+        return value
+
+    receipt = tmp_path / "compressed-delivery-timeout.json"
+    with bounded.JsonCalculationSession(_json_adapter) as session:
+        session.run({"operation": "pid"}, timeout_seconds=5)
+        monkeypatch.setattr(json_bounded, "_decode", delayed_decode)
+        with pytest.raises(bounded.CalculationTimeout):
+            session.run({"text": "repeated mathematical state" * 20_000}, timeout_seconds=0.8,
+                        receipt_path=receipt, attempt_id="compressed-delivery-timeout")
+    assert compressed_delivery == [True]
+    record = json.loads(receipt.read_bytes())
+    assert record["status"] == "timeout" and "result" not in record
+
+
+def test_json_compressed_roundtrip_receipt_and_reused_worker(tmp_path):
+    import json
+
+    receipt = tmp_path / "compressed-returned.json"
+    payload = {"text": "重复状态 ∀x∈ℝ\n" * 30_000}
+    with bounded.JsonCalculationSession(_json_adapter) as session:
+        before, _ = session.run({"operation": "pid"}, timeout_seconds=5)
+        result, elapsed = session.run(payload, timeout_seconds=5,
+                                     receipt_path=receipt, attempt_id="compressed-returned")
+        after, _ = session.run({"operation": "pid"}, timeout_seconds=5)
+    assert before == after and result == payload
+    assert _gone(before["pid"])
+    record = json.loads(receipt.read_bytes())
+    assert record["result"] == payload and record["status"] == "returned"
+    assert record["elapsed_seconds"] == elapsed < 5
+
+
 def test_json_supervisor_confirmation_loss_is_not_contradictory_timeout(tmp_path, monkeypatch):
     import json
 

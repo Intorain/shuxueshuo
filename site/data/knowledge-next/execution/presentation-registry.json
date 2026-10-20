@@ -18,7 +18,25 @@
         "strict",
         "relation",
         "expression"
-      ]
+      ],
+      "render": {
+        "if": "fixed_positive",
+        "then": {
+          "if": "strict",
+          "then": "二次项系数确定为正且非零。原式需恒严格大于零，因此图像必须完全位于横轴上方，不能相切。",
+          "else": "二次项系数确定为正且非零。要在全体实数上非负，图像不能穿过横轴；非严格不等式允许相切。"
+        },
+        "else": [
+          "按不等号方向把当前关系写成 ${positive_relation}$。在二次项系数不为零的情况下，需要开口条件 ${opening}$，再与判别式条件联立；",
+          {
+            "if": "strict",
+            "then": "严格不等式不允许图像碰到横轴",
+            "else": "非严格不等式允许图像与横轴相切"
+          },
+          "。"
+        ]
+      },
+      "prepare": "opening"
     },
     "case_basis": {
       "title": "确定分类条件",
@@ -28,7 +46,8 @@
         "after",
         "coefficient",
         "parameter"
-      ]
+      ],
+      "render": "按原不等号方向移项后，与零比较的差式中二次项系数为 ${coefficient}$。先找出使它为零的全部 ${parameter}$ 值，分别检验；剩余参数对应非退化二次式。这些情况互不重叠并覆盖全部实数参数。"
     },
     "degenerate_case": {
       "title": "检查退化情况",
@@ -41,7 +60,23 @@
         "holds",
         "linear_coefficient",
         "constant"
-      ]
+      ],
+      "render": [
+        "把 ${parameter}={value}$ 代回原不等式，二次项消失，得到下列一次式或常数关系。",
+        {
+          "if": "constant",
+          "then": "一次项系数也为零，只需判断常数关系的真假",
+          "else": "一次项系数不为零，一次式在全体实数上无上界也无下界，因此不可能始终满足同一方向的不等式"
+        },
+        "：",
+        {
+          "if": "holds",
+          "then": "满足原题的全称条件，保留这个参数值",
+          "else": "不满足原题的全称条件，排除这个参数值"
+        },
+        "。"
+      ],
+      "prepare": "degenerate_case"
     },
     "merge_cases": {
       "title": "合并各情况",
@@ -86,7 +121,26 @@
         "x",
         "parameter_expression",
         "function"
-      ]
+      ],
+      "render": "{quantifier_text} ${x}$ 使关系成立，比较式 ${parameter_expression}$ 需要与函数 ${function}$ 的{bound_name}比较。先确定策略，下一步再计算数值和是否取到。",
+      "variables": {
+        "bound_name": {
+          "select": "policy.bound",
+          "cases": {
+            "sup": "上确界",
+            "inf": "下确界"
+          },
+          "default": ""
+        },
+        "quantifier_text": {
+          "select": "policy.quantifier",
+          "cases": {
+            "∀": "对所有",
+            "∃": "至少存在一个"
+          },
+          "default": ""
+        }
+      }
     },
     "square_range": {
       "title": "配方求最值",
@@ -99,14 +153,45 @@
         "x",
         "vertex",
         "extremum"
-      ]
+      ],
+      "render": "${function}={square}$。平方非负，${x}={vertex}$ 在定义域中，回代得到取等值 ${extremum}$。"
     },
     "boundary": {
       "title": "检查边界",
       "explanation": "将候选集合的每个有限边界代回原题的全部条件，独立检查量词关系及边界是否保留。",
       "required_bindings": [
         "before",
-        "after"
+        "after",
+        "checks"
+      ],
+      "render": [
+        "将候选集合的每个有限边界代回原题的全部条件，独立检查量词关系及边界是否保留。",
+        {
+          "if": "checks",
+          "then": [
+            {
+              "for": "checks",
+              "as": "item",
+              "body": [
+                "参数等于 ${item.point.latex}$ 时",
+                {
+                  "if": "item.holds",
+                  "then": "满足",
+                  "else": "不满足"
+                },
+                "原题条件，该边界",
+                {
+                  "if": "item.included",
+                  "then": "保留",
+                  "else": "排除"
+                }
+              ],
+              "separator": "；"
+            },
+            "。"
+          ],
+          "else": "当前可行集没有有限边界，边界检查为空。"
+        }
       ]
     },
     "goal_minimum": {
@@ -114,16 +199,42 @@
       "explanation": "从已验证的完整可行集读取下确界，再根据有界性和成员关系确定最小值是否存在。",
       "required_bindings": [
         "before",
-        "after"
-      ]
+        "after",
+        "status",
+        "bound"
+      ],
+      "render": {
+        "select": "status",
+        "cases": {
+          "empty_feasible_set": "完整可行集为空，没有满足题设的参数，因此最小值不存在。",
+          "unbounded_below": "完整可行集已通过独立验证。可行集没有下界，因此最小值不存在。",
+          "unbounded_above": "完整可行集已通过独立验证。可行集没有下界，因此最小值不存在。",
+          "attained": "完整可行集已通过独立验证。下确界为 ${bound}$，该界属于可行集。因此最小值为 ${bound}$，能够取得。",
+          "not_attained": "完整可行集已通过独立验证。下确界为 ${bound}$，该界不属于可行集。因此最小值不存在，只能趋近该下确界。"
+        },
+        "default": ""
+      }
     },
     "goal_maximum": {
       "title": "确定最大值",
       "explanation": "从已验证的完整可行集读取上确界，再根据有界性和成员关系确定最大值是否存在。",
       "required_bindings": [
         "before",
-        "after"
-      ]
+        "after",
+        "status",
+        "bound"
+      ],
+      "render": {
+        "select": "status",
+        "cases": {
+          "empty_feasible_set": "完整可行集为空，没有满足题设的参数，因此最大值不存在。",
+          "unbounded_below": "完整可行集已通过独立验证。可行集没有上界，因此最大值不存在。",
+          "unbounded_above": "完整可行集已通过独立验证。可行集没有上界，因此最大值不存在。",
+          "attained": "完整可行集已通过独立验证。上确界为 ${bound}$，该界属于可行集。因此最大值为 ${bound}$，能够取得。",
+          "not_attained": "完整可行集已通过独立验证。上确界为 ${bound}$，该界不属于可行集。因此最大值不存在，只能趋近该上确界。"
+        },
+        "default": ""
+      }
     },
     "divided": {
       "title": "分离参数",
@@ -132,7 +243,8 @@
         "before",
         "after",
         "divisor"
-      ]
+      ],
+      "render": "在给定范围内，除数 ${divisor}>0$。将参数项移到一边，再两边同除以这个正数，不等号不变，得到等价关系。"
     },
     "numeric_range": {
       "title": "计算区间值域",
@@ -144,6 +256,21 @@
         "domain",
         "function",
         "x"
+      ],
+      "render": [
+        "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。下确界为 ${range.inf}$，",
+        {
+          "if": "range.inf_attained",
+          "then": "能取得",
+          "else": "不能取得"
+        },
+        "；上确界为 ${range.sup}$，",
+        {
+          "if": "range.sup_attained",
+          "then": "能取得",
+          "else": "不能取得"
+        },
+        "。"
       ]
     },
     "endpoint_bounds": {
@@ -156,7 +283,43 @@
         "function",
         "x",
         "domain"
-      ]
+      ],
+      "render": [
+        "二次函数开口{opening}，所需{bound_name}由两个端点候选决定，无需按含参对称轴分类。",
+        {
+          "for": "range.candidates",
+          "as": "item",
+          "body": [
+            "${x}={item.point}$ 时的候选值为 ${item.value}$，",
+            {
+              "if": "item.attained",
+              "then": "端点在区间中",
+              "else": "端点不在区间中，只能趋近"
+            }
+          ],
+          "separator": "；"
+        },
+        "。"
+      ],
+      "prepare": "endpoint_bounds",
+      "variables": {
+        "opening": {
+          "select": "range.bound",
+          "cases": {
+            "sup": "向上",
+            "inf": "向下"
+          },
+          "default": ""
+        },
+        "bound_name": {
+          "select": "range.bound",
+          "cases": {
+            "sup": "上确界",
+            "inf": "下确界"
+          },
+          "default": ""
+        }
+      }
     },
     "interval_conditions": {
       "title": "求解并合并参数条件",
@@ -167,7 +330,38 @@
         "conditions",
         "combiner",
         "solutions"
-      ]
+      ],
+      "render": [
+        {
+          "if": "multiple",
+          "then": "将已选量词策略应用到端点候选及其可达性，{logical}。分别解出下列参数条件后取{operation}；开放端点的极限值不当作已取得的最值。",
+          "else": "将已选量词策略应用到确界及其可达性，得到并解出下面的参数条件。"
+        },
+        {
+          "if": "has_case",
+          "then": "再与当前情况的参数范围取交集，保留同时满足的参数。",
+          "else": ""
+        }
+      ],
+      "prepare": "interval_conditions",
+      "variables": {
+        "logical": {
+          "select": "combiner",
+          "cases": {
+            "all": "两端条件都要满足",
+            "any": "至少一端条件满足"
+          },
+          "default": ""
+        },
+        "operation": {
+          "select": "combiner",
+          "cases": {
+            "all": "交集",
+            "any": "并集"
+          },
+          "default": ""
+        }
+      }
     },
     "moved": {
       "title": "移项分离参数",
@@ -184,7 +378,8 @@
         "before",
         "after",
         "divisor"
-      ]
+      ],
+      "render": "在给定范围内，除数 ${divisor}<0$。将参数项移到一边，再两边同除以这个负数，不等号反向，得到等价关系。"
     },
     "range_evidence": {
       "title": "求区间值域",
@@ -198,6 +393,39 @@
         "x",
         "points",
         "endpoints"
+      ],
+      "render": [
+        [
+          "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。下确界为 ${range.inf}$，",
+          {
+            "if": "range.inf_attained",
+            "then": "能取得",
+            "else": "不能取得"
+          },
+          "；上确界为 ${range.sup}$，",
+          {
+            "if": "range.sup_attained",
+            "then": "能取得",
+            "else": "不能取得"
+          },
+          "。"
+        ],
+        {
+          "for": "endpoints",
+          "as": "item",
+          "body": {
+            "if": "item.attained",
+            "then": "在 ${x}={item.point}$ 处，函数值为 ${item.value}$。",
+            "else": "在定义域内，当 ${x}\\to {item.point}$ 时，函数趋近 ${item.value}$。"
+          },
+          "separator": ""
+        },
+        {
+          "for": "points",
+          "as": "item",
+          "body": "区间内转折点为 ${x}={item.point}$，函数值 ${item.value}$ 可取得。",
+          "separator": ""
+        }
       ]
     },
     "inverse_range": {
@@ -207,7 +435,18 @@
         "before",
         "after",
         "sign"
-      ]
+      ],
+      "render": "分母在所求范围内始终为{sign_name}且不为零。倒数函数在这个同号范围内递减，上下端逆序取倒数；无穷端变成不能取得的 0，端点是否取得随对应端点保留。",
+      "variables": {
+        "sign_name": {
+          "select": "sign",
+          "cases": {
+            "positive": "正",
+            "negative": "负"
+          },
+          "default": ""
+        }
+      }
     },
     "interval_cases": {
       "title": "确定完整分类",
@@ -217,7 +456,9 @@
         "after",
         "cases",
         "parameter"
-      ]
+      ],
+      "render": "按二次项系数是否为零、开口方向以及对称轴与端点的位置确定以下情况。这些情况互不重叠并覆盖全部实数参数，分别求确界后再合并参数范围。",
+      "prepare": "interval_cases"
     },
     "classified_range": {
       "title": "求本情况的确界",
@@ -231,7 +472,33 @@
         "coefficient",
         "x",
         "domain"
-      ]
+      ],
+      "render": [
+        "二次项系数为 ${coefficient}$。",
+        {
+          "if": "has_vertex",
+          "then": "对称轴为 ${x}={vertex}$。",
+          "else": ""
+        },
+        "结合当前条件与区间 ${domain}$，由端点极限和区间内顶点比较得到{bound_name} ${bound_value}$，",
+        {
+          "if": "bound_attained",
+          "then": "能取得",
+          "else": "不能取得"
+        },
+        "。"
+      ],
+      "prepare": "classified_range",
+      "variables": {
+        "bound_name": {
+          "select": "range.bound",
+          "cases": {
+            "sup": "上确界",
+            "inf": "下确界"
+          },
+          "default": ""
+        }
+      }
     },
     "case_linear_range": {
       "title": "检验一次或常数情况",
@@ -244,7 +511,27 @@
         "kind",
         "domain",
         "x"
-      ]
+      ],
+      "render": {
+        "if": "constant",
+        "then": "代入后函数为常数 ${range.inf}$，在原区间上处处取得该值。",
+        "else": [
+          "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。下确界为 ${range.inf}$，",
+          {
+            "if": "range.inf_attained",
+            "then": "能取得",
+            "else": "不能取得"
+          },
+          "；上确界为 ${range.sup}$，",
+          {
+            "if": "range.sup_attained",
+            "then": "能取得",
+            "else": "不能取得"
+          },
+          "。"
+        ]
+      },
+      "prepare": "numeric_range"
     },
     "interval_merge": {
       "title": "合并各情况",
@@ -254,7 +541,17 @@
         "after",
         "cases",
         "solutions"
-      ]
+      ],
+      "render": [
+        {
+          "for": "case_solutions",
+          "as": "item",
+          "body": "${item.condition}$ 时得到 ${item.solution}$",
+          "separator": "；"
+        },
+        "。把各情况的参数集取并集，随后独立验证并检查边界。"
+      ],
+      "prepare": "interval_merge"
     },
     "variable_roles": {
       "title": "确定变化的字母",
@@ -266,7 +563,18 @@
         "parameter",
         "domain",
         "quantifier"
-      ]
+      ],
+      "render": "题目要求{quantifier_text} ${x}\\in {domain}$ 使关系成立。因此以 ${x}$ 为变化的字母，先固定所求的 ${parameter}$，再由整个区间上的条件求它的取值范围。",
+      "variables": {
+        "quantifier_text": {
+          "select": "quantifier",
+          "cases": {
+            "∀": "对所有",
+            "∃": "至少存在一个"
+          },
+          "default": ""
+        }
+      }
     },
     "variable_reorder": {
       "title": "按变化的字母整理",
@@ -277,7 +585,8 @@
         "x",
         "slope",
         "intercept"
-      ]
+      ],
+      "render": "按 ${x}$ 合并同类项，一次项系数为 ${slope}$，常数项为 ${intercept}$。这两个系数都不含变化的字母。"
     },
     "variable_range": {
       "title": "确定区间端点条件",
@@ -293,7 +602,81 @@
         "endpoint_mode",
         "range",
         "slope_certificate"
-      ]
+      ],
+      "render": [
+        {
+          "select": "slope_sign",
+          "cases": {
+            "positive": [
+              "一次项系数 ${slope}",
+              {
+                "if": "has_square",
+                "then": "={square}",
+                "else": ""
+              },
+              "{sign_symbol}0$，函数在给定区间上严格{direction}。"
+            ],
+            "negative": [
+              "一次项系数 ${slope}",
+              {
+                "if": "has_square",
+                "then": "={square}",
+                "else": ""
+              },
+              "{sign_symbol}0$，函数在给定区间上严格{direction}。"
+            ],
+            "zero": "一次项系数恒为零，函数为常数，在区间内部也能取得该值。"
+          },
+          "default": "一次项系数 ${slope}$ 不能统一判定为严格正或严格负。一次函数在闭区间上的确界由两端决定，保留两个端点条件。"
+        },
+        {
+          "for": "range.candidates",
+          "as": "item",
+          "body": [
+            "{bound_name}",
+            {
+              "if": "multiple",
+              "then": "候选值",
+              "else": ""
+            },
+            "来自 ${x}={item.point}$，为 ${item.value}$，",
+            {
+              "if": "item.attained",
+              "then": "能取得",
+              "else": "只能趋近、不能取得"
+            },
+            "。"
+          ],
+          "separator": ""
+        }
+      ],
+      "prepare": "variable_range",
+      "variables": {
+        "bound_name": {
+          "select": "range.bound",
+          "cases": {
+            "sup": "上确界",
+            "inf": "下确界"
+          },
+          "default": ""
+        },
+        "sign_symbol": {
+          "select": "slope_sign",
+          "cases": {
+            "positive": ">",
+            "negative": "<"
+          },
+          "default": ""
+        },
+        "direction": {
+          "select": "slope_sign",
+          "cases": {
+            "positive": "递增",
+            "negative": "递减"
+          },
+          "default": ""
+        }
+      }
     },
     "variable_conditions": {
       "title": "解出所求范围",
@@ -306,13 +689,209 @@
         "combiner",
         "solutions",
         "parameter"
-      ]
+      ],
+      "render": [
+        "按确界及其是否取得建立关于 ${parameter}$ 的条件，移项并按非零常数作等价变形，分别求解。",
+        {
+          "if": "multiple",
+          "then": "原量词要求{logical}，因此各解集取{operation}。",
+          "else": ""
+        },
+        "所得范围随后与其余题设求交，并独立验证边界。"
+      ],
+      "prepare": "variable_conditions",
+      "variables": {
+        "logical": {
+          "select": "combiner",
+          "cases": {
+            "all": "每个条件都成立",
+            "any": "至少一个条件成立"
+          },
+          "default": ""
+        },
+        "operation": {
+          "select": "combiner",
+          "cases": {
+            "all": "交集",
+            "any": "并集"
+          },
+          "default": ""
+        }
+      }
+    },
+    "variable_case_range": {
+      "title": "确定区间端点条件",
+      "explanation": "根据斜率符号和端点可达性确定候选。",
+      "required_bindings": [
+        "before",
+        "after",
+        "x",
+        "parameter",
+        "domain",
+        "slope",
+        "slope_sign",
+        "endpoint_mode",
+        "range",
+        "slope_certificate",
+        "condition"
+      ],
+      "render": [
+        {
+          "select": "slope_sign",
+          "cases": {
+            "positive": [
+              "一次项系数 ${slope}",
+              {
+                "if": "has_square",
+                "then": "={square}",
+                "else": ""
+              },
+              "{sign_symbol}0$，函数在给定区间上严格{direction}。"
+            ],
+            "negative": [
+              "一次项系数 ${slope}",
+              {
+                "if": "has_square",
+                "then": "={square}",
+                "else": ""
+              },
+              "{sign_symbol}0$，函数在给定区间上严格{direction}。"
+            ],
+            "zero": "一次项系数恒为零，函数为常数，在区间内部也能取得该值。"
+          },
+          "default": "一次项系数 ${slope}$ 不能统一判定为严格正或严格负。一次函数在闭区间上的确界由两端决定，保留两个端点条件。"
+        },
+        {
+          "for": "range.candidates",
+          "as": "item",
+          "body": [
+            "{bound_name}",
+            {
+              "if": "multiple",
+              "then": "候选值",
+              "else": ""
+            },
+            "来自 ${x}={item.point}$，为 ${item.value}$，",
+            {
+              "if": "item.attained",
+              "then": "能取得",
+              "else": "只能趋近、不能取得"
+            },
+            "。"
+          ],
+          "separator": ""
+        }
+      ],
+      "prepare": "variable_range",
+      "variables": {
+        "bound_name": {
+          "select": "range.bound",
+          "cases": {
+            "sup": "上确界",
+            "inf": "下确界"
+          },
+          "default": ""
+        },
+        "sign_symbol": {
+          "select": "slope_sign",
+          "cases": {
+            "positive": ">",
+            "negative": "<"
+          },
+          "default": ""
+        },
+        "direction": {
+          "select": "slope_sign",
+          "cases": {
+            "positive": "递增",
+            "negative": "递减"
+          },
+          "default": ""
+        }
+      }
+    },
+    "variable_case_conditions": {
+      "title": "解出所求范围",
+      "explanation": "将端点条件化为关于所求字母的不等式，逐一求解并按量词组合。",
+      "required_bindings": [
+        "before",
+        "after",
+        "conditions",
+        "normalized",
+        "combiner",
+        "solutions",
+        "parameter",
+        "condition"
+      ],
+      "render": [
+        "按确界及其是否取得建立关于 ${parameter}$ 的条件，移项并按非零常数作等价变形，分别求解。",
+        {
+          "if": "multiple",
+          "then": "原量词要求{logical}，因此各解集取{operation}。",
+          "else": ""
+        },
+        "先与当前情况的参数范围取交集，保留同时满足的参数。合并各情况后，再与其余题设求交，并独立验证边界。"
+      ],
+      "prepare": "variable_conditions",
+      "variables": {
+        "logical": {
+          "select": "combiner",
+          "cases": {
+            "all": "每个条件都成立",
+            "any": "至少一个条件成立"
+          },
+          "default": ""
+        },
+        "operation": {
+          "select": "combiner",
+          "cases": {
+            "all": "交集",
+            "any": "并集"
+          },
+          "default": ""
+        }
+      }
+    },
+    "variable_case_merge": {
+      "title": "合并各情况",
+      "explanation": "各情况互不重叠并覆盖全部参数，把每个情况内求得的参数集取并集。",
+      "required_bindings": [
+        "before",
+        "after",
+        "cases",
+        "solutions",
+        "parameter"
+      ],
+      "render": [
+        {
+          "for": "case_solutions",
+          "as": "item",
+          "body": "${item.condition}$ 时得到 ${item.solution}$",
+          "separator": "；"
+        },
+        "。把各情况的参数集取并集，随后独立验证并检查边界。"
+      ],
+      "prepare": "interval_merge"
+    },
+    "variable_cases": {
+      "title": "按斜率确定完整分类",
+      "explanation": "分别检查斜率为零和非零的参数情况。",
+      "required_bindings": [
+        "before",
+        "after",
+        "cases",
+        "parameter",
+        "slope"
+      ],
+      "render": "先求一次项系数 ${slope}$ 为零的参数值。在这些值上按常数关系判断；其余参数按斜率符号与开放端点规则判断。这些情况互不重叠并覆盖全部参数。",
+      "prepare": "interval_cases"
     }
   },
   "boundary_steps": {
     "method-discriminant": "merge",
     "method-separation": "restore",
     "method-interval-extremum": "verify",
-    "method-variable-swap": "solve"
-  }
+    "method-variable-swap": "merge"
+  },
+  "case_prefix": "在 ${condition}$ 的情况下，"
 }

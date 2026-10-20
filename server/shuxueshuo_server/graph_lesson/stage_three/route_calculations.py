@@ -12,6 +12,18 @@ from .budget import BudgetExhausted, BudgetLedger, BudgetPending
 _ACCOUNTING = {"compute_seconds", "verification_seconds", "solve_timing", "verification_timing", "budget_accounting"}
 
 
+class PreparationTimeout(TimeoutError):
+    """The target's separate preparation allowance could not complete its work."""
+
+
+def _budget_error(bucket, reason, operation):
+    if bucket == "verification":
+        return verification.VerificationGap("verification_incomplete:" + reason + ":" + operation)
+    if bucket == "selection":
+        return PreparationTimeout("preparation." + reason + ":" + operation)
+    return TimeoutError("execution.solve_" + reason + ":" + operation)
+
+
 def _input_hash(payload):
     stable = deepcopy(payload)
     if "state" in stable:
@@ -24,9 +36,7 @@ def _raise_receipt(receipt, bucket, operation):
     if receipt["status"] == "returned":
         return deepcopy(receipt["result"])
     if receipt["status"] == "timeout":
-        if bucket == "verification":
-            raise verification.VerificationGap("verification_incomplete:timeout:" + operation)
-        raise TimeoutError("execution.solve_timeout:" + operation)
+        raise _budget_error(bucket, "timeout", operation)
     error = receipt.get("error", {})
     if error.get("exception_module") == goals.__name__ and error.get("exception_type") == "GoalClosureMismatch":
         raise goals.GoalClosureMismatch(error["message"])
@@ -43,11 +53,13 @@ def _raise_receipt(receipt, bucket, operation):
     )
 
 
-class RouteCalculations:
-    def __init__(self, store, target, route, *, solve_budget_seconds, verification_budget_seconds, hooks=None):
+class DurableCalculations:
+    """One leased worker session; all configured budget buckets survive resume."""
+
+    def __init__(self, store, target, route, *, limits, dispatch, hooks=None):
         self.store, self.target, self.route = store, target, route
         self.ledger = BudgetLedger(store)
-        self.limits = {"solve": solve_budget_seconds, "verification": verification_budget_seconds}
+        self.limits, self.dispatch = limits, dispatch
         self.hooks = hooks or {}
         self._stack = ExitStack()
 
@@ -67,7 +79,7 @@ class RouteCalculations:
                     break
                 sleep(0.02)
             self.session = self._stack.enter_context(bounded.JsonCalculationSession(
-                self.hooks.get("calculation_dispatch", calculations.dispatch),
+                self.dispatch,
             ))
             return self
         except BaseException:
@@ -81,9 +93,7 @@ class RouteCalculations:
         try:
             attempt = self.ledger.begin(self.target, self.route, bucket, operation, _input_hash(payload), self.owner)
         except (BudgetExhausted, BudgetPending) as exc:
-            if bucket == "verification":
-                raise verification.VerificationGap("verification_incomplete:budget_unavailable:" + operation) from exc
-            raise TimeoutError("execution.solve_budget_unavailable:" + operation) from exc
+            raise _budget_error(bucket, "budget_unavailable", operation) from exc
         if attempt["reused"]:
             return _raise_receipt(attempt["receipt"], bucket, operation)
         failure = None
@@ -103,10 +113,15 @@ class RouteCalculations:
                 # Storage/protocol failures are programming/infrastructure
                 # errors, not an unproved mathematical statement.
                 raise failure from exc
-            if bucket == "verification":
-                raise verification.VerificationGap("verification_incomplete:receipt_missing:" + operation) from exc
-            raise TimeoutError("execution.solve_receipt_missing:" + operation) from exc
+            raise _budget_error(bucket, "receipt_missing", operation) from exc
         return _raise_receipt(settled["receipt"], bucket, operation)
+
+
+class RouteCalculations(DurableCalculations):
+    def __init__(self, store, target, route, *, solve_budget_seconds, verification_budget_seconds, hooks=None):
+        super().__init__(store, target, route,
+                         limits={"solve": solve_budget_seconds, "verification": verification_budget_seconds},
+                         dispatch=(hooks or {}).get("calculation_dispatch", calculations.dispatch), hooks=hooks)
 
     def sync_state(self, state):
         state["budget_accounting"] = {}

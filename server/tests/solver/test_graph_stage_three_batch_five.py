@@ -159,17 +159,56 @@ def _save_alignment(output, rows):
 
 
 def _assert_swap_evidence(case, trajectory):
+    assert case in ("q08", "q09")
     calls = _calls(trajectory)
     reordered, = [call for call in calls if call["capability"] == "reorder_by_variable"]
     assert _checked(reordered)
-    extent, = [call for call in calls if call["capability"] == "parameter_linear_range"]
+    plan_step, = [step for step in trajectory["steps"] if step["method"] == METHOD
+                  and step["step"] == "range" and step["depth"] == 0]
+    plan, = plan_step["judgments"]
+    assert plan["id"] == "plan" and plan["decided_by"] == "program" and plan["selected"] == "direct"
+    assert plan["evidence"]["selected"] == "direct" and plan["evidence"]["has_cases"] is False
+    descriptor, = plan["evidence"]["cases"]
+    assert descriptor["id"] == "variable-direct" and descriptor["mode"] == "direct"
+    assert descriptor["kind"] == "nondegenerate" and descriptor["value"] is None
+    assert _math(descriptor["domain"]) == sp.S.Reals and _math(descriptor["condition"]) is sp.true
+    partition = plan["evidence"]["evidence"]
+    assert partition["kind"] == "complete_affine_slope_partition" and partition["passed"] is True
+    assert partition["case_domains"] == [descriptor["domain"]]
+    assert partition["certificates"] == [descriptor["certificate"]]
+    assert all(step["case_path"] == [] for step in trajectory["steps"])
+    extent, = [call for call in calls if call["capability"] == "parameter_linear_case_range"]
     assert _checked(extent)
-    assert "skill-linear-range" in {extent["public_ref"], *extent["used_basis"]}
+    assert extent["public_ref"] == "skill-linear-range"
     assert "linear-interval-extremum#interval" in extent["used_basis"]
+    assert extent["inputs"]["case"] == descriptor
+    assert extent["outputs"]["slope_certificate"] == descriptor["certificate"]
+    certificate = descriptor["certificate"]
+    assert certificate["kind"] == "affine_slope_square_certificate" and certificate["passed"] is True
+    assert sp.expand(_math(certificate["square"]) - _math(certificate["slope"])) == 0
+    assert _math(certificate["parameter_domain"]) == sp.S.Reals
+    x = sp.Symbol("x", real=True)
+    assert _math(certificate["slope"]) == x**2 - x + (1 if case == "q08" else 0)
+    assert _math(certificate["value"]) == (sp.Rational(3, 4) if case == "q08" else -sp.Rational(1, 4))
+    assert _math(extent["inputs"]["domain"]) == (sp.Interval(1, 3) if case == "q08" else sp.Interval(-1, 1))
+    assert extent["inputs"]["expression"] == reordered["outputs"]["expression"]
+    assert plan in [pointer(trajectory, source) for source in extent["source_refs"]]
+    assert {check["kind"] for check in extent["postconditions"]} == {
+        "affine_range_identity", "affine_slope_square_certificate",
+        "affine_endpoint_substitution", "affine_bound_envelope",
+    }
     assert extent["outputs"]["slope_sign"] == ("positive" if case == "q08" else "unknown")
+    assert descriptor["slope_sign"] == certificate["sign"] == extent["outputs"]["slope_sign"]
     assert extent["outputs"]["endpoint_mode"] == ("right_endpoint" if case == "q08" else "both_endpoints")
+    candidates = extent["outputs"]["range"]["candidates"]
+    assert [_math(row["point"]) for row in candidates] == ([sp.Integer(3)] if case == "q08" else [-1, 1])
+    assert all(row["attained"] is True for row in candidates)
+    assert [_math(row["value"]) for row in candidates] == (
+        [3*x**2 - 3*x - 3] if case == "q08" else [1-x**2, x**2-2*x+1])
     applied, = [call for call in calls if call["capability"] == "apply_quantifier_policy"]
     assert _checked(applied) and applied["outputs"]["combiner"] == "all"
+    assert applied["inputs"]["range"] == extent["outputs"]["range"]
+    assert extent in [pointer(trajectory, source) for source in applied["source_refs"]]
     assert len(applied["outputs"]["conditions"]) == (1 if case == "q08" else 2)
     solved, = [call for call in calls if call["capability"] == "combine_variable_solutions"]
     assert _checked(solved) and _math(solved["outputs"]["solution"]) == ANSWERS[case]
@@ -180,14 +219,42 @@ def _assert_swap_evidence(case, trajectory):
     assert sign["selected"] == extent["outputs"]["slope_sign"] and sign["decided_by"] == "program"
     assert sign["inputs"]["certificate"] == extent["outputs"]["slope_certificate"]
     child_steps = [step for step in trajectory["steps"] if step["method"] == "quadratic-inequality-solve"]
-    assert child_steps and all(step["depth"] == 1 and step["parent_call"] for step in child_steps)
-    assert len({step["parent_call"] for step in child_steps}) == (1 if case == "q08" else 2)
-    assert {step["step"] for step in child_steps} == {"normalize", "roots", "signs", "solution"}
     children = [call for call in calls if call["capability"] == "submethod"
                 and call["public_ref"] == "quadratic-inequality-solve"]
     assert len(children) == (1 if case == "q08" else 2) and all(_checked(call) for call in children)
-    policies = [call["outputs"]["policy"] for call in calls if call["capability"] == "select_quantifier_policy"]
-    assert policies and all(policy["quantifier"] == "∀" and policy["strict"] for policy in policies)
+    solve_step, = [step for step in trajectory["steps"] if step["method"] == METHOD and step["step"] == "solve"]
+    assert solve_step["depth"] == plan_step["depth"] + 1 == 1 and solve_step["case_path"] == []
+    assert all(child in solve_step["calls"] for child in children)
+    assert {step["parent_call"] for step in child_steps} == {child["seq"] for child in children}
+    for child in children:
+        nested = [step for step in child_steps if step["parent_call"] == child["seq"]]
+        assert [step["step"] for step in nested] == ["normalize", "roots", "signs", "solution"]
+        assert all(step["depth"] == solve_step["depth"] + 1 and step["case_path"] == child["case_path"] == []
+                   for step in nested)
+        assert plan in [pointer(trajectory, source) for source in child["source_refs"]]
+    selected, = [call for call in calls if call["capability"] == "select_quantifier_policy"]
+    assert _checked(selected) and selected["public_ref"] == "skill-quantified-range"
+    policy = selected["outputs"]["policy"]
+    assert policy == {"quantifier": "∀", "strict": True, "operator": ">" if case == "q08" else "<",
+                      "bound": "sup" if case == "q08" else "inf"}
+    assert plan["inputs"]["policy"] == extent["inputs"]["policy"] == applied["inputs"]["policy"] == policy
+    intersected, = [call for call in calls if call["capability"] == "intersect_variable_case_solution"]
+    assert _checked(intersected) and intersected["inputs"]["case"] == descriptor
+    assert intersected["inputs"]["solution"] == solved["outputs"]["solution"]
+    assert _math(intersected["outputs"]["solution"]) == ANSWERS[case]
+    collected, = plan_step["case_results"]
+    assert collected["case_id"] == descriptor["id"] and collected["case_path"] == []
+    assert collected["domain"] == descriptor["domain"] and collected["condition"] == descriptor["condition"]
+    assert collected["outputs"]["solution"] == intersected["outputs"]["solution"]
+    assert [pointer(trajectory, source) for source in collected["source_refs"]] == [intersected]
+    merged, = [call for call in calls if call["capability"] == "merge_variable_cases"]
+    assert _checked(merged) and merged["operations"] == ["variable_case_union"]
+    assert "method-variable-swap#merge" in merged["used_basis"]
+    assert merged["inputs"] == {"cases": [descriptor], "results": [collected]}
+    assert _math(merged["outputs"]["solution"]) == ANSWERS[case]
+    assert merged["outputs"]["case_solutions"] == [intersected["outputs"]["solution"]]
+    assert {item["kind"] for item in merged["postconditions"]} == {"complete_disjoint_cases", "case_result"}
+    assert [collected] in [pointer(trajectory, source) for source in merged["source_refs"]]
     assert all(judgment["decided_by"] == "program" for step in trajectory["steps"] for judgment in step["judgments"])
     boundary, = [record["outputs"] for record in trajectory["finalization"] if record["capability"] == "endpoint_check"]
     assert boundary["status"] == "passed"
@@ -355,8 +422,8 @@ def test_original_problem_proof_rejects_wrong_endpoints_one_end_and_lost_cells(c
     assert rejected["proof"]["cells"] == correct["proof"]["cells"]
 
 
-@pytest.mark.parametrize("fact", ["∀a∈(-1,1):a*x^2-(a+1)*x+1>0", "∃a∈ℝ:a*x^2-(a+1)*x+1>0"])
-def test_uncovered_open_or_unbounded_domains_never_use_closed_endpoint_rule(tmp_path, fact):
+@pytest.mark.parametrize("fact", ["∃a∈ℝ:a*x^2-(a+1)*x+1>0"])
+def test_uncovered_unbounded_domains_never_use_closed_endpoint_rule(tmp_path, fact):
     result = runner.run_sample(constructed_upstream(tmp_path, simple(fact, symbol="x")), tmp_path / "run", milestone="5")
     goal, = result["goals"]
     discriminant, = [branch for branch in goal["selection"]["branches"] if branch["branch"] == "discriminant"]

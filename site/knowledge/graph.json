@@ -846,6 +846,11 @@
             "skill-inequality-transform",
             "quadratic-inequality-solve"
           ]
+        },
+        {
+          "id": "merge",
+          "title": "合并各情况的结果",
+          "calls": []
         }
       ]
     },

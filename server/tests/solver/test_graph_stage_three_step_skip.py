@@ -54,7 +54,7 @@ def test_degenerate_case_records_each_skipped_step_with_resolvable_guard_evidenc
             source = steps[int(index)][category][int(position)]
             assert source["evidence"]["has_degenerate"] is True
             assert descriptor in source["evidence"]["cases"]
-    schema = json.loads((ROOT / "internal/schemas/graph-stage-three-route-v1.schema.json").read_text())
+    schema = json.loads((ROOT / "internal/schemas/graph-stage-three-route-v2.schema.json").read_text())
     Draft202012Validator(schema).validate(state["trajectory"])
     malformed = deepcopy(state["trajectory"])
     del next(step for step in malformed["steps"] if "step_skip" in step)["step_skip"]["source_refs"]
@@ -98,7 +98,7 @@ def test_step_skip_is_streamed_and_resume_never_duplicates_it(tmp_path, position
                           hooks={position: stop_after_skip})
     prefix = events(output)
     checkpoint = next(
-        item["driver_state"] for item in store(output).snapshot()["checkpoints"]
+        item["driver_state"] for item in store(output).internal_snapshot()["checkpoints"]
         if item["route_id"] == "discriminant"
     )
     assert bool(_skipped_steps(checkpoint)) is (position == "after_commit")

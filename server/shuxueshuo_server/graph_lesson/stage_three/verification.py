@@ -17,6 +17,7 @@ from sympy.polys.polyerrors import BasePolynomialError
 from ...problem_understanding.notation_compile import NotationValidator
 from ...problem_understanding.notation_parser import NotationError
 from ...problem_understanding.notation_semantics import Canonical, bounded_expand, key
+from .math_values import math_value
 
 
 class VerificationGap(ValueError):
@@ -25,11 +26,6 @@ class VerificationGap(ValueError):
 
 class ContextMismatch(ValueError):
     pass
-
-
-def math_value(value):
-    """Inert exact text and student display; neither field is parsed back."""
-    return {"expression": sp.sstr(value), "latex": sp.latex(value)}
 
 
 def _pointer(path):
@@ -679,25 +675,6 @@ def _denominator_zero_set(expression, parameter):
     numerator, _ = sp.fraction(sp.cancel(expression))
     points, _ = _critical_sources([(numerator, "", "denominator_zero")], parameter)
     return _predicate_set(points, lambda value: _algebraic_sign(numerator.subs(parameter, value)) == 0)
-
-
-@_sympy_gap_boundary
-def apply_visible_constraints(candidate, target_ref, constraint_context, feasible_set):
-    """Intersect every supported visible restriction and retain discharge records."""
-    problem = read_problem(candidate, target_ref, constraint_context)
-    result = feasible_set
-    processing = deepcopy(problem.processing)
-    for constraint in problem.constraints:
-        domain = _constraint_set(constraint, problem.parameter)
-        result = result.intersect(domain)
-        processing.append({"source_ref": constraint["source_ref"], "status": "intersected",
-                           "constraint_set": math_value(domain), "result": math_value(result)})
-    for expression, source in problem.denominators:
-        zeros = _denominator_zero_set(expression, problem.parameter)
-        result = result - zeros
-        processing.append({"source_ref": source, "status": "original_denominator_nonzero",
-                           "denominator": math_value(expression), "excluded": math_value(zeros)})
-    return result, processing
 
 
 def _extended_compare(left, right):

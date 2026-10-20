@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 from ..stage_one.report import CSS
 from ..stage_two.contracts import ROOT
+from .math_values import adapt_legacy_math_values
 
 LABELS = {
     "completed": "选法评估完成", "input_error": "输入未通过校验", "partial": "部分失败", "failed": "失败",
@@ -25,7 +26,7 @@ METHODS = {"discriminant": "判别式法", "interval": "区间最值法", "separ
 
 def _read(path):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return adapt_legacy_math_values(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, UnicodeError, ValueError):
         return None
 
@@ -52,7 +53,7 @@ def _math_text(value):
 def _answer_math(value):
     if not isinstance(value, dict):
         return ""
-    formula = value.get("latex") or value.get("display") or value.get("expression")
+    formula = value.get("latex")
     return '<span class="math">' + escape(formula) + '</span>' if isinstance(formula, str) and formula else ""
 
 
@@ -89,7 +90,7 @@ def _math_step(step, seq):
     body += '<p>' + _math_text(step.get('explanation', '')) + '</p>'
     for key, label in (('before', '由'), ('after', '得')):
         for expression in step.get(key, []):
-            body += '<p>' + label + ' <span class="math">' + escape(expression['display']) + '</span></p>'
+            body += '<p>' + label + ' <span class="math">' + escape(expression['latex']) + '</span></p>'
     body += '<p class="muted">本步局部检查通过 · ' + escape(step['method_ref']) + '</p>'
     body += _details('条件、依据与来源', {key: step.get(key) for key in
                                         ('case_path', 'premise_refs', 'used_basis', 'source_refs', 'step_id', 'math_step_sha256')})
@@ -222,6 +223,10 @@ def render_result(directory):
     body += '<section><h2>输入准入与出处</h2>' + _json(result["input_validation"])
     body += _details("输入引用与哈希", _read(directory / "input.json"))
     body += _details("阶段①准入状态", stage_one.get("statuses"))
+    if result.get("preparation") is not None:
+        body += _details("准入与选法计算预算、耗时及诊断", result["preparation"])
+    if result.get("retained_goals"):
+        body += _details("核验未完成：已撤销可用性的历史目标与已发布片段", result["retained_goals"])
     body += _details("阶段③本次调用数（恒为零）", result["llm"])
     body += _details("上游阶段②调用计数（与本阶段分开）", result.get("upstream_llm")) + '</section>'
     for number, goal in enumerate(result["goals"], 1):

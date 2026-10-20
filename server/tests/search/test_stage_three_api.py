@@ -170,6 +170,12 @@ def test_real_recorded_two_routes_stream_while_running_and_refresh_never_recompu
             stream = current["stream"]
             snapshot = client.get(stream["snapshot_url"]).json()
             assert snapshot["math_steps"] and not snapshot["handoffs"] and not snapshot["goals"]
+            assert snapshot["contract"] == "graph-stage-three-snapshot/v2"
+            assert "revisions" not in snapshot and len(snapshot["revisions_ref"]) == 64
+            assert snapshot["trajectories"]
+            assert all("driver_state" not in row and "frames" not in row for row in snapshot["checkpoints"])
+            assert all(card["contract"] == "graph-math-step/v2" and "revisions" not in card
+                       for card in snapshot["math_steps"])
             first_page = client.get(stream["events_url"], params={"after_seq": 0}).json()
             with client.websocket_connect(stream["websocket_url"] + "?after=0") as socket:
                 assert socket.receive_json() == first_page

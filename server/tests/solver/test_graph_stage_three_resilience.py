@@ -13,6 +13,7 @@ from shuxueshuo_server.graph_lesson.stage_three.contracts import (
     validate_result,
 )
 from shuxueshuo_server.graph_lesson.stage_two.runner import run_result
+from tests.solver.stage_three_preparation_probes import hooks
 from tests.solver.test_graph_stage_three_report import assert_self_contained_report
 
 RECORDED = Path(__file__).parent / "fixtures/graph-guided-stage-one/recorded/live-v2-20261017-02"
@@ -42,19 +43,13 @@ def upstream(tmp_path, case="q10", *, admission="acceptance"):
 
 @pytest.mark.parametrize("phase", ["build_context", "evaluate_goal"])
 @pytest.mark.parametrize("error", [KeyError, TypeError, ValueError])
-def test_one_goal_exception_keeps_other_goal_and_debug_artifacts(tmp_path, monkeypatch, phase, error):
+def test_one_goal_exception_keeps_other_goal_and_debug_artifacts(tmp_path, phase, error):
     source = upstream(tmp_path)
-    original = getattr(runner, phase)
     broken_ref = "/root/children/0/goals/0"
 
-    def fail_one(candidate, ref, *args, **kwargs):
-        if ref == broken_ref:
-            raise error("injected goal failure")
-        return original(candidate, ref, *args, **kwargs)
-
-    monkeypatch.setattr(runner, phase, fail_one)
     output = tmp_path / "stage-three"
-    result = runner.run_sample(source, output, milestone="1a")
+    result = runner.run_sample(source, output, milestone="1a",
+                               hooks=hooks(phase, target_ref=broken_ref, error=error.__name__))
     validate_result(result)
     assert result["status"] == "partial"
     failed, continued = result["goals"]
@@ -84,10 +79,11 @@ def test_one_goal_exception_keeps_other_goal_and_debug_artifacts(tmp_path, monke
 def test_all_admitted_goals_failing_reports_failed_and_cli_returns_one(tmp_path, monkeypatch, capsys, phase):
     source = upstream(tmp_path)
 
-    def fail(*args, **kwargs):
-        raise ValueError("all goals failed")
+    from shuxueshuo_server.graph_lesson.stage_three import cli
 
-    monkeypatch.setattr(runner, phase, fail)
+    original = runner.run_sample
+    monkeypatch.setattr(cli, "run_sample", lambda *args, **kwargs: original(
+        *args, **kwargs, hooks=hooks(phase, error="ValueError", message="all goals failed")))
     output = tmp_path / "stage-three"
     assert main(["run", "--input", str(source), "--output", str(output)]) == 1
     assert json.loads(capsys.readouterr().out)["status"] == "failed"
@@ -99,19 +95,12 @@ def test_all_admitted_goals_failing_reports_failed_and_cli_returns_one(tmp_path,
     assert_self_contained_report(output / "index.html")
 
 
-def test_unconfirmed_goal_stays_skipped_without_running_its_context_or_selection(tmp_path, monkeypatch):
+@pytest.mark.parametrize("phase", ["build_context", "evaluate_goal"])
+def test_unconfirmed_goal_stays_skipped_without_running_its_context_or_selection(tmp_path, phase):
     source = upstream(tmp_path, "q11")
     skipped_ref = "/root/children/0/goals/0"
-    for phase in ("build_context", "evaluate_goal"):
-        original = getattr(runner, phase)
-
-        def fail_unconfirmed(candidate, ref, *args, _original=original, **kwargs):
-            if ref == skipped_ref:
-                raise AssertionError("unconfirmed target must not enter stage-three evaluation")
-            return _original(candidate, ref, *args, **kwargs)
-
-        monkeypatch.setattr(runner, phase, fail_unconfirmed)
-    result = runner.run_sample(source, tmp_path / "stage-three", milestone="1a")
+    result = runner.run_sample(source, tmp_path / "stage-three", milestone="1a",
+                               hooks=hooks(phase, target_ref=skipped_ref, error="AssertionError"))
     assert result["status"] == "completed"
     skipped, continued = result["goals"]
     assert skipped["status"] == "skipped"

@@ -18,6 +18,7 @@ import struct
 import threading
 import time
 import types
+import zlib
 from pathlib import Path
 
 from .bounded import (
@@ -35,48 +36,71 @@ MAX_JSON_DEPTH = 64
 MAX_JSON_NODES = 200_000
 _CHUNK = 480
 _CLEANUP_SECONDS = 1.0
+_COMPRESS_THRESHOLD = 16 * 1024
+_COMPRESSED_MAGIC = b"\x00S3Z1\x00"
 
 
 def _validate_json(value):
+    """Validate native values and bound the size of their UTF-8 JSON encoding.
+
+    The bound may exceed the actual size: those inputs retain streaming encoding
+    so an overestimate never rejects otherwise valid calculation data.
+    """
     pending = [(value, 0)]
-    nodes, text_size = 1, 0
+    nodes, text_size, encoded_size = 1, 0, 0
     while pending:
         item, depth = pending.pop()
         if depth > MAX_JSON_DEPTH or nodes > MAX_JSON_NODES:
             raise ValueError("JSON calculation data exceeds depth/node limit")
         kind = type(item)
         if kind in (type(None), bool):
+            encoded_size += 5 if item is False else 4
             continue
         if kind is int:
-            if item.bit_length() > 4096:
+            bits = item.bit_length()
+            if bits > 4096:
                 raise ValueError("JSON integer exceeds 4096-bit limit")
+            # 30103 / 100000 is an upper bound for log10(2). Do not convert
+            # every large integer to decimal before the streaming byte guard.
+            encoded_size += bits * 30103 // 100000 + 1 + (item < 0)
         elif kind is float:
             if not math.isfinite(item):
                 raise ValueError("JSON numbers must be finite")
+            encoded_size += len(repr(item))
         elif kind is str:
             text_size += len(item)
+            # A character needs at most six bytes (a JSON control escape).
+            # Non-ASCII UTF-8 characters need at most four; include quotes.
+            encoded_size += 6 * len(item) + 2
         elif kind is list:
             nodes += len(item)
             if nodes > MAX_JSON_NODES:
                 raise ValueError("JSON calculation data exceeds node limit")
+            encoded_size += 2 + max(0, len(item) - 1)
             pending.extend((child, depth + 1) for child in item)
         elif kind is dict:
             nodes += len(item)
             if nodes > MAX_JSON_NODES:
                 raise ValueError("JSON calculation data exceeds node limit")
+            encoded_size += 2 + max(0, len(item) - 1) + len(item)
             for key, child in item.items():
                 if type(key) is not str:
                     raise TypeError("JSON object keys must be exact strings")
                 text_size += len(key)
+                encoded_size += 6 * len(key) + 2
                 pending.append((child, depth + 1))
         else:
             raise TypeError(f"calculation data must be JSON-native, got {kind.__module__}.{kind.__name__}")
         if text_size > MAX_JSON_BYTES:
             raise ValueError("JSON calculation data exceeds byte limit")
+    return encoded_size
 
 
 def _encode(value):
-    _validate_json(value)
+    if _validate_json(value) <= MAX_JSON_BYTES:
+        # Only bounded output reaches the C encoder. Larger estimates fall
+        # back to the incremental guard instead of allocating oversized JSON.
+        return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
     chunks, size = [], 0
     for text in json.JSONEncoder(ensure_ascii=False, allow_nan=False, separators=(",", ":")).iterencode(value):
         chunk = text.encode("utf-8")
@@ -90,9 +114,31 @@ def _encode(value):
 def _decode(data):
     if len(data) > MAX_JSON_BYTES:
         raise ValueError("JSON calculation data exceeds byte limit")
+    if data.startswith(_COMPRESSED_MAGIC):
+        decoder = zlib.decompressobj()
+        try:
+            expanded = decoder.decompress(data[len(_COMPRESSED_MAGIC):], MAX_JSON_BYTES + 1)
+        except zlib.error as exc:
+            raise ValueError("invalid compressed JSON data") from exc
+        if len(expanded) > MAX_JSON_BYTES or decoder.unconsumed_tail:
+            raise ValueError("JSON calculation data exceeds byte limit")
+        if not decoder.eof or decoder.unused_data:
+            raise ValueError("incomplete or trailing compressed JSON data")
+        data = expanded
     result = json.loads(data)
     _validate_json(result)
     return result
+
+
+def _wire_bytes(data):
+    """Compress only pipe messages; durable receipts remain ordinary JSON."""
+    if len(data) > MAX_JSON_BYTES:
+        raise ValueError("JSON calculation data exceeds byte limit")
+    if len(data) > _COMPRESS_THRESHOLD:
+        compressed = _COMPRESSED_MAGIC + zlib.compress(data, level=1)
+        if len(compressed) < len(data):
+            return compressed
+    return data
 
 
 def _frames(data):
@@ -104,6 +150,9 @@ def _frames(data):
 
 def _send(connection, data, deadline=None, cancel_connection=None):
     """Atomic POSIX frames prevent partial-frame recv from evading deadlines."""
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TimeoutError("JSON transport deadline exceeded")
+    data = _wire_bytes(data)
     fd = connection.fileno()
     if os.name != "posix":
         for frame in _frames(data):

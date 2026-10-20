@@ -662,5 +662,63 @@
     "execution_error": {
       "status": "execution_error"
     }
+  },
+  "admission": {
+    "bindings": {
+      "interval_function": {
+        "resolver": "interval_function"
+      },
+      "interval_operator": {
+        "resolver": "interval_operator"
+      },
+      "x": {
+        "resolver": "bound_variable"
+      },
+      "parameter": {
+        "resolver": "parameter"
+      },
+      "domain": {
+        "resolver": "domain"
+      },
+      "quantifier": {
+        "resolver": "quantifier"
+      },
+      "zero": {
+        "resolver": "zero"
+      },
+      "constraint_context": {
+        "resolver": "constraint_context"
+      },
+      "goal": {
+        "resolver": "goal"
+      }
+    },
+    "checks": [
+      {
+        "function": "quantifier",
+        "inputs": {
+          "quantifier": "$quantifier"
+        }
+      },
+      {
+        "function": "polynomial_degree",
+        "inputs": {
+          "expression": "$interval_function",
+          "variable": "$x",
+          "degree": 2
+        }
+      },
+      {
+        "function": "interval_cases",
+        "inputs": {
+          "expression": "$interval_function",
+          "variable": "$x",
+          "parameter": "$parameter",
+          "domain": "$domain",
+          "quantifier": "$quantifier",
+          "operator": "$interval_operator"
+        }
+      }
+    ]
   }
 }

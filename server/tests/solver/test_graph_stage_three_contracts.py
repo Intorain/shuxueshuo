@@ -229,8 +229,8 @@ def test_context_rejects_non_goal_pointers(ref):
 def test_all_new_schemas_are_valid_and_do_not_require_external_resolution():
     paths = [*ROOT.glob("internal/schemas/graph-stage-three-*.schema.json"),
              *ROOT.glob("internal/schemas/graph-method-*.schema.json"),
-             ROOT / "internal/schemas/graph-math-step-v1.schema.json"]
-    assert len(paths) == 7
+             *ROOT.glob("internal/schemas/graph-math-step-*.schema.json")]
+    assert len(paths) >= 9
     for path in paths:
         Draft202012Validator.check_schema(json.loads(path.read_text()))
 

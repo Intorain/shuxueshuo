@@ -45,7 +45,7 @@ def _replay_and_compare(output):
                 if isinstance(source, dict) and "postconditions" in source:
                     assert source["postconditions"]
                     assert all(check["passed"] is True for check in source["postconditions"])
-    snapshot = store(output).snapshot()
+    snapshot = store(output).internal_snapshot()
     for checkpoint in snapshot["checkpoints"]:
         identity = (checkpoint["target_ref"], checkpoint["route_id"])
         expected = checkpoint["driver_state"]["trajectory"]["steps"]
@@ -118,5 +118,7 @@ def test_boundary_source_and_card_resume_as_one_commit(tmp_path, position):
     assert events(output)[:len(prefix)] == prefix
     _replay_and_compare(output)
     sources = [event for event in events(output) if event["payload"].get("finalization")]
-    assert len(sources) == 1
-    assert len(sources[0]["payload"]["finalization"]) == 1
+    assert [event["payload"]["operation"] for event in sources] == ["endpoint_check", "finalize_goal"]
+    assert all(len(event["payload"]["finalization"]) == 1 for event in sources)
+    boundary, closure = [event["payload"]["finalization"][0] for event in sources]
+    assert boundary["index"] < closure["index"]

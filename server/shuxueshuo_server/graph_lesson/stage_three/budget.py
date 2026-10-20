@@ -127,7 +127,7 @@ class BudgetLedger:
         """Configure once; initial usage imports a pre-ledger checkpoint only once."""
         _text(target, "target")
         _text(route, "route")
-        if bucket not in ("solve", "verification"):
+        if bucket not in ("solve", "verification", "selection"):
             raise ValueError("budget.invalid_bucket")
         limit_seconds = _seconds(limit_seconds, "limit_seconds")
         initial_seconds = _seconds(initial_seconds, "initial_seconds")

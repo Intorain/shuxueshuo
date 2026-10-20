@@ -629,5 +629,67 @@
       "status": "execution_error"
     }
   },
-  "schema_version": "graph-method-execution/v1"
+  "schema_version": "graph-method-execution/v1",
+  "admission": {
+    "bindings": {
+      "relation": {
+        "resolver": "relation"
+      },
+      "expression": {
+        "resolver": "expression"
+      },
+      "x": {
+        "resolver": "bound_variable"
+      },
+      "parameter": {
+        "resolver": "parameter"
+      },
+      "domain": {
+        "resolver": "domain"
+      },
+      "quantifier": {
+        "resolver": "quantifier"
+      },
+      "strict": {
+        "resolver": "strict"
+      },
+      "goal": {
+        "resolver": "goal"
+      },
+      "constraint_context": {
+        "resolver": "constraint_context"
+      }
+    },
+    "checks": [
+      {
+        "function": "quantifier",
+        "inputs": {
+          "quantifier": "$quantifier"
+        }
+      },
+      {
+        "function": "polynomial_degree",
+        "inputs": {
+          "expression": "$expression",
+          "variable": "$x",
+          "degree": 2
+        }
+      },
+      {
+        "function": "universal_reals",
+        "inputs": {
+          "quantifier": "$quantifier",
+          "domain": "$domain"
+        }
+      },
+      {
+        "function": "rational_parameter_coefficients",
+        "inputs": {
+          "expression": "$expression",
+          "variable": "$x",
+          "parameter": "$parameter"
+        }
+      }
+    ]
+  }
 }

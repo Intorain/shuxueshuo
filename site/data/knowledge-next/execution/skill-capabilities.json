@@ -37,7 +37,8 @@
     ],
     "skill-linear-range": [
       "linear_range",
-      "parameter_linear_range"
+      "parameter_linear_range",
+      "parameter_linear_case_range"
     ],
     "skill-reciprocal-range": [
       "reciprocal_range"
@@ -87,6 +88,12 @@
     ],
     "combine_variable_solutions": [
       "method-variable-swap#solve"
+    ],
+    "intersect_variable_case_solution": [
+      "method-variable-swap#solve"
+    ],
+    "merge_variable_cases": [
+      "method-variable-swap#merge"
     ]
   }
 }

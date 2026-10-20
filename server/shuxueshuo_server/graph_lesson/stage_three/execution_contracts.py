@@ -8,18 +8,10 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from ..stage_two.recognition import DATA, load_nodes
-from . import judgments
+from . import judgments, method_admission
 from .capabilities import PLANNED, REGISTRY
 
 DIRECTORY = DATA / "execution"
-METHODS = (
-    "method-discriminant",
-    "method-separation",
-    "method-interval-extremum",
-    "method-variable-swap",
-    "quadratic-inequality-solve",
-    "method-square-extremum",
-)
 SCHEMA = DATA.parents[2] / "internal/schemas/graph-method-execution-v1.schema.json"
 
 
@@ -33,13 +25,59 @@ def read(name):
 
 
 def route_methods():
-    """Executable top-level routes come from selection contracts, not child calls."""
+    """Top-level routes come from every selection contract, never a Python list."""
     methods = set()
     for path in sorted((DATA / "selection").glob("*.json")):
         selection = json.loads(path.read_text())
         if selection.get("schema_version") == "graph-method-selection/v1":
             methods.update(branch["target"] for branch in selection["branches"])
-    return methods.intersection(METHODS)
+    return methods
+
+
+def discover_contracts():
+    """Discover executable methods by their explicit contract marker."""
+    contracts = {}
+    for path in sorted(DIRECTORY.glob("*.json")):
+        value = read(path.stem)
+        if value.get("schema_version") != "graph-method-execution/v1":
+            if "method" in value and "steps" in value:
+                raise ValueError("execution.unknown_contract_schema:" + path.stem)
+            continue
+        name = value.get("method")
+        if name != path.stem:
+            raise ValueError("execution.contract_filename_mismatch:" + path.stem)
+        contracts[name] = value
+    return contracts
+
+
+def _milestone_configuration(routes=None):
+    value = read("milestones")
+    schema_path = SCHEMA.parent / "graph-execution-milestones-v1.schema.json"
+    Draft202012Validator(json.loads(schema_path.read_text())).validate(value)
+    if value["default"] not in value["milestones"]:
+        raise ValueError("execution.unknown_default_milestone")
+    routes = route_methods() if routes is None else routes
+    enabled = set().union(*(set(items) for items in value["milestones"].values()))
+    if enabled - routes:
+        raise ValueError("execution.unknown_milestone_method:" + ",".join(sorted(enabled - routes)))
+    if routes - enabled:
+        raise ValueError("execution.unconfigured_milestone_method:" + ",".join(sorted(routes - enabled)))
+    return value
+
+
+def allowed_methods(milestone):
+    configuration = _milestone_configuration()
+    if milestone not in configuration["milestones"]:
+        raise ValueError("execution.unknown_milestone:" + str(milestone))
+    return set(configuration["milestones"][milestone])
+
+
+def milestones():
+    return tuple(_milestone_configuration()["milestones"])
+
+
+def default_milestone():
+    return _milestone_configuration()["default"]
 
 
 def actions(step):
@@ -123,10 +161,15 @@ def _require(required, environment, guard=None):
             raise ValueError("execution.unmerged_branch_binding")
 
 
-def validate_contract(contract, nodes=None):
+def validate_contract(contract, nodes=None, *, available_methods=None):
     schema_validator().validate(contract)
     nodes = load_nodes() if nodes is None else nodes
     method = contract["method"]
+    if method not in nodes or "steps" not in nodes[method]:
+        raise ValueError("execution.unknown_method_node:" + method)
+    if "admission" in contract:
+        method_admission.validate_admission(contract)
+    available_methods = set(discover_contracts()) if available_methods is None else available_methods
     public = nodes[method]["steps"]
     if [s["id"] for s in contract["steps"]] != [s["id"] for s in public]:
         raise ValueError("execution.step_mismatch")
@@ -257,7 +300,7 @@ def validate_contract(contract, nodes=None):
                         and cap != "submethod"
                     ):
                         raise ValueError("execution.unknown_capability")
-                    if cap == "submethod" and ref not in METHODS:
+                    if cap == "submethod" and ref not in available_methods:
                         raise ValueError("execution.unavailable_child")
                 outputs = set(action["outputs"])
             for name in outputs:
@@ -317,13 +360,27 @@ def validate_contract(contract, nodes=None):
 
 def load_contracts():
     nodes = load_nodes()
-    boundary_steps = read("presentation-registry").get("boundary_steps", {})
+    discovered = discover_contracts()
+    routes = route_methods()
+    if routes - set(discovered):
+        raise ValueError("execution.missing_method_contract:" + ",".join(sorted(routes - set(discovered))))
+    presentation = read("presentation-registry")
+    boundary_steps = presentation.get("boundary_steps", {})
     if not isinstance(boundary_steps, dict):
         raise TypeError("execution.invalid_boundary_step")
-    missing = route_methods().difference(boundary_steps)
+    missing = routes.difference(boundary_steps)
     if missing:
         raise ValueError("execution.missing_boundary_step:" + ",".join(sorted(missing)))
-    contracts = {name: validate_contract(read(name), nodes) for name in METHODS}
+    contracts = {name: validate_contract(value, nodes, available_methods=set(discovered))
+                 for name, value in discovered.items()}
+    for method in routes:
+        method_admission.validate_admission(contracts[method])
+    if orphaned := {name for name, contract in contracts.items() if "admission" in contract} - routes:
+        raise ValueError("execution.unselected_route:" + ",".join(sorted(orphaned)))
+    _milestone_configuration(routes)
+    from .presentation import validate_registry
+
+    validate_registry(presentation)
 
     def visit(name, path):
         if name in path:
@@ -369,9 +426,10 @@ def revisions():
         "trajectory",
         "judgments",
         "execution_contracts",
+        "method_admission",
     ):
         result[name] = hashlib.sha256((folder / f"{name}.py").read_bytes()).hexdigest()
-    result["selection"] = hashlib.sha256(
-        (DATA / "selection/rule-quadratic-method.json").read_bytes()
-    ).hexdigest()
+    result["selection"] = hashlib.sha256(b"".join(
+        path.name.encode() + b"\0" + path.read_bytes() for path in sorted((DATA / "selection").glob("*.json"))
+    )).hexdigest()
     return result

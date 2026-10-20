@@ -335,7 +335,10 @@ from .separation import inspect_separation as inspect_separation
 from .separation import separate_parameter, separation_division
 from .variable_swap import (
     combine_variable_solutions,
+    intersect_variable_case_solution,
+    merge_variable_cases,
     normalize_parameter_conditions,
+    parameter_linear_case_range,
     parameter_linear_range,
     reorder_by_variable,
     solve_affine_condition,
@@ -377,6 +380,9 @@ REGISTRY = {
         solve_variable_conditions,
         solve_affine_condition,
         combine_variable_solutions,
+        parameter_linear_case_range,
+        intersect_variable_case_solution,
+        merge_variable_cases,
     )
 }
 PLANNED = frozenset(

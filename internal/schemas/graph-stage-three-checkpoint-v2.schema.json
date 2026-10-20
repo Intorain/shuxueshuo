@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-three-checkpoint/v2",
+  "type": "object",
+  "required": [
+    "contract",
+    "lesson_version",
+    "run_id",
+    "target_ref",
+    "route_id",
+    "revisions_ref",
+    "input_sha256",
+    "commit_id",
+    "last_seq",
+    "status",
+    "frames",
+    "output_refs",
+    "math_steps",
+    "next_instance",
+    "compute_seconds"
+  ],
+  "properties": {
+    "contract": {
+      "const": "graph-stage-three-checkpoint/v2"
+    },
+    "lesson_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_ref": {
+      "type": "string",
+      "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revisions": false,
+    "input_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "commit_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "running",
+        "verified",
+        "capability_gap",
+        "math_failed",
+        "execution_error"
+      ]
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "method",
+          "step_index",
+          "call_index",
+          "bindings",
+          "case_path"
+        ],
+        "properties": {
+          "method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "step_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "call_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bindings": {
+            "type": "object"
+          },
+          "case_path": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "output_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "math_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step_id",
+          "ordinal",
+          "math_step_sha256"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "math_step_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "next_instance": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compute_seconds": {
+      "type": "object",
+      "required": [
+        "solve",
+        "verification"
+      ],
+      "properties": {
+        "solve": {
+          "type": "number",
+          "minimum": 0
+        },
+        "verification": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "revisions_ref": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

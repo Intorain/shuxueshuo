@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-three-snapshot/v2",
+  "description": "Public student read model; resumable driver state remains in the internal checkpoint.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "run_id", "lesson_version", "input_sha256", "revisions_ref", "stream_id", "last_seq", "minimum_seq", "checkpoints", "trajectories", "math_steps", "goals", "handoffs", "qa", "selection_chunks"],
+  "properties": {
+    "contract": {"const": "graph-stage-three-snapshot/v2"},
+    "run_id": {"type": "string", "minLength": 1},
+    "lesson_version": {"type": "string", "minLength": 1},
+    "input_sha256": {"$ref": "#/$defs/hash"},
+    "revisions_ref": {"$ref": "#/$defs/hash"},
+    "stream_id": {"type": "string", "minLength": 1},
+    "last_seq": {"type": "integer", "minimum": 0},
+    "minimum_seq": {"type": "integer", "minimum": 1},
+    "checkpoints": {"type": "array", "items": {"$ref": "#/$defs/route"}},
+    "trajectories": {"type": "array", "items": {"$ref": "#/$defs/trajectory"}},
+    "math_steps": {"type": "array", "items": {"type": "object"}},
+    "goals": {"type": "object"},
+    "handoffs": {"type": "array", "items": {"type": "object"}},
+    "qa": {"type": "array", "items": {"type": "object"}},
+    "selection_chunks": {"type": "array", "items": {"type": "object"}}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "case_path": {"type": "array", "items": {"type": "string"}},
+    "route": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target_ref", "route_id", "status", "commit_id", "last_seq"],
+      "properties": {
+        "target_ref": {"type": "string"}, "route_id": {"type": "string"},
+        "status": {"type": "string"}, "phase": {"type": "string"},
+        "commit_id": {"type": "string"}, "last_seq": {"type": "integer", "minimum": 0}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "public_ref": {"type": ["string", "null"]},
+        "rule_ref": {"type": "string"}, "branch": {"type": "string"},
+        "used_basis": {"type": "array", "items": {"type": "string"}},
+        "case_path": {"$ref": "#/$defs/case_path"},
+        "postconditions": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false, "properties": {"passed": {"type": "boolean"}}
+        }}
+      }
+    },
+    "trajectory": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target_ref", "route_id", "steps", "finalization"],
+      "properties": {
+        "target_ref": {"type": "string"}, "route_id": {"type": "string"},
+        "steps": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false, "required": ["seq", "calls"],
+          "properties": {
+            "seq": {"type": "integer", "minimum": 1}, "method": {"type": "string"},
+            "step": {"type": "string"}, "case_path": {"$ref": "#/$defs/case_path"},
+            "calls": {"type": "array", "items": {"$ref": "#/$defs/source"}}
+          }
+        }},
+        "finalization": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false, "required": ["index", "record"],
+          "properties": {
+            "index": {"type": "integer", "minimum": 0}, "record": {"$ref": "#/$defs/source"}
+          }
+        }}
+      }
+    }
+  }
+}

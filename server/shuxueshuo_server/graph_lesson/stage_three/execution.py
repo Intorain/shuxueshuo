@@ -15,6 +15,7 @@ from .checkpoint import export_json, make_checkpoint
 from .contracts import ROOT
 from .goals import GoalClosureMismatch
 from .handoff import complete_route
+from .revision_manifest import revision_ref
 from .route_calculations import RouteCalculations
 
 TERMINAL = {"verified", "capability_gap", "math_failed", "execution_error"}
@@ -44,19 +45,48 @@ def _checkpoint(store, state, *, phase="method", status="running"):
 
 
 def _commit(store, state, suffix, *, events=(), phase="method", status="running", hooks=None):
-    checkpoint = _checkpoint(store, state, phase=phase, status=status)
     commit_id = f"{state['target_ref']}:{state['route_id']}:{suffix}"
+    previous_cursor = state.get("publication_cursor")
+    # Keep the previous boundary in this commit's cursor so retrying the same
+    # logical commit submits exactly the same delta, including after recovery.
+    # Legacy checkpoints lack the cursor: their first commit rechecks the old
+    # prefix once, then uses the same incremental publication contract.
+    start = (previous_cursor["from"] if previous_cursor["commit_id"] == commit_id
+             else previous_cursor["through"]) if previous_cursor else 0
+    end = len(state["fragments"])
+    if type(start) is not int or not 0 <= start <= end:
+        raise ValueError("events.invalid_publication_cursor")
+    state["publication_cursor"] = {"commit_id": commit_id, "from": start, "through": end}
     hooks = hooks or {}
     # Hooks are observer/fault-injection seams, outside the measured arithmetic.
     def callback(name):
         function = hooks.get(name)
         return (lambda: function(state, store)) if function else None
 
-    store.commit_route(checkpoint, commit_id=commit_id, math_steps=state["fragments"], events=events,
-                       before_commit=callback("before_commit"), after_commit=callback("after_commit"))
-    store.export()
+    try:
+        checkpoint = _checkpoint(store, state, phase=phase, status=status)
+        store.commit_route(checkpoint, commit_id=commit_id, math_steps=state["fragments"][start:], events=events,
+                           before_commit=callback("before_commit"), after_commit=callback("after_commit"))
+    except BaseException:
+        # A failed publication must not advance the caller's in-memory cursor.
+        # If the commit actually succeeded before a fault, SQLite retains the
+        # authoritative cursor for resume and duplicate steps stay immutable.
+        if previous_cursor is None:
+            state.pop("publication_cursor", None)
+        else:
+            state["publication_cursor"] = previous_cursor
+        raise
     if hooks.get("committed"):
         hooks["committed"](state, store)
+
+
+def _accept_state(previous, updated):
+    """Workers may append cards, never rewrite the already published prefix."""
+    prefix = previous["fragments"]
+    if (updated["fragments"][:len(prefix)] != prefix
+            or updated.get("publication_cursor") != previous.get("publication_cursor")):
+        raise ValueError("events.immutable_step")
+    return updated
 
 
 def _artifact(state, context, folder):
@@ -79,8 +109,9 @@ def _artifact(state, context, folder):
         resolved_context["processing"] = {"status": "complete" if not pending else "pending",
                                            "unprocessed_source_refs": pending}
     route = {
-        "contract": "graph-stage-three-route/v1",
-        **{key: state[key] for key in ("run_id", "lesson_version", "target_ref", "route_id", "branch", "method", "revisions")},
+        "contract": "graph-stage-three-route/v2",
+        **{key: state[key] for key in ("run_id", "lesson_version", "target_ref", "route_id", "branch", "method")},
+        "revisions_ref": revision_ref(state),
         "status": state["status"], "steps": state["trajectory"]["steps"], "math_steps": refs,
         "constraint_context": resolved_context, "finalization": state.get("finalization", []),
         "result": state.get("verified_result"), "diagnostics": state.get("diagnostics", []),
@@ -97,7 +128,7 @@ def _artifact(state, context, folder):
         "budget_accounting": state.get("budget_accounting", {}),
     }
     route.update({key: state["trajectory"][key] for key in ("gap", "error") if key in state["trajectory"]})
-    schema = json.loads((ROOT / "internal/schemas/graph-stage-three-route-v1.schema.json").read_text())
+    schema = json.loads((ROOT / "internal/schemas/graph-stage-three-route-v2.schema.json").read_text())
     Draft202012Validator(schema).validate(route)
     return route
 
@@ -158,7 +189,9 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
             while state["status"] == "running":
                 index = state.get("commit_index", 0) + 1
                 previous_trajectory = state["trajectory"]["steps"]
-                state = calculator.call(f"advance:{index}", {"operation": "advance", "state": state})
+                state = _accept_state(state, calculator.call(
+                    f"advance:{index}", {"operation": "advance", "state": state},
+                ))
                 state["commit_index"] = index
                 calculator.sync_state(state)
                 _commit(store, state, f"operation-{index}",
@@ -198,7 +231,7 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
                         result = calculator.call("endpoint_check", {
                             **common, "operation": "endpoints", "state": state,
                         }, bucket="verification")
-                        state = result["state"]
+                        state = _accept_state(state, result["state"])
                         state["endpoint_evidence"] = result["evidence"]
                         calculator.sync_state(state)
                         # Publish the checked source in the same transaction,
@@ -223,7 +256,7 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
                                 "operation": "finish", "goal": goal["goal"], "state": state,
                                 "feasible_set_exact": state["feasible_set_exact"], "previous": list(previous),
                             }, bucket="verification")
-                            state = result["state"]
+                            state = _accept_state(state, result["state"])
                             state["verified_result"] = {"feasible_set": result["feasible_set"], "answer": result["answer"]}
                             state["consistency"] = result["consistency"]
                             state["goal_finalized"] = True

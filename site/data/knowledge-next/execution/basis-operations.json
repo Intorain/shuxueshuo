@@ -88,6 +88,12 @@
     ],
     "variable_condition_sets": [
       "method-variable-swap#solve"
+    ],
+    "variable_case_intersection": [
+      "method-variable-swap#solve"
+    ],
+    "variable_case_union": [
+      "method-variable-swap#merge"
     ]
   }
 }

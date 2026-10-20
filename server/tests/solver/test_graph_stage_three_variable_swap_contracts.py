@@ -18,14 +18,14 @@ x = sp.Symbol("x", real=True)
 
 def test_public_quadratic_calls_are_guarded_real_submethods():
     contract = execution_contracts.load_contracts()["method-variable-swap"]
-    solve = contract["steps"][-1]
+    solve = next(step for step in contract["steps"] if step["id"] == "solve")
     calls = [call for call in solve["calls"] if call["public_ref"] == "quadratic-inequality-solve"]
     assert len(calls) == 2
     for call in calls:
         assert call["capability"] == "submethod"
         assert call["guard"]["equals"] == "quadratic"
         assert call["guard"]["ref"] in ("first_kind", "second_kind")
-    extent = contract["steps"][3]
+    extent = contract["steps"][3]["cases"]["entry"]
     decision, = extent["judgments"]
     assert {option["id"] for option in decision["options"]} == {"positive", "negative", "zero", "unknown"}
     assert extent["display_units"][0]["after"] == decision["id"]

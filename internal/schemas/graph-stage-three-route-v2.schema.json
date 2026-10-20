@@ -1,0 +1,465 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-stage-three-route/v2",
+  "type": "object",
+  "required": [
+    "contract",
+    "lesson_version",
+    "run_id",
+    "target_ref",
+    "route_id",
+    "branch",
+    "method",
+    "revisions_ref",
+    "status",
+    "steps",
+    "math_steps",
+    "constraint_context",
+    "finalization",
+    "result",
+    "diagnostics"
+  ],
+  "properties": {
+    "contract": {
+      "const": "graph-stage-three-route/v2"
+    },
+    "lesson_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_ref": {
+      "type": "string",
+      "pattern": "^/root(?:/children/[0-9]+)*/goals/[0-9]+$"
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "verified",
+        "capability_gap",
+        "math_failed",
+        "execution_error"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "seq",
+          "method",
+          "step",
+          "depth",
+          "parent_call",
+          "case_path",
+          "calls",
+          "skipped_calls",
+          "judgments"
+        ],
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "parent_call": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "case_path": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "skipped_calls": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "judgments": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "step_skip": {
+            "type": "object",
+            "required": [
+              "reason",
+              "guard",
+              "guard_bindings",
+              "source_refs",
+              "case_path"
+            ],
+            "properties": {
+              "reason": {
+                "const": "guard_false"
+              },
+              "guard": {
+                "type": "object",
+                "minProperties": 1
+              },
+              "guard_bindings": {
+                "type": "object"
+              },
+              "source_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "case_path": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "math_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step_id",
+          "math_step_sha256",
+          "source_refs",
+          "file"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "math_step_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "constraint_context": {
+      "type": "object"
+    },
+    "finalization": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "result": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "feasible_set",
+            "answer"
+          ],
+          "properties": {
+            "feasible_set": {
+              "$ref": "#/$defs/mathValue"
+            },
+            "answer": {
+              "$ref": "#/$defs/goalAnswer"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "revisions_ref": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "mathValue": {
+      "type": "object",
+      "required": [
+        "expression",
+        "latex"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "latex": {
+          "type": "string"
+        },
+        "exact": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "exactScalar": {
+      "type": "object",
+      "required": [
+        "expression",
+        "latex",
+        "exact"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "latex": {
+          "type": "string"
+        },
+        "exact": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "goalAnswer": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "set"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_range"
+            },
+            "status": {
+              "const": "set"
+            },
+            "set": {
+              "$ref": "#/$defs/mathValue"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "attained"
+            },
+            "value": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "bound"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "not_attained"
+            },
+            "bound": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "empty_feasible_set"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_minimum"
+            },
+            "status": {
+              "const": "unbounded_below"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "attained"
+            },
+            "value": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status",
+            "bound"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "not_attained"
+            },
+            "bound": {
+              "$ref": "#/$defs/exactScalar"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "empty_feasible_set"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "status"
+          ],
+          "properties": {
+            "kind": {
+              "const": "find_maximum"
+            },
+            "status": {
+              "const": "unbounded_above"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "revisions"
+    ]
+  }
+}

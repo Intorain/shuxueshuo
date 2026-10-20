@@ -157,11 +157,15 @@ def test_global_slope_sign_requires_strictness_even_at_double_roots(slope, sign)
 @pytest.mark.parametrize("slope", [x*x, -x*x, x*x - x, x])
 @pytest.mark.parametrize("domain", [sp.Interval.open(-1, 1), sp.Interval.Lopen(-1, 1),
                                     sp.Interval.Ropen(-1, 1)])
-def test_open_interval_with_parameter_dependent_zero_slope_is_an_explicit_gap(slope, domain):
+def test_open_interval_with_parameter_dependent_zero_slope_requires_explicit_cases(slope, domain):
     selected = policy("∃", ">=", domain)
-    for function in (swap.validate_variable_swap, swap.parameter_linear_range):
-        with pytest.raises(cap.CapabilityGap, match="open_interval_parameter_slope_cases_required"):
-            function(slope*m + x, m, x, domain, selected)
+    assert swap.validate_variable_swap(slope*m + x, m, x, domain, selected) is None
+    # A caller must use the explicit case plan; the old one-envelope capability
+    # still refuses to invent globally fixed endpoint attainment.
+    with pytest.raises(cap.CapabilityGap, match="open_interval_parameter_slope_cases_required"):
+        swap.parameter_linear_range(slope*m + x, m, x, domain, selected)
+    plan = swap.variable_case_plan(slope*m + x, m, x, domain, selected)
+    assert plan["selected"] == "classified" and plan["has_cases"] is True
 
 
 def test_variable_renaming_preserves_the_result_and_role_binding():

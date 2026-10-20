@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .preparation import ADMISSION_BUDGET_SECONDS, SELECTION_BUDGET_SECONDS
 from .runner import MILESTONE, MILESTONES, resume_sample, run_recorded_batch, run_sample
 
 
@@ -17,6 +18,8 @@ def main(argv=None):
     single.add_argument("--milestone", choices=MILESTONES, default=MILESTONE)
     single.add_argument("--solve-budget-seconds", type=float, default=10)
     single.add_argument("--verification-budget-seconds", type=float, default=20)
+    single.add_argument("--admission-budget-seconds", type=float, default=ADMISSION_BUDGET_SECONDS)
+    single.add_argument("--selection-budget-seconds", type=float, default=SELECTION_BUDGET_SECONDS)
     batch = commands.add_parser("batch")
     batch.add_argument("--stage-one-batch", required=True, type=Path)
     batch.add_argument("--output", required=True, type=Path)
@@ -53,7 +56,9 @@ def main(argv=None):
     if args.command == "run":
         result = run_sample(args.input, args.output, reference_base=args.reference_base, milestone=args.milestone,
                             solve_budget_seconds=args.solve_budget_seconds,
-                            verification_budget_seconds=args.verification_budget_seconds)
+                            verification_budget_seconds=args.verification_budget_seconds,
+                            admission_budget_seconds=args.admission_budget_seconds,
+                            selection_budget_seconds=args.selection_budget_seconds)
         success = result["status"] == "completed"
     elif args.command == "resume":
         args.output = args.run

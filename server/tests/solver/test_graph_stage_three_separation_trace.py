@@ -42,7 +42,9 @@ def test_separation_card_is_committed_by_its_checked_producer_before_any_skip(va
     assert completed["status"] == "method_complete", completed["diagnostics"]
     assert completed["fragments"][0] == card
     merge, = completed["trajectory"]["steps"][0]["merges"]
-    assert merge["source_refs"] == [f"/steps/0/calls/{source}"]
+    # The selected merge branch also relies on inspect's guard, in addition
+    # to the checked mathematical output it forwards.
+    assert merge["source_refs"] == sorted({"/steps/0/calls/0", f"/steps/0/calls/{source}"})
 
 
 def test_public_transform_consumes_prepared_candidate_without_rederiving_it(monkeypatch):

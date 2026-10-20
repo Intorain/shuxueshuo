@@ -184,10 +184,12 @@ def endpoint_condition_plan(conditions, variable):
             "evidence": {"conditions": conditions, "degrees": kinds}}
 
 
+from .capabilities.variable_swap import variable_case_plan
+
 REGISTRY = {
     fn.__name__: fn
     for fn in (nondegenerate, degenerate_branches, parameter_solver,
                polynomial_relation, range_skill, interval_requirement, interval_skill,
                interval_case_plan, interval_case_skill, variable_roles,
-               affine_slope_decision, endpoint_condition_plan)
+               affine_slope_decision, endpoint_condition_plan, variable_case_plan)
 }

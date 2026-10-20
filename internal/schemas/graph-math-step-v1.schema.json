@@ -76,41 +76,13 @@
     "before": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "expression",
-          "display"
-        ],
-        "properties": {
-          "expression": {
-            "type": "string",
-            "minLength": 1
-          },
-          "display": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+        "$ref": "#/$defs/mathValue"
       }
     },
     "after": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "expression",
-          "display"
-        ],
-        "properties": {
-          "expression": {
-            "type": "string",
-            "minLength": 1
-          },
-          "display": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+        "$ref": "#/$defs/mathValue"
       }
     },
     "explanation": {
@@ -144,6 +116,29 @@
     "math_step_sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "mathValue": {
+      "type": "object",
+      "required": [
+        "expression",
+        "latex"
+      ],
+      "properties": {
+        "expression": {
+          "type": "string",
+          "minLength": 1
+        },
+        "latex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exact": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

@@ -75,10 +75,10 @@ def test_typed_goal_card_keeps_complete_set_exact_value_and_actual_finalization_
     assert all(execution_contracts.valid_ref(ref, nodes) for ref in card["used_basis"])
     if status in ("attained", "not_attained"):
         value = answer["value" if status == "attained" else "bound"]
-        assert card["after"] == [{"expression": value["expression"], "display": value["latex"], "exact": value["exact"]}]
+        assert card["after"] == [{"expression": value["expression"], "latex": value["latex"], "exact": value["exact"]}]
     else:
         assert card["after"] == []
-    Draft202012Validator(json.loads((ROOT / "internal/schemas/graph-math-step-v1.schema.json").read_text())).validate(card)
+    Draft202012Validator(json.loads((ROOT / "internal/schemas/graph-math-step-v2.schema.json").read_text())).validate(card)
 
 
 @pytest.mark.parametrize("feasible", [sp.Interval(0, 1), sp.S.EmptySet, sp.S.Reals])
@@ -153,5 +153,5 @@ def test_goal_card_refuses_unknown_answer_status_and_wrong_goal_kind():
 def test_existing_math_fragments_keep_their_original_representation():
     feasible = sp.Interval(0, 1)
     state = state_with_boundary(feasible)
-    assert all(set(value) == {"expression", "display"} for card in state["fragments"]
+    assert all(set(value) == {"expression", "latex"} for card in state["fragments"]
                for value in [*card["before"], *card["after"]])

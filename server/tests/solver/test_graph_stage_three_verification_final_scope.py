@@ -7,8 +7,10 @@ import sympy as sp
 
 from shuxueshuo_server.graph_lesson.stage_three import verification
 from shuxueshuo_server.graph_lesson.stage_three.context import build_context
-from shuxueshuo_server.graph_lesson.stage_three.verification import (
+from shuxueshuo_server.graph_lesson.stage_three.route_constraints import (
     apply_visible_constraints,
+)
+from shuxueshuo_server.graph_lesson.stage_three.verification import (
     verify,
 )
 
@@ -84,7 +86,7 @@ def test_algebraic_rational_coefficients_and_exact_open_boundaries(fact, expecte
 def test_semialgebraic_restrictions_apply_and_verify_independently(restriction, expected):
     candidate = problem(restriction, "∀x∈ℝ:x^2+1>=0")
     context = build_context(candidate, TARGET)
-    actual, processing = apply_visible_constraints(candidate, TARGET, context, REALS)
+    actual, processing = apply_visible_constraints(context, REALS)
     assert verification._set_mismatch(actual, expected) is None
     assert any(row["status"] == "intersected" for row in processing)
     correct = verify(candidate, TARGET, context, expected)
@@ -110,7 +112,7 @@ def test_semialgebraic_restrictions_apply_and_verify_independently(restriction, 
 def test_set_builder_denominators_are_local_and_member_denominators_are_global(restriction, expected, hole):
     candidate = problem(restriction, "∀x∈ℝ:x^2+1>=0")
     context = build_context(candidate, TARGET)
-    actual, _ = apply_visible_constraints(candidate, TARGET, context, REALS)
+    actual, _ = apply_visible_constraints(context, REALS)
     assert verification._set_mismatch(actual, expected) is None
     correct = verify(candidate, TARGET, context, expected)
     assert correct["status"] == "verified", correct
@@ -129,7 +131,7 @@ def test_set_builder_denominators_are_local_and_member_denominators_are_global(r
 def test_constant_member_at_local_pole_is_outside_set(restriction, expected):
     candidate = problem(restriction, "∀x∈ℝ:x^2+1>=0")
     context = build_context(candidate, TARGET)
-    actual, _ = apply_visible_constraints(candidate, TARGET, context, REALS)
+    actual, _ = apply_visible_constraints(context, REALS)
     assert verification._set_mismatch(actual, expected) is None
     assert verify(candidate, TARGET, context, expected)["status"] == "verified"
     wrong = REALS - sp.FiniteSet(0) if expected == EMPTY else EMPTY
@@ -139,7 +141,7 @@ def test_constant_member_at_local_pole_is_outside_set(restriction, expected):
 def test_nonlinear_constraint_intersects_main_and_rejects_missing_union():
     candidate = problem("a^2<1", "∀x∈ℝ:x^2+a>=0")
     context = build_context(candidate, TARGET)
-    actual, _ = apply_visible_constraints(candidate, TARGET, context, sp.Interval(0, sp.oo))
+    actual, _ = apply_visible_constraints(context, sp.Interval(0, sp.oo))
     assert actual == sp.Interval.Ropen(0, 1)
     assert verify(candidate, TARGET, context, actual)["status"] == "verified"
     candidate = problem("a^2>=2", "∀x∈ℝ:x^2+1>=0")
@@ -162,7 +164,7 @@ def cubic_root():
 def test_rootof_critical_points_poles_and_closedness(restriction, expected):
     candidate = problem(restriction, "∀x∈ℝ:x^2+1>=0")
     context = build_context(candidate, TARGET)
-    actual, _ = apply_visible_constraints(candidate, TARGET, context, REALS)
+    actual, _ = apply_visible_constraints(context, REALS)
     assert verification._set_mismatch(actual, expected) is None
     correct = verify(candidate, TARGET, context, expected)
     assert correct["status"] == "verified", correct
@@ -180,7 +182,7 @@ def test_unused_definitions_keep_algebraic_denominator_holes(definition):
     candidate = problem("∀x∈ℝ:x^2+1>=0")
     candidate["root"]["definitions"] = [definition]
     context = build_context(candidate, TARGET)
-    actual, _ = apply_visible_constraints(candidate, TARGET, context, REALS)
+    actual, _ = apply_visible_constraints(context, REALS)
     expected = REALS - sp.FiniteSet(hole)
     assert verification._set_mismatch(actual, expected) is None
     assert verify(candidate, TARGET, context, expected)["status"] == "verified"
@@ -205,7 +207,7 @@ def test_no_route_solver_or_generic_inequality_solver_is_used(monkeypatch):
     candidate = problem("a∉{t∈ℝ|(t>=0)∧(t<=1)}", "(a^2-2)/(a-1)>=0", "∀x∈ℝ:x^2+1>=0")
     expected = sp.Union(sp.Interval.Ropen(-sp.sqrt(2), 0), sp.Interval(sp.sqrt(2), sp.oo))
     context = build_context(candidate, TARGET)
-    actual, _ = apply_visible_constraints(candidate, TARGET, context, REALS)
+    actual, _ = apply_visible_constraints(context, REALS)
     assert verification._set_mismatch(actual, expected) is None
     assert verify(candidate, TARGET, context, expected)["status"] == "verified"
 

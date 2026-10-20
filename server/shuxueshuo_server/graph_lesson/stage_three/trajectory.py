@@ -2,6 +2,8 @@
 
 import sympy as sp
 
+from .math_values import math_value
+
 _CONSTRUCTORS = {
     name: getattr(sp, name)
     for name in (
@@ -105,11 +107,7 @@ def decode_value(value):
 
 def trace_value(value):
     if isinstance(value, sp.Basic):
-        return {
-            "expression": sp.sstr(value),
-            "display": sp.latex(value),
-            "exact": encode_value(value),
-        }
+        return {**math_value(value), "exact": encode_value(value)}
     if isinstance(value, dict):
         return {k: trace_value(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):

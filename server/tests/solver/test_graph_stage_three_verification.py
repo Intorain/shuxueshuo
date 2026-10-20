@@ -10,12 +10,14 @@ from textwrap import dedent
 import pytest
 import sympy as sp
 
-from shuxueshuo_server.graph_lesson.stage_three import verification
+from shuxueshuo_server.graph_lesson.stage_three import route_constraints, verification
 from shuxueshuo_server.graph_lesson.stage_three.context import build_context
 from shuxueshuo_server.graph_lesson.stage_three.goals import finalize_goal
+from shuxueshuo_server.graph_lesson.stage_three.route_constraints import (
+    apply_visible_constraints,
+)
 from shuxueshuo_server.graph_lesson.stage_three.verification import (
     VerificationGap,
-    apply_visible_constraints,
     endpoint_check,
     verify,
 )
@@ -97,7 +99,7 @@ def test_changed_symbols_and_coefficients_use_same_proof():
 def test_full_visible_parameter_constraints_are_applied_and_verified(restriction, expected):
     candidate = problem(restriction, "∀x∈ℝ:x^2+a>=0")
     context = build_context(candidate, TARGET)
-    actual, processing = apply_visible_constraints(candidate, TARGET, context, sp.Interval(0, sp.oo))
+    actual, processing = apply_visible_constraints(context, sp.Interval(0, sp.oo))
     assert actual == expected
     assert {p["source_ref"] for p in processing} == {"/root/facts/0", "/root/facts/1"}
     assert verify(candidate, TARGET, context, actual)["status"] == "verified"
@@ -136,7 +138,7 @@ def test_original_canceled_denominator_is_preserved():
     candidate = problem("∀x∈ℝ:x^2+(a-1)/(a-1)>=0")
     context = build_context(candidate, TARGET)
     expected = sp.S.Reals - sp.FiniteSet(1)
-    actual, processing = apply_visible_constraints(candidate, TARGET, context, sp.S.Reals)
+    actual, processing = apply_visible_constraints(context, sp.S.Reals)
     assert actual == expected
     assert any(p["status"] == "original_denominator_nonzero" for p in processing)
     assert verify(candidate, TARGET, context, expected)["status"] == "verified"
@@ -514,13 +516,15 @@ def test_non_verdict_operations_convert_sympy_internal_errors_to_chained_gaps(mo
 
     candidate = problem("a<2", "∀x∈ℝ:x^2+a>=0")
     if operation == "apply_visible_constraints":
-        monkeypatch.setattr(verification, "_constraint_set", library_failure)
-        args = (candidate, TARGET, build_context(candidate, TARGET), sp.Interval(0, sp.oo))
+        monkeypatch.setattr(route_constraints, "_condition_set", library_failure)
+        args = (build_context(candidate, TARGET), sp.Interval(0, sp.oo))
+        module = route_constraints
     else:
         monkeypatch.setattr(verification, "_point", library_failure)
         args = (candidate, TARGET, sp.Interval.Ropen(0, 2))
+        module = verification
     with pytest.raises(VerificationGap, match="sympy_" + operation) as caught:
-        getattr(verification, operation)(*args)
+        getattr(module, operation)(*args)
     assert isinstance(caught.value.__cause__, error_type)
     details = verification._library_exception_details(caught.value)
     assert details["library_exception_type"] == error_type.__name__
@@ -534,8 +538,11 @@ def test_non_verdict_operations_do_not_hide_local_errors_or_context_mismatches(m
         raise error_type("local bookkeeping failure")
 
     candidate = problem("a<2", "∀x∈ℝ:x^2+a>=0")
-    monkeypatch.setattr(verification, "read_problem", local_failure)
-    args = ((candidate, TARGET, {}, sp.Interval(0, sp.oo)) if operation == "apply_visible_constraints"
-            else (candidate, TARGET, sp.Interval.Ropen(0, 2)))
+    if operation == "apply_visible_constraints":
+        monkeypatch.setattr(route_constraints, "_context_atoms", local_failure)
+        module, args = route_constraints, (build_context(candidate, TARGET), sp.Interval(0, sp.oo))
+    else:
+        monkeypatch.setattr(verification, "read_problem", local_failure)
+        module, args = verification, (candidate, TARGET, sp.Interval.Ropen(0, 2))
     with pytest.raises(error_type, match="local bookkeeping failure"):
-        getattr(verification, operation)(*args)
+        getattr(module, operation)(*args)

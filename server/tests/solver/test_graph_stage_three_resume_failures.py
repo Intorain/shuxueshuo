@@ -6,6 +6,7 @@ import pytest
 
 from shuxueshuo_server.graph_lesson.stage_three import runner
 from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
+from tests.solver.stage_three_preparation_probes import hooks
 from tests.solver.test_graph_stage_three_contracts import upstream
 
 TARGET = "/root/goals/0"
@@ -20,7 +21,7 @@ def events(output):
 
 
 @pytest.mark.parametrize("phase", ["build_context", "evaluate_goal"])
-def test_resume_preexecution_failure_revokes_completions_and_is_idempotent(tmp_path, monkeypatch, phase):
+def test_resume_preexecution_failure_revokes_completions_and_is_idempotent(tmp_path, phase):
     output = tmp_path / "out"
     initial = runner.run_sample(upstream(tmp_path), output)
     assert initial["goals"][0]["status"] == "solved"
@@ -30,11 +31,8 @@ def test_resume_preexecution_failure_revokes_completions_and_is_idempotent(tmp_p
     completion_ids = [event["event_id"] for event in events(output)
                       if event["payload"].get("kind") == "route_completion"]
 
-    def broken(*args, **kwargs):
-        raise KeyError("injected resumed target failure")
-
-    monkeypatch.setattr(runner, phase, broken)
-    result = runner.resume_sample(output)
+    injected = hooks(phase, error="KeyError", message="injected resumed target failure")
+    result = runner.resume_sample(output, hooks=injected)
     assert result["status"] == "failed"
     goal = result["goals"][0]
     assert goal["status"] == "execution_error" and goal["answer"] is None
@@ -59,20 +57,17 @@ def test_resume_preexecution_failure_revokes_completions_and_is_idempotent(tmp_p
     assert [event["event_id"] for event in committed if event["payload"].get("kind") == "route_completion"] == completion_ids
     assert (output / "stage-three-result.json").is_file() and (output / "index.html").is_file()
 
-    repeated = runner.resume_sample(output)
+    repeated = runner.resume_sample(output, hooks=injected)
     assert repeated["status"] == "failed"
     assert events(output) == committed
     assert read(output / "checkpoint.json") == snapshot
 
 
 @pytest.mark.parametrize("phase", ["build_context", "evaluate_goal"])
-def test_initial_target_failure_publishes_unavailable_state_with_report(tmp_path, monkeypatch, phase):
-    def broken(*args, **kwargs):
-        raise ValueError("injected target failure")
-
-    monkeypatch.setattr(runner, phase, broken)
+def test_initial_target_failure_publishes_unavailable_state_with_report(tmp_path, phase):
     output = tmp_path / "out"
-    result = runner.run_sample(upstream(tmp_path), output)
+    result = runner.run_sample(upstream(tmp_path), output,
+                               hooks=hooks(phase, error="ValueError", message="injected target failure"))
     assert result["status"] == "failed"
     assert result["goals"][0]["status"] == "execution_error"
     snapshot = read(output / "checkpoint.json")
@@ -82,18 +77,14 @@ def test_initial_target_failure_publishes_unavailable_state_with_report(tmp_path
     assert (output / "index.html").is_file()
 
 
-def test_resume_failure_preserves_published_selection_after_event_retention(tmp_path, monkeypatch):
+def test_resume_failure_preserves_published_selection_after_event_retention(tmp_path):
     output = tmp_path / "out"
     initial = runner.run_sample(upstream(tmp_path), output, milestone="1b-1")
     snapshot = read(output / "checkpoint.json")
     store = EventStore(output, snapshot)
     store.prune_events(snapshot["last_seq"])
 
-    def broken(*args, **kwargs):
-        raise KeyError("context unavailable")
-
-    monkeypatch.setattr(runner, "build_context", broken)
-    resumed = runner.resume_sample(output)
+    resumed = runner.resume_sample(output, hooks=hooks("build_context", error="KeyError", message="context unavailable"))
     goal = resumed["goals"][0]
     assert goal["status"] == "execution_error" and goal["answer"] is None
     assert goal["d3"] == initial["goals"][0]["d3"]

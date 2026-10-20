@@ -4,18 +4,61 @@ There is no browser callback in the write path. Readers observe only committed
 state, and a retry of the same logical commit cannot repeat a business event.
 """
 
+import fcntl
 import json
+import logging
+import os
+import re
+import shutil
 import sqlite3
 from contextlib import closing
 from copy import deepcopy
+from hashlib import sha256
 from pathlib import Path
-
-from jsonschema import Draft202012Validator
 
 from shuxueshuo_server.problem_understanding.identity import revision
 
 from .checkpoint import atomic_write, export_json, identity_value, validate_checkpoint
 from .contracts import ROOT
+from .revision_manifest import math_step_hash, validate_revision_ref
+from .storage_validation import validate_schema
+
+_LOG = logging.getLogger(__name__)
+_EXPORT_GENERATION = re.compile(r"[0-9]+-[0-9]+-[a-f0-9]{64}-[a-f0-9]{64}\Z")
+
+
+def _sync_directory(path):
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _prune_export_generations(current):
+    """Best-effort GC after durable publication, with the export lock held.
+
+    Only generated sibling directories belong to us. Never follow symlinks or
+    remove unrelated files. A failed/partial cleanup is retried by the next
+    export and must not turn a successfully solved route into an error.
+    """
+    parent = current.parent
+    try:
+        if parent.is_symlink():
+            return
+        for stale in parent.iterdir():
+            if (stale == current or not _EXPORT_GENERATION.fullmatch(stale.name)
+                    or stale.is_symlink() or not stale.is_dir()):
+                continue
+            try:
+                shutil.rmtree(stale)
+            except OSError:
+                _LOG.warning("Could not remove stale debug export %s; will retry on the next export", stale,
+                             exc_info=True)
+        _sync_directory(parent)
+    except OSError:
+        _LOG.warning("Could not finish debug export cleanup in %s; will retry on the next export", parent,
+                     exc_info=True)
 
 
 def goal_unavailable(value):
@@ -33,14 +76,19 @@ def _dump(value):
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
-def math_step_hash(fragment, revisions):
-    return revision({"content": {key: value for key, value in fragment.items() if key != "math_step_sha256"},
-                     "revisions": revisions})
-
-
 def _validate(name, value):
-    schema = json.loads((ROOT / "internal/schemas" / name).read_text())
-    Draft202012Validator(schema).validate(value)
+    validate_schema(ROOT / "internal/schemas" / name, value)
+
+
+def _compact_receipt(result):
+    """Historical receipts identify commits; only checkpoints own resumable state."""
+    checkpoint = result.get("checkpoint")
+    if checkpoint is not None:
+        result["checkpoint"] = {key: checkpoint[key] for key in (
+            "contract", "run_id", "lesson_version", "input_sha256", "revisions", "target_ref", "route_id",
+            "revisions_ref", "status", "commit_id", "last_seq",
+        ) if key in checkpoint}
+    return result
 
 
 class EventStore:
@@ -82,12 +130,61 @@ class EventStore:
             saved = json.loads(db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()[0])
         if saved != self.identity:
             raise ValueError("checkpoint.identity_mismatch")
+        self._migrate_storage()
 
     def _connect(self):
         db = sqlite3.connect(self.path, isolation_level=None, timeout=10)
         db.execute("PRAGMA synchronous=FULL")
         db.execute("PRAGMA journal_mode=WAL")
         return db
+
+    def _migrate_storage(self):
+        """Backfill once from receipts, including events removed by cursor retention."""
+        with closing(self._connect()) as db:
+            version = db.execute("SELECT value FROM metadata WHERE key='storage_version'").fetchone()
+            if version and version[0] == "2":
+                return
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                # Another opener may have completed the migration while this
+                # connection waited for the write lock.
+                version = db.execute("SELECT value FROM metadata WHERE key='storage_version'").fetchone()
+                if version and version[0] == "2":
+                    db.rollback()
+                    return
+                db.execute("""CREATE TABLE IF NOT EXISTS selection_chunks (
+                    target TEXT NOT NULL, kind TEXT NOT NULL, seq INTEGER NOT NULL, value TEXT NOT NULL,
+                    PRIMARY KEY(target,kind))""")
+                db.execute("""CREATE TABLE IF NOT EXISTS step_summaries (
+                    target TEXT NOT NULL, route TEXT NOT NULL, step TEXT NOT NULL,
+                    ordinal INTEGER NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(target,route,step),
+                    UNIQUE(target,route,ordinal))""")
+                for commit_id, raw in db.execute("SELECT id,result FROM commits").fetchall():
+                    result = json.loads(raw)
+                    for event in result["events"]:
+                        self._put_selection(db, event)
+                    compact = _compact_receipt(result)
+                    db.execute("UPDATE commits SET result=? WHERE id=?", (_dump(compact), commit_id))
+                for target, route, step, ordinal, raw in db.execute("SELECT * FROM steps").fetchall():
+                    value = json.loads(raw)
+                    db.execute("INSERT OR REPLACE INTO step_summaries VALUES (?,?,?,?,?)",
+                               (target, route, step, ordinal, value["math_step_sha256"]))
+                db.execute("INSERT OR REPLACE INTO metadata VALUES ('storage_version','2')")
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
+
+    @staticmethod
+    def _put_selection(db, event):
+        payload = event["payload"]
+        if event["type"] != "lesson.chunk_ready" or payload.get("kind") not in {"D1", "D2", "D3", "D4"}:
+            return
+        value = {"target_ref": event["target_ref"], "kind": payload["kind"], "chunk": payload["chunk"]}
+        db.execute("""INSERT INTO selection_chunks VALUES (?,?,?,?)
+            ON CONFLICT(target,kind) DO UPDATE SET seq=excluded.seq,value=excluded.value
+            WHERE excluded.seq > selection_chunks.seq""",
+            (event["target_ref"], payload["kind"], event["seq"], _dump(value)))
 
     @staticmethod
     def _watermark(db):
@@ -104,6 +201,7 @@ class EventStore:
                                       "seq": event["seq"], "event": spec})
         _validate("graph-stage-three-event-v1.schema.json", event)
         db.execute("INSERT INTO events VALUES (?,?)", (event["seq"], _dump(event)))
+        self._put_selection(db, event)
         db.execute("UPDATE metadata SET value=? WHERE key='last_seq'", (str(event["seq"]),))
         return event
 
@@ -119,9 +217,9 @@ class EventStore:
                     if previous[0] != digest:
                         raise ValueError("events.commit_reuse_mismatch")
                     db.rollback()
-                    return json.loads(previous[1])
+                    return _compact_receipt(json.loads(previous[1]))
                 first = self._watermark(db)
-                result = mutate(db) or {}
+                result = _compact_receipt(mutate(db) or {})
                 result.update(commit_id=commit_id, last_seq=self._watermark(db))
                 result["events"] = [json.loads(row[0]) for row in db.execute(
                     "SELECT value FROM events WHERE seq>? ORDER BY seq", (first,),
@@ -149,18 +247,26 @@ class EventStore:
     def _put_checkpoint(self, db, checkpoint, commit_id):
         value = deepcopy(checkpoint)
         value["commit_id"], value["last_seq"] = commit_id, self._watermark(db)
-        value["math_steps"] = [{key: step[key] for key in ("step_id", "ordinal", "math_step_sha256")}
-                               for step in self._steps(db, value["target_ref"], value["route_id"])]
+        value["math_steps"] = [dict(zip(("step_id", "ordinal", "math_step_sha256"), row, strict=True))
+                               for row in db.execute(
+                                   "SELECT step,ordinal,hash FROM step_summaries WHERE target=? AND route=? ORDER BY ordinal",
+                                   (value["target_ref"], value["route_id"]),
+                               )]
         validate_checkpoint(value, self.identity)
         db.execute("INSERT INTO checkpoints VALUES (?,?,?) ON CONFLICT(target,route) DO UPDATE SET value=excluded.value",
                    (value["target_ref"], value["route_id"], _dump(value)))
         return value
 
     def _put_step(self, db, step):
-        _validate("graph-math-step-v1.schema.json", step)
-        for key in ("run_id", "lesson_version", "revisions"):
+        version = "v2" if step.get("contract") == "graph-math-step/v2" else "v1"
+        _validate(f"graph-math-step-{version}.schema.json", step)
+        for key in ("run_id", "lesson_version"):
             if step[key] != self.identity[key]:
                 raise ValueError("events.step_identity_mismatch")
+        try:
+            validate_revision_ref(step, self.identity["revisions"])
+        except ValueError as exc:
+            raise ValueError("events.step_identity_mismatch") from exc
         if step["math_step_sha256"] != math_step_hash(step, self.identity["revisions"]):
             raise ValueError("events.step_hash_mismatch")
         target, route, step_id = step["target_ref"], step["route_id"], step["step_id"]
@@ -174,6 +280,8 @@ class EventStore:
         if step["ordinal"] != count + 1:
             raise ValueError("events.noncontiguous_step")
         db.execute("INSERT INTO steps VALUES (?,?,?,?,?)", (target, route, step_id, step["ordinal"], _dump(step)))
+        db.execute("INSERT INTO step_summaries VALUES (?,?,?,?,?)",
+                   (target, route, step_id, step["ordinal"], step["math_step_sha256"]))
         return True
 
     def _put_goal(self, db, target, value):
@@ -265,33 +373,32 @@ class EventStore:
             return [json.loads(row[0]) for row in db.execute("SELECT value FROM events WHERE seq>? ORDER BY seq", (after_seq,))]
 
     def snapshot(self):
-        """Materialized content and its cursor come from the same read snapshot."""
+        """Public cards/evidence and their cursor from the same read snapshot."""
         with closing(self._connect()) as db:
             db.execute("BEGIN")
             return self._snapshot(db)
 
     def _snapshot(self, db):
+        from .public_snapshot import project_snapshot
+
+        return project_snapshot(self._internal_snapshot(db))
+
+    def internal_snapshot(self):
+        """Full execution evidence for diagnostics, never the browser read model."""
+        with closing(self._connect()) as db:
+            db.execute("BEGIN")
+            return self._internal_snapshot(db)
+
+    def _internal_snapshot(self, db):
         result = {"contract": "graph-stage-three-snapshot/v1", **deepcopy(self.identity),
                   "stream_id": self.identity["run_id"], "last_seq": self._watermark(db)}
         for name, table in (("checkpoints", "checkpoints"), ("math_steps", "steps"), ("handoffs", "handoffs"), ("qa", "qa")):
             order = "target,route,ordinal" if table == "steps" else "target,route"
             result[name] = [json.loads(row[0]) for row in db.execute(f"SELECT value FROM {table} ORDER BY {order}")]
         result["goals"] = {row[0]: json.loads(row[1]) for row in db.execute("SELECT target,value FROM goals ORDER BY target")}
-        # Selection is immutable commit evidence, too. Cursor retention can
-        # remove its delivery events; recover it inside this same read
-        # transaction so a fresh browser never loses D1–D4 at resync.
-        selections = {}
-        for row in db.execute("SELECT result FROM commits"):
-            for event in json.loads(row[0])["events"]:
-                payload = event["payload"]
-                if event["type"] == "lesson.chunk_ready" and payload.get("kind") in {"D1", "D2", "D3", "D4"}:
-                    key = (event["target_ref"], payload["kind"])
-                    if key not in selections or event["seq"] > selections[key]["seq"]:
-                        selections[key] = event
-        result["selection_chunks"] = [
-            {"target_ref": event["target_ref"], "kind": event["payload"]["kind"], "chunk": event["payload"]["chunk"]}
-            for event in sorted(selections.values(), key=lambda event: event["seq"])
-        ]
+        result["selection_chunks"] = [json.loads(row[0]) for row in db.execute(
+            "SELECT value FROM selection_chunks ORDER BY seq",
+        )]
         result["minimum_seq"] = int(db.execute("SELECT value FROM metadata WHERE key='minimum_seq'").fetchone()[0])
         return result
 
@@ -309,17 +416,56 @@ class EventStore:
             db.commit()
 
     def export(self):
-        """Export committed evidence, never read these files to resume execution."""
-        snapshot, events = self.snapshot_with_events()
-        export_json(self.directory / "checkpoint.json", snapshot)
-        atomic_write(self.directory / "events.jsonl", "".join(_dump(event) + "\n" for event in events))
-        return snapshot
+        """Publish a debug view at a route/run boundary, never a recovery journal.
+
+        Export remains O(current evidence), intentionally avoiding a second
+        append log that would need its own crash recovery. The cross-process
+        lock is acquired *before* taking the SQLite snapshot so concurrent
+        exporters cannot replace a newer view with an older one. Retention and
+        commits can proceed while this read snapshot is exported.
+
+        The manifest atomically points to an immutable, matched file pair.
+        Once its rename is durable, old generations are removed under this
+        lock. Readers of the manifest/file pair must hold a shared export lock;
+        old manifest paths are not permanent archival references.
+        The historical root filenames remain convenience mirrors; if a crash
+        interrupts their publication, the manifest still identifies a complete
+        pair and the next export repairs both mirrors from SQLite.
+        """
+        with (self.directory / ".export.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            snapshot, events = self.snapshot_with_events()
+            snapshot_text = json.dumps(snapshot, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+            events_text = "".join(_dump(event) + "\n" for event in events)
+            checkpoint_hash = sha256(snapshot_text.encode()).hexdigest()
+            events_hash = sha256(events_text.encode()).hexdigest()
+            generation = f"{snapshot['minimum_seq']}-{snapshot['last_seq']}-{checkpoint_hash}-{events_hash}"
+            relative = Path(".event-exports") / generation
+            directory = self.directory / relative
+            atomic_write(directory / "checkpoint.json", snapshot_text)
+            atomic_write(directory / "events.jsonl", events_text)
+            # The file pair must be durable before publishing its pointer.
+            for parent in (directory, directory.parent):
+                _sync_directory(parent)
+            export_json(self.directory / "export-manifest.json", {
+                "contract": "graph-stage-three-debug-export/v1", "stream_id": self.identity["run_id"],
+                "last_seq": snapshot["last_seq"], "minimum_seq": snapshot["minimum_seq"],
+                "checkpoint": {"path": str(relative / "checkpoint.json"), "sha256": checkpoint_hash},
+                "events": {"path": str(relative / "events.jsonl"), "sha256": events_hash},
+            })
+            # atomic_write fsyncs the file, not its parent. Make the new pointer
+            # durable before deleting any generation the old pointer named.
+            _sync_directory(self.directory)
+            _prune_export_generations(directory)
+            atomic_write(self.directory / "checkpoint.json", snapshot_text)
+            atomic_write(self.directory / "events.jsonl", events_text)
+            return snapshot
 
     def snapshot_with_events(self):
-        """Read materialized state and retained delivery events at one waterline."""
+        """Read full debug state and retained events at one waterline."""
         with closing(self._connect()) as db:
             db.execute("BEGIN")
-            snapshot = self._snapshot(db)
+            snapshot = self._internal_snapshot(db)
             # Retention and new commits cannot change the events belonging to
             # this snapshot while the read transaction is open.
             events = [json.loads(row[0]) for row in db.execute("SELECT value FROM events ORDER BY seq")]

@@ -70,13 +70,13 @@ def test_q01_exact_result_and_checkpoint_round_trip(method):
     state = driver.append_endpoint(state, value, endpoint_check(Q01, TARGET, value))
     assert len(state["fragments"]) == 5
     schema = json.loads(
-        (ROOT / "internal/schemas/graph-math-step-v1.schema.json").read_text()
+        (ROOT / "internal/schemas/graph-math-step-v2.schema.json").read_text()
     )
     for fragment in state["fragments"]:
         Draft202012Validator(schema).validate(fragment)
         assert fragment["math_step_sha256"] == math_step_hash(fragment)
         assert all(
-            "*" not in expr["display"]
+            "*" not in expr["latex"]
             for expr in fragment["before"] + fragment["after"]
         )
     assert state["frames"] == []
@@ -429,7 +429,7 @@ def test_display_bindings_drive_actual_rendering(monkeypatch):
     assert (
         state["fragments"][0]["after"][0]["expression"] == "a**2 - 3*a + x**2 - 2*x - 3"
     )
-    assert not state["fragments"][0]["after"][0]["display"].endswith("0")
+    assert not state["fragments"][0]["after"][0]["latex"].endswith("0")
 
 
 @pytest.mark.parametrize("mode", ["empty", "raised"])

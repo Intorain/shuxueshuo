@@ -19,6 +19,7 @@ from shuxueshuo_server.graph_lesson.stage_three.context import build_context
 from shuxueshuo_server.graph_lesson.stage_three.json_bounded import (
     JsonCalculationSession,
 )
+from shuxueshuo_server.graph_lesson.stage_three.revision_manifest import manifest_ref
 from tests.solver.graph_stage_three_faults import failed_local_check
 from tests.solver.test_graph_stage_three_methods import Q01, TARGET
 
@@ -146,11 +147,13 @@ def test_revision_change_revalidates_and_mapping_order_does_not(monkeypatch, con
 
     monkeypatch.setattr(execution_contracts, "load_contracts", counted)
     state = calculations.dispatch({"operation": "initialize", "arguments": arguments})
-    state["revisions"] = dict(reversed(list(state["revisions"].items())))
+    # Legacy checkpoints with reordered manifests use the same compact cache key.
+    state["revisions"] = dict(reversed(list(arguments["revisions"].items())))
     state = calculations.dispatch({"operation": "advance", "state": state})
     assert len(loads) == 1
     _change_revision(contract_directory)
-    state["revisions"] = execution_contracts.revisions()
+    state.pop("revisions")
+    state["revisions_ref"] = manifest_ref(execution_contracts.revisions())
     state = calculations.dispatch({"operation": "advance", "state": state})
     assert state["status"] == "running"
     assert len(loads) == 2
@@ -164,7 +167,7 @@ def test_cache_hit_does_not_read_disk_revisions(monkeypatch):
         raise AssertionError("cache hit read disk revisions")
 
     monkeypatch.setattr(execution_contracts, "revisions", unexpected_read)
-    state["revisions"] = dict(reversed(list(state["revisions"].items())))
+    state["revisions"] = dict(reversed(list(arguments["revisions"].items())))
     state = calculations.dispatch({"operation": "advance", "state": state})
     assert state["status"] == "running"
 
@@ -180,7 +183,8 @@ def test_complete_pipeline_fingerprint_is_validated_without_replacing_checkpoint
 
     monkeypatch.setattr(runner, "fingerprint", unexpected_read)
     state = calculations.dispatch({"operation": "advance", "state": state})
-    assert state["status"] == "running" and state["revisions"] == expected
+    assert state["status"] == "running" and state["revisions_ref"] == manifest_ref(expected)
+    assert "revisions" not in state
 
 
 @pytest.mark.parametrize("change", ["stale", "missing", "extra"])

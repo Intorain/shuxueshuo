@@ -1,0 +1,181 @@
+{
+  "contract": "graph-interaction-registry/v1",
+  "generators": [
+    "swap_bound",
+    "swap_quantifier",
+    "endpoint_only",
+    "require_attained",
+    "flip_strictness",
+    "flip_direction",
+    "flip_endpoint",
+    "skip_intersection",
+    "case_only",
+    "drop_piece",
+    "seam_puncture",
+    "boundary_scale",
+    "domain_endpoints",
+    "flip_attained",
+    "flip_keep",
+    "location_alternatives",
+    "case_basis_alternatives"
+  ],
+  "templates": {
+    "policy": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "转化为最值条件",
+          "question": "对所有 ${x} \\in {domain}$，${relation}$ 恒成立，等价于什么？",
+          "answer": {"from": "policy_statement"},
+          "distractors": [
+            {"generator": "swap_bound", "feedback": "要让每个函数值都满足 ${relation}$，最该担心的是{bound_name}附近的那些值。"},
+            {"generator": "swap_quantifier", "feedback": "“对所有”要求每个 ${x}$ 都成立，不是找到一个就行。"},
+            {"generator": "endpoint_only", "feedback": "只代入一个端点，不能代表整个区间上的情况。"},
+            {"generator": "require_attained", "feedback": "{bound_name}可能取不到（例如开区间端点处只能无限接近），这时没有{extremum_name}，但每个函数值仍可能都满足条件。"},
+            {"generator": "flip_strictness", "feedback": "注意原题是否允许等号。"}
+          ],
+          "feedback": "把“对所有 ${x}$ 都成立”转化为比较函数在区间上的{bound_name}。",
+          "min_options": 3,
+          "max_options": 4,
+          "submit_label": "确认判断"
+        }
+      ]
+    },
+    "interval_cases": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "选择分类依据",
+          "question": "求 ${function}$ 在 ${domain}$ 上的{bound_name}时，按什么分类，才能在每一类里确定{bound_name}的位置？",
+          "answer": {"from": "case_basis"},
+          "distractors": [
+            {"generator": "case_basis_alternatives", "feedback": {
+              "discriminant": "判别式决定的是方程有没有实根，不决定{bound_name}在区间的哪个位置取得。例如 {witness}。",
+              "parameter_sign": "按 ${parameter}$ 的正负分类只能分出 {covered}，还缺 {missing}：这个分界来自对称轴到达区间端点。例如 {witness}。",
+              "leading_sign": "开口方向在本题里不随参数改变，不能区分{bound_name}的位置。例如 {witness}。",
+              "default": "这样分类后，同一类里{bound_name}的位置仍不确定。例如 {witness}。"
+            }}
+          ],
+          "feedback": "{bound_name}在哪里取得，要看对称轴相对区间端点的位置。",
+          "min_options": 3,
+          "max_options": 3,
+          "submit_label": "确认依据"
+        },
+        {
+          "component": "fill",
+          "title": "找出分界点",
+          "question": "按上一问的依据，${parameter}$ 的分界点是哪些？按从小到大填入。",
+          "answer": {"from": "case_breakpoints"},
+          "distractors": [
+            {"generator": "boundary_scale", "limit": 1},
+            {"generator": "domain_endpoints"}
+          ],
+          "feedback": "对称轴 ${x}={vertex}$ 恰好落在区间端点时，就是参数的分界点。逐个令对称轴等于端点解出 ${parameter}$。",
+          "min_options": 3,
+          "max_options": 4,
+          "submit_label": "确认分界点"
+        }
+      ]
+    },
+    "classified_range": {
+      "repeat": {"first_or": {"binding": "bound_attained", "equals": false}},
+      "parts": [
+        {
+          "component": "choice",
+          "title": "判断确界的位置",
+          "question": "当 ${condition}$ 时，${function}$ 在 ${domain}$ 上的{bound_name}在哪里取得？",
+          "answer": {"from": "bound_location"},
+          "distractors": [
+            {"generator": "flip_attained", "feedback": "${x}={point}$ 不在区间内，函数在这里只能无限接近{bound_name}，取不到。"},
+            {"generator": "location_alternatives", "feedback": "例如 {witness}。"}
+          ],
+          "feedback": "比较两个端点（或端点处的极限）与区间内顶点的函数值。",
+          "min_options": 3,
+          "max_options": 4,
+          "submit_label": "确认位置"
+        }
+      ]
+    },
+    "interval_conditions": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "求本情况的参数范围",
+          "question": "当 ${condition}$ 时，由 {conditions} 得到的 ${parameter}$ 的范围是？",
+          "answer": {"from": "case_solution"},
+          "distractors": [
+            {"generator": "skip_intersection", "feedback": "解出的集合还要与本情况的范围 ${condition}$ 取交集。"},
+            {"generator": "case_only", "feedback": "本情况的范围只是前提，还要满足由确界得到的条件。"},
+            {"generator": "flip_endpoint", "feedback": "再检查端点处能否取等号。"}
+          ],
+          "feedback": "先解出条件，再与本情况的范围取交集。",
+          "min_options": 3,
+          "max_options": 4,
+          "submit_label": "确认范围"
+        }
+      ]
+    },
+    "interval_merge": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "合并各情况",
+          "question": "各情况得到的 ${parameter}$ 的范围依次为 {pieces}，合并后是？",
+          "answer": {"from": "merged_set"},
+          "distractors": [
+            {"generator": "drop_piece", "limit": 1, "feedback": "合并时漏掉了某一种情况的结果。"},
+            {"generator": "flip_endpoint", "feedback": "再检查端点是否属于某一种情况的结果。"},
+            {"generator": "seam_puncture", "feedback": "相邻两段在衔接点处恰好有一段包含这个点，合并后它仍在范围内。"}
+          ],
+          "feedback": "各情况互不重叠、覆盖全部参数，把每段结果取并集。",
+          "min_options": 3,
+          "max_options": 4,
+          "submit_label": "确认合并"
+        }
+      ]
+    }
+  },
+  "overrides": {
+    "method-separation#quantifier": {
+      "policy": {
+        "parts": [
+          {
+            "distractors": [
+              {"generator": "swap_bound", "feedback": "要让每个 ${x}$ 都满足 ${relation}$，参数要和函数的{bound_name}比较，而不是另一侧的确界。"},
+              {"generator": "flip_direction", "feedback": "比较的方向要与原关系 ${relation}$ 一致。"},
+              {"generator": "require_attained", "feedback": "{bound_name}可能取不到，这时没有{extremum_name}，但关系仍可能对每个 ${x}$ 成立。"},
+              {"generator": "swap_quantifier", "feedback": "“对所有”要求每个 ${x}$ 都成立，不是找到一个就行。"},
+              {"generator": "flip_strictness", "feedback": "注意原题是否允许等号。"}
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "merges": [
+    {
+      "id": "boundary-goal",
+      "display_units": ["boundary", "goal_finalization"],
+      "title": "检查边界并得出最值",
+      "repeat": "always",
+      "parts": [
+        {
+          "component": "checklist",
+          "title": "检查边界并得出最值",
+          "question": "把候选集合 ${feasible_set}$ 的有限边界代回原题检查，再读出答案。",
+          "rows": [
+            {"seed": 0, "answer": {"from": "boundary_decisions"}, "distractors": [{"generator": "flip_keep"}]},
+            {"seed": 1, "answer": {"from": "goal_value"}, "distractors": [{"generator": "flip_attained"}]}
+          ],
+          "feedback": "边界点代回原题看是否成立；可行集包含{goal_bound_name}时{goal_name}存在，否则只能趋近。",
+          "min_options": 2,
+          "submit_label": "确认结论"
+        }
+      ]
+    }
+  ]
+}

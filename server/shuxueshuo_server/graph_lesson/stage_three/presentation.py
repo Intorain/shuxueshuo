@@ -7,14 +7,52 @@ import sympy as sp
 from ...problem_understanding.identity import revision
 from .execution_contracts import read
 from .math_values import math_value
-from .presentation_templates import render_case_prefix, render_template
+from .presentation_templates import prepare_values, render_case_prefix, render_template
 from .presentation_templates import validate_registry as _validate_registry
 from .revision_manifest import math_step_hash, revision_ref
-from .trajectory import decode_value
+from .trajectory import decode_value, encode_value
+
+SEED_CONTRACT = "graph-interaction-seed/v1"
+# Per-cell certificates are proof internals; seeds keep the case-level results.
+_SEED_OMITTED = frozenset({"cells"})
 
 
 def validate_registry(registry=None):
     return _validate_registry(read("presentation-registry") if registry is None else registry)
+
+
+def _seed_values(value):
+    if isinstance(value, dict):
+        return {key: _seed_values(item) for key, item in value.items() if key not in _SEED_OMITTED}
+    if isinstance(value, (list, tuple)):
+        return [_seed_values(item) for item in value]
+    return value
+
+
+def record_seed(state, fragment, *, template, values):
+    """Freeze already checked exact inputs for the interaction compiler.
+
+    Selection and encoding only: no new mathematics. The route's visible
+    constraint context is copied verbatim so witnesses can respect the known
+    conditions. A seed that cannot be encoded is recorded as missing so the
+    card still counts for repetition.
+    """
+    seed = {
+        "contract": SEED_CONTRACT,
+        **{key: state[key] for key in ("run_id", "lesson_version", "target_ref", "route_id")},
+        **{key: deepcopy(fragment[key]) for key in (
+            "step_id", "math_step_sha256", "ordinal", "display_unit", "method_ref", "case_path")},
+        "template": template,
+    }
+    try:
+        context = {key: value for key, value in decode_value(state.get("input_values", {})).items()
+                   if isinstance(value, (sp.Basic, str))}
+        seed.update(status="ready", values=encode_value(_seed_values(values)), context=encode_value(context),
+                    constraint_context=deepcopy(state.get("trajectory", {}).get("constraint_context")))
+    except (TypeError, ValueError) as exc:
+        seed.update(status="missing", reason="seed_encode_failed", diagnostic=str(exc)[:200])
+    state.setdefault("interaction_seeds", []).append(seed)
+    return seed
 
 
 def make_fragment(
@@ -60,20 +98,23 @@ def make_fragment(
 
 
 def render_unit(state, frame, step, unit, bindings, source_refs, used_basis, premise_refs=()):
+    """Return the card and the exact values its interaction seed may use."""
     registry = read("presentation-registry")
     case_path = frame.get("case_path", [])
-    before, after, explanation = render_template(
-        registry["templates"][unit["template"]], bindings, has_case=bool(case_path)
-    )
-    if case_path:
-        case = decode_value(frame["bindings"]).get("case")
-        if case and isinstance(case.get("condition"), sp.Basic):
-            explanation = render_case_prefix(registry, case["condition"]) + explanation
-    return make_fragment(
+    specification = registry["templates"][unit["template"]]
+    values = prepare_values(specification, bindings, has_case=bool(case_path))
+    before, after, explanation = render_template(specification, bindings, has_case=bool(case_path))
+    case = decode_value(frame["bindings"]).get("case") if case_path else None
+    if case and isinstance(case.get("condition"), sp.Basic):
+        explanation = render_case_prefix(registry, case["condition"]) + explanation
+    if case:
+        values["case"] = case
+    fragment = make_fragment(
         state, unit_id=unit["id"], method_ref=frame["method"] + "#" + step["id"],
         template=unit["template"], before=before, after=after, source_refs=source_refs,
         used_basis=used_basis, explanation=explanation, case_path=case_path, premise_refs=premise_refs,
     )
+    return fragment, values
 
 
 def append_boundary(state, evidence, *, feasible_set=None):
@@ -123,6 +164,13 @@ def append_boundary(state, evidence, *, feasible_set=None):
             "file": f"math-steps/{updated['route_id']}/{fragment['step_id']}.json",
         }
     )
+    points = {sp.sstr(point): point for point in getattr(
+        feasible_set.boundary if isinstance(feasible_set, sp.Set) else sp.S.EmptySet, "args", ())}
+    record_seed(updated, fragment, template="boundary", values={
+        "feasible_set": feasible_set,
+        "checks": [{"point": points.get(row.get("point", {}).get("expression")),
+                    "included": row.get("included"), "holds": row.get("holds")} for row in checks],
+    })
     return updated
 
 
@@ -233,5 +281,9 @@ def append_goal_finalization(state, answer, evidence):
         "step_id": fragment["step_id"], "math_step_sha256": fragment["math_step_sha256"],
         "source_refs": fragment["source_refs"],
         "file": f"math-steps/{updated['route_id']}/{fragment['step_id']}.json",
+    })
+    record_seed(updated, fragment, template=template, values={
+        "goal_kind": kind, "status": status, "bound": bound, "feasible_set": feasible,
+        "attained": status == "attained",
     })
     return updated

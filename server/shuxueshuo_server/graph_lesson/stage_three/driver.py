@@ -7,7 +7,7 @@ from time import perf_counter
 from . import capabilities, execution_contracts, judgments, method_admission
 from .capabilities import CapabilityGap, LocalCheckFailed
 from .premises import UnknownPremise
-from .presentation import render_unit
+from .presentation import record_seed, render_unit
 from .revision_manifest import manifest_ref
 from .trajectory import decode_value, encode_value, trace_value
 
@@ -243,10 +243,11 @@ def _publish(state, frame, step, action, bindings):
             | execution_contracts.guard_references(unit.get("guard")),
         ) | _operation_sources(frame, step, action)
         premise_refs = _dependency_premises(state, dependencies)
-        fragment = render_unit(
+        fragment, seed_values = render_unit(
             state, frame, step, unit, display_bindings, sources, basis, premise_refs
         )
         state["fragments"].append(fragment)
+        record_seed(state, fragment, template=unit["template"], values=seed_values)
         state["trajectory"]["math_steps"].append(
             {
                 "step_id": fragment["step_id"],

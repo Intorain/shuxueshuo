@@ -164,12 +164,17 @@ def validate_registry(registry):
     return registry
 
 
-def render_template(specification, bindings, *, has_case=False):
+def prepare_values(specification, bindings, *, has_case=False):
     values = {**bindings, "has_case": has_case}
     for key in ("before", "after"):
         values[key] = list(values.get(key, []))
     if specification.get("prepare"):
         values.update(PREPARERS[specification["prepare"]](values))
+    return values
+
+
+def render_template(specification, bindings, *, has_case=False):
+    values = prepare_values(specification, bindings, has_case=has_case)
     for name, node in specification.get("variables", {}).items():
         values[name] = _render(node, values)
     return values["before"], values["after"], _render(specification.get("render", specification["explanation"]), values)

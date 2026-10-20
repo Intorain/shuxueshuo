@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shuxueshuo.local/schemas/graph-interaction-registry-v1.schema.json",
+  "title": "Stage-three step interaction rules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "generators", "templates", "overrides", "merges"],
+  "properties": {
+    "contract": {"const": "graph-interaction-registry/v1"},
+    "generators": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
+      "uniqueItems": true
+    },
+    "templates": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/templateRule"}
+    },
+    "overrides": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9-]*#[a-z][a-z0-9_]*$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/$defs/partialRule"}
+      }
+    },
+    "merges": {
+      "type": "array",
+      "items": {
+        "allOf": [{"$ref": "#/$defs/rule"}],
+        "type": "object",
+        "required": ["id", "display_units", "title", "repeat", "parts"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+          "display_units": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "title": {"type": "string", "minLength": 1},
+          "repeat": true,
+          "parts": true
+        },
+        "unevaluatedProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "feedback": {
+      "oneOf": [
+        {"$ref": "#/$defs/text"},
+        {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/text"}}
+      ]
+    },
+    "repeat": {
+      "oneOf": [
+        {"enum": ["always", "first", "never"]},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["first_or"],
+          "properties": {
+            "first_or": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["binding", "equals"],
+              "properties": {
+                "binding": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
+                "equals": {"type": ["boolean", "string", "number"]}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {"from": {"type": "string", "pattern": "^[a-z][a-z_]*$"}}
+    },
+    "distractor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generator"],
+      "properties": {
+        "generator": {"type": "string"},
+        "feedback": {"$ref": "#/$defs/feedback"},
+        "limit": {"type": "integer", "minimum": 1}
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "answer", "distractors"],
+      "properties": {
+        "seed": {"type": "integer", "minimum": 0},
+        "answer": {"$ref": "#/$defs/answer"},
+        "distractors": {"type": "array", "items": {"$ref": "#/$defs/distractor"}}
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "title", "question"],
+      "properties": {
+        "component": {"enum": ["choice", "multi", "checklist", "fill"]},
+        "title": {"$ref": "#/$defs/text"},
+        "question": {"$ref": "#/$defs/text"},
+        "answer": {"$ref": "#/$defs/answer"},
+        "distractors": {"type": "array", "items": {"$ref": "#/$defs/distractor"}},
+        "rows": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/row"}},
+        "feedback": {"$ref": "#/$defs/text"},
+        "min_options": {"type": "integer", "minimum": 2},
+        "max_options": {"type": "integer", "minimum": 2},
+        "submit_label": {"$ref": "#/$defs/text"}
+      },
+      "if": {"properties": {"component": {"const": "checklist"}}},
+      "then": {"required": ["rows"], "not": {"anyOf": [{"required": ["answer"]}, {"required": ["distractors"]}]}},
+      "else": {"required": ["answer", "distractors"], "not": {"required": ["rows"]}}
+    },
+    "rule": {
+      "type": "object",
+      "required": ["repeat", "parts"],
+      "properties": {
+        "repeat": {"$ref": "#/$defs/repeat"},
+        "parts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/part"}}
+      }
+    },
+    "templateRule": {"allOf": [{"$ref": "#/$defs/rule"}], "unevaluatedProperties": false},
+    "partialRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "repeat": {"$ref": "#/$defs/repeat"},
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "propertyNames": {"enum": ["component", "title", "question", "answer", "distractors", "rows",
+                                       "feedback", "min_options", "max_options", "submit_label"]}
+          }
+        }
+      }
+    }
+  }
+}

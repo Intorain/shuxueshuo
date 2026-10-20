@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shuxueshuo.local/schemas/graph-step-interaction-v1.schema.json",
+  "title": "Stage-three step interaction result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "run_id", "lesson_version", "target_ref", "route_id", "interaction_id", "status",
+               "steps", "interaction_revision", "interaction_sha256", "parts"],
+  "properties": {
+    "contract": {"const": "graph-step-interaction/v1"},
+    "run_id": {"type": "string", "minLength": 1},
+    "lesson_version": {"type": "string", "minLength": 1},
+    "target_ref": {"type": "string", "minLength": 1},
+    "route_id": {"type": "string", "minLength": 1},
+    "interaction_id": {"type": "string", "pattern": "^[0-9a-f]{24}$"},
+    "status": {"enum": ["interactive", "readonly"]},
+    "reason": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "math_step_sha256"],
+        "properties": {
+          "step_id": {"type": "string", "minLength": 1},
+          "math_step_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "interaction_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "interaction_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "parts": {"type": "array", "items": {"$ref": "#/$defs/part"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "interactive"}}},
+      "then": {"properties": {"parts": {"minItems": 1}}, "not": {"required": ["reason"]}},
+      "else": {"required": ["reason"], "properties": {"parts": {"maxItems": 0}}}
+    }
+  ],
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label"],
+      "properties": {
+        "value": {"type": "string", "pattern": "^(o|s[0-9]+o)[0-9]+$"},
+        "label": {"$ref": "#/$defs/text"},
+        "feedback": {"$ref": "#/$defs/text"},
+        "graph": {"type": "object"}
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "question", "interaction", "expected_answer", "feedback", "submit_label"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[0-9a-f]{24}#[0-9]+$"},
+        "title": {"$ref": "#/$defs/text"},
+        "question": {"$ref": "#/$defs/text"},
+        "submit_label": {"$ref": "#/$defs/text"},
+        "feedback": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {"answer": {"type": "string"}, "terms": {"type": "string"}}
+        },
+        "interaction": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "field", "options"],
+              "properties": {
+                "type": {"const": "choice"},
+                "field": {"type": "string"},
+                "options": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/option"}}
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "options"],
+              "properties": {
+                "type": {"const": "multi"},
+                "options": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/option"}}
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "terms", "term_labels", "slot_labels"],
+              "properties": {
+                "type": {"const": "fill"},
+                "terms": {"type": "array", "minItems": 2, "items": {"type": "string", "pattern": "^t[0-9]+$"}},
+                "term_labels": {"type": "object", "additionalProperties": {"$ref": "#/$defs/text"}},
+                "slot_labels": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}}
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "title", "slots"],
+              "properties": {
+                "type": {"const": "checklist"},
+                "title": {"$ref": "#/$defs/text"},
+                "slots": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["label", "options"],
+                    "properties": {
+                      "label": {"$ref": "#/$defs/text"},
+                      "options": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/option"}}
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "expected_answer": {
+          "oneOf": [
+            {"type": "object", "additionalProperties": false, "required": ["one_of"],
+             "properties": {"one_of": {"type": "array", "minItems": 1, "items": {"type": "string"}}}},
+            {"type": "object", "additionalProperties": false, "required": ["required", "allowed"],
+             "properties": {"required": {"type": "array", "items": {"type": "string"}},
+                            "allowed": {"type": "array", "items": {"type": "string"}}}},
+            {"type": "object", "additionalProperties": false, "required": ["terms"],
+             "properties": {"terms": {"type": "array", "minItems": 1, "items": {"type": "string"}}}}
+          ]
+        }
+      }
+    }
+  }
+}

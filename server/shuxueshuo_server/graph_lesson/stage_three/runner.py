@@ -16,6 +16,7 @@ from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
 from ..stage_two import runner as stage_two_runner
 from ..stage_two.contracts import ROOT, targets
+from . import interaction
 from .budget import BudgetConflict
 from .contracts import (
     INPUT_MANIFEST_CONTRACT,
@@ -38,8 +39,10 @@ MILESTONES = milestones()
 
 
 def fingerprint():
+    # Interaction compilation has its own engine revision; editing it must not
+    # invalidate mathematical resumption.
     paths = [
-        *Path(__file__).parent.rglob("*.py"),
+        *(path for path in Path(__file__).parent.rglob("*.py") if path.resolve() not in interaction.ENGINE_FILES),
         *Path(__file__).parents[2].joinpath("problem_understanding").glob("notation_*.py"),
         *Path(__file__).parent.parent.joinpath("stage_one").glob("*.py"),
         *Path(__file__).parent.parent.joinpath("stage_two").glob("*.py"),

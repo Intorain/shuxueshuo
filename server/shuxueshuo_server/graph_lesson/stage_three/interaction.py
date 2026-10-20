@@ -1153,18 +1153,33 @@ def interaction_identity(seeds, revision):
     })[:24]
 
 
-def build_chunk(seeds, registry, context, *, revision=None):
-    """Final ``graph-step-interaction/v1`` result for one group, and diagnostics."""
-    revision = revision or registry_revision(registry)
+def _chunk_head(seeds, revision):
     first = seeds[0]
-    interaction_id = interaction_identity(seeds, revision)
-    chunk = {
+    return {
         "contract": CONTRACT,
         **{key: first[key] for key in ("run_id", "lesson_version", "target_ref", "route_id")},
-        "interaction_id": interaction_id,
+        "interaction_id": interaction_identity(seeds, revision),
         "steps": [{"step_id": seed["step_id"], "math_step_sha256": seed["math_step_sha256"]} for seed in seeds],
         "interaction_revision": revision,
     }
+
+
+def chunk_sha256(chunk):
+    return _sha256({key: value for key, value in chunk.items() if key != "interaction_sha256"})
+
+
+def readonly_chunk(seeds, revision, reason):
+    """A read-only result decided without compiling (pure, safe in the parent)."""
+    chunk = {**_chunk_head(seeds, revision), "status": "readonly", "parts": [], "reason": reason}
+    chunk["interaction_sha256"] = chunk_sha256(chunk)
+    return chunk
+
+
+def build_chunk(seeds, registry, context, *, revision=None):
+    """Final ``graph-step-interaction/v1`` result for one group, and diagnostics."""
+    revision = revision or registry_revision(registry)
+    chunk = _chunk_head(seeds, revision)
+    interaction_id = chunk["interaction_id"]
     diagnostics = []
     try:
         missing = next((seed for seed in seeds if seed.get("status") != "ready"), None)
@@ -1182,7 +1197,7 @@ def build_chunk(seeds, registry, context, *, revision=None):
     except Exception as exc:  # noqa: BLE001 -- a compiler fault yields a read-only card, never a math failure.
         chunk.update(status="readonly", parts=[], reason="compile_error")
         diagnostics = [{"result": "compile_error", "exception_type": type(exc).__name__, "message": str(exc)[:300]}]
-    chunk["interaction_sha256"] = _sha256(chunk)
+    chunk["interaction_sha256"] = chunk_sha256(chunk)
     return chunk, diagnostics
 
 

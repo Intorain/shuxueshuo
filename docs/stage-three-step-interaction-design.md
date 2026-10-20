@@ -1,6 +1,6 @@
 # 阶段三步骤交互卡技术方案
 
-> 状态：设计已确认；三轮审查修订已纳入（2026-10-20）。第 1 阶段（规则与编译）已实现并通过测试，第 2～4 阶段待实施。
+> 状态：设计已确认；三轮审查修订已纳入（2026-10-20）。第 1 阶段（规则与编译）与第 2 阶段（独立执行、事件与存储）已实现并通过测试，第 3～4 阶段待实施。
 > 相关文档：[阶段三实施计划](graph-guided-stage-three-implementation-plan.md)、[图谱引导交互课设计](graph-guided-interactive-lesson-design.md)、[Q01 Demo 设计](graph-walk-demo-q01-design.md)。
 
 ## 1. 背景与目标
@@ -86,7 +86,7 @@ flowchart LR
 ```
 
 1. **出题规则**：一个独立的 JSON 文件，按展示模板描述“问什么、用什么组件、正确答案取哪个变量、干扰项怎么生成、选错怎么反馈、重复时是否出题”。
-2. **服务端编译**：三类卡片生成时只收集已有精确变量，与数学卡一起持久化。独立交互 worker 随后生成选项、用 SymPy 校验干扰项并编译图像；数学路线不等待它。交互结果或只读降级结果作为单独的 `step_interaction` 片段下发。
+2. **服务端编译**：三类卡片生成时只收集已有精确变量，与数学卡一起持久化。独立交互 worker 随后生成选项、用 SymPy 校验干扰项并编译图像；同一运行的数学计算与交互编译按操作错开，数学优先，排队不计入计算预算。数学卡即时发布，交互结果或只读降级结果作为单独的 `step_interaction` 片段下发。
 3. **前端适配**：`extendStreamBundle` 把“数学卡片 + 交互片段”转换成与 Demo 同格式的决策，追加到流式路线的 `steps`，交给现有引擎。
 
 ## 5. 第一层：出题规则文件
@@ -214,9 +214,13 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
 - `repeat_context`：由持久化的路线 seed 序列与已提交交互结果重建的出现次数、已出题情况，不能只存在进程内存中。`first` 按首次出现判断；首次编译失败不会把后面的重复卡改成首次。
 - 实现中以抛出 `NotInteractive(reason, diagnostics)` 代替返回 `None`，以便保留只读原因与诊断；`build_chunk` 将其包装为只读结果，未预期异常记为 `compile_error`。worker 不直接更改数学状态或发布事件。
 
-交互编译使用独立受监督进程与独立预算账本，不复用 `driver.advance` 的 worker 或求解/验证预算。首批默认每个单卡或合并组最多 5 秒、每路线累计最多 30 秒，均可配置并可中断；图像生成也计入交互预算。领取任务时持久化尝试记录，恢复时计入已用时间，无法确认的中断尝试保守扣除已预留额度，不能通过重启刷新预算。超时、异常或预算耗尽由监督器提交只读结果，不修改数学路线的 `compute_seconds`、验证预算或完成状态。
+交互编译使用独立受监督进程与独立预算账本，不复用 `driver.advance` 的 worker 或求解/验证预算。首批默认每个单卡或合并组最多 5 秒、每路线累计最多 30 秒，均可配置并可中断；这两个限额随新运行的交互规则一起冻结，续算沿用原值。旧运行没有预算元数据时，沿用账本已有的路线限额，单组限额使用默认值。图像生成也计入交互预算。领取任务时持久化尝试记录，恢复时计入已用时间，无法确认的中断尝试保守扣除已预留额度，不能通过重启刷新预算。超时、异常或预算耗尽由监督器提交只读结果，不修改数学路线的 `compute_seconds`、验证预算或完成状态。
 
-数学提交只增加短事务写入，不等待交互 worker；交互计算期间不得持有数学路线锁或数据库写事务。复用现有事件存储即可，不需要另建数据库服务。
+独立账本不能消除 CPU 竞争。`DurableCalculations.call` 在领取预算和启动计时之前进入按运行目录共享的计算门闩，同一进程、同一运行最多执行一个计算操作，已有数学等待者优先于新的交互调用；当前正在执行的一组交互不抢占，数学最多需等待该组剩余预算（默认单组 5 秒）及收尾。准入发生在交互启动前，后续目标准备、求解与验证都受同一门闩保护。等待不生成预算预留，也不计入求解、验证或交互耗时；代价是整轮实际用时可能增加。数学卡的发布仍按原步骤进行，不等待整条交互路线结束。
+
+这个门闩是进程内协调，隔离两类受预算约束的计算操作；SQLite 查询、检查点读取和事件发布仍有少量编排开销。产品的运行锁负责阻止同一运行被不同进程同时续算。不同运行及其他服务仍会竞争 CPU，需要部署层限制并发或隔离资源，不能保证任意机器负载下数学耗时完全不变。降低进程优先级不能代替这一约束。本机测试只验证操作不重叠与预算隔离，不作为 2 核 ECS 的性能结论。
+
+数学提交只增加短事务写入；交互计算期间不得持有数学路线锁或数据库写事务。调度器先检查轻量提交游标，没有新提交时不反复加载完整检查点，并逐步延长等待至最多 1 秒；空闲时的新提交在下一轮回查被发现，`finish/stop` 主动唤醒。合并前缀等待下一张卡也使用此机制。复用现有事件存储即可，不需要另建数据库服务。
 
 ### 6.2 编译步骤
 
@@ -311,7 +315,7 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
 1. **数学提交：** 同事务保存数学卡、seed（或缺失原因）、每卡初始状态并追加数学事件。正常卡为 `pending`；没有 seed 的卡直接附加只读结果。数学事件的外层 payload 携带 `interaction_status`，不改数学卡内容或哈希。
 2. **交互提交：** 同事务保存最终 `step_interaction`、所有覆盖卡片的终态及对应事件。只有处于 `pending` 的卡能首次决议；重复的相同提交幂等。一个卡片不能同时属于两个最终交互组，单卡/合并结果也不能互相覆盖。
 
-前端 `createEventConsumer.acceptInteraction` 校验运行、小问、路线、规则版本、覆盖卡片身份及哈希。按稳定 `interaction_id` 查重：相同内容忽略，不同内容报 `stream.immutable_interaction`；不同 ID 试图再次占用已决议卡片也报冲突。只有完整收到同组所有数学卡后才应用结果；事件缺口按现有序号补齐。
+服务端校验固定规则版本；前端 `createEventConsumer.acceptInteraction` 校验运行、小问、路线、覆盖卡片身份及哈希。实时事件和快照复用同一结果形状校验：每个结果覆盖 1–2 张卡，`interactive.parts` 非空，`readonly.parts` 为空，运行身份及协议相符。按稳定 `interaction_id` 查重：相同内容忽略，不同内容报 `stream.immutable_interaction`；不同 ID 试图再次占用已决议卡片也报冲突。只有完整收到同组所有数学卡后才应用结果；事件缺口按现有序号补齐。
 
 **合并与顺序：** 调度器处理每条路线中最早的待决卡，首批最多等待下一张数学卡。
 
@@ -327,12 +331,16 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
 **恢复与生命周期：**
 
 - seed、固定规则、终态结果、尝试及预算记录存入内部恢复数据；`repeat` 与合并待决位置从这些记录重建，不依赖进程内计数器。任务租约不等于结果，崩溃后的待决任务可重新领取；已决议任务不重新编译。
-- 在运行启动、续算及恢复调度时扫描未完成任务；数学已完成但交互尚未完成的运行也必须进入扫描。状态读取可触发后台恢复调度，但不在 HTTP 请求中执行符号计算。
-- `graph-stage-three-snapshot/v2` 增加 `interaction_states`（每卡身份、待定或终态、结果引用）和 `interactions`（最终结果）数组，与数学卡及 `last_seq` 在同一读事务中取得。公共快照不含精确 seed、完整绑定或内部预算账本；`hydrate` 后可从同一游标继续消费，事件裁剪后仍能恢复待定及已完成状态。
+- 在运行启动、续算及恢复调度时扫描未完成任务；数学已完成但交互尚未完成的运行也必须进入扫描。状态读取保持只读：运行已无执行者而仍有待决卡时，产品返回 `execution_status=interrupted`，显示现有继续入口。显式续算在校验当前 attempt 和运行版本、取得锁之后，只补交互；不重跑数学，也不更改数学路线的完成状态。
+- 产品状态查询以 SQLite `mode=ro` 查询待决卡，不构造 `EventStore`、建表或执行迁移。旧库没有交互表视为没有待决卡；文件、数据库或身份检查失败时记录告警并保留原数学状态，不因辅助状态查询使整个状态接口失败。交互表在存储版本 3 的迁移中创建，已有交互表和结果保留。`checkpoint.identity_from_seed` 是纯函数，统一由 runner、preview 与待决状态查询从 `run.json` 推导运行身份及输入哈希；查询不额外读取完整版本清单，打开执行存储时仍验证 frozen revisions。
+- `budget.lease_busy` 表示暂时被其他执行者占用，调度器退避后重试，不永久跳过路线，也不计入故障次数；等待前释放本方空闲租约，避免多个调度器互相等待。其他调度异常保留诊断，并在 SQLite 元数据中按小问/路线持久化连续失败次数。每个调度实例有独立尝试 ID，同一尝试幂等计数一次；整轮路线处理无异常且确实提交了交互结果后清零，单纯等待合并前缀既不计失败也不清零。
+- 连续 3 轮失败（初次运行及其后 2 次续接）后，同一事务内关闭该路线后续交互编译，并将全部待决卡决议为 `readonly(reason=scheduler_error)`；已有终态保持不变，之后新增的数学卡直接只读。降级只使用已提交卡片的身份及哈希，不依赖坏 seed、编译输出或检查点的数学内容，不改变数学状态、答案或预算。失败记录绑定本次处理的待决卡集合；写入时若这些卡已被另一调度器解决，忽略迟到故障，即使此时已新增其他待决卡也不计数。调度读取的检查点与卡状态来自同一读事务，避免数学追加卡导致误报缺 seed。待决卡缺失 seed、重复 seed 或 seed 身份不匹配明确报调度错误，不能静默等待。数据库自身不可写时保留错误诊断，不伪造已提交的只读终态。
+- `graph-stage-three-snapshot/v2` 增加 `interaction_states`（每卡身份、待定或终态、结果引用）和 `interactions`（最终结果）数组，与数学卡及 `last_seq` 在同一读事务中取得。公共快照不含精确 seed、完整绑定或内部预算账本；`hydrate` 先交叉校验卡片、每卡状态、最终结果的身份、哈希引用与覆盖关系，全部通过后才更新状态、页面和游标。终态必须指向对应结果，待定卡不得指向结果；拒绝缺失、孤立或冲突的引用。事件裁剪后仍能恢复待定及已完成状态。
 - 新运行元数据显式声明 `interaction_protocol: "graph-step-interaction/v1"`。历史运行没有该标记或精确 seed 时，适配器明确给出 `readonly(reason=legacy_seed_missing)`，不从展示公式反推题目；历史数学卡及哈希保持原样。
-- 数学完成不等待交互，交互失败也不将路线改为 `math_failed`。交互是否完成以“已有卡全部取得终态”为准，路线仍可增长时不宣告交互全部完成。
+- 数学路线的完成事件及答案可以先发布，交互失败不将路线改为 `math_failed`。交互是否完成以“已有卡全部取得终态”为准，路线仍可增长时不宣告交互全部完成。当前整轮运行选择等待交互调度收尾：`finish()` 不另设总超时，最终结果文件、产品 `execution_status=completed` 与运行锁释放均在收尾后进行。正常编译的剩余计算开销受每路线 30 秒预算约束，多条路线会累加，另有调度、存储及租约等待开销；这段时间产品仍报 `running`。暂不采用“限时退出后报 interrupted”，避免正常准备练习被显示为中断。
+- 前端恢复若在交互回调中途失败，恢复调用前的交互状态、结果和协议，游标不推进，可重新接收本批结果。已经接收的数学卡沿用原恢复行为；外部回调的 DOM 副作用仍需回调本身支持重试，这不是整个 `hydrate` 的页面事务。
 - 交互提交单独追加记录，不能向已经终态的数学 checkpoint 回写。监督器负责把异常、超时、未知或预算耗尽转成有原因的只读结果，日志不能代替决议。
-- 提交前再次校验当前运行/attempt、固定版本与卡片哈希。数学失败或目标被撤销后，未完成卡可决议为只读并保留诊断，但沿用已有不可用状态禁止练习；迟到的交互结果不能重新启用路线。旧 attempt 的 worker 结果不得进入新运行。
+- 提交前再次校验当前运行/attempt、固定版本与卡片哈希；目标撤销和路线失败状态在最终写事务内再次检查。此时迟到的交互结果转换为 `readonly(reason=route_unavailable)`，结果、每卡状态与事件同事务写入，并保留原请求哈希以支持幂等重投。已有终态不改写，沿用不可用状态禁止练习；迟到的交互结果不能重新启用路线。旧 attempt 的 worker 结果不得进入新运行。
 
 ## 7. 第三层：前端适配
 
@@ -598,7 +606,17 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
    - 确界位置直接取自已有的 `range.candidates[].location`；分类依据取自分类证据中根恰为分界点的判定多项式，无需改动数学能力。
    - `interaction.py` 不计入数学指纹（`runner.fingerprint` 排除 `interaction.ENGINE_FILES`），另有 `engine_revision()`；规则文件不在 `execution/` 下。
    - 测试：`server/tests/solver/test_graph_stage_three_interactions.py`。
-2. **独立执行、事件与存储**：规则快照与独立版本、数学卡及 seed 原子保存、独立交互 worker 和预算、每卡待定/终态协议、合并与失败收尾、`step_interaction`、公共快照、前端 `acceptInteraction`。第 12 节隔离和崩溃恢复测试通过后再开启真实流式编译。
+2. **独立执行、事件与存储**（已完成）：规则快照与独立版本、数学卡及 seed 原子保存、独立交互 worker 和预算、每卡待定/终态协议、合并与失败收尾、`step_interaction`、公共快照、前端 `acceptInteraction`。第 12 节隔离和崩溃恢复测试通过后再开启真实流式编译。
+   - 运行冻结：新运行在首张数学卡前把规则、`interaction_revision`、`engine_revision` 和每组/每路线预算限额写入元数据 `interactions`；之后不可更改。没有该键的旧运行不建交互状态，前端按旧协议显示。
+   - 存储：`EventStore.commit_route` 在同一事务中写数学卡、`interaction_states`（`pending`，或无 seed / 哈希不符 / seed 未就绪时直接只读）及数学事件，事件外层 payload 带 `interaction_status`。`commit_interaction` 按 `{target}:{route}:interaction:{id}` 幂等，校验身份、修订、卡片哈希、连续性和 `interaction_sha256`；终态不可改写。诊断只存内部表 `interactions`，公共快照只投影最终结果。
+   - 调度：`interaction_jobs.InteractionScheduler` 在 `run_sample` 中以后台线程运行，按 `plan_groups` 分组（路线到达数学终态前，可能与后卡合并的前缀保持待定）。编译经 `DurableCalculations` 以 `route#interaction` 租约与 `interaction` 预算桶执行，默认每组 5 秒、每路线 30 秒；超时、worker 异常、预算耗尽分别以 `compile_timeout`、`compile_error`、`budget_exhausted` 决议为只读；路线失败或目标不可用记 `route_unavailable`，引擎版本变化记 `engine_unavailable`。崩溃后续算复用已持久化的 worker 回执，不重复计时。`interaction.ENGINE_FILES` 与 `interaction_jobs.ORCHESTRATION_FILES` 均不计入数学指纹。
+   - 前端：`createEventConsumer` 处理 `step_interaction`，校验覆盖卡已发布、哈希一致且连续；同一结果重放幂等，改写报 `stream.immutable_interaction`，与其他结果争用卡片报 `stream.interaction_conflict`。`hydrate` 恢复 `interaction_states` 与 `interactions`，快照不得删除或改写已决结果；`view()` 暴露 `interaction_protocol`、`interaction_states`、`interactions`，挂载视图在卡片上标注 `data-interaction-status`。练习渲染留待第 3 阶段。
+   - 审查修复：完成数学后的续接走 `resume_interactions`，只排空待决交互；状态查询不启动计算。最终提交事务重新检查可用性，迟到结果只读；租约占用可重试，真实预算冲突可诊断；预算限额冻结并兼容旧账本；前端快照先完成状态/结果交叉校验，再整体应用。
+   - 资源与恢复复审：同一运行的计算操作互斥、数学优先，排队在预算领取之前；没有新提交时跳过检查点重读并退避。交互测试只使用 `interaction_dispatch`、`interaction_calculation_returned`（回执结算前）及 `interaction_returned`（结果提交前），不继承数学故障钩子。seed 诊断使用实际原因，内容哈希错误独立报 `events.interaction_hash_mismatch`。状态查询只读、交互建表进入版本迁移；交互恢复回调失败可回滚内部投影。整轮收尾等待的取舍见第 6.4 节。
+   - 测试：`server/tests/solver/test_graph_stage_three_interaction_jobs.py`（冻结规则与 `compile_route` 一致、事件顺序、幂等与不可改写、指纹、旧运行、超时/异常隔离、合并前缀待定、返回后崩溃、路线与引擎不可用、续算清空待定）；`test_graph_stage_three_interaction_commit.py`（撤销竞态、同事务降级、崩溃重放）；`test_graph_stage_three_interaction_scheduler.py`（租约重试、预算恢复与冲突）；`server/tests/search/test_stage_three_interaction_resume.py`（拍题 API 只续交互，不改变数学结果、检查点或预算）；`tools/tests/graph-stage-three-stream.test.mjs`（包括损坏快照原子拒绝）。
+   - 资源与查询回归：`test_graph_stage_three_calculation_gate.py`（互斥、数学优先、排队不扣预算、异常/回执重放释放）；`test_graph_stage_three_interaction_boundaries.py`（独立钩子与诊断）；`test_graph_stage_three_interaction_storage_migration.py`（版本迁移、历史数据与回滚）；`server/tests/search/test_stage_three_interaction_status_read.py`（只读文件/表不变、活动 WAL、身份与锁异常回退）。调度器测试同时覆盖提交游标未变时不读检查点、无事件的终态提交仍被发现。
+   - 持续故障复审：调度失败次数跨续接保存，三轮后只读收尾；回归覆盖坏输入、坏输出、预算冲突、缺失 seed、计数幂等与成功重置，以及产品继续入口最终消失。实时/快照复用结果形状校验；三个服务端入口复用纯身份推导并保持原哈希语义。
+   - 本轮验证（2026-10-20）：最终代码固定后的后端联合回归 221 passed，前端流/快照/路线/拍题测试 120 passed，Ruff 与 `git diff --check` 通过，真实 LLM 调用为 0。覆盖迟到旧错误不误伤新卡、检查点与卡状态同事务读取及身份校验；本轮未跑全部阶段③数学测试。
 3. **前端适配**：按最终分组生成追加式 `steps`、`read` 组件、等待卡、完成态复用渲染（多问卡仅最后一问显示整卡）、独立路线进度/草稿；`streamStepGraph` 由完成记录驱动图谱；流式更新统一刷新并重算 `done`；删除旧阅读游标代码及测试。
 4. **图像**：函数族识别、代表值与复核、自动窗口与刻度、`numberLine` 组件、前端按 `kind` 分发；Q13 两条路线的题干图、完成态图和图像选项。
 5. **覆盖其余模板**：判别式法、分离参数、换主元等剩余模板的规则与图像；22 份录制回归统计。

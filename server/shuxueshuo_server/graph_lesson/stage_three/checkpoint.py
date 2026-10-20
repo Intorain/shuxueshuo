@@ -10,11 +10,27 @@ import tempfile
 from copy import deepcopy
 from pathlib import Path
 
+from shuxueshuo_server.problem_understanding.identity import revision
+
 from .contracts import ROOT
 from .revision_manifest import manifest_ref, validate_revision_ref
 from .storage_validation import validate_schema
 
 IDENTITY_FIELDS = ("run_id", "lesson_version", "input_sha256", "revisions")
+
+
+def identity_from_seed(seed):
+    """Derive the stored run identity without reading files or implementation revisions."""
+    if not isinstance(seed, dict):
+        raise TypeError("checkpoint.invalid_identity")
+    try:
+        run_id, lesson_version = seed["run_id"], seed["lesson_version"]
+        inputs = {name: seed[name]["sha256"] for name in ("stage_one", "stage_two")}
+    except (KeyError, TypeError) as exc:
+        raise ValueError("checkpoint.invalid_identity") from exc
+    if not all(isinstance(value, str) and value for value in (run_id, lesson_version, *inputs.values())):
+        raise ValueError("checkpoint.invalid_identity")
+    return {"run_id": run_id, "lesson_version": lesson_version, "input_sha256": revision(inputs)}
 
 
 def identity_value(value):

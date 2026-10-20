@@ -7,6 +7,7 @@ state, and a retry of the same logical commit cannot repeat a business event.
 import fcntl
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -24,6 +25,8 @@ from .revision_manifest import math_step_hash, validate_revision_ref
 from .storage_validation import validate_schema
 
 _LOG = logging.getLogger(__name__)
+INTERACTION_PROTOCOL = "graph-step-interaction/v1"
+_STORAGE_VERSION = "3"
 _EXPORT_GENERATION = re.compile(r"[0-9]+-[0-9]+-[a-f0-9]{64}-[a-f0-9]{64}\Z")
 
 
@@ -139,37 +142,50 @@ class EventStore:
         return db
 
     def _migrate_storage(self):
-        """Backfill once from receipts, including events removed by cursor retention."""
+        """Apply versioned migrations once, with all data and DDL in one transaction."""
         with closing(self._connect()) as db:
             version = db.execute("SELECT value FROM metadata WHERE key='storage_version'").fetchone()
-            if version and version[0] == "2":
+            if version and version[0] == _STORAGE_VERSION:
                 return
             db.execute("BEGIN IMMEDIATE")
             try:
                 # Another opener may have completed the migration while this
                 # connection waited for the write lock.
                 version = db.execute("SELECT value FROM metadata WHERE key='storage_version'").fetchone()
-                if version and version[0] == "2":
+                if version and version[0] == _STORAGE_VERSION:
                     db.rollback()
                     return
-                db.execute("""CREATE TABLE IF NOT EXISTS selection_chunks (
-                    target TEXT NOT NULL, kind TEXT NOT NULL, seq INTEGER NOT NULL, value TEXT NOT NULL,
-                    PRIMARY KEY(target,kind))""")
-                db.execute("""CREATE TABLE IF NOT EXISTS step_summaries (
-                    target TEXT NOT NULL, route TEXT NOT NULL, step TEXT NOT NULL,
-                    ordinal INTEGER NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(target,route,step),
-                    UNIQUE(target,route,ordinal))""")
-                for commit_id, raw in db.execute("SELECT id,result FROM commits").fetchall():
-                    result = json.loads(raw)
-                    for event in result["events"]:
-                        self._put_selection(db, event)
-                    compact = _compact_receipt(result)
-                    db.execute("UPDATE commits SET result=? WHERE id=?", (_dump(compact), commit_id))
-                for target, route, step, ordinal, raw in db.execute("SELECT * FROM steps").fetchall():
-                    value = json.loads(raw)
-                    db.execute("INSERT OR REPLACE INTO step_summaries VALUES (?,?,?,?,?)",
-                               (target, route, step, ordinal, value["math_step_sha256"]))
-                db.execute("INSERT OR REPLACE INTO metadata VALUES ('storage_version','2')")
+                if version is not None and version[0] not in {"1", "2"}:
+                    raise ValueError("events.unsupported_storage_version")
+                if version is None or version[0] == "1":
+                    # v2: backfill retained selection and compact historical receipts.
+                    db.execute("""CREATE TABLE IF NOT EXISTS selection_chunks (
+                        target TEXT NOT NULL, kind TEXT NOT NULL, seq INTEGER NOT NULL, value TEXT NOT NULL,
+                        PRIMARY KEY(target,kind))""")
+                    db.execute("""CREATE TABLE IF NOT EXISTS step_summaries (
+                        target TEXT NOT NULL, route TEXT NOT NULL, step TEXT NOT NULL,
+                        ordinal INTEGER NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(target,route,step),
+                        UNIQUE(target,route,ordinal))""")
+                    for commit_id, raw in db.execute("SELECT id,result FROM commits").fetchall():
+                        result = json.loads(raw)
+                        for event in result["events"]:
+                            self._put_selection(db, event)
+                        compact = _compact_receipt(result)
+                        db.execute("UPDATE commits SET result=? WHERE id=?", (_dump(compact), commit_id))
+                    for target, route, step, ordinal, raw in db.execute("SELECT * FROM steps").fetchall():
+                        value = json.loads(raw)
+                        db.execute("INSERT OR REPLACE INTO step_summaries VALUES (?,?,?,?,?)",
+                                   (target, route, step, ordinal, value["math_step_sha256"]))
+                # v3 also adopts databases written by the unversioned interaction
+                # implementation. Existing tables and their committed rows survive.
+                db.execute("""CREATE TABLE IF NOT EXISTS interaction_states (
+                    target TEXT NOT NULL, route TEXT NOT NULL, step TEXT NOT NULL, ordinal INTEGER NOT NULL,
+                    hash TEXT NOT NULL, status TEXT NOT NULL, interaction_id TEXT,
+                    PRIMARY KEY(target, route, step))""")
+                db.execute("""CREATE TABLE IF NOT EXISTS interactions (
+                    interaction_id TEXT PRIMARY KEY, target TEXT NOT NULL, route TEXT NOT NULL,
+                    ordinal INTEGER NOT NULL, value TEXT NOT NULL)""")
+                db.execute("INSERT OR REPLACE INTO metadata VALUES ('storage_version',?)", (_STORAGE_VERSION,))
                 db.commit()
             except BaseException:
                 db.rollback()
@@ -299,6 +315,263 @@ class EventStore:
         row = db.execute("SELECT value FROM goals WHERE target=?", (target,)).fetchone()
         return json.loads(row[0]) if row else None
 
+    # --- Step interactions -------------------------------------------------------
+
+    def enable_interactions(self, registry, *, revision, engine_revision, budget=None):
+        """Freeze this run's interaction rules once; later runs may use newer files."""
+        settings = {"protocol": INTERACTION_PROTOCOL, "registry": registry, "revision": revision,
+                    "engine_revision": engine_revision}
+        if budget is not None:
+            if (set(budget) != {"group_seconds", "route_seconds"}
+                    or any(isinstance(value, bool) or not isinstance(value, (int, float))
+                           or not math.isfinite(value) or value <= 0 for value in budget.values())):
+                raise ValueError("events.invalid_interaction_budget")
+            settings["budget"] = {key: float(value) for key, value in budget.items()}
+        with closing(self._connect()) as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                previous = db.execute("SELECT value FROM metadata WHERE key='interactions'").fetchone()
+                if previous is not None and json.loads(previous[0]) != settings:
+                    raise ValueError("events.interaction_settings_changed")
+                if db.execute("SELECT COUNT(*) FROM steps").fetchone()[0] and previous is None:
+                    raise ValueError("events.interactions_after_math")
+                db.execute("INSERT OR IGNORE INTO metadata VALUES ('interactions',?)", (_dump(settings),))
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
+
+    @staticmethod
+    def _interaction_settings(db):
+        row = db.execute("SELECT value FROM metadata WHERE key='interactions'").fetchone()
+        return json.loads(row[0]) if row else None
+
+    def interaction_settings(self):
+        """``None`` for runs recorded before step interactions existed."""
+        with closing(self._connect()) as db:
+            return self._interaction_settings(db)
+
+    def has_pending_interactions(self):
+        with closing(self._connect()) as db:
+            return db.execute("SELECT 1 FROM interaction_states WHERE status='pending' LIMIT 1").fetchone() is not None
+
+    def commit_watermark(self):
+        """A cheap change token including checkpoint-only commits without an event."""
+        with closing(self._connect()) as db:
+            return db.execute("SELECT COALESCE(MAX(rowid),0) FROM commits").fetchone()[0]
+
+    @staticmethod
+    def _interaction_failure_key(target, route):
+        return "interaction_failure:" + revision([target, route])
+
+    @classmethod
+    def _interaction_failure(cls, db, target, route):
+        row = db.execute("SELECT value FROM metadata WHERE key=?",
+                         (cls._interaction_failure_key(target, route),)).fetchone()
+        return json.loads(row[0]) if row else {"count": 0, "disabled": False, "last_error": None}
+
+    def interaction_failure(self, target, route):
+        """Consecutive scheduler failures; disabled routes stay read-only on resume."""
+        with closing(self._connect()) as db:
+            return self._interaction_failure(db, target, route)
+
+    @staticmethod
+    def _interaction_attempt(target, route, attempt_id):
+        if any(not isinstance(value, str) or not value for value in (target, route, attempt_id)):
+            raise ValueError("events.invalid_interaction_attempt")
+        return {"target": target, "route": route, "attempt_id": attempt_id}
+
+    def record_interaction_failure(self, target, route, diagnostic, *, pending_steps, attempt_id, limit=3,
+                                   before_commit=None, after_commit=None):
+        """Count one invocation once, atomically close pending cards at the limit.
+
+        The invocation identity, not a possibly changing exception message, is
+        the idempotency key. Its first diagnostic remains the authoritative one.
+        """
+        from .interaction import readonly_chunk
+
+        request = self._interaction_attempt(target, route, attempt_id)
+        if type(limit) is not int or limit < 1 or not isinstance(diagnostic, dict):
+            raise ValueError("events.invalid_interaction_failure")
+        if not isinstance(pending_steps, list) or any(
+            not isinstance(step, dict) or set(step) != {"step_id", "math_step_sha256"}
+            or not isinstance(step["step_id"], str) or not step["step_id"]
+            or not isinstance(step["math_step_sha256"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", step["math_step_sha256"]) for step in pending_steps
+        ):
+            raise ValueError("events.invalid_interaction_pending_steps")
+        observed = {(step["step_id"], step["math_step_sha256"]) for step in pending_steps}
+        if len({step_id for step_id, _ in observed}) != len(pending_steps):
+            raise ValueError("events.invalid_interaction_pending_steps")
+        commit_id = "interaction-failure:" + revision(request)
+        request.update(limit=limit, pending_steps=[{"step_id": step_id, "math_step_sha256": math_hash}
+                                                  for step_id, math_hash in sorted(observed)])
+
+        def mutate(db):
+            failure = self._interaction_failure(db, target, route)
+            pending = db.execute("SELECT step,hash FROM interaction_states WHERE target=? AND route=? "
+                                 "AND status='pending' ORDER BY ordinal", (target, route)).fetchall()
+            # Another scheduler may have resolved the observed cards while
+            # mathematics appended new ones. A late error for the old cards
+            # must not spend the new cards' failure allowance.
+            if failure["disabled"] or not observed.intersection(pending):
+                return {**failure, "resolved_count": 0}
+            failure = {"count": failure["count"] + 1, "disabled": failure["count"] + 1 >= limit,
+                       "last_error": deepcopy(diagnostic)}
+            db.execute("INSERT OR REPLACE INTO metadata VALUES (?,?)",
+                       (self._interaction_failure_key(target, route), _dump(failure)))
+            resolved = 0
+            if failure["disabled"]:
+                settings = self._interaction_settings(db)
+                for step_id, math_hash in pending:
+                    seed = {key: self.identity[key] for key in ("run_id", "lesson_version")}
+                    seed.update(target_ref=target, route_id=route, step_id=step_id, math_step_sha256=math_hash)
+                    resolved += self._put_interaction(db, commit_id, readonly_chunk(
+                        [seed], settings["revision"], "scheduler_error"),
+                        [{"result": "readonly", "reason": "scheduler_error", "scheduler_error": diagnostic}])
+            return {**failure, "resolved_count": resolved}
+
+        return self._transaction(commit_id, request, mutate, before_commit=before_commit, after_commit=after_commit)
+
+    def clear_interaction_failure(self, target, route, *, attempt_id):
+        """Clear recoverable failures after a successful pass, never reopen a route."""
+        request = self._interaction_attempt(target, route, attempt_id)
+        failure = self.interaction_failure(target, route)
+        if failure["count"] == 0 or failure["disabled"]:
+            return failure
+
+        def mutate(db):
+            current = self._interaction_failure(db, target, route)
+            if current["disabled"] or current["count"] == 0:
+                return current
+            cleared = {"count": 0, "disabled": False, "last_error": None}
+            db.execute("INSERT OR REPLACE INTO metadata VALUES (?,?)",
+                       (self._interaction_failure_key(target, route), _dump(cleared)))
+            return cleared
+
+        return self._transaction("interaction-recovered:" + revision(request), request, mutate)
+
+    def _put_interaction(self, db, commit_id, chunk, diagnostics):
+        from .interaction import chunk_sha256, validate_chunk
+
+        validate_chunk(chunk)
+        settings = self._interaction_settings(db)
+        if settings is None:
+            raise ValueError("events.interactions_disabled")
+        if (chunk["run_id"], chunk["lesson_version"]) != (self.identity["run_id"], self.identity["lesson_version"]):
+            raise ValueError("events.interaction_identity_mismatch")
+        if chunk["interaction_revision"] != settings["revision"]:
+            raise ValueError("events.interaction_revision_mismatch")
+        if chunk["interaction_sha256"] != chunk_sha256(chunk):
+            raise ValueError("events.interaction_hash_mismatch")
+        target, route, identifier = chunk["target_ref"], chunk["route_id"], chunk["interaction_id"]
+        previous = db.execute("SELECT value FROM interactions WHERE interaction_id=?", (identifier,)).fetchone()
+        if previous:
+            saved = json.loads(previous[0])
+            if saved["chunk"] != chunk and saved.get("request_sha256") != chunk["interaction_sha256"]:
+                raise ValueError("events.immutable_interaction")
+            return False
+        rows = []
+        for step in chunk["steps"]:
+            row = db.execute("SELECT ordinal,hash,status,interaction_id FROM interaction_states "
+                             "WHERE target=? AND route=? AND step=?", (target, route, step["step_id"])).fetchone()
+            if row is None or row[1] != step["math_step_sha256"]:
+                raise ValueError("events.interaction_step_mismatch")
+            if row[2] != "pending":
+                raise ValueError("events.interaction_already_resolved")
+            rows.append(row)
+        ordinals = [row[0] for row in rows]
+        if ordinals != list(range(ordinals[0], ordinals[0] + len(ordinals))):
+            raise ValueError("events.interaction_noncontiguous")
+        value = {"chunk": chunk, "diagnostics": diagnostics}
+        checkpoint = self._checkpoint(db, target, route) if chunk["status"] == "interactive" else None
+        if chunk["status"] == "interactive" and (goal_unavailable(self._goal(db, target)) or checkpoint is None
+                                                or checkpoint["status"] in {"capability_gap", "math_failed", "execution_error"}):
+            # The worker may have started before a route failed or its goal was
+            # revoked. Decide availability under the same write lock as the
+            # terminal state and event; keep the original request for retries.
+            value["request_sha256"] = chunk["interaction_sha256"]
+            chunk = deepcopy(chunk)
+            chunk.update(status="readonly", parts=[], reason="route_unavailable")
+            chunk["interaction_sha256"] = chunk_sha256(chunk)
+            value.update(chunk=chunk, diagnostics=[*diagnostics, {"result": "readonly", "reason": "route_unavailable"}])
+        db.execute("INSERT INTO interactions VALUES (?,?,?,?,?)", (identifier, target, route, ordinals[0], _dump(value)))
+        for step in chunk["steps"]:
+            db.execute("UPDATE interaction_states SET status=?,interaction_id=? WHERE target=? AND route=? AND step=?",
+                       (chunk["status"], identifier, target, route, step["step_id"]))
+        self._append_event(db, commit_id, {"type": "lesson.chunk_ready", "target_ref": target, "route_id": route,
+                                           "payload": {"kind": "step_interaction", "interaction_id": identifier,
+                                                       "status": chunk["status"], "chunk": chunk}})
+        return True
+
+    def _open_interaction(self, db, commit_id, step, seed):
+        """A new card starts pending; one without a usable seed is read-only at once."""
+        from .interaction import readonly_chunk
+
+        settings = self._interaction_settings(db)
+        if settings is None:
+            return None
+        db.execute("INSERT INTO interaction_states VALUES (?,?,?,?,?,'pending',NULL)",
+                   (step["target_ref"], step["route_id"], step["step_id"], step["ordinal"], step["math_step_sha256"]))
+        if self._interaction_failure(db, step["target_ref"], step["route_id"])["disabled"]:
+            stub = {key: step[key] for key in ("run_id", "lesson_version", "target_ref", "route_id", "step_id",
+                                             "math_step_sha256")}
+            return readonly_chunk([stub], settings["revision"], "scheduler_error")
+        if seed is None:
+            reason = "seed_missing"
+        elif seed.get("math_step_sha256") != step["math_step_sha256"]:
+            reason = "seed_hash_mismatch"
+        elif seed.get("status") != "ready":
+            reason = seed.get("reason", "seed_missing")
+        else:
+            return "pending"
+        stub = seed or {key: step[key] for key in ("run_id", "lesson_version", "target_ref", "route_id", "step_id")}
+        stub = {**stub, "math_step_sha256": step["math_step_sha256"]}
+        return readonly_chunk([stub], settings["revision"], reason)
+
+    def commit_interaction(self, chunk, *, diagnostics=(), commit_id=None, before_commit=None, after_commit=None):
+        """Resolve pending cards exactly once; an identical retry is idempotent."""
+        commit_id = commit_id or f"{chunk['target_ref']}:{chunk['route_id']}:interaction:{chunk['interaction_id']}"
+        diagnostics = list(diagnostics)
+
+        def mutate(db):
+            return {"interaction_id": chunk["interaction_id"], "committed": self._put_interaction(
+                db, commit_id, chunk, diagnostics)}
+
+        return self._transaction(commit_id, {"chunk": chunk, "diagnostics": diagnostics}, mutate,
+                                 before_commit=before_commit, after_commit=after_commit)
+
+    @staticmethod
+    def _interaction_states(db, target_ref=None, route_id=None):
+        query, arguments = "SELECT target,route,step,ordinal,hash,status,interaction_id FROM interaction_states", ()
+        if target_ref is not None:
+            query, arguments = query + " WHERE target=? AND route=?", (target_ref, route_id)
+        return [dict(zip(("target_ref", "route_id", "step_id", "ordinal", "math_step_sha256", "status",
+                          "interaction_id"), row, strict=True))
+                for row in db.execute(query + " ORDER BY target,route,ordinal", arguments)]
+
+    def interaction_states(self, target_ref=None, route_id=None):
+        with closing(self._connect()) as db:
+            return self._interaction_states(db, target_ref, route_id)
+
+    def interaction_context(self, target_ref, route_id):
+        """Read seeds and their published card states from the same SQLite snapshot."""
+        with closing(self._connect()) as db:
+            db.execute("BEGIN")
+            checkpoint = self._checkpoint(db, target_ref, route_id)
+            if checkpoint is not None:
+                validate_checkpoint(checkpoint, self.identity)
+            return checkpoint, self._interaction_states(db, target_ref, route_id)
+
+    def goal(self, target_ref):
+        with closing(self._connect()) as db:
+            return self._goal(db, target_ref)
+
+    def interaction(self, interaction_id):
+        with closing(self._connect()) as db:
+            row = db.execute("SELECT value FROM interactions WHERE interaction_id=?", (interaction_id,)).fetchone()
+        return json.loads(row[0]) if row else None
+
     def commit_route(self, checkpoint, *, commit_id, math_steps=(), events=(), before_commit=None, after_commit=None):
         """Commit exactly one resumable operation and its newly readable fragments."""
         request = {"checkpoint": checkpoint, "math_steps": list(math_steps), "events": list(events)}
@@ -316,13 +589,22 @@ class EventStore:
                 if spec["type"] == "lesson.chunk_ready" or spec["type"] == "lesson.goal_status":
                     raise ValueError("events.use_typed_commit")
                 self._append_event(db, commit_id, spec)
+            seeds = {} if self._interaction_failure(db, target, route)["disabled"] else {
+                seed["step_id"]: seed for seed in checkpoint.get("driver_state", {}).get("interaction_seeds", [])}
             for step in request["math_steps"]:
                 if step["target_ref"] != target or step["route_id"] != route:
                     raise ValueError("events.route_step_mismatch")
                 if self._put_step(db, step):
+                    opened = self._open_interaction(db, commit_id, step, seeds.get(step["step_id"]))
+                    payload = {"kind": "math_step", "step_id": step["step_id"],
+                               "math_step_sha256": step["math_step_sha256"], "chunk": step}
+                    if opened is not None:
+                        payload["interaction_status"] = "pending" if opened == "pending" else "readonly"
                     self._append_event(db, commit_id, {"type": "lesson.chunk_ready", "target_ref": target,
-                        "route_id": route, "payload": {"kind": "math_step", "step_id": step["step_id"],
-                            "math_step_sha256": step["math_step_sha256"], "chunk": step}})
+                                                       "route_id": route, "payload": payload})
+                    if isinstance(opened, dict):
+                        self._put_interaction(db, commit_id, opened, [{"result": "readonly",
+                                                                       "reason": opened["reason"]}])
             return {"checkpoint": self._put_checkpoint(db, checkpoint, commit_id)}
 
         return self._transaction(commit_id, request, mutate, before_commit=before_commit, after_commit=after_commit)
@@ -400,6 +682,15 @@ class EventStore:
             "SELECT value FROM selection_chunks ORDER BY seq",
         )]
         result["minimum_seq"] = int(db.execute("SELECT value FROM metadata WHERE key='minimum_seq'").fetchone()[0])
+        settings = self._interaction_settings(db)
+        result["interaction_protocol"] = settings["protocol"] if settings else None
+        result["interaction_states"] = [
+            {key: value for key, value in zip(("target_ref", "route_id", "step_id", "ordinal", "math_step_sha256",
+                                               "status", "interaction_id"), row, strict=True) if value is not None}
+            for row in db.execute("SELECT target,route,step,ordinal,hash,status,interaction_id "
+                                  "FROM interaction_states ORDER BY target,route,ordinal")]
+        result["interactions"] = [json.loads(row[0]) for row in db.execute(
+            "SELECT value FROM interactions ORDER BY target,route,ordinal")]
         return result
 
     def prune_events(self, through_seq):

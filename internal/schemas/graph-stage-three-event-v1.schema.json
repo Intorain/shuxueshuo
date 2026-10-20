@@ -134,7 +134,8 @@
                   "D4",
                   "math_step",
                   "step_qa",
-                  "route_completion"
+                  "route_completion",
+                  "step_interaction"
                 ]
               }
             }
@@ -161,7 +162,8 @@
                 "enum": [
                   "math_step",
                   "step_qa",
-                  "route_completion"
+                  "route_completion",
+                  "step_interaction"
                 ]
               }
             }
@@ -250,6 +252,84 @@
               "verified_route_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.chunk_ready"
+          },
+          "payload": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "const": "step_interaction"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": [
+              "interaction_id",
+              "status",
+              "chunk"
+            ],
+            "properties": {
+              "interaction_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{24}$"
+              },
+              "status": {
+                "enum": [
+                  "interactive",
+                  "readonly"
+                ]
+              },
+              "chunk": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson.chunk_ready"
+          },
+          "payload": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "const": "math_step"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "interaction_status": {
+                "enum": [
+                  "pending",
+                  "readonly"
+                ]
               }
             }
           }

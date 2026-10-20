@@ -72,6 +72,12 @@ def dispatch(payload):
         return driver.create_state(contracts=_contracts({"revisions": revisions}), **arguments)
     if operation == "advance":
         return driver.advance(payload["state"], contracts=_contracts(payload["state"]))
+    if operation == "interaction":
+        from . import interaction
+
+        chunk, diagnostics = interaction.build_chunk(payload["seeds"], payload["registry"], payload["repeat_context"],
+                                                     revision=payload["revision"])
+        return {"chunk": chunk, "diagnostics": diagnostics}
     if operation == "constraints":
         candidate_set = driver.export_values(payload["state"])["feasible_set"]
         feasible, processing = route_constraints.apply_visible_constraints(

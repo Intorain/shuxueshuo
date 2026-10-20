@@ -283,7 +283,7 @@ def create_search_router(root, *, stage_three_hooks=None):
             stage_three.assert_resumable(directory, output)
         except stage_three.LessonConflict as exc:
             raise HTTPException(409, str(exc)) from exc
-        if (output / "stage-three-result.json").is_file():
+        if (output / "stage-three-result.json").is_file() and not stage_three.has_pending_interactions(output):
             return {"status": "completed", **stage_three.presentation(directory, search_id)}
         queue_execution(search_id, directory,
                         lambda: stage_three.resume_stage_three(directory, run_id, hooks=stage_three_hooks),

@@ -48,7 +48,7 @@ def project_snapshot(snapshot):
     """Project a single SQLite read snapshot without exposing driver_state."""
     result = _fields(snapshot, (
         "run_id", "lesson_version", "input_sha256", "stream_id", "last_seq", "minimum_seq",
-        "math_steps", "goals", "handoffs", "qa", "selection_chunks",
+        "math_steps", "goals", "handoffs", "qa", "selection_chunks", "interaction_protocol", "interaction_states",
     ))
     result.update(
         contract="graph-stage-three-snapshot/v2",
@@ -56,4 +56,7 @@ def project_snapshot(snapshot):
         checkpoints=[_fields(checkpoint, _ROUTE_FIELDS) for checkpoint in snapshot["checkpoints"]],
         trajectories=[trajectory_evidence(checkpoint) for checkpoint in snapshot["checkpoints"]],
     )
+    if "interactions" in snapshot:
+        # Compiler diagnostics and witnesses stay in the internal snapshot.
+        result["interactions"] = [deepcopy(row["chunk"]) for row in snapshot["interactions"]]
     return result

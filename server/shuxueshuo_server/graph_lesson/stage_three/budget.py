@@ -127,7 +127,7 @@ class BudgetLedger:
         """Configure once; initial usage imports a pre-ledger checkpoint only once."""
         _text(target, "target")
         _text(route, "route")
-        if bucket not in ("solve", "verification", "selection"):
+        if bucket not in ("solve", "verification", "selection", "interaction"):
             raise ValueError("budget.invalid_bucket")
         limit_seconds = _seconds(limit_seconds, "limit_seconds")
         initial_seconds = _seconds(initial_seconds, "initial_seconds")
@@ -233,8 +233,12 @@ class BudgetLedger:
             db.commit()
             return {"recovered": recovered, "summaries": summaries}
 
-    def begin(self, target, route, bucket, operation_key, input_hash, owner):
-        """Reserve before launch; replay an existing terminal receipt without calculation."""
+    def begin(self, target, route, bucket, operation_key, input_hash, owner, *, allowance_seconds=None):
+        """Reserve before launch; replay an existing terminal receipt without calculation.
+
+        ``allowance_seconds`` caps one attempt below the bucket's remainder, so
+        an interrupted attempt reserves only what it could actually have used.
+        """
         _text(operation_key, "operation_key")
         _text(input_hash, "input_hash")
         with closing(self._connect()) as db:
@@ -269,6 +273,8 @@ class BudgetLedger:
                 # parent-lost attempt exhausted the allowance before retry.
                 db.commit()
                 raise BudgetExhausted(summary)
+            if allowance_seconds is not None:
+                remaining = min(remaining, _seconds(allowance_seconds, "allowance_seconds"))
             attempt_id = uuid.uuid4().hex
             db.execute("INSERT INTO calculation_attempts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL)",
                        (attempt_id, target, route, bucket, operation_key, input_hash, ordinal, owner,

@@ -16,8 +16,9 @@ from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
 from ..stage_two import runner as stage_two_runner
 from ..stage_two.contracts import ROOT, targets
-from . import interaction
+from . import interaction, interaction_jobs
 from .budget import BudgetConflict
+from .checkpoint import identity_from_seed
 from .contracts import (
     INPUT_MANIFEST_CONTRACT,
     RESULT_CONTRACT,
@@ -39,10 +40,11 @@ MILESTONES = milestones()
 
 
 def fingerprint():
-    # Interaction compilation has its own engine revision; editing it must not
-    # invalidate mathematical resumption.
+    # Interaction compilation and scheduling have their own revisions; editing
+    # them must not invalidate mathematical resumption.
+    excluded = {*interaction.ENGINE_FILES, *interaction_jobs.ORCHESTRATION_FILES}
     paths = [
-        *(path for path in Path(__file__).parent.rglob("*.py") if path.resolve() not in interaction.ENGINE_FILES),
+        *(path for path in Path(__file__).parent.rglob("*.py") if path.resolve() not in excluded),
         *Path(__file__).parents[2].joinpath("problem_understanding").glob("notation_*.py"),
         *Path(__file__).parent.parent.joinpath("stage_one").glob("*.py"),
         *Path(__file__).parent.parent.joinpath("stage_two").glob("*.py"),
@@ -97,9 +99,7 @@ def _target_failure(goal, exc, phase, store, *, status="execution_error", code="
 def _open_store(output, result, frozen, *, create):
     from .events import EventStore
 
-    return EventStore(output, {"run_id": result["run_id"], "lesson_version": result["lesson_version"],
-        "input_sha256": revision({"stage_one": result["stage_one"]["sha256"], "stage_two": result["stage_two"]["sha256"]}),
-        "revisions": frozen}, create=create)
+    return EventStore(output, {**identity_from_seed(result), "revisions": frozen}, create=create)
 
 
 def _resume_admission_failure(output, saved, loaded, timing, frozen, started):
@@ -172,10 +172,36 @@ def _resume_admission_failure(output, saved, loaded, timing, frozen, started):
     return result
 
 
+def _interaction_scheduler(store, hooks):
+    """Start this run's interaction worker; runs recorded without the protocol have none."""
+    hooks = hooks or {}
+    if store is None or store.interaction_settings() is None or hooks.get("interaction_scheduler") is False:
+        return None
+    from .calculations import dispatch
+
+    return interaction_jobs.InteractionScheduler(
+        store, dispatch=hooks.get("interaction_dispatch") or dispatch,
+        hooks=hooks,
+    ).start()
+
+
+def _finish_interactions(scheduler, output):
+    if scheduler is not None:
+        scheduler.finish()
+        # A recoverable scheduling/storage failure does not revoke mathematics.
+        # Keep its diagnostics while pending cards remain explicitly resumable.
+        save(Path(output) / "interaction-diagnostics.json", {"errors": scheduler.errors})
+
+
 def run_sample(source, output, *, reference_base=None, milestone=MILESTONE, resume=False, hooks=None,
                solve_budget_seconds=10, verification_budget_seconds=20,
-               admission_budget_seconds=ADMISSION_BUDGET_SECONDS, selection_budget_seconds=SELECTION_BUDGET_SECONDS):
-    """Read an external stage-two result; invalid input still gets a debug report."""
+               admission_budget_seconds=ADMISSION_BUDGET_SECONDS, selection_budget_seconds=SELECTION_BUDGET_SECONDS,
+               interactions=True):
+    """Read an external stage-two result; invalid input still gets a debug report.
+
+    ``interactions`` applies to a new run only; a resumed run keeps the choice
+    (and frozen rules) it was created with.
+    """
     if milestone not in MILESTONES or any(not math.isfinite(value) or value <= 0
                                          for value in (solve_budget_seconds, verification_budget_seconds,
                                                        admission_budget_seconds, selection_budget_seconds)):
@@ -258,6 +284,41 @@ def run_sample(source, output, *, reference_base=None, milestone=MILESTONE, resu
         preparation_store = _open_store(output, result, frozen, create=not resume)
         if milestone != "1a":
             store = preparation_store
+            if not resume and interactions:
+                registry = interaction.load_registry()
+                group_seconds, route_seconds = (hooks or {}).get(
+                    "interaction_budget", (interaction_jobs.GROUP_SECONDS, interaction_jobs.ROUTE_SECONDS))
+                store.enable_interactions(registry, revision=interaction.registry_revision(registry),
+                                          engine_revision=interaction.engine_revision(),
+                                          budget={"group_seconds": group_seconds, "route_seconds": route_seconds})
+    scheduler = _interaction_scheduler(store, hooks)
+    try:
+        _run_goals(loaded, result, output, store, preparation_store, stage_one, stage_two, milestone, hooks,
+                   solve_budget_seconds=solve_budget_seconds, verification_budget_seconds=verification_budget_seconds,
+                   selection_budget_seconds=selection_budget_seconds)
+    except BaseException:
+        if scheduler is not None:
+            scheduler.stop()
+        raise
+    _finish_interactions(scheduler, output)
+    if store:
+        snapshot = store.export()
+        folders = {goal["target_ref"]: output / "goals" / f"goal-{index:03}"
+                   for index, goal in enumerate(result["goals"], 1)}
+        for task in snapshot["handoffs"]:
+            save(folders[task["target_ref"]] / "handoff" / (task["route_id"] + ".json"), task)
+        result["events"] = {"stream_id": result["run_id"], "last_seq": snapshot["last_seq"], "snapshot": "checkpoint.json"}
+    result["elapsed_seconds"] = round(perf_counter() - started, 6)
+    validate_result(result)
+    save(output / "stage-three-result.json", result)
+    from .report import render_result
+
+    render_result(output)
+    return result
+
+
+def _run_goals(loaded, result, output, store, preparation_store, stage_one, stage_two, milestone, hooks, *,
+               solve_budget_seconds, verification_budget_seconds, selection_budget_seconds):
     if loaded["ok"]:
         candidate = stage_one["candidate"]
         original_targets = {row["target_ref"]: row for row in targets(candidate)}
@@ -317,20 +378,6 @@ def run_sample(source, output, *, reference_base=None, milestone=MILESTONE, resu
                                 ("features", features), ("goal", goal)):
                 save(folder / f"{name}.json", value)
         result["status"] = aggregate_status(result["goals"])
-    if store:
-        snapshot = store.export()
-        folders = {goal["target_ref"]: output / "goals" / f"goal-{index:03}"
-                   for index, goal in enumerate(result["goals"], 1)}
-        for task in snapshot["handoffs"]:
-            save(folders[task["target_ref"]] / "handoff" / (task["route_id"] + ".json"), task)
-        result["events"] = {"stream_id": result["run_id"], "last_seq": snapshot["last_seq"], "snapshot": "checkpoint.json"}
-    result["elapsed_seconds"] = round(perf_counter() - started, 6)
-    validate_result(result)
-    save(output / "stage-three-result.json", result)
-    from .report import render_result
-
-    render_result(output)
-    return result
 
 
 def _execute_goal(candidate, goal, folder, store, *, milestone, hooks, **budgets):
@@ -386,6 +433,28 @@ def _execute_goal_in_session(candidate, goal, folder, store, *, stack, milestone
 
 def resume_sample(output, *, hooks=None):
     return run_sample(None, output, resume=True, hooks=hooks)
+
+
+def resume_interactions(output, *, hooks=None):
+    """Drain a completed run's interactions without admitting or rerunning mathematics.
+
+    The product caller holds its run lock and validates the current attempt and
+    frozen mathematical revision, just as it does for a mathematical resume.
+    """
+    from .preview import open_store
+
+    output = Path(output)
+    result = json.loads((output / "stage-three-result.json").read_text())
+    store = open_store(output)
+    if not store.has_pending_interactions():
+        return result
+    scheduler = _interaction_scheduler(store, hooks)
+    _finish_interactions(scheduler, output)
+    snapshot = store.export()
+    result["events"]["last_seq"] = snapshot["last_seq"]
+    validate_result(result)
+    save(output / "stage-three-result.json", result)
+    return result
 
 
 def _no_provider(*args, **kwargs):

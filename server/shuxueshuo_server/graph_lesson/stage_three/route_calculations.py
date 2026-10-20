@@ -6,7 +6,7 @@ from time import monotonic, sleep
 
 from shuxueshuo_server.problem_understanding.identity import revision
 
-from . import bounded, calculations, goals, verification
+from . import bounded, calculation_gate, calculations, goals, verification
 from .budget import BudgetExhausted, BudgetLedger, BudgetPending
 
 _ACCOUNTING = {"compute_seconds", "verification_seconds", "solve_timing", "verification_timing", "budget_accounting"}
@@ -16,11 +16,21 @@ class PreparationTimeout(TimeoutError):
     """The target's separate preparation allowance could not complete its work."""
 
 
+class InteractionUnavailable(TimeoutError):
+    """An interaction group timed out or its route allowance is spent; never a math result."""
+
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__("interaction." + reason)
+
+
 def _budget_error(bucket, reason, operation):
     if bucket == "verification":
         return verification.VerificationGap("verification_incomplete:" + reason + ":" + operation)
     if bucket == "selection":
         return PreparationTimeout("preparation." + reason + ":" + operation)
+    if bucket == "interaction":
+        return InteractionUnavailable(reason)
     return TimeoutError("execution.solve_" + reason + ":" + operation)
 
 
@@ -62,6 +72,7 @@ class DurableCalculations:
         self.limits, self.dispatch = limits, dispatch
         self.hooks = hooks or {}
         self._stack = ExitStack()
+        self._gate = calculation_gate.for_directory(store.directory)
 
     def __enter__(self):
         try:
@@ -89,9 +100,16 @@ class DurableCalculations:
     def __exit__(self, *args):
         return self._stack.__exit__(*args)
 
-    def call(self, operation, payload, *, bucket="solve"):
+    def call(self, operation, payload, *, bucket="solve", timeout_seconds=None):
+        # Queue before creating any reservation or starting the worker's wall
+        # deadline. Each side keeps its own worker, receipt and budget bucket.
+        with self._gate.operation(bucket):
+            return self._call(operation, payload, bucket=bucket, timeout_seconds=timeout_seconds)
+
+    def _call(self, operation, payload, *, bucket, timeout_seconds):
         try:
-            attempt = self.ledger.begin(self.target, self.route, bucket, operation, _input_hash(payload), self.owner)
+            attempt = self.ledger.begin(self.target, self.route, bucket, operation, _input_hash(payload), self.owner,
+                                        allowance_seconds=timeout_seconds)
         except (BudgetExhausted, BudgetPending) as exc:
             raise _budget_error(bucket, "budget_unavailable", operation) from exc
         if attempt["reused"]:

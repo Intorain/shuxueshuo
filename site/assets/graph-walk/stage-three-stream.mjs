@@ -11,6 +11,7 @@ const methodNames = {discriminant: '判别式法', extremum: '分离参数法', 
 const stoppedLabels = {capability_gap: '暂时无法继续这一步', math_failed: '这条解法未通过数学检查', execution_error: '计算遇到问题'};
 const expressionText = value => typeof value === 'string' ? value : value?.latex || '';
 const pick = (value, fields) => Object.fromEntries(fields.filter(key => Object.hasOwn(value, key)).map(key => [key, copy(value[key])]));
+const INTERACTION_PROTOCOL = 'graph-step-interaction/v1';
 const routeSummary = value => pick(value, ['target_ref', 'route_id', 'status', 'phase', 'commit_id', 'last_seq']);
 
 // Normalize legacy/full event records and compact snapshots to the same public
@@ -65,7 +66,9 @@ export function createEventConsumer(identity, hooks = {}) {
   const pending = new Map(), seen = new Map(), steps = new Map(), goals = new Map();
   const completions = new Map(), qa = new Map(), routeStatuses = new Map(), enrichmentStatuses = new Map();
   const selections = new Map(), trajectories = new Map(), finalizations = new Map();
-  let checkpoints = [];
+  // Per-card interaction state (pending → interactive | readonly) and final chunks by interaction_id.
+  const interactionStates = new Map(), interactions = new Map();
+  let checkpoints = [], interactionProtocol = null;
   const matches = value => value.run_id === run.run_id && value.lesson_version === run.lesson_version;
   const orderedSteps = () => [...steps.values()].sort((left, right) =>
     left.target_ref.localeCompare(right.target_ref) || left.route_id.localeCompare(right.route_id) || left.ordinal - right.ordinal);
@@ -81,6 +84,51 @@ export function createEventConsumer(identity, hooks = {}) {
       if (step.ordinal !== siblings.length + 1) throw new Error('stream.noncontiguous_math_steps');
       steps.set(key, copy(step));
       try { hooks.onMathStep?.(copy(step)); } catch (error) { steps.delete(key); throw error; }
+    }
+  }
+
+  function openInteraction(step, status) {
+    const key = stepKey(step);
+    if (!['pending', 'readonly'].includes(status)) throw new Error('stream.invalid_interaction_status');
+    if (!interactionStates.has(key)) interactionStates.set(key, {status});
+  }
+
+  function validInteractionShape(chunk) {
+    return Boolean(chunk && matches(chunk) && chunk.contract === INTERACTION_PROTOCOL &&
+      typeof chunk.interaction_id === 'string' && chunk.interaction_id &&
+      ['interactive', 'readonly'].includes(chunk.status) && Array.isArray(chunk.steps) &&
+      chunk.steps.length >= 1 && chunk.steps.length <= 2 && chunk.steps.every(value => value && typeof value === 'object') &&
+      Array.isArray(chunk.parts) && (chunk.status === 'interactive' ? chunk.parts.length > 0 : chunk.parts.length === 0));
+  }
+
+  /** A final interaction resolves its contiguous cards once; it never changes their mathematics. */
+  function acceptInteraction(chunk) {
+    if (!validInteractionShape(chunk)) throw new Error('stream.invalid_interaction');
+    const previous = interactions.get(chunk.interaction_id);
+    if (previous) {
+      if (JSON.stringify(previous) !== JSON.stringify(chunk)) throw new Error('stream.immutable_interaction');
+      return;
+    }
+    const covered = chunk.steps.map(value => {
+      const key = stepKey({target_ref: chunk.target_ref, route_id: chunk.route_id, step_id: value.step_id});
+      const step = steps.get(key);
+      if (!step || step.math_step_sha256 !== value.math_step_sha256) throw new Error('stream.interaction_hash_mismatch');
+      const state = interactionStates.get(key);
+      if (state?.interaction_id && state.interaction_id !== chunk.interaction_id) throw new Error('stream.interaction_conflict');
+      return {key, step};
+    });
+    if (covered.some(({step}, index) => step.ordinal !== covered[0].step.ordinal + index)) {
+      throw new Error('stream.interaction_noncontiguous');
+    }
+    const prior = covered.map(({key}) => interactionStates.get(key)), priorProtocol = interactionProtocol;
+    interactionProtocol ??= INTERACTION_PROTOCOL;
+    interactions.set(chunk.interaction_id, copy(chunk));
+    for (const {key} of covered) interactionStates.set(key, {status: chunk.status, interaction_id: chunk.interaction_id});
+    try { hooks.onInteraction?.(copy(chunk)); } catch (error) {
+      interactions.delete(chunk.interaction_id);
+      covered.forEach(({key}, index) => prior[index] ? interactionStates.set(key, prior[index]) : interactionStates.delete(key));
+      interactionProtocol = priorProtocol;
+      throw error;
     }
   }
 
@@ -136,6 +184,12 @@ export function createEventConsumer(identity, hooks = {}) {
       if (!step || step.target_ref !== target || step.route_id !== event.route_id ||
           step.step_id !== payload.step_id || step.math_step_sha256 !== payload.math_step_sha256) throw new Error('stream.math_identity_mismatch');
       acceptStep(step);
+      if (payload.interaction_status !== undefined) openInteraction(step, payload.interaction_status);
+    } else if (event.type === 'lesson.chunk_ready' && payload.kind === 'step_interaction') {
+      const chunk = payload.chunk;
+      if (!chunk || chunk.target_ref !== target || chunk.route_id !== event.route_id ||
+          chunk.interaction_id !== payload.interaction_id || chunk.status !== payload.status) throw new Error('stream.interaction_identity_mismatch');
+      acceptInteraction(chunk);
     } else if (event.type === 'lesson.goal_status') {
       goals.set(target, copy(payload));
       hooks.onGoalStatus?.(target, copy(payload));
@@ -181,6 +235,72 @@ export function createEventConsumer(identity, hooks = {}) {
     return {last_seq: lastSeq, pending: pending.size};
   }
 
+  /** Check the complete interaction projection before hydrate mutates any state or DOM. */
+  function validateInteractionSnapshot(snapshot, available) {
+    const reject = () => { throw new Error('stream.snapshot_interaction_changed'); };
+    const protocol = snapshot.interaction_protocol ?? null;
+    const rows = snapshot.interaction_states ?? [], values = snapshot.interactions ?? [];
+    if (!Array.isArray(rows) || !Array.isArray(values) || (protocol !== null && protocol !== INTERACTION_PROTOCOL)) reject();
+    if (protocol === null && (rows.length || values.length || interactionStates.size || interactions.size)) reject();
+    const states = new Map(), chunks = new Map(), covered = new Set();
+    for (const row of rows) {
+      if (!row || typeof row !== 'object') reject();
+      const key = stepKey(row), step = available.get(key);
+      if (!step || states.has(key) || step.ordinal !== row.ordinal || step.math_step_sha256 !== row.math_step_sha256 ||
+          !['pending', 'interactive', 'readonly'].includes(row.status)) reject();
+      if (row.status === 'pending' ? Object.hasOwn(row, 'interaction_id')
+        : typeof row.interaction_id !== 'string' || !row.interaction_id) reject();
+      const previous = interactionStates.get(key);
+      if (previous?.interaction_id && (previous.interaction_id !== row.interaction_id || previous.status !== row.status)) reject();
+      states.set(key, row);
+    }
+    // Enabled snapshots describe every card, including those still awaiting a result.
+    if (protocol === INTERACTION_PROTOCOL && states.size !== available.size) reject();
+    for (const chunk of values) {
+      if (!validInteractionShape(chunk) || chunks.has(chunk.interaction_id)) reject();
+      let ordinal;
+      for (const value of chunk.steps) {
+        const key = stepKey({target_ref: chunk.target_ref, route_id: chunk.route_id, step_id: value.step_id});
+        const step = available.get(key), state = states.get(key);
+        if (!step || !state || covered.has(key) || step.math_step_sha256 !== value.math_step_sha256 ||
+            state.interaction_id !== chunk.interaction_id || state.status !== chunk.status ||
+            (ordinal !== undefined && step.ordinal !== ordinal + 1)) reject();
+        ordinal = step.ordinal;
+        covered.add(key);
+      }
+      chunks.set(chunk.interaction_id, chunk);
+    }
+    for (const [key, row] of states) if (row.status !== 'pending' && !covered.has(key)) reject();
+    for (const [identifier, previous] of interactions) {
+      if (JSON.stringify(chunks.get(identifier)) !== JSON.stringify(previous)) reject();
+    }
+    return {protocol, states, chunks};
+  }
+
+  /** Apply only a projection already validated against all snapshot cards. */
+  function hydrateInteractions({protocol, states, chunks}) {
+    const priorStates = new Map(interactionStates), priorChunks = new Map(interactions), priorProtocol = interactionProtocol;
+    try {
+      for (const [key, row] of states) {
+        const previous = interactionStates.get(key);
+        if (!previous?.interaction_id) {
+          interactionStates.set(key, row.interaction_id ? {status: row.status, interaction_id: row.interaction_id} : {status: row.status});
+        }
+      }
+      if (protocol) interactionProtocol = protocol;
+      for (const chunk of chunks.values()) acceptInteraction(chunk);
+    } catch (error) {
+      // A later hook may fail after earlier chunks were accepted. Restore the
+      // whole interaction projection so retrying also redelivers those chunks.
+      interactionStates.clear();
+      for (const [key, value] of priorStates) interactionStates.set(key, value);
+      interactions.clear();
+      for (const [key, value] of priorChunks) interactions.set(key, value);
+      interactionProtocol = priorProtocol;
+      throw error;
+    }
+  }
+
   function hydrate(snapshot) {
     snapshot = readMathValues(snapshot);
     if (!matches(snapshot) || snapshot.stream_id !== run.stream_id) throw new Error('stream.snapshot_identity_mismatch');
@@ -189,6 +309,7 @@ export function createEventConsumer(identity, hooks = {}) {
     for (const [key, previous] of steps) {
       if (JSON.stringify(available.get(key)) !== JSON.stringify(previous)) throw new Error('stream.snapshot_math_changed');
     }
+    const interactionSnapshot = validateInteractionSnapshot(snapshot, available);
     goals.clear();
     for (const [target, value] of Object.entries(snapshot.goals || {})) goals.set(target, copy(value));
     checkpoints = (snapshot.checkpoints || []).map(routeSummary);
@@ -206,6 +327,7 @@ export function createEventConsumer(identity, hooks = {}) {
     }
     for (const selection of snapshot.selection_chunks || []) acceptSelection(selection.target_ref, selection.kind, selection.chunk);
     for (const step of (snapshot.math_steps || []).slice().sort((left, right) => left.ordinal - right.ordinal)) acceptStep(step);
+    hydrateInteractions(interactionSnapshot);
     completions.clear();
     for (const task of snapshot.handoffs || []) {
       if (task.available && !unavailable(goals.get(task.target_ref))) completions.set(routeKey(task.target_ref, task.route_id), {
@@ -230,6 +352,10 @@ export function createEventConsumer(identity, hooks = {}) {
         available: !unavailable(goals.get(JSON.parse(key)[0]))}))),
       qa: copy([...qa.values()]), route_statuses: copy([...routeStatuses]), enrichment_statuses: copy([...enrichmentStatuses]),
       selection_chunks: copy([...selections.values()]), checkpoints: copy(checkpoints),
+      interaction_protocol: interactionProtocol,
+      interaction_states: orderedSteps().filter(step => interactionStates.has(stepKey(step))).map(step => ({
+        target_ref: step.target_ref, route_id: step.route_id, step_id: step.step_id, ...copy(interactionStates.get(stepKey(step)))})),
+      interactions: copy([...interactions.values()]),
       trajectories: [...trajectories].map(([key, values]) => ({target_ref: JSON.parse(key)[0], route_id: JSON.parse(key)[1],
         steps: copy([...values.values()].sort((a, b) => a.seq - b.seq)),
         finalization: [...(finalizations.get(key) || [])].map(([index, record]) => ({index, record: copy(record)}))}))};
@@ -379,8 +505,17 @@ export function mountStageThreeStream(container, identity, options = {}) {
     reveal();
   }
 
+  function markInteraction(target, route, stepId, status) {
+    const card = cards.get(stepKey({target_ref: target, route_id: route, step_id: stepId}));
+    if (card) card.node.dataset.interactionStatus = status;
+  }
+
   const consumer = createEventConsumer(identity, {
     onMathStep: addMath, onQA: addQA, onGoalStatus: updateGoal, onRouteCompletion: completed,
+    onInteraction(chunk) {
+      for (const value of chunk.steps) markInteraction(chunk.target_ref, chunk.route_id, value.step_id, chunk.status);
+      options.onInteraction?.(chunk);
+    },
     onSelection: (...args) => options.onSelection?.(...args),
     onRouteStatus(target, route, payload) {
       const nodes = routeNode(target, route);
@@ -401,10 +536,18 @@ export function mountStageThreeStream(container, identity, options = {}) {
       }
       for (const [key, value] of state.enrichment_statuses) routeNode(...JSON.parse(key)).section.dataset.enrichmentStatus = value.status;
       for (const [target, goal] of Object.entries(state.goals)) updateGoal(target, goal);
+      for (const value of state.interaction_states) markInteraction(value.target_ref, value.route_id, value.step_id, value.status);
       reveal();
       options.onSnapshot?.(state);
     },
-    onGap: cursor => options.onGap?.(cursor), onEvent: event => options.onEvent?.(event),
+    onGap: cursor => options.onGap?.(cursor),
+    onEvent(event) {
+      const payload = event.payload;
+      if (payload.kind === 'math_step' && payload.interaction_status && !cards.get(stepKey(payload.chunk))?.node.dataset.interactionStatus) {
+        markInteraction(event.target_ref, event.route_id, payload.step_id, payload.interaction_status);
+      }
+      options.onEvent?.(event);
+    },
   });
 
   async function pollOnce() {

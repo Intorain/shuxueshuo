@@ -7,6 +7,7 @@ continues the selected existing run after checking its frozen implementation.
 
 import fcntl
 import json
+import logging
 import re
 import sqlite3
 from contextlib import closing, contextmanager
@@ -14,6 +15,7 @@ from pathlib import Path
 
 from shuxueshuo_server.graph_lesson.stage_three import runner
 from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetConflict
+from shuxueshuo_server.graph_lesson.stage_three.checkpoint import identity_from_seed
 from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
 from shuxueshuo_server.graph_lesson.stage_three.runner import fingerprint
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
@@ -22,6 +24,7 @@ from .lesson import RESULT, attempts
 
 RUN_ID = re.compile(r"^[0-9a-f]{32}$")
 RETRY_INTENT = ".lesson-retry.json"
+_LOG = logging.getLogger(__name__)
 
 
 class LessonBusy(RuntimeError):
@@ -145,16 +148,31 @@ def find_run(directory, run_id):
 
 def stream_descriptor(search_id, output):
     """Use stored identity; old streams remain readable after a code update."""
-    if not (output / "run.json").is_file() or not (output / "events.sqlite3").is_file():
+    output = Path(output)
+    try:
+        if not (output / "run.json").is_file() or not (output / "events.sqlite3").is_file():
+            return None
+        # EventStore first reserves the file, then commits its identity. Exposing
+        # the URL between those operations would make a harmless poll race fail.
+        with closing(sqlite3.connect((output / "events.sqlite3").resolve().as_uri() + "?mode=ro",
+                                     uri=True, timeout=0.2)) as db:
+            db.execute("BEGIN")
+            if not db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'").fetchone():
+                return None
+            row = db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()
+            if row is None:
+                return None
+            identity = json.loads(row[0])
+        seed = read(output / "run.json")
+        if not isinstance(seed, dict) or not isinstance(identity, dict):
+            raise TypeError("checkpoint.invalid_identity")
+        if any(not isinstance(seed.get(key), str) or not seed[key] or seed[key] != identity.get(key)
+               for key in ("run_id", "lesson_version")):
+            raise ValueError("checkpoint.identity_mismatch")
+    except (sqlite3.Error, OSError, ValueError, KeyError, TypeError):
+        _LOG.warning("Could not read stage-three stream identity in %s; stream temporarily unavailable", output,
+                     exc_info=True)
         return None
-    # EventStore first reserves the file, then commits its identity. Exposing
-    # the URL between those operations would make a harmless poll race fail.
-    with closing(sqlite3.connect((output / "events.sqlite3").resolve().as_uri() + "?mode=ro", uri=True)) as db:
-        if not db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'").fetchone():
-            return None
-        if not db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone():
-            return None
-    seed = read(output / "run.json")
     base = f"/api/search/problems/{search_id}/lesson/{seed['run_id']}"
     return {"run_id": seed["run_id"], "lesson_version": seed["lesson_version"], "stream_id": seed["run_id"],
             "snapshot_url": base + "/snapshot", "events_url": base + "/events", "websocket_url": base + "/ws"}
@@ -174,11 +192,44 @@ def presentation(directory, search_id, *, running=False, attempt=None):
         status = "running" if output.exists() else "starting"
     elif (output / "stage-three-result.json").is_file():
         status = read(output / "stage-three-result.json")["status"]
+        if has_pending_interactions(output):
+            # Mathematics stays completed in its result and route records. The
+            # stopped interaction work still needs the existing resume action.
+            status = "interrupted"
     elif (attempt / "stage-three-error.json").is_file():
         status = "error"
     else:
         status = "interrupted" if output.exists() else "not_started"
     return {"execution_status": status, "stream": stream_descriptor(search_id, output)}
+
+
+def has_pending_interactions(output):
+    """Read status without opening EventStore, changing journal mode or migrating.
+
+    Read the live WAL as well as the main database: ``immutable=1`` would miss
+    newly committed cards. Legacy databases have no interaction table.
+    """
+    output = Path(output)
+    path = output / "events.sqlite3"
+    try:
+        if not path.is_file():
+            return False
+        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.2)) as db:
+            db.execute("BEGIN")
+            row = db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()
+            saved, seed = json.loads(row[0]) if row else None, read(output / "run.json")
+            if not isinstance(saved, dict):
+                raise TypeError("checkpoint.invalid_identity")
+            expected = identity_from_seed(seed)
+            if any(saved.get(key) != value for key, value in expected.items()):
+                raise ValueError("checkpoint.identity_mismatch")
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='interaction_states'").fetchone() is None:
+                return False
+            return db.execute("SELECT 1 FROM interaction_states WHERE status='pending' LIMIT 1").fetchone() is not None
+    except (sqlite3.Error, OSError, ValueError, KeyError, TypeError):
+        _LOG.warning("Could not read pending interaction status in %s; keeping mathematical status", output,
+                     exc_info=True)
+        return False
 
 
 def event_page(output, after_seq):
@@ -207,7 +258,7 @@ def resume_stage_three(directory, run_id, *, hooks=None):
         assert_resumable(directory, output)
         completed = output / "stage-three-result.json"
         if completed.is_file():
-            return read(completed)
+            return runner.resume_interactions(output, hooks=hooks)
         try:
             return runner.resume_sample(output, hooks=hooks)
         except BudgetConflict as exc:

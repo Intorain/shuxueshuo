@@ -20,11 +20,27 @@
     "goals": {"type": "object"},
     "handoffs": {"type": "array", "items": {"type": "object"}},
     "qa": {"type": "array", "items": {"type": "object"}},
-    "selection_chunks": {"type": "array", "items": {"type": "object"}}
+    "selection_chunks": {"type": "array", "items": {"type": "object"}},
+    "interaction_protocol": {"anyOf": [{"const": "graph-step-interaction/v1"}, {"type": "null"}]},
+    "interaction_states": {"type": "array", "items": {"$ref": "#/$defs/interaction_state"}},
+    "interactions": {"type": "array", "items": {"type": "object", "required": ["contract", "interaction_id", "status", "steps"]}}
   },
   "$defs": {
     "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "case_path": {"type": "array", "items": {"type": "string"}},
+    "interaction_state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target_ref", "route_id", "step_id", "ordinal", "math_step_sha256", "status"],
+      "properties": {
+        "target_ref": {"type": "string"}, "route_id": {"type": "string"}, "step_id": {"type": "string"},
+        "ordinal": {"type": "integer", "minimum": 1}, "math_step_sha256": {"$ref": "#/$defs/hash"},
+        "status": {"enum": ["pending", "interactive", "readonly"]},
+        "interaction_id": {"type": "string", "pattern": "^[0-9a-f]{24}$"}
+      },
+      "if": {"properties": {"status": {"const": "pending"}}},
+      "then": {"not": {"required": ["interaction_id"]}},
+      "else": {"required": ["interaction_id"]}
+    },
     "route": {
       "type": "object", "additionalProperties": false,
       "required": ["target_ref", "route_id", "status", "commit_id", "last_seq"],

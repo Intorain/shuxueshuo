@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from .checkpoint import identity_from_seed
 from .contracts import ROOT
 from .events import CursorExpired, EventStore
 
@@ -17,11 +18,7 @@ def open_store(directory):
     directory = Path(directory)
     seed = json.loads((directory / "run.json").read_text())
     frozen = json.loads((directory / "frozen.json").read_text())
-    from shuxueshuo_server.problem_understanding.identity import revision
-
-    identity = {"run_id": seed["run_id"], "lesson_version": seed["lesson_version"],
-                "input_sha256": revision({"stage_one": seed["stage_one"]["sha256"], "stage_two": seed["stage_two"]["sha256"]}),
-                "revisions": frozen["implementation"]}
+    identity = {**identity_from_seed(seed), "revisions": frozen["implementation"]}
     return EventStore(directory, identity)
 
 

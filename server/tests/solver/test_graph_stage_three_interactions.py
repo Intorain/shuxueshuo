@@ -223,6 +223,165 @@ def test_q13_separation_route_merges_boundary_and_goal(q13, registry):
     assert chunks[-1]["parts"][0]["interaction"]["type"] == "checklist"
 
 
+def _option_graphs(part):
+    expected = set(part["expected_answer"]["one_of"])
+    return [(option["value"] in expected, option["label"], option.get("graph")) for option in part["interaction"]["options"]]
+
+
+def test_q13_interval_route_draws_stems_options_and_the_closing_picture(q13, registry):
+    chunks = [chunk for chunk, _ in _compiled(q13, registry, "interval")]
+    stem = chunks[0]["parts"][0]["graph"]
+    assert stem["kind"] == "quadratic" and stem["caption"] == "示意图：取 $a=0$"
+    assert stem["params"]["interval"] == [0.0, 0.5] and stem["params"]["interval_closed"] == [False, True]
+    assert stem["params"]["points"] == [{"x": 0.0, "open": True}, {"x": 0.5}]
+
+    basis, breakpoints = chunks[1]["parts"]
+    assert basis["graph"]["caption"] == r"示意图：取 $a=- \frac{1}{2}$，此时对称轴在区间内"
+    assert basis["graph"]["params"]["vertex"] == [0.25, 0.9375] and basis["graph"]["params"]["showVertex"]
+    assert "graph" not in breakpoints and all("graph" not in option for option in breakpoints["interaction"].get(
+        "options", []))
+
+    right = chunks[2]["parts"][0]
+    assert right["question"].endswith("图中取 $a=-2$。")
+    marks = {label: graph["params"]["points"] for _, label, graph in _option_graphs(right)}
+    assert marks[r"在右端点 $x=\frac{1}{2}$ 处取到"] == [{"x": 0.5}]
+    assert marks[r"在顶点 $x=- \frac{a}{2}$ 处取到"] == [{"x": 1.0}]
+    assert marks[r"当 $x\to 0^{+}$ 时趋近，取不到"] == [{"x": 0.0, "open": True}]
+    assert len({json_key(graph["params"]["bounds"]) for _, _, graph in _option_graphs(right)}) == 1
+
+    unattained = chunks[6]["parts"][0]
+    assert unattained["question"].endswith("图中取 $a=1$。")
+    marks = {label: graph["params"]["points"] for _, label, graph in _option_graphs(unattained)}
+    # The hollow point is the whole lesson: the same place drawn solid is the distractor.
+    assert marks[r"当 $x\to 0^{+}$ 时趋近，取不到"] == [{"x": 0.0, "open": True}]
+    assert marks["在左端点 $x=0$ 处取到"] == [{"x": 0.0}]
+
+    for index in (3, 8):
+        options = _option_graphs(chunks[index]["parts"][0])
+        assert {graph["kind"] for _, _, graph in options} == {"number_line"}
+        assert len({json_key(graph["params"]["ticks"]) for _, _, graph in options}) == 1
+    pieces = {label: graph["params"]["pieces"] for _, label, graph in _option_graphs(chunks[3]["parts"][0])}
+    assert pieces[r"$\left[- \frac{5}{2}, -1\right]$"] == [
+        {"from": -2.5, "to": -1.0, "left_closed": True, "right_closed": True}]
+    assert pieces[r"$\left(- \frac{5}{2}, -1\right]$"][0]["left_closed"] is False
+
+    closing = chunks[9]["parts"][0]["completion_graph"]
+    params = closing["params"]
+    assert closing["kind"] == "quadratic" and params["coefficient"] == 1.0
+    assert params["vertex"] == [1.25, -0.5625] and params["markSign"] == "below"
+    # The vertex lies outside the interval: its dip stays in view, faded and unmarked.
+    assert params["showVertex"] is False and [1.25, "5/4"] in params["xTicks"]
+    assert params["bounds"][2] < -0.5625 < 0 < params["bounds"][3]
+    assert params["interval_closed"] == [False, True] and params["points"] == [{"x": 0.0, "open": True}, {"x": 0.5}]
+    assert "x=1/2 处函数值为 0" in params["description"] and "导数为 -3/2" in params["description"]
+    assert "顶点 (5/4, -9/16)" in params["description"]
+    assert closing["caption"].startswith(r"$a=- \frac{5}{2}$ 时")
+
+
+def json_key(value):
+    return repr(value)
+
+
+def test_q13_separation_route_draws_the_hook_curve_and_closing_picture(q13, registry):
+    chunks = [chunk for chunk, _ in _compiled(q13, registry, "extremum")]
+    stem = chunks[1]["parts"][0]["graph"]
+    assert stem["kind"] == "reciprocal_sum"
+    assert (stem["params"]["a"], stem["params"]["b"], stem["params"]["negative"]) == (-1.0, -1.0, False)
+    # The left end is a pole: no point is drawn there, only the included right end.
+    assert stem["params"]["points"] == [{"x": 0.5}]
+    # The window reaches below f(1/2) = -5/2 so the climb out of the pole shows.
+    assert stem["params"]["bounds"][2] <= -4.25
+    assert chunks[-1]["parts"][0]["completion_graph"]["params"]["vertex"] == [1.25, -0.5625]
+
+
+def test_pictures_fall_back_to_the_same_text_question(q13, registry, monkeypatch):
+    drawn = _compiled(q13, registry, "interval")
+
+    def unknown(*_, **__):
+        raise interaction.GraphUnavailable("family_unknown")
+    monkeypatch.setattr(interaction.drawing, "family", unknown)
+    monkeypatch.setattr(interaction.drawing, "number_lines", unknown)
+    plain = interaction.compile_route(q13["seeds"]["interval"], registry)[0]
+
+    def strip(part):
+        part = deepcopy(part)
+        part.pop("graph", None)
+        part.pop("completion_graph", None)
+        part["question"] = part["question"].split("图中取")[0]
+        for option in part["interaction"].get("options", []):
+            option.pop("graph", None)
+        return part
+    for (with_graphs, _), (without, diagnostics) in zip(drawn, plain, strict=True):
+        assert [strip(part) for part in with_graphs["parts"]] == without["parts"]
+        assert not any("graph" in option for part in without["parts"]
+                       for option in part["interaction"].get("options", []))
+        if with_graphs["status"] == "interactive" and any(
+                "graph" in part or "completion_graph" in part or any(
+                    "graph" in option for option in part["interaction"].get("options", []))
+                for part in with_graphs["parts"]):
+            assert any(row.get("result") == "graph_fallback" for row in diagnostics)
+
+
+def test_graph_rules_are_checked_against_their_answers(registry):
+    broken = deepcopy(registry)
+    broken["templates"]["policy"]["parts"][0]["graphs"] = {"options": "location_marks"}
+    with pytest.raises(ValueError, match="graph_not_allowed:options"):
+        interaction.validate_registry(broken)
+    broken = deepcopy(registry)
+    broken["templates"]["interval_cases"]["parts"][1]["graphs"] = {"stem": "case_sample"}
+    with pytest.raises(ValueError, match="graph_not_allowed:stem"):
+        interaction.validate_registry(broken)
+    broken = deepcopy(registry)
+    broken["merges"][0]["parts"][0]["graphs"] = {"completion": "made_up"}
+    with pytest.raises(ValueError, match="graph_not_allowed:completion"):
+        interaction.validate_registry(broken)
+    broken = deepcopy(registry)
+    broken["templates"]["policy"]["parts"][0]["graphs"] = {"stem": "function_sample", "colour": "red"}
+    with pytest.raises(ValidationError):
+        interaction.validate_registry(broken)
+
+
+def test_function_families_and_representatives():
+    drawing = interaction.drawing
+    quadratic = drawing.family(x**2 - sp.Rational(5, 2) * x + 1, x)
+    assert quadratic["kind"] == "quadratic"
+    assert quadratic["vertex"] == (sp.Rational(5, 4), -sp.Rational(9, 16))
+    assert drawing.family((-x**2 - 1) / x, x) | {"function": None} == {
+        "kind": "reciprocal_sum", "function": None, "a": -1, "b": -1}
+    assert drawing.family(3 * x - 2, x)["kind"] == "linear"
+    for unsupported in (1 / (x + 1), sp.sqrt(x), x**3, a * x):
+        with pytest.raises(drawing.GraphUnavailable):
+            drawing.family(unsupported, x)
+    assert drawing.representative_parameter(sp.Interval(-sp.oo, -1)) == -2
+    assert drawing.representative_parameter(sp.Interval.open(-1, 0)) == -sp.Rational(1, 2)
+    assert drawing.representative_parameter(sp.Interval(0, sp.oo)) == 1
+    assert drawing.representative_parameter(sp.S.Reals) == 0
+    assert drawing.representative_parameter(sp.Interval(-sp.Rational(5, 2), -1)) in (-2, -sp.Rational(3, 2))
+    with pytest.raises(drawing.GraphUnavailable):
+        drawing.representative_parameter(sp.FiniteSet(1))
+    assert [drawing.short_label(value) for value in (-sp.Rational(5, 2), sp.Integer(3), sp.Rational(1, 4))] == [
+        "-5/2", "3", "1/4"]
+    assert drawing.endpoint_story(quadratic, x, sp.S.Reals)
+    whole = drawing.family(-x**2 + 2 * x + 3, x)
+    (left, right, low, high), _ = drawing.function_frame(whole, x, sp.S.Reals)
+    assert left <= -1 and right >= 3 and low <= 0 and high >= 4
+
+
+def test_number_lines_share_an_axis_and_must_be_told_apart():
+    drawing = interaction.drawing
+    sets = [sp.Interval(-sp.Rational(5, 2), sp.oo), sp.Complement(sp.Interval(-sp.Rational(5, 2), sp.oo),
+                                                                   sp.FiniteSet(-1)), sp.Interval.open(-1, 0)]
+    graphs = drawing.number_lines(sets, a, title="a 的取值范围")
+    assert {repr(graph["params"]["bounds"]) for graph in graphs} == {repr(graphs[0]["params"]["bounds"])}
+    assert [len(graph["params"]["pieces"]) for graph in graphs] == [1, 2, 1]
+    assert graphs[1]["params"]["pieces"][0]["right_closed"] is False
+    close = [sp.Interval(0, 100), sp.Interval(sp.Rational(1, 1000), 100)]
+    with pytest.raises(drawing.GraphUnavailable, match="options_indistinct"):
+        drawing.number_lines(close, a, title="a")
+    with pytest.raises(drawing.GraphUnavailable, match="set_unsupported"):
+        drawing.number_lines([sp.ImageSet(sp.Lambda(x, x**2), sp.S.Integers)], a, title="a")
+
+
 def test_first_card_compiles_from_its_own_seed_only(q13, registry):
     seeds = q13["seeds"]["interval"]
     alone, = interaction.compile_route(seeds[:1], registry, final=False)[0]

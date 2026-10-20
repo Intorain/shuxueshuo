@@ -1,0 +1,85 @@
+"""Validate the JSON drawing protocol before publishing or attaching a graph."""
+
+import json
+import math
+from functools import lru_cache
+
+from jsonschema import Draft202012Validator
+
+from .contracts import ROOT
+
+SCHEMA = ROOT / "internal/schemas/graph-step-interaction-v1.schema.json"
+
+
+@lru_cache(maxsize=4)
+def _validator(source):
+    schema = json.loads(source)
+    return Draft202012Validator({"$defs": schema["$defs"], "$ref": "#/$defs/graph"})
+
+
+def _finite_numbers(value):
+    if isinstance(value, dict):
+        for child in value.values():
+            _finite_numbers(child)
+    elif isinstance(value, list):
+        for child in value:
+            _finite_numbers(child)
+    elif type(value) in (int, float):
+        try:
+            finite = math.isfinite(value)
+        except OverflowError:
+            finite = False
+        if not finite:
+            raise ValueError("interaction.graph_nonfinite")
+
+
+def _ordered(low, high):
+    try:
+        valid = low < high and math.isfinite(high - low)
+    except OverflowError:
+        valid = False
+    if not valid:
+        raise ValueError("interaction.graph_invalid_bounds")
+
+
+def _interval(ends, closed):
+    if any(end is None and included for end, included in zip(ends, closed, strict=True)):
+        raise ValueError("interaction.graph_closed_infinity")
+    if all(end is not None for end in ends):
+        _ordered(*ends)
+
+
+def validate_graph(graph):
+    """Reject malformed shapes and values that cannot be represented faithfully in JS."""
+    # Key the cached validator by schema contents, so edits/tests cannot reuse a
+    # stale validator under the same path or filesystem timestamp.
+    _validator(SCHEMA.read_text()).validate(graph)
+    _finite_numbers(graph)
+    params = graph["params"]
+    bounds = params["bounds"]
+    for index in range(0, len(bounds), 2):
+        _ordered(bounds[index], bounds[index + 1])
+    if graph["kind"] == "number_line":
+        for piece in params["pieces"]:
+            _interval([piece["from"], piece["to"]], [piece["left_closed"], piece["right_closed"]])
+    else:
+        _interval(params["interval"], params["interval_closed"])
+        if graph["kind"] == "reciprocal_sum" and any(point["x"] == 0 for point in params["points"]):
+            raise ValueError("interaction.graph_undefined_point")
+    return graph
+
+
+def validate_part_graphs(parts):
+    """All graph locations in the interaction protocol, including checklist options."""
+    for part in parts:
+        for field in ("graph", "completion_graph"):
+            if field in part:
+                validate_graph(part[field])
+        component = part["interaction"]
+        for option in component.get("options", []):
+            if "graph" in option:
+                validate_graph(option["graph"])
+        for slot in component.get("slots", []):
+            for option in slot["options"]:
+                if "graph" in option:
+                    validate_graph(option["graph"])

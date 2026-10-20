@@ -102,9 +102,16 @@
   const sampleRange = (left, right, extra = [], count = 100) => [...new Set([...Array.from({length: count + 1}, (_, i) => left + (right - left) * i / count), ...extra.filter(value => value >= left && value <= right)])].sort((a, b) => a - b);
   // An interval side given as null is unbounded: it has no guide line and extends past the window.
   const bounded = interval => interval && [interval[0] ?? -Infinity, interval[1] ?? Infinity];
-  const intervalGuides = (interval, x) => interval ? `<path class="graph-interval" d="${interval.filter(Number.isFinite).map(value => `M${x(value)} 48V222`).join('')}" fill="none" stroke="#7fa79c" stroke-width="1.3" stroke-dasharray="3 4"/>` : '';
+  // closed [left, right] (when given) draws an included end solid and an excluded end dashed.
+  const intervalGuides = (interval, x, closed) => {
+    if (!interval) return '';
+    const guide = (values, dashed) => values.length ? `<path class="graph-interval${dashed ? '' : ' is-closed'}" d="${values.map(value => `M${x(value)} 48V222`).join('')}" fill="none" stroke="#7fa79c" stroke-width="1.3"${dashed ? ' stroke-dasharray="3 4"' : ''}/>` : '';
+    if (!closed) return guide(interval.filter(Number.isFinite), true);
+    const ends = interval.map((value, i) => ({value, closed: closed[i]})).filter(end => Number.isFinite(end.value));
+    return guide(ends.filter(end => end.closed).map(end => end.value), false) + guide(ends.filter(end => !end.closed).map(end => end.value), true);
+  };
   // place: "above-right" (default), "above-left", "below-right" or "below-left" of the point.
-  const pointLabels = (points, x, y) => points.map(point => {
+  const pointLabels = (points, x, y) => points.filter(point => point.label != null).map(point => {
     const [vertical, side] = (point.place || 'above-right').split('-');
     return `<text x="${x(point.x) + (side === 'left' ? -8 : 8)}" y="${y(point.x) + (vertical === 'below' ? 22 : -10)}" text-anchor="${side === 'left' ? 'end' : 'start'}" fill="#a04c36">${escape(point.label)}</text>`;
   }).join('');
@@ -117,7 +124,8 @@
   // solution draws a chosen x-range on the axis: intervals use null for an unbounded side; closed decides filled
   // endpoints, either for all of them or as an array in endpoint order.
   // interval [a, b] is the x-range the condition is about: the curve outside it fades, and markSign only judges inside it.
-  function quadraticGraph({coefficient, vertex, bounds, domain, excluded = [], xTicks, yLabel, variable, title, description, uid, referenceLines = [], points = [], showVertex = true, markSign = false, strict = false, solution = null, interval = null}) {
+  // vertexLabel replaces the default "P(h, k)" text; an empty string keeps the vertex unlabelled.
+  function quadraticGraph({coefficient, vertex, bounds, domain, excluded = [], xTicks, yLabel, variable, title, description, uid, referenceLines = [], points = [], showVertex = true, markSign = false, strict = false, solution = null, interval = null, interval_closed: closed = null, vertexLabel = null}) {
     interval = bounded(interval);
     const [h, k] = vertex;
     const [xmin, xmax, ymin, ymax] = bounds;
@@ -163,7 +171,7 @@
       <path d="m325 ${y(0)-4} 5 4-5 4M${x(0)-4} 40l4-5 4 5" fill="none" stroke="#9dafaa" stroke-width="1.3"/>
       <g clip-path="url(#${id}-clip)">
         ${markSign && axisInView ? `<rect class="quadratic-${sign}-band" x="${bandX[0]}" y="${above ? 48 : y(0)}" width="${bandX[1] - bandX[0]}" height="${above ? y(0) - 48 : 222 - y(0)}" fill="#fbebe6"/>` : ''}
-        ${intervalGuides(interval, x)}
+        ${intervalGuides(interval, x, closed)}
         ${referenceLines.map(line => `<path class="quadratic-reference" d="M48 ${y(line.value)}H318" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/>`).join('')}
         ${showVertex ? `<path d="M${x(0)} ${y(k)}H${x(h)}V222" fill="none" stroke="#9abfb5" stroke-width="1.2" stroke-dasharray="4 4"/>` : ''}
         ${interval ? `<path class="graph-outside" d="${path(samples)}" fill="none" stroke="#07847d" stroke-width="2.2" opacity=".3"/>` : ''}
@@ -184,7 +192,7 @@
         ${markSign && axisInView ? `<text x="312" y="${above ? 64 : 214}" text-anchor="end" fill="#b0503c" font-size="13">${above ? 'y &gt; 0' : 'y &lt; 0'}</text>` : ''}
         <text x="335" y="${y(0)+5}" font-style="italic">${escape(variable)}</text>
         <text x="${x(0)-8}" y="28" text-anchor="end" font-style="italic">y</text>
-        ${showVertex ? `<text x="${x(h)+10}" y="${y(k)-13}" fill="#a36920">P(${escape(xTicks.find(([value]) => value === h)?.[1] ?? h)}, ${escape(yLabel)})</text>` : ''}
+        ${showVertex && vertexLabel !== '' ? `<text x="${x(h)+10}" y="${y(k)-13}" fill="#a36920">${escape(vertexLabel ?? `P(${xTicks.find(([value]) => value === h)?.[1] ?? h}, ${yLabel})`)}</text>` : ''}
       </g>
     </svg>`;
   }
@@ -192,7 +200,7 @@
   // work as in quadraticGraph; the branch near x = 0 simply leaves the window.
   // asymptotes draws the two lines the curve approaches: the y-axis (x → 0⁺) and y = a·x (x → +∞).
   // negative draws the x < 0 branch instead (such as −x − 2/x, a hook opening upward on the left).
-  function reciprocalSumGraph({a, b, bounds, interval = null, xTicks = [], variable = 'x', title, description, uid, referenceLines = [], points = [], asymptotes = false, negative = false}) {
+  function reciprocalSumGraph({a, b, bounds, interval = null, xTicks = [], variable = 'x', title, description, uid, referenceLines = [], points = [], asymptotes = false, negative = false, interval_closed: closed = null}) {
     interval = bounded(interval);
     const [xmin, xmax, ymin, ymax] = bounds;
     const x = value => 48 + (value - xmin) / (xmax - xmin) * 270;
@@ -214,7 +222,7 @@
       <path d="M25 ${y(0)}H330M${x(0)} 235V35" fill="none" stroke="#9dafaa" stroke-width="1.3"/>
       <path d="m325 ${y(0)-4} 5 4-5 4M${x(0)-4} 40l4-5 4 5" fill="none" stroke="#9dafaa" stroke-width="1.3"/>
       <g clip-path="url(#${id}-clip)">
-        ${intervalGuides(interval, x)}
+        ${intervalGuides(interval, x, closed)}
         ${referenceLines.map(line => `<path class="graph-reference" d="M48 ${y(line.value)}H318" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/>`).join('')}
         ${asymptotes ? `<path class="graph-asymptote" d="M${x(0)} 48V${y(0)}" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/><path class="graph-asymptote" d="M${x(0)} ${y(0)}L${x(exit)} ${y(a * exit)}" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/>` : ''}
         ${interval ? `<path class="graph-outside" d="${path(samples)}" fill="none" stroke="#07847d" stroke-width="2.2" opacity=".3"/>` : ''}
@@ -233,7 +241,7 @@
   }
   // Read-only line y = slope·t + intercept, such as a function of the switched main variable on an interval.
   // Window, interval, ticks, points and markSign/strict work as in quadraticGraph.
-  function linearGraph({slope, intercept, bounds, interval = null, xTicks = [], variable = 'x', title, description, uid, points = [], markSign = false, strict = false}) {
+  function linearGraph({slope, intercept, bounds, interval = null, xTicks = [], variable = 'x', title, description, uid, points = [], markSign = false, strict = false, interval_closed: closed = null}) {
     interval = bounded(interval);
     const [xmin, xmax, ymin, ymax] = bounds;
     const x = value => 48 + (value - xmin) / (xmax - xmin) * 270;
@@ -247,7 +255,7 @@
     const above = markSign === 'above';
     const sign = above ? 'positive' : 'negative';
     // A line lying on the axis (slope and intercept 0) violates a strict inequality everywhere.
-    const violates = value => (above ? value > 0 : value < 0) || (strict && Math.abs(value) < 1e-12);
+    const violates = value => (above ? value > 0 : value < 0) || (strict && slope === 0 && intercept === 0);
     const pieces = roots.length ? [[left, root], [root, right]] : [[left, right]];
     const violating = markSign ? pieces.filter(([from, to]) => to > from && violates(f((from + to) / 2))) : [];
     const axisInView = ymin < 0 && ymax > 0;
@@ -261,7 +269,7 @@
       <path d="m325 ${y(0)-4} 5 4-5 4M${x(0)-4} 40l4-5 4 5" fill="none" stroke="#9dafaa" stroke-width="1.3"/>
       <g clip-path="url(#${id}-clip)">
         ${markSign && axisInView ? `<rect class="linear-${sign}-band" x="${bandX[0]}" y="${above ? 48 : y(0)}" width="${bandX[1] - bandX[0]}" height="${above ? y(0) - 48 : 222 - y(0)}" fill="#fbebe6"/>` : ''}
-        ${intervalGuides(interval, x)}
+        ${intervalGuides(interval, x, closed)}
         ${interval ? `<path class="graph-outside" d="${segment(xmin, xmax)}" fill="none" stroke="#07847d" stroke-width="2.2" opacity=".3"/>` : ''}
         <path class="linear-line" d="${segment(left, right)}" fill="none" stroke="#07847d" stroke-width="3"/>
         ${violating.map(([from, to]) => `<path class="linear-${sign}" d="${segment(from, to)}" fill="none" stroke="#c4553f" stroke-width="3.6"/>`).join('')}
@@ -345,5 +353,84 @@
       <input class="axis-slider" type="range" data-axis-input min="${axis.min}" max="${axis.max}" step="${axis.step}" value="${h}" aria-label="对称轴的位置">
     </div>`;
   }
-  window.PracticeComponents = {slot, choices, controls, structure, amgm, completedAmgm, equality, symmetry, substitution, homogeneity, fill, checklist, rewrite, quadraticGraph, reciprocalSumGraph, linearGraph, axisExplorer, axisExplorerLayer, radical, hintIcon};
+  // Read-only set of parameter values on a number line. pieces [{from, to, left_closed, right_closed}] use null for an
+  // unbounded side (drawn to the edge with an arrow); points are isolated members. ticks [[value, label]] are shared by
+  // sibling options so their pictures compare; a label crowding its left neighbour moves above the line.
+  function numberLine({bounds, pieces = [], points = [], ticks = [], variable = 'x', title, description, uid}) {
+    const [xmin, xmax] = bounds;
+    const x = value => 24 + (value - xmin) / (xmax - xmin) * 288;
+    const y = 50;
+    const id = escape(uid);
+    let previous = -Infinity, raised = false;
+    const labels = [...ticks].sort((left, right) => left[0] - right[0]).map(([value, label]) => {
+      raised = x(value) - previous < 34 ? !raised : false;
+      previous = x(value);
+      return `<path d="M${x(value)} ${y - 5}V${y + 5}" stroke="#7d948d" stroke-width="1.4"/><text x="${x(value)}" y="${raised ? y - 15 : y + 27}" text-anchor="middle">${escape(label)}</text>`;
+    }).join('');
+    const end = (value, closed) => `<circle class="number-line-end${closed ? ' is-closed' : ''}" cx="${x(value)}" cy="${y}" r="6" fill="${closed ? '#087f79' : '#fff'}" stroke="#087f79" stroke-width="2.6"/>`;
+    const segments = pieces.map(piece => {
+      const from = piece.from === null ? 14 : x(piece.from), to = piece.to === null ? 326 : x(piece.to);
+      const arrows = (piece.from === null ? `<path d="M${from + 10} ${y - 8}L${from} ${y}L${from + 10} ${y + 8}Z" fill="#087f79"/>` : '') +
+        (piece.to === null ? `<path d="M${to - 10} ${y - 8}L${to} ${y}L${to - 10} ${y + 8}Z" fill="#087f79"/>` : '');
+      return `<path class="number-line-piece" d="M${from} ${y}H${to}" stroke="#087f79" stroke-width="7"/>${arrows}`;
+    }).join('');
+    const ends = pieces.flatMap(piece => [piece.from === null ? '' : end(piece.from, piece.left_closed), piece.to === null ? '' : end(piece.to, piece.right_closed)]).join('');
+    return `<svg viewBox="0 0 340 86" role="img" aria-labelledby="${id}-title ${id}-description">
+      <title id="${id}-title">${escape(title)}</title><desc id="${id}-description">${escape(description)}</desc>
+      <path d="M6 ${y}H334" stroke="#9dafaa" stroke-width="1.4"/><path d="m328 ${y - 4} 6 4-6 4" fill="none" stroke="#9dafaa" stroke-width="1.4"/>
+      ${segments}${ends}${points.map(point => end(point.x, true)).join('')}
+      <g fill="#526e64" font-family="Georgia,serif" font-size="14">${labels}<text x="334" y="${y - 12}" text-anchor="end" font-style="italic">${escape(variable)}</text></g>
+    </svg>`;
+  }
+  // A server-built picture {kind, params, uid}: the page only picks the component for its kind.
+  const graphKinds = {quadratic: quadraticGraph, reciprocal_sum: reciprocalSumGraph, linear: linearGraph, number_line: numberLine};
+  // Validate streamed pictures separately from the older authored quadratic API.
+  // A rejected picture is optional presentation: callers can keep the original answer labels.
+  function validateGraph(spec) {
+    const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+    const tuple = (value, length, check) => Array.isArray(value) && value.length === length && value.every(check);
+    const optional = (value, key, check) => !Object.hasOwn(value, key) || check(value[key]);
+    const string = value => typeof value === 'string', boolean = value => typeof value === 'boolean';
+    const array = (value, check) => Array.isArray(value) && value.every(check);
+    const interval = value => tuple(value, 2, end => end === null || Number.isFinite(end)) &&
+      (value[0] === null || value[1] === null || value[0] < value[1]);
+    const ticks = value => array(value, tick => Array.isArray(tick) && tick.length === 2 && Number.isFinite(tick[0]) && string(tick[1]));
+    const point = value => object(value) && Number.isFinite(value.x) && optional(value, 'open', boolean) &&
+      optional(value, 'label', string) && optional(value, 'place', place => ['above-right', 'above-left', 'below-right', 'below-left'].includes(place));
+    if (!object(spec) || !string(spec.kind) || !Object.hasOwn(graphKinds, spec.kind) || !object(spec.params) || !optional(spec, 'caption', string)) return false;
+    const p = spec.params, dimensions = spec.kind === 'number_line' ? 2 : 4;
+    const span = (low, high) => low < high && Number.isFinite(high - low);
+    if (!tuple(p.bounds, dimensions, Number.isFinite) || !span(p.bounds[0], p.bounds[1]) ||
+        (dimensions === 4 && !span(p.bounds[2], p.bounds[3])) || !string(p.title) || !string(p.description) || !string(p.variable)) return false;
+    if (!array(p.points, point) ||
+        !optional(p, 'xTicks', ticks) || !optional(p, 'ticks', ticks) ||
+        !optional(p, 'interval', value => value === null || interval(value)) ||
+        !optional(p, 'interval_closed', value => tuple(value, 2, boolean)) ||
+        !optional(p, 'referenceLines', value => array(value, line => object(line) && Number.isFinite(line.value) && string(line.label))) ||
+        !optional(p, 'markSign', value => boolean(value) || ['above', 'below'].includes(value))) return false;
+    for (const key of ['showVertex', 'strict', 'asymptotes', 'negative']) if (!optional(p, key, boolean)) return false;
+    if (p.interval && p.interval_closed && p.interval.some((end, i) => end === null && p.interval_closed[i])) return false;
+    if (spec.kind === 'number_line') return ticks(p.ticks) && array(p.pieces, piece => object(piece) && interval([piece.from, piece.to]) &&
+      boolean(piece.left_closed) && boolean(piece.right_closed) && (piece.from !== null || !piece.left_closed) &&
+      (piece.to !== null || !piece.right_closed));
+    if (!ticks(p.xTicks) || !interval(p.interval) || !tuple(p.interval_closed, 2, boolean)) return false;
+    if (spec.kind === 'linear') return Number.isFinite(p.slope) && Number.isFinite(p.intercept);
+    if (spec.kind === 'reciprocal_sum') return Number.isFinite(p.a) && Number.isFinite(p.b) && p.b !== 0 && boolean(p.negative) &&
+      !p.points.some(point => point.x === 0);
+    return Number.isFinite(p.coefficient) && p.coefficient !== 0 && tuple(p.vertex, 2, Number.isFinite) && ticks(p.xTicks) &&
+      optional(p, 'yLabel', string) && optional(p, 'vertexLabel', string) &&
+      optional(p, 'domain', interval) && optional(p, 'excluded', value => array(value, Number.isFinite)) &&
+      optional(p, 'solution', value => value === null || (object(value) && array(value.intervals, interval) &&
+        (boolean(value.closed) || (array(value.closed, boolean) && value.closed.length === value.intervals.flat().filter(end => end !== null).length))));
+  }
+  function graph(spec) {
+    if (!validateGraph(spec)) return '';
+    try {
+      const defaults = spec.kind === 'quadratic' ? {yLabel: String(spec.params.vertex[1])} : {};
+      const svg = graphKinds[spec.kind]({...defaults, ...spec.params, uid: spec.uid});
+      // Even finite inputs may overflow while calculating plot coordinates.
+      return /\b(?:d|x|y|cx|cy|width|height|points)="[^"]*(?:NaN|Infinity)/.test(svg) ? '' : svg;
+    } catch { return ''; }
+  }
+  window.PracticeComponents = {slot, choices, controls, structure, amgm, completedAmgm, equality, symmetry, substitution, homogeneity, fill, checklist, rewrite, quadraticGraph, reciprocalSumGraph, linearGraph, numberLine, validateGraph, graph, axisExplorer, axisExplorerLayer, radical, hintIcon};
 })();

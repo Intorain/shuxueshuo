@@ -252,11 +252,40 @@ try {
       assert.equal(await page.locator(`#gw-used a[href=${JSON.stringify(href)}]`).count(), reached ? 1 : 0);
     }
   };
+  // Server-built pictures must reach the page as drawn SVG, beside the question or the finished card.
+  const pictures = {stem: 0, options: 0, completion: 0, hollow_options: 0};
+  const assertPictures = async decision => {
+    if (decision.source !== 'stream') return;
+    if (decision.graph) {
+      await page.locator('#gw-active .gw-stem-graph svg').first().waitFor();
+      if (!pictures.stem++) await page.locator('#gw-active').screenshot({path: `${output}/07-stem-graph.png`});
+    }
+    const drawn = (decision.interaction.options || []).filter(option => option.graph?.kind);
+    if (drawn.length) {
+      assert.equal(await page.locator('#gw-active .gw-graph-figure svg').count(), drawn.length);
+      if (drawn.some(option => option.graph.params.points?.some(point => point.open))) {
+        assert.ok(await page.locator('#gw-active .gw-graph-figure circle.quadratic-point[fill="#fff"]').count() > 0);
+        pictures.hollow_options++;
+      }
+      if (!pictures.options++) await page.locator('#gw-active').screenshot({path: `${output}/05-graph-options.png`});
+    }
+  };
+  const assertCompletionPicture = async decision => {
+    if (decision.source !== 'stream' || !decision.completion_graph) return;
+    const card = page.locator(`[data-completed-decision=${JSON.stringify(decision.id)}]`);
+    assert.equal(await card.locator('.gw-completion-graph svg').count(), 1);
+    if (!pictures.completion++) {
+      await card.evaluate(node => { node.open = true; });
+      await card.screenshot({path: `${output}/06-completion-graph.png`});
+    }
+  };
   const submit = async (decision, supplied) => {
     await page.locator(`#gw-active[data-decision-id=${JSON.stringify(decision.id)}]`).waitFor();
+    await assertPictures(decision);
     await choose(decision, supplied);
     await page.locator('#gw-submit').click();
     await page.locator(`[data-completed-decision=${JSON.stringify(decision.id)}]`).waitFor();
+    await assertCompletionPicture(decision);
     if (decision.source === 'stream') await assertGraph(await page.locator('[data-stream-route][aria-pressed="true"]').count()
       ? await page.locator('[data-stream-route][aria-pressed="true"]').getAttribute('data-stream-route') : route);
   };
@@ -284,6 +313,7 @@ try {
     assert.equal(await page.locator('#gw-active .stage-three-explanation').count(), 0);
   }
   assert.ok(await page.locator('#gw-active .stage-three-before').count() > 0);
+  await assertPictures(first);
   await choose(first);
   const selectedDraft = () => page.locator('#gw-active [aria-pressed="true"], #gw-active [data-slot]').evaluateAll(nodes => nodes.map(node =>
     ({value: node.dataset.value || node.dataset.multi, text: node.textContent})));
@@ -395,6 +425,11 @@ try {
     await page.locator('.stage-three-completion:visible').waitFor();
   }
   evidence.checks.push('every route completed by student decisions; graph paths follow completed source cards and undo');
+  evidence.pictures = pictures;
+  if (config.pictures) for (const [kind, least] of Object.entries(config.pictures)) {
+    assert.ok(pictures[kind] >= least, `${kind} pictures: ${pictures[kind]} < ${least}`);
+  }
+  if (Object.values(pictures).some(Boolean)) evidence.checks.push('stem, option and completion pictures drawn from server specs');
   assert.equal(await page.locator('.katex-error').count(), 0);
   assert.deepEqual(errors, []);
   const final = await api('/test/state');

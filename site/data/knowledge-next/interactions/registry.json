@@ -38,7 +38,8 @@
           "feedback": "把“对所有 ${x}$ 都成立”转化为比较函数在区间上的{bound_name}。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认判断"
+          "submit_label": "确认判断",
+          "graphs": {"stem": "function_sample"}
         }
       ]
     },
@@ -61,7 +62,8 @@
           "feedback": "{bound_name}在哪里取得，要看对称轴相对区间端点的位置。",
           "min_options": 3,
           "max_options": 3,
-          "submit_label": "确认依据"
+          "submit_label": "确认依据",
+          "graphs": {"stem": "case_sample"}
         },
         {
           "component": "fill",
@@ -94,7 +96,8 @@
           "feedback": "比较两个端点（或端点处的极限）与区间内顶点的函数值。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认位置"
+          "submit_label": "确认位置",
+          "graphs": {"options": "location_marks"}
         }
       ]
     },
@@ -114,7 +117,8 @@
           "feedback": "先解出条件，再与本情况的范围取交集。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认范围"
+          "submit_label": "确认范围",
+          "graphs": {"options": "parameter_sets"}
         }
       ]
     },
@@ -134,7 +138,8 @@
           "feedback": "各情况互不重叠、覆盖全部参数，把每段结果取并集。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认合并"
+          "submit_label": "确认合并",
+          "graphs": {"options": "parameter_sets"}
         }
       ]
     }
@@ -173,7 +178,8 @@
           ],
           "feedback": "边界点代回原题看是否成立；可行集包含{goal_bound_name}时{goal_name}存在，否则只能趋近。",
           "min_options": 2,
-          "submit_label": "确认结论"
+          "submit_label": "确认结论",
+          "graphs": {"completion": "boundary_function"}
         }
       ]
     }

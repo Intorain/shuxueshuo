@@ -137,7 +137,7 @@ test('graph options pick by picture for both single and multiple choice', () => 
   assert.equal((single.match(/data-quadratic-graph=/g) || []).length, 3);
   assert.match(single, /data-choice="d_range" data-value="outside" aria-pressed="true"/);
   assert.match(single, /data-value="open" aria-pressed="false"/);
-  assert.doesNotMatch(single.slice(single.indexOf('gw-graph-options')), /gw-graph-option-name|data-math-text/);
+  assert.doesNotMatch(single.slice(single.indexOf('gw-graph-options')).replace(/ data-graph-fallback="[^"]*"/, ''), /gw-graph-option-name|data-math-text/);
   run(`draft = 42;`);
   assert.doesNotThrow(() => run('interactionHTML(testDecision)'));
   context.testDecision = structuredClone(steps.find(step => step.id === 'd_position'));
@@ -217,21 +217,79 @@ test('call records use the authored method step title', () => {
 test('template hydration renders only math labels and graph hosts, preserving surrounding HTML', () => {
   const {context, run} = viewContext();
   const label = {textContent: '$x^2$', dataset: {}}, graphHost = {dataset: {quadraticGraph: '{}'}};
+  const kindHost = {dataset: {graph: '{"kind":"number_line","params":{},"uid":"u"}'}};
   const visited = [];
   context.PracticeMath = {render(node, text) { visited.push([node, text]); }};
   context.root = {querySelectorAll(selector) {
+    if (selector.startsWith('[data-graph-fallback]')) return [];
     if (selector.startsWith('[data-quadratic-graph]')) return [graphHost];
+    if (selector.startsWith('[data-graph]')) return [kindHost];
     if (selector.startsWith('[data-math-text]')) return [label];
     throw new Error(`Unexpected hydration target: ${selector}`);
   }};
-  run(`PracticeComponents.quadraticGraph = () => '<svg></svg>'; hydrate(root);`);
+  run(`PracticeComponents.quadraticGraph = () => '<svg></svg>';
+    PracticeComponents.graph = spec => '<svg data-kind="' + spec.kind + '"></svg>'; hydrate(root);`);
   assert.equal(graphHost.innerHTML, '<svg></svg>');
+  assert.equal(kindHost.innerHTML, '<svg data-kind="number_line"></svg>');
+  assert.equal(kindHost.dataset.graphRendered, 'true');
   assert.equal(visited.length, 1);
   assert.equal(visited[0][0], label);
   assert.equal(label.dataset.mathRendered, 'true');
   run(`bundle.templates.uid = '<svg id="{{uid}}"><use href="#{{uid}}" /></svg>';`);
   assert.match(run(`template('uid', 'run-1')`), /id="run-1"/);
   assert.doesNotMatch(run(`template('uid', 'run-2')`), /run-1/);
+});
+
+test('picture hydration failure restores the whole option group and remains retry safe', () => {
+  for (const failure of ['throw', 'empty', 'json']) {
+    const {context, run} = viewContext();
+    const hosts = [{dataset: {graph: '{"kind":"linear","uid":"first"}'}, innerHTML: ''},
+      {dataset: {graph: failure === 'json' ? '{' : '{"kind":"linear","uid":"second"}'}, innerHTML: ''}];
+    let activeHosts = hosts;
+    const group = {dataset: {graphFallback: '<button data-choice="p" data-value="a" aria-pressed="true"><span data-math-text>$a$</span></button><button data-choice="p" data-value="b"><span data-math-text>$b$</span></button>'},
+      className: 'gw-graph-options', querySelectorAll: selector => selector === '[data-graph]' ? activeHosts : [],
+      set innerHTML(value) { this.html = value; activeHosts = []; }};
+    const label = {dataset: {}, textContent: '$a$'}, visited = [];
+    context.PracticeMath = {render(node, text) { visited.push([node, text]); }};
+    context.root = {querySelectorAll(selector) {
+      if (selector.startsWith('[data-graph-fallback]')) return group.dataset.graphRendered ? [] : [group];
+      if (selector.startsWith('[data-quadratic-graph]')) return [];
+      if (selector.startsWith('[data-graph]')) return activeHosts.filter(host => !host.dataset.graphRendered);
+      if (selector.startsWith('[data-math-text]')) return group.html && !label.dataset.mathRendered ? [label] : [];
+      throw new Error(selector);
+    }};
+    context.failure = failure;
+    run(`PracticeComponents.graph = spec => {
+      if (spec.uid === 'first') return '<svg></svg>';
+      if (failure === 'throw') throw new Error('renderer failure');
+      return '';
+    }; hydrate(root); hydrate(root);`);
+    assert.equal(group.html, group.dataset.graphFallback, failure);
+    assert.equal(group.className, 'gw-graph-fallback');
+    assert.equal(group.dataset.graphRendered, 'true');
+    assert.equal(hosts[0].innerHTML, '', 'a successful sibling was not mounted before the failure');
+    assert.equal(hosts[0].dataset.graphRendered, undefined);
+    assert.equal(visited.length, 1, 'the restored label receives math rendering exactly once');
+  }
+});
+
+test('a failed stem or completion picture is removed with its caption while the rest hydrates', () => {
+  const {context, run} = viewContext();
+  const figures = [0, 1].map(() => ({removed: false, remove() { this.removed = true; }}));
+  const hosts = figures.map((figure, i) => ({dataset: {graph: i ? '{' : '{"kind":"linear"}'},
+    closest: selector => selector === '.gw-figure' ? figure : null}));
+  const label = {dataset: {}, textContent: '$x^2+ax+1\\geq0$'}, visited = [];
+  context.PracticeMath = {render(node, text) { visited.push([node, text]); }};
+  context.root = {querySelectorAll(selector) {
+    if (selector.startsWith('[data-graph-fallback]') || selector.startsWith('[data-quadratic-graph]')) return [];
+    if (selector.startsWith('[data-graph]')) return hosts.filter((_, i) => !figures[i].removed);
+    if (selector.startsWith('[data-math-text]')) return label.dataset.mathRendered ? [] : [label];
+    throw new Error(selector);
+  }};
+  run(`PracticeComponents.graph = () => { throw new Error('renderer failure'); }; hydrate(root); hydrate(root);`);
+  assert.deepEqual(figures.map(figure => figure.removed), [true, true]);
+  assert.equal(visited.length, 1);
+  assert.equal(visited[0][1], label.textContent);
 });
 
 test('replay paths resolve beside the index and reject off-demo or stale recordings', async () => {

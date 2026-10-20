@@ -73,11 +73,41 @@ function template(id, uid) {
 }
 
 function hydrate(root) {
-  for (const host of root.querySelectorAll('[data-quadratic-graph]:not([data-graph-rendered])')) {
-    host.innerHTML = PracticeComponents.quadraticGraph(JSON.parse(host.dataset.quadraticGraph));
-    host.dataset.graphRendered = 'true';
+  const draw = host => {
+    const svg = host.dataset.graph !== undefined
+      ? PracticeComponents.graph(JSON.parse(host.dataset.graph))
+      : PracticeComponents.quadraticGraph(JSON.parse(host.dataset.quadraticGraph));
+    if (typeof svg !== 'string' || !/^\s*<svg\b/.test(svg)) throw new Error('graph_unavailable');
+    return svg;
+  };
+  const mount = (host, svg) => { host.innerHTML = svg; host.dataset.graphRendered = 'true'; };
+  // Finish the entire option group before mounting any picture. A renderer failure
+  // restores every original label without changing the verified decision or draft.
+  for (const group of root.querySelectorAll('[data-graph-fallback]:not([data-graph-rendered])')) {
+    try {
+      const hosts = [...group.querySelectorAll('[data-graph]'), ...group.querySelectorAll('[data-quadratic-graph]')];
+      const pictures = hosts.map(draw);
+      hosts.forEach((host, i) => mount(host, pictures[i]));
+    } catch {
+      group.innerHTML = group.dataset.graphFallback;
+      group.className = 'gw-graph-fallback';
+    }
+    group.dataset.graphRendered = 'true';
+  }
+  const singles = [...root.querySelectorAll('[data-quadratic-graph]:not([data-graph-rendered])'),
+    ...root.querySelectorAll('[data-graph]:not([data-graph-rendered])')];
+  for (const host of singles) {
+    try { mount(host, draw(host)); }
+    catch { (host.closest('.gw-figure') || host).remove(); }
   }
   renderMath(root);
+}
+
+/* A server-built picture beside a question or a completed step; the caption names the sample it shows. */
+function figureHTML(graph, uid, kind) {
+  if (!PracticeComponents.validateGraph(graph)) return '';
+  const caption = graph.caption ? `<figcaption data-math-text>${escapeHTML(graph.caption)}</figcaption>` : '';
+  return `<figure class="gw-figure gw-${kind}-graph"><span class="gw-figure-plot" data-graph="${escapeHTML(JSON.stringify({...graph, uid}))}"></span>${caption}</figure>`;
 }
 
 const activeRunId = () => state.run?.id || 'intro';
@@ -245,19 +275,31 @@ function completedHTML(record, number, runId, route) {
     : decision.interaction.type === 'plane' ? planeHTML(decision, record.answer, false)
     : `<p class="gw-answer" data-math-text>${escapeHTML(answerSummary(decision, record.answer))}</p>`;
   const results = decision.source !== 'stream' && !decision.display ? (record.results || []).map(resultText).filter(Boolean).map(text => `<p class="gw-result" data-math-text>${escapeHTML(text)}</p>`).join('') : '';
-  return `<details class="gw-completed" data-completed-decision="${escapeHTML(decision.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(decision.title || decision.question)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${body}${results}</div></details>`;
+  const figure = decision.source === 'stream' && decision.completion_graph ? figureHTML(decision.completion_graph, `${uid}-done`, 'completion') : '';
+  return `<details class="gw-completed" data-completed-decision="${escapeHTML(decision.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(decision.title || decision.question)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${figure}${body}${results}</div></details>`;
 }
 
 // Graph options carry no visible formula unless they set a name: the student has to read the picture.
 function graphOptionsHTML(decision) {
   const component = decision.interaction, multi = component.type === 'multi';
-  const uid = `gw-${activeRunId()}-${decision.id}`;
-  return `<div class="gw-graph-options" role="group" aria-label="${escapeHTML(decision.title || decision.question)}">${optionsOf(component).map(option => {
+  const uid = `gw-${activeRunId()}-${decision.id}`, options = optionsOf(component);
+  const fallback = textOptionsHTML(decision);
+  if (options.some(option => !option.graph || (decision.source === 'stream' || Object.hasOwn(option.graph, 'kind')) && !PracticeComponents.validateGraph(option.graph))) return fallback;
+  // Streamed pictures name their kind; authored ones are bare quadratic parameters.
+  const kind = options.find(option => option.graph?.kind)?.graph.kind;
+  return `<div class="gw-graph-options" role="group" aria-label="${escapeHTML(decision.title || decision.question)}" data-graph-fallback="${escapeHTML(fallback)}" data-count="${options.length}"${kind ? ` data-kind="${escapeHTML(kind)}"` : ''}>${options.map(option => {
     const selected = multi ? draft.includes(option.value) : draft === option.value;
     const pick = multi ? `data-multi="${escapeHTML(option.value)}"` : `data-choice="${escapeHTML(component.field)}" data-value="${escapeHTML(option.value)}"`;
-    const graph = JSON.stringify({...option.graph, uid: `${uid}-${option.value}`});
-    return `<button type="button" ${pick} aria-pressed="${selected}" aria-label="${escapeHTML(option.label)}"><span class="gw-checkbox" aria-hidden="true">${selected ? '✓' : ''}</span><span class="gw-graph-option-figure" data-quadratic-graph="${escapeHTML(graph)}"></span>${option.name ? `<span class="gw-graph-option-name">${escapeHTML(option.name)}</span>` : ''}</button>`;
+    const graph = escapeHTML(JSON.stringify({...option.graph, uid: `${uid}-${option.value}`}));
+    const figure = option.graph?.kind ? `<span class="gw-graph-figure" data-graph="${graph}"></span>` : `<span class="gw-graph-option-figure" data-quadratic-graph="${graph}"></span>`;
+    return `<button type="button" ${pick} aria-pressed="${selected}" aria-label="${escapeHTML(option.label)}"><span class="gw-checkbox" aria-hidden="true">${selected ? '✓' : ''}</span>${figure}${option.name ? `<span class="gw-graph-option-name">${escapeHTML(option.name)}</span>` : ''}</button>`;
   }).join('')}</div>`;
+}
+
+function textOptionsHTML(decision) {
+  const component = decision.interaction;
+  if (component.type === 'choice') return PracticeComponents.choices(component, draft, decision.title || decision.question);
+  return `<div class="gw-multi" role="group" aria-label="${escapeHTML(decision.title || decision.question)}">${optionsOf(component).map(option => `<button type="button" data-multi="${escapeHTML(option.value)}" aria-pressed="${draft.includes(option.value)}"><span class="gw-checkbox" aria-hidden="true">${draft.includes(option.value) ? '✓' : ''}</span><span data-math-text>${escapeHTML(option.label)}</span></button>`).join('')}</div>`;
 }
 
 function interactionHTML(decision) {
@@ -265,11 +307,11 @@ function interactionHTML(decision) {
   if (component.type === 'read') return '';
   const board = template(decision.board, `gw-${activeRunId()}-${decision.id}-active`);
   if (['choice', 'multi'].includes(component.type) && optionsOf(component).some(option => option.graph)) return board + graphOptionsHTML(decision);
-  if (component.type === 'choice') return board + PracticeComponents.choices(component, draft, decision.title || decision.question);
+  if (component.type === 'choice') return board + textOptionsHTML(decision);
   if (component.type === 'plane') return board + planeHTML(decision, draft);
   if (component.type === 'grid') return board + gridHTML(decision, draft);
   if (component.type === 'multi') {
-    return `<div class="gw-multi" role="group" aria-label="${escapeHTML(decision.title || decision.question)}">${optionsOf(component).map(option => `<button type="button" data-multi="${escapeHTML(option.value)}" aria-pressed="${draft.includes(option.value)}"><span class="gw-checkbox" aria-hidden="true">${draft.includes(option.value) ? '✓' : ''}</span><span data-math-text>${escapeHTML(option.label)}</span></button>`).join('')}</div>`;
+    return board + textOptionsHTML(decision);
   }
   if (component.type === 'checklist') {
     // A draft only marks a selection. Correctness and authored feedback wait for submission.
@@ -326,7 +368,7 @@ function renderInteraction(decision, {focus} = {}) {
   ensureDraft(decision);
   const disabled = actor === 'replay';
   const number = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0) + 1;
-  host.innerHTML = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(decision.title || '当前判断')}</h2><span class="status">进行中</span></header>${carryHTML()}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`;
+  host.innerHTML = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(decision.title || '当前判断')}</h2><span class="status">进行中</span></header>${carryHTML()}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' && decision.graph ? figureHTML(decision.graph, `gw-${activeRunId()}-${decision.id}-stem`, 'stem') : ''}${decision.source === 'stream' ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`;
   if (decision.source === 'stream') {
     const context = host.querySelector('[data-stream-context]'), steps = decisionMathSteps(decision);
     if (decision.interaction.type === 'read') for (const step of steps) context.append(createMathCard(document, step, {renderMath: renderStreamMath}).node);

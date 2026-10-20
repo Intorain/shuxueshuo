@@ -110,6 +110,15 @@
 .gw-graph-option-figure .quadratic-endpoint { r: 13px; stroke-width: 5px; }
 .gw-graph-option-figure text { font-size: 30px; }
 .gw-graph-option-name { font-size: 14px; font-weight: 650; }
+.gw-graph-options[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gw-graph-options[data-kind] { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.gw-graph-options[data-kind="number_line"] { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.gw-graph-figure { display: block; width: 100%; padding-top: 14px; }
+.gw-graph-figure svg { display: block; width: 100%; height: auto; }
+.gw-figure { display: grid; justify-items: center; gap: 4px; margin: 10px 0 14px; }
+.gw-figure-plot { display: block; width: min(100%, 380px); }
+.gw-figure-plot svg { display: block; width: 100%; height: auto; }
+.gw-figure figcaption { color: #5b7069; font-size: 13px; text-align: center; }
 .gw-checkbox { flex: 0 0 18px; width: 18px; height: 18px; border: 1px solid #85ab9e; border-radius: 4px; margin-top: 3px; display: grid; place-items: center; color: #087f79; font-size: 13px; line-height: 1; }
 .gw-plane { display: grid; gap: 6px; }
 .gw-plane [data-method="discriminant"], .gw-plane-methods [data-method="discriminant"] { --m: #b7791f; }

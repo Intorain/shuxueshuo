@@ -50,8 +50,348 @@
         "value": {"type": "string", "pattern": "^(o|s[0-9]+o)[0-9]+$"},
         "label": {"$ref": "#/$defs/text"},
         "feedback": {"$ref": "#/$defs/text"},
-        "graph": {"type": "object"}
+        "graph": {"$ref": "#/$defs/graph"}
       }
+    },
+    "graphPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "open": {
+          "type": "boolean"
+        }
+      }
+    },
+    "graphTick": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/$defs/text"
+        }
+      ],
+      "items": false
+    },
+    "functionGraphParams": {
+      "type": "object",
+      "required": [
+        "bounds",
+        "title",
+        "description",
+        "variable",
+        "interval",
+        "interval_closed",
+        "points",
+        "xTicks"
+      ],
+      "properties": {
+        "bounds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        },
+        "variable": {
+          "$ref": "#/$defs/text"
+        },
+        "interval": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "interval_closed": {
+          "type": "array",
+          "items": {
+            "type": "boolean"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/graphPoint"
+          }
+        },
+        "xTicks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/graphTick"
+          }
+        }
+      }
+    },
+    "quadraticGraphParams": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/functionGraphParams"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "coefficient",
+        "vertex"
+      ],
+      "properties": {
+        "coefficient": {
+          "type": "number",
+          "not": {
+            "const": 0
+          }
+        },
+        "vertex": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "yLabel": {
+          "type": "string"
+        },
+        "showVertex": {
+          "type": "boolean"
+        },
+        "vertexLabel": {
+          "type": "string"
+        },
+        "markSign": {
+          "enum": [
+            "above",
+            "below"
+          ]
+        },
+        "strict": {
+          "type": "boolean"
+        }
+      }
+    },
+    "linearGraphParams": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/functionGraphParams"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "slope",
+        "intercept"
+      ],
+      "properties": {
+        "slope": {
+          "type": "number"
+        },
+        "intercept": {
+          "type": "number"
+        },
+        "markSign": {
+          "enum": [
+            "above",
+            "below"
+          ]
+        },
+        "strict": {
+          "type": "boolean"
+        }
+      }
+    },
+    "reciprocalGraphParams": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/functionGraphParams"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "a",
+        "b",
+        "negative"
+      ],
+      "properties": {
+        "a": {
+          "type": "number"
+        },
+        "b": {
+          "type": "number",
+          "not": {
+            "const": 0
+          }
+        },
+        "negative": {
+          "type": "boolean"
+        }
+      }
+    },
+    "numberLinePiece": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "left_closed",
+        "right_closed"
+      ],
+      "properties": {
+        "from": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "to": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "left_closed": {
+          "type": "boolean"
+        },
+        "right_closed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "numberLineParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bounds",
+        "title",
+        "description",
+        "variable",
+        "pieces",
+        "points",
+        "ticks"
+      ],
+      "properties": {
+        "bounds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        },
+        "variable": {
+          "$ref": "#/$defs/text"
+        },
+        "pieces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/numberLinePiece"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/graphPoint"
+          }
+        },
+        "ticks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/graphTick"
+          }
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "params"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "quadratic",
+            "linear",
+            "reciprocal_sum",
+            "number_line"
+          ]
+        },
+        "params": {
+          "type": "object"
+        },
+        "caption": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "quadratic"
+            },
+            "params": {
+              "$ref": "#/$defs/quadraticGraphParams"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "linear"
+            },
+            "params": {
+              "$ref": "#/$defs/linearGraphParams"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "reciprocal_sum"
+            },
+            "params": {
+              "$ref": "#/$defs/reciprocalGraphParams"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "number_line"
+            },
+            "params": {
+              "$ref": "#/$defs/numberLineParams"
+            }
+          }
+        }
+      ]
     },
     "part": {
       "type": "object",
@@ -62,6 +402,8 @@
         "title": {"$ref": "#/$defs/text"},
         "question": {"$ref": "#/$defs/text"},
         "submit_label": {"$ref": "#/$defs/text"},
+        "graph": {"$ref": "#/$defs/graph"},
+        "completion_graph": {"$ref": "#/$defs/graph"},
         "feedback": {
           "type": "object",
           "additionalProperties": false,

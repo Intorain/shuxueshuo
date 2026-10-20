@@ -65,7 +65,8 @@ CASE_EXPECTATIONS = {
     "q09": {"routes": ["variable"], "variable_swap": {
         "slope_sign": "unknown", "endpoint_mode": "both_endpoints", "endpoint_conditions": 2}},
     "q13": {"routes": ["interval", "extremum"], "goal_extremum": {
-        "kind": "find_minimum", "status": "attained"}},
+        "kind": "find_minimum", "status": "attained"},
+            "pictures": {"stem": 3, "options": 4, "completion": 2, "hollow_options": 1}},
 }
 
 

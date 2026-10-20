@@ -14,12 +14,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import sympy as sp
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
+from . import interaction_graph_contract as graph_contract
+from . import interaction_graphs as drawing
 from .capabilities.cases import exact_set_equal
 from .capabilities.parametric import _compare
 from .capabilities.ranges import _sign, quadratic_interval_range, reciprocal_range
 from .contracts import ROOT
+from .interaction_graphs import GraphUnavailable
 from .presentation_templates import _render
 from .route_constraints import apply_visible_constraints
 from .trajectory import decode_value
@@ -29,7 +32,8 @@ REGISTRY_PATH = ROOT / "site/data/knowledge-next/interactions/registry.json"
 REGISTRY_SCHEMA = ROOT / "internal/schemas/graph-interaction-registry-v1.schema.json"
 CHUNK_SCHEMA = ROOT / "internal/schemas/graph-step-interaction-v1.schema.json"
 # Interaction-only code, revisioned apart from the mathematical fingerprint.
-ENGINE_FILES = (Path(__file__).resolve(),)
+ENGINE_FILES = (Path(__file__).resolve(), Path(drawing.__file__).resolve(),
+                Path(graph_contract.__file__).resolve(), CHUNK_SCHEMA)
 MAX_REPRESENTATIVES = 12
 GRID = tuple(sp.Integer(value) for value in range(-4, 5))
 NEIGHBOR = sp.Rational(1, 2)
@@ -111,6 +115,17 @@ def _rule_validator(schema, definition):
     return Draft202012Validator({"$defs": schema["$defs"], "$ref": f"#/$defs/{definition}"})
 
 
+def _validate_graphs(part):
+    graphs, sources = part.get("graphs", {}), {row["answer"]["from"] for row in _rows(part)}
+    for slot, table in (("stem", STEM_GRAPHS), ("options", OPTION_GRAPHS)):
+        name = graphs.get(slot)
+        if name is not None and (name not in table or part["component"] not in ("choice", "multi")
+                                 or not sources <= table[name][0]):
+            raise ValueError(f"interaction.graph_not_allowed:{slot}:{name}")
+    if graphs.get("completion") is not None and graphs["completion"] not in COMPLETION_GRAPHS:
+        raise ValueError("interaction.graph_not_allowed:completion:" + graphs["completion"])
+
+
 def validate_registry(registry):
     schema = json.loads(REGISTRY_SCHEMA.read_text())
     Draft202012Validator(schema).validate(registry)
@@ -128,6 +143,7 @@ def validate_registry(registry):
             rules.append((merged, 1))
     for rule, seeds in rules:
         for part in rule["parts"]:
+            _validate_graphs(part)
             for row in _rows(part):
                 if row["seed"] >= seeds:
                     raise ValueError(f"interaction.seed_index_out_of_range:{row['seed']}")
@@ -840,6 +856,190 @@ def _flip_goal(facts, item):
     return [Candidate(f"goal:{attained}", _goal_label(facts, attained), attained)]
 
 
+# --- Pictures (stem, options, completion) ---------------------------------------------
+
+def _sample(facts, region):
+    """The function to draw: itself, or at a representative parameter inside ``region``."""
+    function, parameter = facts["function"], facts["parameter"]
+    if parameter is None or parameter not in function.free_symbols:
+        return function, None
+    point = drawing.representative_parameter(region)
+    return function.subs(parameter, point), point
+
+
+def _sample_caption(facts, point, situation=""):
+    return f"示意图：取 ${_latex(facts['parameter'])}={_latex(point)}${situation}" if point is not None else None
+
+
+def _function_stem(facts, values, context):
+    function, point = _sample(facts, facts["known"])
+    variable, domain = facts["x"], facts["domain"]
+    drawn = drawing.family(function, variable)
+    marks = drawing.drawable(drawn, variable, drawing.domain_points(domain))
+    bounds, x_ticks = drawing.function_frame(drawn, variable, domain, marks=marks)
+    return drawing.function_graph(
+        drawn, variable, domain, bounds=bounds, x_ticks=x_ticks, marks=marks,
+        title=f"y={drawing.plain(drawn['function'])} 在 {drawing.plain(domain)} 上的图像",
+        description=drawing.endpoint_story(drawn, variable, domain), caption=_sample_caption(facts, point))
+
+
+def _axis_place(axis, domain):
+    if domain.contains(axis) is sp.true:
+        return "内"
+    return "左侧" if _cmp(axis, domain.start) <= 0 else "右侧"
+
+
+def _case_stem(facts, values, context):
+    """A case where the bound sits at the vertex, so the axis and the interval both show."""
+    case = next((case for case in facts["cases"] if case["range"]["candidates"][0]["location"] == "vertex"),
+                facts["cases"][0])
+    variable, domain = facts["x"], facts["domain"]
+    function, point = _sample(facts, sp.Intersection(case["domain"], facts["known"]))
+    drawn = drawing.family(function, variable)
+    if drawn["kind"] != "quadratic":
+        raise GraphUnavailable("family_unsupported")
+    expected = case["range"]["candidates"][0]["location"]
+    ranges = _Ranges(facts["function"], variable, domain, facts["parameter"])
+    if expected not in _bound_positions(ranges, point, facts["bound"]):
+        raise GraphUnavailable("representative_unverified")
+    marks = drawing.drawable(drawn, variable, drawing.domain_points(domain))
+    bounds, x_ticks = drawing.function_frame(drawn, variable, domain, marks=marks, show_vertex=True)
+    place = _axis_place(drawn["vertex"][0], domain)
+    return drawing.function_graph(
+        drawn, variable, domain, bounds=bounds, x_ticks=x_ticks, marks=marks, show_vertex=True,
+        title=f"y={drawing.plain(drawn['function'])} 的对称轴与区间 {drawing.plain(domain)}",
+        description=f"对称轴 {variable}={drawing.short_label(drawn['vertex'][0])} 在区间{place}；"
+                    + drawing.endpoint_story(drawn, variable, domain),
+        caption=_sample_caption(facts, point, f"，此时对称轴在区间{place}"))
+
+
+def _claim_mark(drawn, facts, positions, location, attained):
+    domain = facts["domain"]
+    if location == "left_endpoint":
+        return domain.start
+    if location == "right_endpoint":
+        return domain.end
+    if location == "vertex" and drawn["kind"] == "quadratic":
+        return drawn["vertex"][0]
+    row = next((row for row in positions if row["location"] == location), None)
+    if row is None:
+        raise GraphUnavailable("mark_missing")
+    return row["point"]
+
+
+def _location_options(facts, values, context, candidates):
+    """The same curve in every option, with the claimed point marked (hollow when not attained)."""
+    variable, domain = facts["x"], facts["domain"]
+    function, point = _sample(facts, sp.Intersection(facts["case_domain"], facts["known"]))
+    drawn = drawing.family(function, variable)
+    positions = range_at(drawn["function"], variable, domain)["positions"]
+    marks = []
+    for candidate, correct in candidates:
+        _, location, attained = candidate.key.split(":")
+        holds, _ = candidate.value
+        # The picture must show the case as claimed: exactly the correct claims hold at this value.
+        if _attempt(holds, point) is not correct:
+            raise GraphUnavailable("representative_unverified")
+        marks.append((_claim_mark(drawn, facts, positions, location, attained == "True"), attained == "True"))
+    bounds, x_ticks = drawing.function_frame(drawn, variable, domain, marks=marks)
+    drawing.require_distinct([drawing.mark_signature(drawn, variable, bounds, *mark) for mark in marks])
+    graphs = [drawing.function_graph(
+        drawn, variable, domain, bounds=bounds, x_ticks=x_ticks, marks=[mark],
+        title=f"y={drawing.plain(drawn['function'])} 上标出的点",
+        description=(f"在 {variable}={drawing.short_label(mark[0])} 处标出"
+                     f"{'实心点（取到）' if mark[1] else '空心点（取不到）'}"))
+        for mark in marks]
+    note = f"图中取 ${_latex(facts['parameter'])}={_latex(point)}$。" if point is not None else None
+    return graphs, note
+
+
+def _set_options(facts, values, context, candidates):
+    parameter = facts["parameter"]
+    return drawing.number_lines([candidate.value for candidate, _ in candidates], parameter,
+                                title=f"{parameter} 的取值范围"), None
+
+
+def _relation_side(context):
+    """Which side of the axis breaks the condition, read from the frozen relation."""
+    operator = context.get("interval_operator")
+    if operator is not None and context.get("zero") == 0:
+        return ("below" if operator in ("<=", "<") else "above"), operator in ("<", ">")
+    relation = context.get("relation")
+    if isinstance(relation, sp.Rel) and relation.rhs == 0:
+        return ("below" if relation.rel_op in (">=", ">") else "above"), relation.rel_op in ("<", ">")
+    return None, False
+
+
+def _boundary_completion(seeds):
+    """The kept boundary value: the curve at that parameter on the problem's interval."""
+    values, context = decode_value(seeds[0]["values"]), decode_value(seeds[0]["context"])
+    check = next((row for row in values.get("checks", []) if row.get("holds") is True and _finite(row.get("point"))),
+                 None)
+    function = context.get("interval_function", context.get("expression"))
+    parameter, variable, domain = context.get("parameter"), context.get("x"), context.get("domain")
+    if check is None or function is None or parameter is None or not isinstance(domain, sp.Interval):
+        raise GraphUnavailable("boundary_unavailable")
+    point = check["point"]
+    drawn = drawing.family(function.subs(parameter, point), variable)
+    side, strict = _relation_side(context)
+    if side is not None:
+        operator = ("<" if strict else "<=") if side == "below" else (">" if strict else ">=")
+        reached = range_at(drawn["function"], variable, domain)
+        if not _bound_condition(operator, sp.S.Zero, reached, "inf" if side == "below" else "sup"):
+            raise GraphUnavailable("representative_unverified")
+    marks = drawing.drawable(drawn, variable, drawing.domain_points(domain))
+    # Outside the interval the curve may dip below the axis; keep that dip in view (faded) without marking it.
+    outside = [drawn["vertex"][0]] if drawn["kind"] == "quadratic" and domain.contains(drawn["vertex"][0]) is not sp.true \
+        else []
+    bounds, x_ticks = drawing.function_frame(drawn, variable, domain, marks=marks, extra=outside)
+    story = [drawing.endpoint_story(drawn, variable, domain)]
+    for end, attained in marks:
+        slope = sp.simplify(sp.diff(drawn["function"], variable).subs(variable, end))
+        if attained and drawing.value_at(drawn, end, variable) == 0 and slope != 0:
+            story.append(f"{variable}={drawing.short_label(end)} 处导数为 {drawing.short_label(slope)}，"
+                         "曲线穿过横轴而不是相切")
+    if drawn["kind"] == "quadratic":
+        axis, low = drawn["vertex"]
+        story.append(f"顶点 ({drawing.short_label(axis)}, {drawing.short_label(low)})")
+    return drawing.function_graph(
+        drawn, variable, domain, bounds=bounds, x_ticks=x_ticks, marks=marks,
+        mark_sign=side, strict=strict,
+        title=f"{parameter}={drawing.short_label(point)} 时 y={drawing.plain(drawn['function'])} 的图像",
+        description="；".join(story),
+        caption=f"${_latex(parameter)}={_latex(point)}$ 时的函数图像，只看区间 ${_latex(domain)}$")
+
+
+STEM_GRAPHS = {"function_sample": ({"policy_statement"}, _function_stem),
+               "case_sample": ({"case_basis"}, _case_stem)}
+OPTION_GRAPHS = {"location_marks": ({"bound_location"}, _location_options),
+                 "parameter_sets": ({"case_solution", "merged_set"}, _set_options)}
+COMPLETION_GRAPHS = {"boundary_function": _boundary_completion}
+
+
+def _picture(builder, diagnostics, part, *arguments, option_count=None):
+    """A picture, or None with a diagnostic: pictures never block the question."""
+    try:
+        result = builder(*arguments)
+        try:
+            if option_count is None:
+                graph_contract.validate_graph(result)
+            else:
+                if (not isinstance(result, tuple) or len(result) != 2 or not isinstance(result[0], list)
+                        or len(result[0]) != option_count or (result[1] is not None and not isinstance(result[1], str))):
+                    raise ValueError("interaction.graph_option_shape")
+                for graph in result[0]:
+                    graph_contract.validate_graph(graph)
+        except (ValidationError, ValueError, TypeError) as exc:
+            raise GraphUnavailable("invalid_graph") from exc
+        return result
+    except GraphUnavailable as exc:
+        diagnostics.append({"part": part, "result": "graph_fallback", "reason": exc.reason})
+    except Exception as exc:  # noqa: BLE001 -- a drawing fault keeps the text question.
+        diagnostics.append({"part": part, "result": "graph_fallback", "reason": "graph_error",
+                            "exception_type": type(exc).__name__, "message": str(exc)[:200]})
+    return None
+
+
 ANSWERS = {
     "policy_statement": {"kind": "proposition", "facts": _policy_facts, "answer": _policy_answer,
                          "representatives": _policy_representatives,
@@ -1058,9 +1258,19 @@ def _choice_part(part, number, part_id, seed):
     if len(correct) + len(chosen) < part.get("min_options", 3):
         raise NotInteractive("insufficient_options", diagnostics)
     entries = [(candidate, None) for candidate in correct] + chosen
+    graphs = part.get("graphs", {})
+    pictures = {}
+    if graphs.get("options"):
+        built = _picture(OPTION_GRAPHS[graphs["options"]][1], diagnostics, number, facts, values, context,
+                         [(candidate, specification is None) for candidate, specification in entries],
+                         option_count=len(entries))
+        if built is not None:
+            pictures = {id(candidate): picture for (candidate, _), picture in zip(entries, built[0], strict=True)}
     options, answers = [], []
     for index, (candidate, specification) in enumerate(_shuffled(entries, part_id), 1):
         option = {"value": f"o{index}", "label": candidate.label}
+        if id(candidate) in pictures:
+            option["graph"] = pictures[id(candidate)]
         if specification is not None:
             message = _feedback(specification, candidate, display)
             if message:
@@ -1071,8 +1281,15 @@ def _choice_part(part, number, part_id, seed):
     interaction = {"type": "multi", "options": options} if multi else \
         {"type": "choice", "field": part_id, "options": options}
     expected = {"required": answers, "allowed": answers} if multi else {"one_of": answers}
-    return {"interaction": interaction, "expected_answer": expected,
-            "feedback": {"answer": _render_text(part.get("feedback", ""), display)}}, diagnostics, display
+    body = {"interaction": interaction, "expected_answer": expected,
+            "feedback": {"answer": _render_text(part.get("feedback", ""), display)}}
+    if pictures and built[1]:
+        body["question_note"] = built[1]
+    if graphs.get("stem"):
+        stem = _picture(STEM_GRAPHS[graphs["stem"]][1], diagnostics, number, facts, values, context)
+        if stem is not None:
+            body["graph"] = stem
+    return body, diagnostics, display
 
 
 def _fill_part(part, part_id, item, kept, display, diagnostics):
@@ -1137,7 +1354,15 @@ def compile_interaction(seeds, rule, repeat_context, *, interaction_id):
             diagnostics.append({"part": number, "result": "readonly", "reason": exc.reason})
             continue
         diagnostics.extend({"part": number, **record} for record in records)
-        parts.append({"id": part_id, "title": part["title"], "question": _render_text(part["question"], display),
+        question = _render_text(part["question"], display)
+        if note := body.pop("question_note", None):
+            question = f"{question}{note}"
+        completion = part.get("graphs", {}).get("completion")
+        if completion:
+            picture = _picture(COMPLETION_GRAPHS[completion], diagnostics, number, seeds)
+            if picture is not None:
+                body["completion_graph"] = picture
+        parts.append({"id": part_id, "title": part["title"], "question": question,
                       **body, "submit_label": part.get("submit_label", "确认判断")})
     if not parts:
         raise NotInteractive(failures[0] if len(set(failures)) == 1 else "insufficient_options", diagnostics)
@@ -1203,6 +1428,7 @@ def build_chunk(seeds, registry, context, *, revision=None):
 
 def validate_chunk(chunk):
     Draft202012Validator(json.loads(CHUNK_SCHEMA.read_text())).validate(chunk)
+    graph_contract.validate_part_graphs(chunk["parts"])
     return chunk
 
 

@@ -128,6 +128,125 @@ test('interactive parts expose only before; only the last completed part mounts 
   assert.equal(run('visibleStreamCards.size'), 2);
 });
 
+const quadratic = {kind: 'quadratic', caption: '示意图：取 $a=0$', params: {coefficient: 1, vertex: [0, 1], bounds: [-0.25, 0.75, -0.25, 1.5],
+  xTicks: [[0, '0'], [0.5, '1/2']], variable: 'x', interval: [0, 0.5], interval_closed: [false, true],
+  points: [{x: 0, open: true}, {x: 0.5}], yLabel: '1', showVertex: false, title: '曲线', description: '左端空心'}};
+const line = (pieces, description) => ({kind: 'number_line', params: {bounds: [-3.25, -0.25], pieces, points: [],
+  ticks: [[-2.5, '-5/2'], [-1, '-1']], variable: 'a', title: 'a 的取值范围', description}});
+
+test('server pictures dispatch by kind; open ends stay hollow and dashed', () => {
+  const {context} = engine();
+  const draw = spec => context.PracticeComponents.graph({...spec, uid: 'u'});
+  const curve = draw(quadratic);
+  assert.match(curve, /class="graph-interval is-closed" d="M\S+ 48V222"/);
+  assert.match(curve, /class="graph-interval" d="M\S+ 48V222"[^>]*stroke-dasharray/);
+  assert.match(curve, /class="quadratic-point"[^>]*r="5" fill="#fff"/);
+  assert.doesNotMatch(curve, /undefined/, 'unlabelled points draw no label');
+  const set = draw(line([{from: -2.5, to: null, left_closed: false, right_closed: false}], '(-5/2, +∞)'));
+  assert.match(set, /class="number-line-end" cx="[\d.]+" cy="50" r="6" fill="#fff"/);
+  assert.match(set, /<path d="M316 42L326 50L316 58Z"/, 'an unbounded side ends in an arrow');
+  assert.match(set, /<desc id="u-description">\(-5\/2, \+∞\)<\/desc>/);
+  assert.match(draw(line([{from: -2.5, to: -1, left_closed: true, right_closed: true}], '[-5/2,-1]')), /number-line-end is-closed/);
+  assert.equal(draw({kind: 'unknown', params: {}}), '');
+  const authored = context.PracticeComponents.quadraticGraph({...quadratic.params, interval_closed: undefined, uid: 'old'});
+  assert.match(authored, /class="graph-interval" d="M\S+ 48V222M\S+ 48V222"[^>]*stroke-dasharray/);
+  assert.doesNotMatch(authored, /is-closed/, 'authored graphs keep both guides dashed');
+});
+
+test('streamed graph contracts reject malformed drawing data without affecting the authored API', () => {
+  const {context} = engine(), api = context.PracticeComponents;
+  const common = {bounds: [-1, 1, -1, 1], variable: 'x', points: [], xTicks: [], interval: [0, 1], interval_closed: [false, true], title: '函数', description: '函数示意图'};
+  const linear = {kind: 'linear', params: {...common, slope: 0, intercept: 0}};
+  const reciprocal = {kind: 'reciprocal_sum', params: {...common, a: -1, b: -1, negative: false}};
+  const valid = [quadratic, linear, reciprocal, line([], '空集'), line([{from: null, to: null, left_closed: false, right_closed: false}], '实数集')];
+  for (const spec of valid) {
+    assert.equal(api.validateGraph(spec), true, spec.kind);
+    assert.match(api.graph({...spec, uid: 'valid'}), /^<svg/);
+  }
+  const changed = (spec, params) => ({...spec, params: {...spec.params, ...params}});
+  const invalid = [null, {}, {kind: 'toString', params: {}}, {...quadratic, kind: 'unknown'}, {kind: {toString: null}, params: {}},
+    changed(quadratic, {vertex: undefined}), changed(quadratic, {vertex: [0]}), changed(quadratic, {coefficient: '1'}),
+    changed(quadratic, {coefficient: 0}), changed(quadratic, {bounds: [-1, 1]}), changed(quadratic, {bounds: [-1, 1, 0, 0]}),
+    changed(quadratic, {bounds: [-1e308, 1e308, -1, 1]}), changed(quadratic, {bounds: [-1, 1, -1e308, 1e308]}),
+    changed(quadratic, {variable: undefined}), changed(quadratic, {points: undefined}), changed(linear, {interval: undefined}),
+    changed(linear, {xTicks: undefined}), changed(linear, {interval_closed: undefined}),
+    changed(quadratic, {bounds: [-1, Infinity, -1, 1]}), changed(quadratic, {xTicks: [[0]]}),
+    changed(quadratic, {points: [{x: '0'}]}), changed(quadratic, {points: [{x: 0, place: 1}]}),
+    changed(quadratic, {interval: [1, 0]}), changed(quadratic, {interval_closed: ['false', true]}),
+    changed(line([], '空集'), {bounds: [0, 0]}), changed(line([], '空集'), {bounds: [-1, 1, -1, 1]}),
+    changed(line([], '空集'), {pieces: [{from: null, to: 1, left_closed: true, right_closed: true}]}),
+    changed(line([], '空集'), {pieces: [{from: 1, to: 0, left_closed: false, right_closed: true}]}),
+    changed(line([], '空集'), {pieces: 'empty'}), changed(line([], '空集'), {points: null}),
+    changed(line([], '空集'), {ticks: [[0, {}]]}), changed(line([], '空集'), {description: null}),
+    changed(linear, {slope: NaN}), changed(reciprocal, {a: '<text>bad</text>'}), changed(reciprocal, {b: 0}),
+    changed(reciprocal, {points: [{x: 0}]})];
+  for (const spec of invalid) {
+    assert.equal(api.validateGraph(spec), false, JSON.stringify(spec));
+    assert.equal(api.graph(spec), '', 'bad graph returns no SVG rather than throwing');
+  }
+  assert.equal(api.graph({...changed(quadratic, {coefficient: 1e308, vertex: [-1e308, 1e308]}), uid: 'overflow'}), '', 'finite inputs must not produce nonfinite SVG coordinates');
+});
+
+test('strict linear plots distinguish small nonzero values from a line lying on the axis', () => {
+  const {context} = engine();
+  // The boundary builder for x*(a+1/10^13)>0 on (0,1], at a=0,
+  // produces these exact drawing parameters: its positive segment must stay green.
+  const params = {bounds: [-0.25, 1.25, -0.25, 0.25], xTicks: [[0, '0'], [1, '1']], variable: 'x',
+    interval: [0, 1], interval_closed: [false, true], points: [{x: 0, open: true}, {x: 1}],
+    title: '边界处的函数', description: '只看区间 (0,1]'};
+  const cases = [[1e-13, 0, 1], [-1e-13, 0, -1], [0, 1e-13, 1], [0, -1e-13, -1], [0, 0, 0]];
+  for (const [slope, intercept, sign] of cases) for (const strict of [false, true]) for (const markSign of ['below', 'above']) {
+    const graph = {kind: 'linear', uid: 'small-linear', params: {...params, slope, intercept, strict, markSign}};
+    const svg = context.PracticeComponents.graph(graph), name = `${slope}*x+${intercept}, ${markSign}, strict=${strict}`;
+    const violates = sign === 0 ? strict : markSign === 'below' ? sign < 0 : sign > 0;
+    assert.match(svg, /class="linear-line"/, name);
+    assert.equal((svg.match(/<path class="linear-(?:negative|positive)"/g) || []).length, violates ? 1 : 0, name);
+    if (slope) assert.match(svg, new RegExp(`class="linear-root"[^>]*stroke="${strict ? '#c4553f' : '#08655f'}"`), 'isolated roots retain their strictness mark');
+  }
+});
+
+test('one invalid or missing option picture restores every label and keeps answers and decisions intact', () => {
+  for (const type of ['choice', 'multi']) for (const bad of [undefined, {kind: 'unknown', params: {}}, {kind: 'quadratic', params: {bounds: [-1, 1]}}]) {
+    const pictured = {...part('last', type), graph: bad, completion_graph: bad};
+    pictured.interaction.options[0].graph = quadratic;
+    pictured.interaction.options[1].graph = bad;
+    if (type === 'multi') pictured.expected_answer = {required: ['yes'], allowed: ['yes']};
+    const {run, roots, value} = engine(fixture({parts: [pictured]}));
+    const before = JSON.stringify(value.bundle);
+    run(`draft = ${type === 'multi' ? "['yes']" : "'yes'"}; draftKey = decisionKey(currentDecision(bundle,state)); renderInteraction(currentDecision(bundle,state));`);
+    const html = roots.get('#gw-active').innerHTML;
+    assert.doesNotMatch(html, /data-graph=|data-quadratic-graph=|gw-stem-graph/);
+    assert.match(html, /<span data-math-text>成立<\/span>/);
+    assert.match(html, /<span data-math-text>不成立<\/span>/);
+    assert.match(html, /data-(?:value|multi)="yes"[^>]*aria-pressed="true"/);
+    run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:draft})`);
+    assert.equal(run('state.lastFeedback.status'), 'passed');
+    assert.equal(run('state.run.completed.length'), 1);
+    assert.doesNotMatch(run(`completedHTML(state.run.completed.at(-1),5,1,'discriminant')`), /gw-completion-graph/);
+    assert.equal(JSON.stringify(value.bundle), before, 'fallback never edits the verified decision data');
+  }
+});
+
+test('streamed stem, option and completion pictures render beside the question and the finished card', () => {
+  const options = [
+    {value: 'yes', label: '$[-5/2,-1]$', graph: line([{from: -2.5, to: -1, left_closed: true, right_closed: true}], '[-5/2, -1]')},
+    {value: 'no', label: '$(-5/2,-1]$', graph: line([{from: -2.5, to: -1, left_closed: false, right_closed: true}], '(-5/2, -1]')}];
+  const pictured = {...part('last'), graph: quadratic, completion_graph: {...quadratic, caption: '完成图'}};
+  pictured.interaction = {...pictured.interaction, options};
+  const {run, roots} = engine(fixture({parts: [pictured]}));
+  run('renderInteraction(currentDecision(bundle,state))');
+  const html = roots.get('#gw-active').innerHTML;
+  assert.match(html, /<figure class="gw-figure gw-stem-graph"><span class="gw-figure-plot" data-graph="[^"]*&quot;kind&quot;:&quot;quadratic&quot;/);
+  assert.match(html, /<figcaption data-math-text>示意图：取 \$a=0\$<\/figcaption>/);
+  assert.match(html, /class="gw-graph-options"[^>]*data-count="2" data-kind="number_line"/);
+  assert.equal((html.match(/class="gw-graph-figure" data-graph=/g) || []).length, 2);
+  assert.doesNotMatch(html, /data-quadratic-graph/);
+  assert.doesNotMatch(html, /完成图/, 'the completion picture waits for the answer');
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'})`);
+  const done = run(`completedHTML(state.run.completed.at(-1),5,1,'discriminant')`);
+  assert.match(done, /<figure class="gw-figure gw-completion-graph">[\s\S]*完成图[\s\S]*data-stream-completed/);
+});
+
 test('read presents the full card and advances through the normal answer state machine', () => {
   const {run, roots} = engine(fixture({readonly: true}));
   run('renderInteraction(currentDecision(bundle,state))');

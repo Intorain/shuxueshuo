@@ -118,6 +118,31 @@ def test_overrides_and_merge_rows_are_checked_as_complete_rules(registry):
         interaction.validate_registry(broken)
 
 
+@pytest.mark.parametrize("location", ["template", "merge", "override"])
+@pytest.mark.parametrize("limits", [{"min_options": 3, "max_options": 2}, {"min_options": 5}])
+def test_registry_rejects_conflicting_option_limits(registry, location, limits):
+    broken = deepcopy(registry)
+    if location == "template":
+        part = broken["templates"]["variable_reorder"]["parts"][0]
+    elif location == "merge":
+        part = broken["merges"][0]["parts"][0]
+    else:
+        broken["overrides"]["method-test#step"] = {"variable_reorder": {"parts": [{}]}}
+        part = broken["overrides"]["method-test#step"]["variable_reorder"]["parts"][0]
+    part.update(limits)
+    with pytest.raises(ValueError, match="interaction.option_limits_conflict"):
+        interaction.validate_registry(broken)
+
+
+def test_registry_checks_default_choice_minimum_against_explicit_limit(registry):
+    broken = deepcopy(registry)
+    part = broken["templates"]["policy"]["parts"][0]
+    del part["min_options"]
+    part["max_options"] = 2
+    with pytest.raises(ValueError, match="interaction.option_limits_conflict"):
+        interaction.validate_registry(broken)
+
+
 def test_interaction_code_and_rules_stay_out_of_the_mathematical_fingerprint():
     paths = runner.fingerprint()
     assert not any(path.endswith("stage_three/interaction.py") or "interactions/" in path
@@ -429,10 +454,59 @@ def test_strict_relation_distractors_are_checked_as_displayed(registry):
     assert strictness == {**strictness, "result": "witness", "witness": "0"}
 
 
-def test_existential_policy_is_readonly_until_its_wording_exists(registry):
+def test_existential_policy_words_attainment_instead_of_claiming_universality(registry):
     seed = _policy_seed(x**2 + a, sp.Interval.open(0, 2), "∃", "<=")
+    chunk, diagnostics = interaction.build_chunk([seed], registry, {"previous": 0})
+    assert chunk["status"] == "interactive", diagnostics
+    part, = chunk["parts"]
+    assert "至少存在一个" in part["question"]
+    assert "恒成立" not in part["question"]
+    assert "等号成立时上确界必须能取到" in _correct(part)[0]
+
+
+@pytest.mark.parametrize("quantifier,operator,goal,swapped,feedback", [
+    ("∃", "<", "至少有一个", "对所有 $x \\in \\left(0, 2\\right)$，$a + x^{2} > 0$ 都成立", "不要求每个"),
+    ("∀", "<=", "对所有", "存在 $x \\in \\left(0, 2\\right)$，使 $a + x^{2} \\geq 0$", "不是找到一个就行"),
+])
+def test_policy_feedback_follows_the_question_quantifier(registry, quantifier, operator, goal, swapped, feedback):
+    seed = _policy_seed(x**2 + a, sp.Interval.open(0, 2), quantifier, operator)
     chunk, _ = interaction.build_chunk([seed], registry, {"previous": 0})
-    assert chunk["status"] == "readonly" and chunk["reason"] == "quantifier_unsupported"
+    part, = chunk["parts"]
+    assert part["feedback"]["answer"].startswith(f"把“{goal}")
+    option, = (option for option in part["interaction"]["options"] if option["label"] == swapped)
+    assert feedback in option["feedback"]
+
+
+def test_extensions_see_only_the_reviewed_api():
+    assert set(vars(interaction.EXTENSION_API)) == {
+        "Candidate", "NotInteractive", "GraphUnavailable", "drawing", "BOUND_NAMES", "MIRROR", "FLIP_STRICTNESS",
+        "decode_value", "known_set", "representatives", "range_at", "exact_set_equal",
+        "latex", "math", "cmp", "finite", "attempt", "set_candidate", "set_check", "case_solution_answer",
+        "flip_endpoint", "drop_piece", "skip_intersection", "flip_keep", "conditions_facts", "merge_facts",
+        "goal_facts", "boundary_facts", "boundary_answer", "function_stem", "set_options"}
+
+
+def test_checklist_rows_respect_the_option_limit(monkeypatch):
+    many = [interaction.Candidate(f"c{index}", f"选项 {index}", index) for index in range(6)]
+    monkeypatch.setitem(interaction.ANSWERS, "test_many", {
+        "kind": "fixed", "facts": lambda values, context: {"display": {}},
+        "answer": lambda facts: [{"label": "一行", "answer": many[0]}],
+        "generators": {"many": lambda facts, item: many[1:]}})
+    part = {"component": "checklist", "title": "t", "max_options": 3,
+            "rows": [{"seed": 0, "answer": {"from": "test_many"}, "distractors": [{"generator": "many"}]}]}
+    seed = {"values": encode_value({}), "context": encode_value({})}
+    body, _, _ = interaction._checklist_part(part, 1, "p1", [seed])
+    slot, = body["interaction"]["slots"]
+    assert len(slot["options"]) == 3
+    assert "选项 0" in [option["label"] for option in slot["options"]]
+    del part["max_options"]
+    body, _, _ = interaction._checklist_part(part, 1, "p1", [seed])
+    assert len(body["interaction"]["slots"][0]["options"]) == 4
+    # Direct compilation also checks the final count, even if registry validation
+    # was bypassed by a caller supplying a rule.
+    part.update(min_options=3, max_options=2)
+    with pytest.raises(interaction.NotInteractive, match="insufficient_options"):
+        interaction._checklist_part(part, 1, "p1", [seed])
 
 
 def test_compilation_is_stable_and_identity_tracks_the_rules(q13, registry):

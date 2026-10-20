@@ -87,7 +87,7 @@ export function verifyMathematics(config, paused, completed) {
     result.separation = {division: config.separation.division, range: range.outputs.range};
   }
   if (config.variable_swap) {
-    const ranges = traced.filter(({call}) => call.capability === 'parameter_linear_range');
+    const ranges = traced.filter(({call}) => call.capability === 'parameter_linear_case_range');
     assert.equal(ranges.length, 1);
     assert.equal(ranges[0].call.outputs.slope_sign, config.variable_swap.slope_sign);
     assert.equal(ranges[0].call.outputs.endpoint_mode, config.variable_swap.endpoint_mode);
@@ -312,7 +312,9 @@ try {
     assert.equal(await page.locator('#gw-active .stage-three-after').count(), 0);
     assert.equal(await page.locator('#gw-active .stage-three-explanation').count(), 0);
   }
-  assert.ok(await page.locator('#gw-active .stage-three-before').count() > 0);
+  const firstCard = paused.snapshot.math_steps.find(card => card.step_id === first.stream_steps[0].step_id);
+  assert.ok(firstCard, 'the first exercise must refer to its committed mathematics card');
+  assert.equal(await page.locator('#gw-active .stage-three-before').count() > 0, firstCard.before.length > 0);
   await assertPictures(first);
   await choose(first);
   const selectedDraft = () => page.locator('#gw-active [aria-pressed="true"], #gw-active [data-slot]').evaluateAll(nodes => nodes.map(node =>
@@ -360,7 +362,8 @@ try {
   evidence.checks.push('metadata-only interruption requires explicit resume without losing progress');
   for (const id of config.routes) await api(`/test/release/${id}`, 'POST');
   const completed = await until(() => api('/test/state'), value =>
-    value.snapshot.checkpoints.every(cp => cp.status === 'verified') &&
+    config.routes.every(id => value.snapshot.checkpoints.some(cp => cp.route_id === id && cp.status === 'verified') &&
+      value.snapshot.handoffs.some(handoff => handoff.route_id === id && handoff.available)) &&
     value.snapshot.interaction_states.every(row => row.status !== 'pending'), 'all math and interaction work must finish');
   assert.equal(completed.llm_provider_attempts, 0);
   Object.assign(evidence, verifyMathematics(config, paused.snapshot, completed.snapshot));

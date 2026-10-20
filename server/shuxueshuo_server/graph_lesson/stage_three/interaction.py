@@ -10,8 +10,9 @@ import hashlib
 import json
 import random
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import sympy as sp
 from jsonschema import Draft202012Validator, ValidationError
@@ -143,6 +144,9 @@ def validate_registry(registry):
             rules.append((merged, 1))
     for rule, seeds in rules:
         for part in rule["parts"]:
+            minimum = part.get("min_options", 2 if part["component"] == "checklist" else 3)
+            if minimum > part.get("max_options", 4):
+                raise ValueError("interaction.option_limits_conflict")
             _validate_graphs(part)
             for row in _rows(part):
                 if row["seed"] >= seeds:
@@ -150,7 +154,7 @@ def validate_registry(registry):
                 source = ANSWERS.get(row["answer"]["from"])
                 if source is None:
                     raise ValueError("interaction.unknown_answer:" + row["answer"]["from"])
-                if (part["component"] == "checklist") != (source["kind"] == "fixed"):
+                if (part["component"] == "checklist") != source.get("checklist", source["kind"] == "fixed"):
                     raise ValueError("interaction.component_answer_mismatch:" + row["answer"]["from"])
                 for distractor in row["distractors"]:
                     name = distractor["generator"]
@@ -364,9 +368,6 @@ def _bound_positions(ranges, point, bound):
 
 def _policy_facts(values, context):
     policy = values["policy"]
-    if policy["quantifier"] != "∀":
-        # The registered question and feedback phrase a universal statement.
-        raise NotInteractive("quantifier_unsupported")
     function, expression = values["function"], values["parameter_expression"]
     operator, bound = policy["operator"], policy["bound"]
     numeric = not expression.free_symbols
@@ -378,6 +379,9 @@ def _policy_facts(values, context):
         "numeric": numeric,
         "display": {"x": values["x"], "domain": context["domain"], "relation": relation, "function": function,
                     "bound_name": BOUND_NAMES[bound], "extremum_name": EXTREMUM_NAMES[bound],
+                    "quantifier_text": "对所有" if policy["quantifier"] == "∀" else "至少存在一个",
+                    "quantifier_goal": (f"对所有 ${_latex(values['x'])}$ 都成立" if policy["quantifier"] == "∀"
+                                        else f"至少有一个 ${_latex(values['x'])}$ 使它成立"),
                     "parameter": context.get("parameter")},
     }
 
@@ -432,10 +436,13 @@ def _policy_proposition(facts, truth):
 
 def _policy_answer(facts):
     policy, operator, bound = facts["policy"], facts["operator"], facts["bound"]
-    label = _relation_label(facts, operator if operator in ("<=", ">=") else FLIP_STRICTNESS[operator],
-                            BOUND_NAMES[bound])
-    if operator in ("<", ">"):
+    universal = policy["quantifier"] == "∀"
+    label_operator = FLIP_STRICTNESS[operator] if universal and operator in ("<", ">") else operator
+    label = _relation_label(facts, label_operator, BOUND_NAMES[bound])
+    if universal and operator in ("<", ">"):
         label += f"，且{BOUND_NAMES[bound]}取到时不能相等"
+    elif not universal and operator in ("<=", ">="):
+        label += f"，且等号成立时{BOUND_NAMES[bound]}必须能取到"
     truth = _policy_proposition(facts, lambda e, v: _quantified(policy["quantifier"], operator, e, v))
     return [{"answer": Candidate("policy:answer", label, truth)}]
 
@@ -449,8 +456,10 @@ def _swap_bound(facts, item):
 
 def _swap_quantifier(facts, item):
     relation = facts["display"]["relation"]
-    truth = _policy_proposition(facts, lambda e, v: _quantified("∃", facts["operator"], e, v))
-    label = f"存在 ${_latex(facts['x'])} \\in {_latex(facts['domain'])}$，使 {_math(relation)}"
+    other = "∃" if facts["policy"]["quantifier"] == "∀" else "∀"
+    truth = _policy_proposition(facts, lambda e, v: _quantified(other, facts["operator"], e, v))
+    scope = f"${_latex(facts['x'])} \\in {_latex(facts['domain'])}$"
+    label = f"存在 {scope}，使 {_math(relation)}" if other == "∃" else f"对所有 {scope}，{_math(relation)} 都成立"
     return [Candidate("policy:swap_quantifier", label, truth)]
 
 
@@ -500,6 +509,14 @@ def _flip_direction(facts, item):
 
 def _policy_representatives(facts, values, context):
     return representatives(values, context, facts["known"])
+
+
+def _by_quantifier(generator):
+    """Feedback dictionaries may be keyed ``universal``/``existential``."""
+    def tagged(facts, item):
+        variant = "universal" if facts["policy"]["quantifier"] == "∀" else "existential"
+        return [replace(candidate, variant=variant) for candidate in generator(facts, item)]
+    return tagged
 
 
 # --- Interval cases -------------------------------------------------------------
@@ -1043,9 +1060,10 @@ def _picture(builder, diagnostics, part, *arguments, option_count=None):
 ANSWERS = {
     "policy_statement": {"kind": "proposition", "facts": _policy_facts, "answer": _policy_answer,
                          "representatives": _policy_representatives,
-                         "generators": {"swap_bound": _swap_bound, "swap_quantifier": _swap_quantifier,
-                                        "endpoint_only": _endpoint_only, "require_attained": _require_attained,
-                                        "flip_strictness": _flip_strictness, "flip_direction": _flip_direction}},
+                         "generators": {name: _by_quantifier(generator) for name, generator in (
+                             ("swap_bound", _swap_bound), ("swap_quantifier", _swap_quantifier),
+                             ("endpoint_only", _endpoint_only), ("require_attained", _require_attained),
+                             ("flip_strictness", _flip_strictness), ("flip_direction", _flip_direction))}},
     "case_basis": {"kind": "basis", "facts": _cases_facts, "answer": _cases_answer,
                    "representatives": _cases_representatives,
                    "generators": {"case_basis_alternatives": _case_basis_alternatives}},
@@ -1066,9 +1084,6 @@ ANSWERS = {
     "goal_value": {"kind": "fixed", "facts": _goal_facts, "answer": _goal_answer,
                    "generators": {"flip_attained": _flip_goal}},
 }
-IMPLEMENTED_GENERATORS = frozenset(name for source in ANSWERS.values() for name in source["generators"])
-
-
 # --- Validation -----------------------------------------------------------------
 
 def _proposition_check(answer, candidates, points):
@@ -1182,6 +1197,8 @@ def _basis_check(answer, candidates, points, positions, parameter, facts):
 
 
 def _validate(source, facts, values, context, item, candidates):
+    if source.get("validate"):
+        return source["validate"](facts, values, context, item, candidates)
     kind, answer = source["kind"], item["answer"]
     if kind == "proposition":
         return _proposition_check(answer, candidates, source["representatives"](facts, values, context))
@@ -1237,7 +1254,7 @@ def _shuffled(items, key):
 def _prepare(seed, source):
     values, context = decode_value(seed["values"]), decode_value(seed["context"])
     facts = source["facts"](values, context)
-    if source["kind"] in ("proposition", "basis", "claim", "set"):
+    if source["kind"] in ("proposition", "basis", "claim", "set") or source.get("requires_known"):
         facts["known"] = known_set(seed)
     return values, context, facts
 
@@ -1318,6 +1335,7 @@ def _checklist_part(part, number, part_id, seeds):
         for item in source["answer"](facts):
             kept, _, records = _distractors(source, facts, values, context, item, row["distractors"])
             diagnostics.extend(records)
+            kept = kept[:part.get("max_options", 4) - 1]
             if len(kept) + 1 < part.get("min_options", 2):
                 raise NotInteractive("insufficient_options", diagnostics)
             slot_key = f"{part_id}/{len(slots) + 1}"
@@ -1326,6 +1344,8 @@ def _checklist_part(part, number, part_id, seeds):
                        for index, candidate in enumerate(entries, 1)]
             terms.append(options[entries.index(item["answer"])]["value"])
             slots.append({"label": item["label"], "options": options})
+    if not slots:
+        raise NotInteractive("no_checklist_items", diagnostics)
     interaction = {"type": "checklist", "title": part["title"], "slots": slots}
     return {"interaction": interaction, "expected_answer": {"terms": terms},
             "feedback": {"terms": _render_text(part.get("feedback", ""), display)}}, diagnostics, display
@@ -1440,3 +1460,36 @@ def compile_route(seeds, registry, *, final=True, revision=None):
         context = repeat_context(seeds, position[group[0]["step_id"]])
         results.append(build_chunk(group, registry, context, revision=revision))
     return results, pending
+
+
+# Everything an extension may use. Adding a name is a reviewed change to this
+# list (and to its test), never an implicit dependency on a private helper.
+EXTENSION_API = SimpleNamespace(
+    Candidate=Candidate, NotInteractive=NotInteractive, GraphUnavailable=GraphUnavailable, drawing=drawing,
+    BOUND_NAMES=BOUND_NAMES, MIRROR=MIRROR, FLIP_STRICTNESS=FLIP_STRICTNESS,
+    decode_value=decode_value, known_set=known_set, representatives=representatives, range_at=range_at,
+    exact_set_equal=exact_set_equal,
+    latex=_latex, math=_math, cmp=_cmp, finite=_finite, attempt=_attempt,
+    set_candidate=_set_candidate, set_check=_set_check, case_solution_answer=_case_solution_answer,
+    flip_endpoint=_flip_endpoint, drop_piece=_drop_piece, skip_intersection=_skip_intersection,
+    flip_keep=_flip_keep, conditions_facts=_conditions_facts, merge_facts=_merge_facts,
+    goal_facts=_goal_facts, boundary_facts=_boundary_facts, boundary_answer=_boundary_answer,
+    function_stem=_function_stem, set_options=_set_options)
+
+
+def _register_extensions():
+    from . import interaction_algebra, interaction_ranges, interaction_variable
+
+    modules = (interaction_algebra, interaction_ranges, interaction_variable)
+    tables = {"answers": ANSWERS, "stem_graphs": STEM_GRAPHS, "option_graphs": OPTION_GRAPHS,
+              "completion_graphs": COMPLETION_GRAPHS}
+    for module in modules:
+        for name, additions in module.register(EXTENSION_API).items():
+            if name not in tables or tables[name].keys() & additions.keys():
+                raise ValueError("interaction.extension_conflict:" + name)
+            tables[name].update(additions)
+    return tuple(Path(module.__file__).resolve() for module in modules)
+
+
+ENGINE_FILES += _register_extensions()
+IMPLEMENTED_GENERATORS = frozenset(name for source in ANSWERS.values() for name in source["generators"])

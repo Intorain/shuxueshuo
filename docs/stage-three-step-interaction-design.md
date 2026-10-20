@@ -1,11 +1,11 @@
 # 阶段三步骤交互卡技术方案
 
-> 状态：设计已确认；三轮审查修订已纳入（2026-10-20）。第 1 阶段（规则与编译）、第 2 阶段（独立执行、事件与存储）、第 3 阶段（前端适配）与第 4 阶段（图像）已实现，第 5～6 阶段待实施。分批验证记录见第 13 节。
+> 状态：设计已确认；三轮审查修订已纳入（2026-10-20）。第 1～5 阶段已实现，第 6 阶段（阶段④衔接）待实施。分批验证记录见第 13 节。
 > 相关文档：[阶段三实施计划](graph-guided-stage-three-implementation-plan.md)、[图谱引导交互课设计](graph-guided-interactive-lesson-design.md)、[Q01 Demo 设计](graph-walk-demo-q01-design.md)。
 
 ## 1. 背景与目标
 
-阶段三已经能为真实拍题逐步产出通过局部检查的数学步骤（新卡为 `graph-math-step/v2`），网页端也能实时接收，整条路线随后完成独立验证。但这些步骤目前只渲染成**只读卡片**（标题、变形前后公式、说明），学生在“自己做”模式下只能点“下一步”往下读。
+接入本方案前，阶段三已能为真实拍题逐步产出通过局部检查的数学步骤（新卡为 `graph-math-step/v2`），网页端也能实时接收，整条路线随后完成独立验证。这些步骤原来只渲染成**只读卡片**（标题、变形前后公式、说明），学生在“自己做”模式下只能点“下一步”往下读。
 
 Demo（`site/data/graph-walk/quadratic-always-q01.json`）里的方法步骤则是**交互题**：学生先作答（单选、多选、逐项核对、填空），答对后才展示该步结果并点亮图谱。
 
@@ -18,7 +18,7 @@ Demo（`site/data/graph-walk/quadratic-always-q01.json`）里的方法步骤则�
 
 不在本方案范围：阶段④大模型生成的问答（`step_qa`）本身；正式登录与额度；选方法、选路线（D3、D4）的交互，它们已由阶段二和图谱准入负责。
 
-## 2. 现状
+## 2. 接入交互前的基线
 
 ### 2.1 数据流
 
@@ -53,7 +53,7 @@ flowchart LR
 | `fill` | 每个空一个 `term` | `{terms: [...]}` | 从候选项中选数填空 |
 | `grid`、`plane` | 坐标格 | `{cell}` | 读题、选方法，本方案不用 |
 
-流式路线已有雏形：`extendStreamBundle` 为每条路线建 `{streaming: true, steps: []}`；`currentDecision` 在 `steps` 用完时返回空，页面显示等待卡（`bundle.pending`）；路线 `streaming` 期间不会判定完成。**也就是说，引擎天然支持“步骤边到边做”，只是现在 `steps` 永远为空。**
+接入前，`extendStreamBundle` 为每条路线建 `{streaming: true, steps: []}`；`currentDecision` 在 `steps` 用完时返回空，页面显示等待卡（`bundle.pending`）；路线 `streaming` 期间不会判定完成。本方案沿用这些机制，并将服务端最终决议的交互投影为可作答步骤，实施情况见第 13 节。
 
 ## 3. 已确认的设计决定
 
@@ -151,7 +151,7 @@ flowchart LR
 
 问题与反馈模板沿用 `presentation-registry.json` 的 `${变量}` 写法，复用已有的模板渲染器。
 
-这里的 `registry.json` 是待实现的配置文件。服务端并非预先知道某题“第 10、11 张要合并”，而是运行时发现 `boundary` 后紧接 `goal_finalization`，按 `boundary-goal` 规则分组；同一规则也适用于另一条路线的第 5、6 张。`goal_finalization` 是展示单元 ID，其展示模板实际为 `goal_minimum` 或 `goal_maximum`，因此合并明确按 `display_unit` 匹配。边界卡与目标收束卡也必须将这一标识及精确变量交给交互编译器，不能只接入普通 `render_unit` 产生的卡片。合并期间的待定状态及最终分组结果由服务端提供，前端不得仅凭后一张数学卡到达就把前一张定为只读。
+这里的 `registry.json` 已随第 1 阶段实现。服务端并非预先知道某题“第 10、11 张要合并”，而是运行时发现 `boundary` 后紧接 `goal_finalization`，按 `boundary-goal` 规则分组；同一规则也适用于另一条路线的第 5、6 张。`goal_finalization` 是展示单元 ID，其展示模板实际为 `goal_minimum` 或 `goal_maximum`，因此合并明确按 `display_unit` 匹配。边界卡与目标收束卡也必须将这一标识及精确变量交给交互编译器，不能只接入普通 `render_unit` 产生的卡片。合并期间的待定状态及最终分组结果由服务端提供，前端不得仅凭后一张数学卡到达就把前一张定为只读。
 
 首批合并规则只覆盖两张相邻卡，要求 `case_path` 相同；规则加载时拒绝会同时匹配同一对卡片的配置。合并题的 `parts` 沿用单卡规则的字段，按输入列表中的两个展示单元读取变量，不能用字典覆盖同名变量。匹配、失配与路线结束时的处理见第 6.4 节。
 
@@ -534,7 +534,7 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
 
 按同一规则，分离参数路线（6 张卡）预计：第 1 张变形（`divided`，问“同除 \(x\) 后不等号是否改变”）、第 2 张定策略、第 3 张求值域、第 5 + 6 张合并出题；第 4 张解一次不等式只读。具体以规则编写后的编译结果为准。
 
-第 1 阶段实测：分离路线定策略卡冻结时只有通用网格和自身常数，“端点条件”“最小值存在”与正确答案在这些代表值上无法区分，默认规则只剩两个选项。因此为 `method-separation#quantifier` 配置覆盖规则，改用 `swap_bound`、`flip_direction` 等早期可证的干扰项，编译后为三选一；第 2 张定策略和第 5 + 6 张合并题已出题，变形、求值域与解不等式卡暂无规则（第 5 阶段覆盖）。
+第 1 阶段实测：分离路线定策略卡冻结时只有通用网格和自身常数，“端点条件”“最小值存在”与正确答案在这些代表值上无法区分，默认规则只剩两个选项。因此为 `method-separation#quantifier` 配置覆盖规则，改用 `swap_bound`、`flip_direction` 等早期可证的干扰项，编译后为三选一；当时第 2 张定策略和第 5 + 6 张合并题已出题，变形、求值域与解不等式卡尚无规则；第 5 阶段已为这些模板增加规则，实际出题数以本次冻结 seed 编译报告为准。
 
 ## 10. 规则编写所需的变量补充
 
@@ -542,10 +542,10 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
 
 | 模板 | 需要的变量 | 现状 |
 | --- | --- | --- |
-| `policy` | `policy`（比较下确界还是上确界）、`relation`、`domain` | 已有 `policy`；`relation`、`domain` 需从路线上下文传入 |
-| `interval_cases` | 分类依据种类、每个分界点的精确值 | 只有渲染好的 `cases` 条件，需输出分界点列表 |
-| `classified_range` | `bound_value`、`bound_attained`、**确界位置**（左端、顶点、右端） | 缺确界位置 |
-| `interval_conditions` | 解出的集合、本情况范围、交集 | 已有，需结构化区分三者 |
+| `policy` | `policy`（比较下确界还是上确界）、`relation`、`domain` | 已冻结 `policy`、函数、参数式，以及路线上下文中的关系与定义域 |
+| `interval_cases` | 分类依据种类、每个分界点的精确值 | 已冻结精确 `cases` 条件、参数域和分类证据；只读取本卡已有边界 |
+| `classified_range` | `bound_value`、`bound_attained`、**确界位置**（左端、顶点、右端） | 已有 `range.candidates[].location`、精确值与可达性 |
+| `interval_conditions` | 解出的集合、本情况范围、交集 | 已冻结 `conditions`、`solutions`、`case.domain` 和最终集合 |
 | `interval_merge` | 各段集合、并集 | 已有 |
 | `boundary` | 每个边界点及是否保留 | 已有 `checks` |
 | `goal_minimum` / `goal_maximum`（展示单元 `goal_finalization`） | 目标种类、取值、是否取到 | 已有 |
@@ -637,7 +637,21 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
    - 回归（2026-10-20）：阶段③全部后端测试 1891 passed，失败 5 个：换主元 `batch_five` 4 个为其他工作流既有失败；`interaction_jobs` 的 `slow_dispatch` 计时用例在 4 进程并行下未同时出现两种超时原因，单独运行通过。修复后核心后端子集 205 passed，前端测试 555 passed，Ruff、JS 语法及 `git diff --check` 通过。
    - 审查修复验收（2026-10-20）：原 3 项 P2 与图像契约 P3 已修复；继续复查发现的跨选项像素取整漏判、小尺度驻点、函数端点覆盖及严格不等式极小值误判也已修复。最终代码固定后，后端交互/调度/存储/拍题续接联合回归 232 passed，前端流/状态/引擎/拍题联合回归 235 passed，Ruff、JS 语法与 `git diff --check` 通过。本轮没有重跑全部阶段③数学测试。
    - 修复后真实网页验收：[Q13 报告](../internal/solver-runs/graph-guided-stage-three/interaction-graphs-review-q13-20261020-01/index.html)、[Q01 报告](../internal/solver-runs/graph-guided-stage-three/interaction-graphs-review-q01-20261020-01/index.html)。两题均完成双路线、刷新/草稿恢复、迟到交互、独立 AI 回放、图谱路径与撤销；Q13 共 17 张数学卡，验收计数为 3 张题干图、4 组图像选项、3 次完成图展示、2 次含空心点选项展示，已检查图像选项截图。两次浏览器均无未捕获错误，新增真实 LLM 调用为 0。继续复审未发现新的确定问题。
-5. **覆盖其余模板**：判别式法、分离参数、换主元等剩余模板的规则与图像；22 份录制回归统计。
+5. **覆盖其余模板**（已实现）：为全部 33 个展示模板声明交互或明确只读规则，沿用同一流式提交、前端组件与独立交互预算。
+   - 编译器按职责拆为 `interaction_algebra.py`、`interaction_ranges.py`、`interaction_variable.py`，由 `interaction.py` 调用各自的 `register(api)` 接入。`api` 是白名单接口 `EXTENSION_API`，只开放 31 个名字（候选、只读/退图异常、绘图、精确比较、集合校验及 Q13 规则复用的事实函数），扩展不能访问核心模块的其他私有函数；名单由测试固定，新增开放项需显式修改。扩展模块均纳入交互引擎版本，并排除在数学指纹之外。本批没有修改数学执行、数学卡或 seed 采集。
+   - 代数：规范化关系、开口图像多选、判别式条件、退化系数与判定、情况并集、配方极值、参数解集。开口图是明确标注的一般位置示意；判别式和解集候选必须满足本卡冻结题设、当前情况与必要开口条件，不能使用条件外的反例。缺少必要冻结字段则只读。
+   - 分离参数与值域：正/负除数的不等号方向、移项、数值值域、端点候选、倒数值域。已分离卡明确 `repeat: never`；“移项”问题只指单独移项，不包含交换两边。删去端点只有在当前允许的参数值下改变确界或可达性时才作错项，等值或冗余端点不能直接判错。函数值范围不与参数取值范围混淆；不可画的一般分式保留公式选项。
+   - 换主元与收束：变化字母/所求字母、一次项和常数项、端点代入及可达性、零斜率情况、全称求交/存在求并、情况合并，独立边界卡与最小值/最大值状态。表达式差异通过本题允许参数和当前情况内的精确反例验证；集合在相同作用域内等价的候选丢弃。完成图横轴使用实际变化字母，并复核所取参数下的确界与可达性。
+   - `policy` 同时支持全称与存在：存在型非严格比较必须在等号成立时能取到相应确界，严格比较直接比较确界；文案不再把存在型称为恒成立。代表值仍只来自本卡冻结内容和固定网格。
+   - 新增离线工具 `server/tools/compile_graph_stage_three_interactions.py`：读取真实冻结 seed 和对应数学卡，核对卡片哈希、顺序、路线完整性与结果状态，再生成逐路线问答、图像、诊断、规则和来源哈希。拒绝缺 seed 的旧产物，不从最终表达式补造 seed，也不修改原始录制。数学录制完成后可反复验收规则，毋须重跑数学。
+   - [22 份录制覆盖报告](../internal/solver-runs/graph-guided-stage-three/interaction-coverage-review-20261020-01/compiled-recordings/index.html)：复用此前按标准预算执行的 22 份阶段②录制，38 条路线全部 `verified`，244 张卡的 seed 与数学卡全部匹配；本轮按修复后的规则重新编译得到 196 张交互卡、202 问、48 张只读卡，待定与编译错误均为 0。只读原因：重复规则 26、有效选项不足 18、无法核实答案适用条件 4。本轮只重编交互，没有重新运行这 22 份数学求解。
+   - 覆盖范围如实区分：规则声明 33 个模板，22 份录制实际出现 25 个，其中 24 个至少生成一道交互；`separated` 按规则全部只读。未出现的 8 个模板是 `goal_minimum`、`goal_maximum`、`moved`、`numeric_range` 及四个 `variable_case*` 模板，另由构造测试与 Q13 网页验收覆盖，不将它们计入这 22 份录制。报告含 34 张题干图、278 张选项图、8 张完成图；2 处图像无法可靠表达时退回文字，数学答案保持不变。
+   - 首轮实现回归（2026-10-20，后续规则修订前）：后端交互/调度/存储/拍题联合回归 319 passed；随后增加未出现在录制里的 `moved`、`numeric_range`、`variable_case_merge` 三条用例，其所在两个文件复测 55 passed，合计覆盖 322 个不同用例。前端流/状态/引擎/拍题回归 235 passed，Ruff、JS 语法及 `git diff --check` 通过；没有重跑全部阶段③数学测试。数学指纹与重新冻结时相同；当前规则与引擎哈希见下方本轮复审记录。
+   - 首轮真实网页验收（后续规则修订前）：[Q01 判别式/分离](../internal/solver-runs/graph-guided-stage-three/interaction-coverage-q01-20261020-01/index.html)、[Q08 换主元](../internal/solver-runs/graph-guided-stage-three/interaction-coverage-q08-20261020-03/index.html)、[Q13 最小值](../internal/solver-runs/graph-guided-stage-three/interaction-coverage-q13-20261020-02/index.html) 均通过作答、草稿/刷新恢复、迟到交互、独立 AI 回放、图谱路径与撤销；双路线题另核对路线隔离。三题均无浏览器未捕获错误，新增真实 LLM 调用为 0。Q02/Q03/Q08/Q09 的旧版覆盖报告另在桌面及 390px 手机宽度核对，公式和图像无错误、无横向溢出。
+   - 浏览器验收脚本同步修正三处旧假设：等待所有计划路线及其交接完成，避免仅看到首条路线就提前验收；按真实首卡是否含 `before` 检查题干公式；换主元证据按当前 `parameter_linear_case_range` 能力核对。原数学金标、完整路线和真实调用路径校验保留。交叉复查中发现并修复的端点冗余、情况集合判等和开口条件作用域问题均有回归；最终复查未发现新的确定正确性问题。
+   - 审查修复：多行勾选题每行按 `max_options`（缺省 4）截取干扰项，覆盖报告中原有 2 行 5 个选项的情况不再出现，题目数不变。`policy` 干扰项反馈按量词分 `universal`/`existential` 两套，恢复全称型原有的具体讲解；答对反馈写明“对所有 $x$ 都成立”或“至少有一个 $x$ 使它成立”。量词互换项改为“对所有 …，… 都成立”。
+   - 继续复审修复（2026-10-20）：`variable_case_range` 两道题在作答前明确展示当前情况条件，真实冻结 seed 回归覆盖五种参数情况；规则加载时核对有效 `min_options <= max_options`，含默认值、合并与方法覆盖，勾选题截取后再次核对最低选项数。旧报告保留为历史记录，本文主链接已替换为新报告；逐行核对全部勾选题不超过 4 个选项，报告的规则与引擎哈希均与当前代码匹配。
+   - 本轮验证：交互/图像/覆盖工具联合回归 250 passed，覆盖工具/调度/任务回归 37 passed，扣除 16 个重复用例共 271 个不同用例通过；另核对 16 条真实换主元路线变式与 72 组端点候选枚举，未发现新的确定问题。Ruff、JS 语法及 `git diff --check` 通过。真实 LLM 调用为 0；本轮未重跑全部阶段③数学测试、前端测试或浏览器验收。[哈希与选项数量核对记录](../internal/solver-runs/graph-guided-stage-three/interaction-coverage-review-20261020-01/review-verification.json)。
 6. **阶段④衔接**：允许 `step_qa` 为交互题改写选错后的反馈，但不改变选项、正确答案和图像参数。
 
 ## 14. P2 审查处理与实施门槛

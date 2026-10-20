@@ -28,7 +28,9 @@ export function currentDecision(bundle, state) {
   if (state.introCompleted.length < bundle.intro.length) {
     return bundle.intro[state.introCompleted.length];
   }
-  return bundle.routes[state.run.route]?.steps[state.run.completed.length] || null;
+  const route = bundle.routes[state.run.route];
+  if (bundle.stream && route?.available === false) return null;
+  return route?.steps[state.run.completed.length] || null;
 }
 
 export function gradeDecision(decision, answer) {
@@ -39,7 +41,9 @@ export function gradeDecision(decision, answer) {
   }
   const component = decision.interaction;
   try {
-    if (component.type === 'multi') {
+    if (component.type === 'read') {
+      if (answer !== 'read') throw new Error('请确认已经读完这一步。');
+    } else if (component.type === 'multi') {
       const {required, allowed} = decision.expected_answer;
       if (!Array.isArray(answer) || new Set(answer).size !== answer.length ||
           answer.some(value => !allowed.includes(value)) || !required.every(value => answer.includes(value))) {
@@ -114,7 +118,9 @@ function completeDecision(bundle, next, decision, answer, reason) {
     reason: typeof reason === 'string' ? reason.slice(0, 6000) : '',
     results: copy(decision.effects?.results || []),
     calls: copy(decision.effects?.calls || []),
-    runId: decision.source === 'page' ? next.run.id : null,
+    runId: ['page', 'stream'].includes(decision.source) ? next.run.id : null,
+    ...(decision.source === 'stream' ? {source: 'stream', stream_steps: copy(decision.stream_steps),
+      stream_last_part: decision.stream_last_part} : {}),
   };
   if (next.introCompleted.length < bundle.intro.length) {
     next.introCompleted.push(entry);
@@ -126,7 +132,7 @@ function completeDecision(bundle, next, decision, answer, reason) {
   } else {
     next.run.completed.push(entry);
   }
-  next.done = next.introCompleted.length === bundle.intro.length &&
+  if (!bundle.stream) next.done = next.introCompleted.length === bundle.intro.length &&
     Boolean(next.run.route) && !bundle.routes[next.run.route].streaming &&
     next.run.completed.length === bundle.routes[next.run.route].steps.length;
 }
@@ -146,7 +152,54 @@ export function submitAnswer(bundle, state, action) {
   };
   next.events.push({kind: 'answer', action: safeAction, status: feedback.status, runId: next.run.id});
   if (feedback.status === 'passed') completeDecision(bundle, next, decision, action.answer, action.reason);
+  if (bundle.stream && feedback.status === 'passed') next.streamDraft = null;
+  return bundle.stream ? refreshStreamState(bundle, next) : next;
+}
+
+function saveStreamRoute(bundle, state) {
+  const intro = new Set(bundle.intro.map(item => item.id));
+  state.streamRoutes ||= {};
+  state.streamIntroEvents = state.events.filter(event => event.kind === 'answer' && intro.has(event.action.decision));
+  if (state.run.route) state.streamRoutes[state.run.route] = {
+    run: copy(state.run), events: copy(state.events.filter(event => event.kind === 'answer' && !intro.has(event.action.decision))),
+    lastFeedback: copy(state.lastFeedback), draft: copy(state.streamDraft || null),
+  };
+}
+
+/** Recompute streamed completion without discarding records ahead of an initial snapshot. */
+export function refreshStreamState(bundle, state) {
+  checkVersion(bundle, state);
+  if (!bundle.stream) return copy(state);
+  const next = copy(state), route = bundle.routes[next.run.route];
+  const decisions = route?.steps || [];
+  for (let index = 0; index < Math.min(decisions.length, next.run.completed.length); index++) {
+    if (decisions[index].id !== next.run.completed[index].decision) throw new Error('stream.progress_mismatch');
+  }
+  next.done = next.introCompleted.length === bundle.intro.length && Boolean(route?.math_complete) &&
+    route.available !== false && route.interactions_complete && decisions.length > 0 &&
+    decisions.length === next.run.completed.length;
+  const decision = currentDecision(bundle, next);
+  if (next.done || (decision && next.streamDraft?.decision !== decision.id)) next.streamDraft = null;
+  // Incomplete startup projections may not contain D3/D4 or the active route yet.
+  // Do not reclassify already saved selection events as route answers in that gap.
+  if (next.introCompleted.length <= bundle.intro.length) saveStreamRoute(bundle, next);
   return next;
+}
+
+export function setStreamDraft(bundle, state, draft) {
+  checkVersion(bundle, state);
+  if (!bundle.stream) throw new Error('stream.not_streaming');
+  const next = copy(state), decision = currentDecision(bundle, next);
+  if (draft !== null && (!decision || draft?.decision !== decision.id)) throw new Error('stream.draft_decision_mismatch');
+  next.streamDraft = copy(draft);
+  saveStreamRoute(bundle, next);
+  return next;
+}
+
+export function streamDraft(bundle, state) {
+  checkVersion(bundle, state);
+  const draft = state.streamDraft;
+  return bundle.stream && draft?.decision === currentDecision(bundle, state)?.id ? copy(draft) : null;
 }
 
 export function switchRoute(bundle, state, route) {
@@ -156,18 +209,24 @@ export function switchRoute(bundle, state, route) {
   }
   const next = copy(state);
   if (bundle.stream) {
+    if (route === next.run.route) return refreshStreamState(bundle, next);
     const choice = methodChoice(bundle);
     const method = choice?.interaction.methods.find(item => item.route === route);
     const confirmation = bundle.intro.find(item => item.route_by_answer?.[route] === route);
-    if (!method || !confirmation) throw new Error('这条路线暂不支持，请选择可用路线。');
+    if (!method || !confirmation || bundle.routes[route].available === false) throw new Error('这条路线暂不支持，请选择可用路线。');
+    saveStreamRoute(bundle, next);
     next.introCompleted = next.introCompleted.map(entry => entry.decision === choice.id
       ? {...entry, answer: [...choice.expected_answer.cell, method.value]}
       : entry.decision === confirmation.id ? {...entry, answer: route} : entry);
-    next.run = {id: next.nextRun++, route, completed: []};
-    next.lastFeedback = null;
-    next.done = false;
-    next.events.push({kind: 'switch_route', route, status: 'passed', runId: next.run.id});
-    return next;
+    next.streamIntroEvents = next.streamIntroEvents.map(event => event.status !== 'passed' ? event
+      : event.action.decision === choice.id ? {...event, action: {...event.action, answer: [...choice.expected_answer.cell, method.value]}}
+      : event.action.decision === confirmation.id ? {...event, action: {...event.action, answer: route}} : event);
+    const saved = next.streamRoutes[route];
+    next.run = saved ? copy(saved.run) : {id: next.nextRun++, route, completed: []};
+    next.lastFeedback = copy(saved?.lastFeedback || null);
+    next.streamDraft = copy(saved?.draft || null);
+    next.events = [...copy(next.streamIntroEvents), ...copy(saved?.events || [])];
+    return refreshStreamState(bundle, next);
   }
   if (next.run.completed.length) next.archives.push(copy(next.run));
   next.run = {id: next.nextRun++, route: null, completed: []};
@@ -183,6 +242,18 @@ export function switchRoute(bundle, state, route) {
 
 export function undo(bundle, state) {
   checkVersion(bundle, state);
+  if (bundle.stream && state.introCompleted.length >= bundle.intro.length && state.run.route) {
+    const next = copy(state);
+    saveStreamRoute(bundle, next);
+    const history = next.streamRoutes[next.run.route].events;
+    const last = history.findLastIndex(event => event.status === 'passed');
+    const retained = last < 0 ? [] : history.slice(0, last);
+    next.run.completed = next.run.completed.slice(0, retained.filter(event => event.status === 'passed').length);
+    next.events = [...copy(next.streamIntroEvents), ...copy(retained)];
+    next.lastFeedback = null;
+    next.streamDraft = null;
+    return refreshStreamState(bundle, next);
+  }
   const last = state.events.findLastIndex(event => event.status === 'passed');
   if (last < 0) return createState(bundle);
   let next = createState(bundle);
@@ -192,7 +263,7 @@ export function undo(bundle, state) {
       : submitAnswer(bundle, next, event.action);
   }
   next.lastFeedback = null;
-  return next;
+  return bundle.stream ? refreshStreamState(bundle, next) : next;
 }
 
 function publicInteraction(component) {
@@ -228,7 +299,7 @@ export function projectDecision(bundle, state) {
     results: [...state.introCompleted, ...state.run.completed].flatMap(entry => entry.results.map(value => ({step: entry.decision, value}))),
     interaction,
     candidates,
-    answerFormat: interaction.type === 'choice'
+    answerFormat: interaction.type === 'read' ? {decision: decision.id, answer: 'read'} : interaction.type === 'choice'
       ? {decision: decision.id, answer: '一个选项的 value 字符串', reason: '简短说明'}
       : interaction.type === 'plane'
         ? {decision: decision.id, answer: ['横轴 x 选项的 value', '纵轴 y 选项的 value', '覆盖这一格的一种方法的 value'], reason: '简短说明'}
@@ -247,6 +318,7 @@ function decisionById(bundle, id) {
 
 function confirmedGraph(bundle, entries, route, runId) {
   const nodes = new Set(), edges = new Set(), usedBasis = new Set(), calls = [], logs = [];
+  const selectedRoute = bundle.routes[route];
   const realEdges = new Set(bundle.graph.edges.map(edge => edge.id));
   const edge = id => { if (realEdges.has(id)) edges.add(id); };
   for (const entry of entries) {
@@ -255,8 +327,8 @@ function confirmedGraph(bundle, entries, route, runId) {
     for (const id of effects.nodes || []) nodes.add(id);
     for (const id of effects.edges || []) edge(id);
     if (effects.log) logs.push({decision: entry.decision, text: effects.log});
-    if (decision?.interaction.type === 'plane' && route) {
-      logs.push({decision: entry.decision, text: `作答判断：选择「${bundle.routes[route].label}」，执行本路线的方法步骤。`});
+    if (decision?.interaction.type === 'plane' && selectedRoute) {
+      logs.push({decision: entry.decision, text: `作答判断：选择「${selectedRoute.label}」，执行本路线的方法步骤。`});
     }
     for (const [index, call] of entry.calls.entries()) {
       const ref = nodeId(call.ref);
@@ -270,8 +342,8 @@ function confirmedGraph(bundle, entries, route, runId) {
       }
     }
   }
-  if (route) {
-    const method = bundle.routes[route].method;
+  if (selectedRoute) {
+    const method = selectedRoute.method;
     nodes.add(method);
     edge(`rule-quadratic-method|selects|${method}`);
   }
@@ -286,15 +358,16 @@ export function graphState(bundle, state) {
   const edges = Object.fromEntries(bundle.graph.edges.map(edge => [edge.id, 'idle']));
   for (const id of confirmed.nodes) if (id in nodes) nodes[id] = 'confirmed';
   for (const id of confirmed.edges) edges[id] = 'chosen';
-  const focus = current?.candidateNodes?.length ? current.candidateNodes : state.run.route ? [bundle.routes[state.run.route].method] : [];
+  const selectedRoute = bundle.routes[state.run.route];
+  const focus = current?.candidateNodes?.length ? current.candidateNodes : selectedRoute ? [selectedRoute.method] : [];
   for (const id of focus) if (id in nodes && nodes[id] === 'idle') nodes[id] = 'candidate';
   if (current?.interaction.type === 'plane') {
     nodes['rule-quadratic-method'] = 'active';
     for (const edge of bundle.graph.edges.filter(edge => edge.from === 'rule-quadratic-method' && edge.type === 'selects')) {
       if (edges[edge.id] !== 'chosen') edges[edge.id] = 'candidate';
     }
-  } else if (current?.source === 'page' && state.run.route) {
-    nodes[bundle.routes[state.run.route].method] = 'active';
+  } else if (current?.source === 'page' && selectedRoute) {
+    nodes[selectedRoute.method] = 'active';
   }
   const archivedEdges = new Set();
   for (const run of state.archives) {
@@ -386,9 +459,72 @@ function publicCallPath(call, nodes, edges) {
   return direct && occurrence >= 0 ? {edge: direct.id, occurrence, edges: [direct.id]} : null;
 }
 
+const failedStreamRoute = status => ['capability_gap', 'math_failed', 'execution_error', 'conflict', 'unavailable'].includes(status);
+const unavailableStreamGoal = goal => Boolean(goal && (goal.status === 'conflict' || goal.available === false ||
+  goal.reason === 'route_consistency_undecidable'));
+
+function streamDecisions(cards, states, chunks, enabled) {
+  const result = [], covered = new Set(), chunkById = new Map(chunks.map(chunk => [chunk.interaction_id, chunk]));
+  const byId = new Map(cards.map(card => [card.step_id, card]));
+  const read = (card, interactionId = null) => ({id: card.step_id, source: 'stream', title: card.title,
+    question: '', interaction: {type: 'read'}, expected_answer: 'read', submit_label: '读完了，下一步',
+    stream_steps: [{step_id: card.step_id, math_step_sha256: card.math_step_sha256}],
+    stream_last_part: true, stream_interaction_id: interactionId,
+    effects: {nodes: [], edges: [], calls: [], results: [], log: `已阅读：${card.title}`}});
+  for (const card of cards) {
+    if (covered.has(card.step_id)) continue;
+    if (!enabled) { result.push(read(card)); continue; }
+    const state = states.find(row => row.route_id === card.route_id && row.step_id === card.step_id);
+    if (!state || state.status === 'pending') break;
+    if (state.math_step_sha256 !== card.math_step_sha256) throw new Error('stream.interaction_hash_mismatch');
+    const chunk = chunkById.get(state.interaction_id);
+    if (!chunk || chunk.status !== state.status || chunk.route_id !== card.route_id || chunk.target_ref !== card.target_ref) {
+      throw new Error('stream.invalid_interaction');
+    }
+    if (!Array.isArray(chunk.steps) || !chunk.steps.length || chunk.steps.length > 2 ||
+        !Array.isArray(chunk.parts) || (chunk.status === 'interactive' ? !chunk.parts.length : chunk.parts.length)) {
+      throw new Error('stream.invalid_interaction');
+    }
+    const members = chunk.steps.map((ref, index) => {
+      const member = byId.get(ref.step_id);
+      const decision = states.find(row => row.route_id === card.route_id && row.step_id === ref.step_id);
+      if (!member || member.ordinal !== card.ordinal + index || member.math_step_sha256 !== ref.math_step_sha256 ||
+          decision?.interaction_id !== chunk.interaction_id || decision.status !== chunk.status ||
+          decision.math_step_sha256 !== ref.math_step_sha256) throw new Error('stream.invalid_interaction');
+      return member;
+    });
+    for (const member of members) covered.add(member.step_id);
+    if (chunk.status === 'readonly') {
+      result.push(...members.map(member => read(member, chunk.interaction_id)));
+    } else if (chunk.status === 'interactive') {
+      result.push(...chunk.parts.map((part, index) => ({...copy(part), source: 'stream',
+        stream_steps: copy(chunk.steps), stream_last_part: index === chunk.parts.length - 1,
+        stream_interaction_id: chunk.interaction_id,
+        effects: {nodes: [], edges: [], calls: [], results: [], log: part.effects?.log || `完成判断：${part.title || card.title}`}})));
+    } else throw new Error('stream.invalid_interaction');
+  }
+  if (result.some(item => typeof item.id !== 'string' || !item.id) || new Set(result.map(item => item.id)).size !== result.length) {
+    throw new Error('stream.invalid_decision');
+  }
+  return result;
+}
+
+function streamRouteState(view, target, route, previous = {}) {
+  const completion = view.completions?.find(item => item.identity?.[0] === target && item.identity?.[1] === route) ||
+    view.handoffs?.find(item => item.target_ref === target && item.route_id === route);
+  const routeStatus = view.route_statuses?.find(([key]) => key === JSON.stringify([target, route]))?.[1];
+  const checkpoint = view.checkpoints?.find(item => item.target_ref === target && item.route_id === route);
+  const status = routeStatus?.status || checkpoint?.status || previous.status || 'running';
+  const available = !unavailableStreamGoal(view.goals?.[target]) && completion?.available !== false && !failedStreamRoute(status) &&
+    (view.goals === undefined && !completion && !routeStatus && !checkpoint ? previous.available !== false : true);
+  return {status: available && (completion?.status === 'verified' || checkpoint?.status === 'verified') ? 'verified' : status,
+    available, math_complete: available && (completion?.status === 'verified' || checkpoint?.status === 'verified' ||
+      (!completion && !checkpoint && previous.math_complete === true))};
+}
+
 /** Add selection and graph evidence without changing the mathematical DOM.
  * The version includes the run identity from the first snapshot; later chunks
- * cannot reset D1/D2 answers, drafts or an independently stored reading cursor.
+ * cannot reset D1/D2 answers, route answers or drafts.
  */
 export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph) {
   const identity = {run_id: view.run_id, lesson_version: view.lesson_version,
@@ -421,10 +557,18 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
   const stepCalls = copy(base.stream?.step_calls || {});
   for (const step of mathSteps) {
     const calls = sourceCalls(view, step);
-    if (calls.length) stepCalls[streamStepKey(step)] = calls.filter(call => !call.ref || publicCallPath(call, nodes, edges));
+    if (calls.length) stepCalls[streamStepKey(step)] = calls.filter(call => !call.ref || !nodes.has(call.ref) || publicCallPath(call, nodes, edges));
   }
+  const interactionStates = (view.interaction_states || base.stream?.interaction_states || []).filter(row => row.target_ref === targetRef);
+  const interactions = (view.interactions || base.stream?.interactions || []).filter(chunk => chunk.target_ref === targetRef);
+  const declaredProtocol = view.interaction_protocol === undefined ? base.stream?.interaction_protocol || null : view.interaction_protocol;
+  if (declaredProtocol !== null && declaredProtocol !== 'graph-step-interaction/v1') throw new Error('stream.invalid_interaction_protocol');
+  // A first math event can precede a fresh protocol-bearing snapshot. Its
+  // explicit pending state must never be mistaken for a legacy read-only card.
+  const interactionProtocol = declaredProtocol || (interactionStates.length || interactions.length ? 'graph-step-interaction/v1' : null);
   bundle.stream = {...identity, base_bundle_version: baseVersion, d3: copy(d3 || null), d4: copy(d4 || null),
-    math_steps: copy(mathSteps), step_calls: stepCalls};
+    math_steps: copy(mathSteps), step_calls: stepCalls, interaction_protocol: interactionProtocol,
+    interaction_states: copy(interactionStates), interactions: copy(interactions)};
 
   const ids = new Set(base.graph.nodes.map(node => node.id));
   for (const step of mathSteps) {
@@ -472,7 +616,19 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
       id: option.route_id, method: option.method, label: nodes.get(option.method)?.label || option.method,
       streaming: true, route_plan: option.route_plan, steps: [], takeaway: '',
     }]));
-    bundle.pending = {title: '解题步骤', status: '正在计算', text: '已完成的数学步骤会逐步显示。'};
+    bundle.pending = {title: '解题步骤', status: '准备中', text: '正在准备这一步的练习'};
+  }
+  for (const [id, route] of Object.entries(bundle.routes)) if (route.streaming) {
+    const cards = mathSteps.filter(card => card.route_id === id).sort((left, right) => left.ordinal - right.ordinal);
+    const decisions = streamDecisions(cards, interactionStates, interactions, interactionProtocol !== null);
+    const previous = base.routes[id];
+    for (let index = 0; index < (previous?.steps.length || 0); index++) {
+      if (JSON.stringify(previous.steps[index]) !== JSON.stringify(decisions[index])) throw new Error('stream.immutable_decision');
+    }
+    const resolved = new Set(decisions.flatMap(decision => decision.stream_steps.map(ref => ref.step_id)));
+    Object.assign(route, streamRouteState(view, targetRef, id, previous), {steps: decisions,
+      interactions_complete: cards.length > 0 && resolved.size === cards.length,
+      pending_count: cards.length - resolved.size});
   }
   bundle.graph = {...bundle.graph, nodes: [...ids].map(id => copy(nodes.get(id))),
     edges: [...edges.values()].filter(edge => ids.has(edge.from) && ids.has(edge.to)).map(copy)};
@@ -486,45 +642,62 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
   return bundle;
 }
 
-/** Only explicitly reached mathematical cards contribute to the learning graph. */
-export function streamGraphState(bundle, state, {steps = [], route = state.run.route} = {}) {
-  const view = graphState(bundle, state);
-  if (!bundle.stream || route !== state.run.route || state.introCompleted.length < bundle.intro.length) return view;
-  const known = new Map(bundle.stream.math_steps.map(step => [streamStepKey(step), step]));
-  const used = new Set(view.usedBasis);
+/** Checked graph evidence for one exact committed card; independent of reading state. */
+export function streamStepGraph(bundle, passed) {
+  const result = {nodes: [], edges: [], usedBasis: [], calls: [], logs: []};
+  if (!bundle.stream || !passed || !sameStream(bundle.stream, passed)) return result;
+  const key = streamStepKey(passed), step = bundle.stream.math_steps.find(value => streamStepKey(value) === key);
+  if (!step || passed.math_step_sha256 !== step.math_step_sha256) return result;
+  const nodes = new Set(), edges = new Set(), used = new Set();
   const graphNodes = new Map(bundle.graph.nodes.map(node => [node.id, node]));
-  const graphEdges = new Map(bundle.graph.edges.map(item => [item.id, item]));
-  const edge = id => { if (id in view.edges) view.edges[id] = 'chosen'; };
-  const light = ref => { if (ref && nodeId(ref) in view.nodes) view.nodes[nodeId(ref)] = 'confirmed'; };
-  const seen = new Set();
-  for (const passed of steps) {
-    const key = streamStepKey(passed), step = known.get(key);
-    if (!step || seen.has(key) || !sameStream(bundle.stream, passed) || passed.route_id !== route ||
-        passed.math_step_sha256 !== step.math_step_sha256) continue;
-    seen.add(key);
-    const calls = bundle.stream.step_calls[key] || [];
-    for (const [index, call] of calls.entries()) {
-      if (!(call.method in view.nodes)) continue;
-      const path = call.ref ? publicCallPath(call, graphNodes, graphEdges) : null;
-      if (call.ref && !path) continue;
-      light(call.method);
-      for (const basis of call.usedBasis) {
-        if (nodeId(basis) in view.nodes) {
-          light(basis); used.add(basis);
-          if (call.ref) edge(`${nodeId(call.ref)}|uses|${nodeId(basis)}`);
-        }
-      }
-      // Internal operations provide checked mathematical bases, but are not
-      // invented public skill calls or synthetic edges in the knowledge graph.
-      if (!call.ref || !(nodeId(call.ref) in view.nodes)) continue;
-      light(call.ref);
-      if (path.rule) light(path.rule);
-      for (const reference of path.edges) edge(reference);
-      view.calls.push({...copy(call), edge: path.edge, occurrence: path.occurrence,
-        ...(path.rule ? {rule_edges: path.edges} : {}),
-        runId: state.run.id, decision: step.step_id, executionIndex: index});
+  const graphEdges = new Map(bundle.graph.edges.map(edge => [edge.id, edge]));
+  const light = ref => { if (typeof ref === 'string' && graphNodes.has(nodeId(ref))) nodes.add(nodeId(ref)); };
+  const edge = ref => { if (graphEdges.has(ref)) edges.add(ref); };
+  for (const [index, call] of (bundle.stream.step_calls[key] || []).entries()) {
+    if (!graphNodes.has(call.method)) continue;
+    const publicRef = typeof call.ref === 'string' && graphNodes.has(call.ref);
+    const path = publicRef ? publicCallPath(call, graphNodes, graphEdges) : null;
+    if (publicRef && !path) continue;
+    light(call.method);
+    for (const basis of call.usedBasis) if (graphNodes.has(nodeId(basis))) {
+      light(basis); used.add(basis);
+      if (publicRef) edge(`${nodeId(call.ref)}|uses|${nodeId(basis)}`);
     }
-    view.logs.push({decision: step.step_id, text: `已阅读：${step.title}`});
+    // Internal operations expose checked bases without inventing public calls.
+    if (!publicRef) continue;
+    light(call.ref);
+    if (path.rule) light(path.rule);
+    for (const reference of path.edges) edge(reference);
+    result.calls.push({...copy(call), edge: path.edge, occurrence: path.occurrence,
+      ...(path.rule ? {rule_edges: path.edges} : {}), decision: step.step_id, executionIndex: index});
+  }
+  result.nodes = [...nodes]; result.edges = [...edges]; result.usedBasis = [...used].sort();
+  result.logs.push({decision: step.step_id, text: `已阅读：${step.title}`});
+  return result;
+}
+
+/** Only completed final parts contribute their covered mathematical cards. */
+export function streamGraphState(bundle, state) {
+  const view = graphState(bundle, state);
+  if (!bundle.stream || state.introCompleted.length < bundle.intro.length) return view;
+  const route = bundle.routes[state.run.route];
+  if (!route) return view;
+  const used = new Set(view.usedBasis), seen = new Set();
+  for (const entry of state.run.completed) {
+    const decision = route.steps.find(item => item.id === entry.decision);
+    if (entry.source !== 'stream' || !entry.stream_last_part || decision?.source !== 'stream' ||
+        !decision.stream_last_part || JSON.stringify(entry.stream_steps) !== JSON.stringify(decision.stream_steps)) continue;
+    for (const ref of entry.stream_steps) {
+      const passed = {...bundle.stream, route_id: state.run.route, ...ref};
+      const key = streamStepKey(passed);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const evidence = streamStepGraph(bundle, passed);
+      for (const node of evidence.nodes) view.nodes[node] = 'confirmed';
+      for (const edge of evidence.edges) view.edges[edge] = 'chosen';
+      for (const basis of evidence.usedBasis) used.add(basis);
+      view.calls.push(...evidence.calls.map(call => ({...call, runId: state.run.id})));
+    }
   }
   view.usedBasis = [...used].sort();
   return view;

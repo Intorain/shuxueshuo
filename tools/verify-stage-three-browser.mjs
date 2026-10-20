@@ -35,10 +35,17 @@ try {
   await page.reload();
   await page.waitForFunction(() => document.querySelectorAll('.stage-three-math-step').length === 10);
   assert.equal(await page.locator('.stage-three-completion:not([hidden])').count(), 2);
+  await page.evaluate(() => fetch('/test/invalidate'));
+  await page.waitForFunction(() => [...document.querySelectorAll('.stage-three-route')]
+    .every(node => node.dataset.available === 'false'));
+  assert.equal(await page.locator('.stage-three-completion:not([hidden])').count(), 0);
+  assert.equal(await page.locator('.stage-three-math-step').count(), 10);
+  assert.ok((await page.locator('.stage-three-status').allTextContents())
+    .every(text => text.includes('完整解答暂不可用') && !text.includes('已完成数学验证')));
   assert.deepEqual(errors, []);
   fs.writeFileSync(`${output}/browser-evidence.json`, JSON.stringify({
     prefix_cards: prefix, completed_cards: 10, before_seq: paused.last_seq, after_seq: finished.last_seq,
     before_handoffs: paused.handoffs.length, after_handoffs: finished.handoffs.length,
-    refresh_restored: true, browser_errors: errors,
+    refresh_restored: true, invalidation_preserves_cards_and_replaces_status: true, browser_errors: errors,
   }, null, 2));
 } finally { await browser.close(); }

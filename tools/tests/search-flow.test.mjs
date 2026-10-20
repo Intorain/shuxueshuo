@@ -267,3 +267,32 @@ test('late selection for a previous question cannot replace an unsupported or di
   context.updateStreamView({run_id: 'run'});
   assert.equal(context.updates, 1);
 });
+
+test('late interactions and route completion refresh the engine while QA has an independent attachment path', async () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  context.updated = [];
+  context.attached = [];
+  vm.runInContext(`lesson.part = 0;
+    lesson.data = {stream: {run_id: 'run', lesson_version: 'v1'},
+      goals: [{target_ref: '/root/goals/0', walk: {}}]};
+    lesson.engine = {walkView: () => ({target_ref: '/root/goals/0'}),
+      updateStreamSelection: async view => { updated.push(view); },
+      attachStreamQA: chunk => { attached.push(chunk); }};`, context);
+  const initial = {run_id: 'run', lesson_version: 'v1', math_steps: [], selection_chunks: [], qa: []};
+  context.updateStreamView(initial);
+  await tick();
+  const exercises = {...initial, interactions: [{interaction_id: 'one'}], interaction_states: [{status: 'interactive'}]};
+  context.updateStreamView(exercises);
+  await tick();
+  const completed = {...exercises, completions: [{route_id: 'interval', available: true}]};
+  context.updateStreamView(completed);
+  await tick();
+  assert.equal(context.updated.length, 3, 'late interaction and completion each refresh without intro changes');
+  context.updateStreamView({...completed, qa: [{step_id: 'first', qa: {questions: ['why?']}}]});
+  await tick();
+  assert.equal(context.updated.length, 3, 'QA alone does not refresh the whole engine');
+  assert.equal(context.attached.length, 1);
+  context.updateStreamView({...completed, lesson_version: 'obsolete', qa: [{step_id: 'old'}]});
+  await tick();
+  assert.equal(context.attached.length, 1, 'an obsolete lesson cannot attach questions');
+});

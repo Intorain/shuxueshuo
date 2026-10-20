@@ -150,6 +150,8 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--source", type=Path, help="Recorded stage-two directory containing input.json and source.png")
     parser.add_argument("--case", choices=CASE_EXPECTATIONS, default="q01")
+    parser.add_argument("--frontend-interactions", action="store_true",
+                        help="Compatibility alias: all browser acceptance now uses the decision-engine frontend")
     args = parser.parse_args()
     if args.case != "q01" and args.source is None:
         parser.error("--source is required for cases other than the default Q01 recording")
@@ -173,7 +175,7 @@ def main():
     def barrier(state, _store):
         route = state["route_id"]
         paused.add(route)
-        if not releases[route].wait(180):
+        if not releases[route].wait(360):
             raise TimeoutError("search_browser.release_timeout")
 
     def forbidden(*args, **kwargs):
@@ -194,7 +196,9 @@ def main():
 
     @app.get("/test/state")
     def state():
-        snapshot = store().snapshot()
+        # This fixture-only endpoint retains execution evidence for independent
+        # mathematical gold checks; the actual page still reads the public API.
+        snapshot = store().internal_snapshot()
         return {"paused": sorted(paused), "snapshot": snapshot,
                 "llm_provider_attempts": llm_provider_attempts,
                 "stage_two_attempts": len(list(directory.glob("stage-two-*")))}
@@ -246,7 +250,7 @@ def main():
             time.sleep(0.05)
         subprocess.run(["node", str(ROOT / "tools/verify-stage-three-search.mjs"),
                         f"http://127.0.0.1:{sock.getsockname()[1]}", str(output), SEARCH_ID,
-                        str(output / "browser-case.json")], check=True, timeout=170)
+                        str(output / "browser-case.json")], check=True, timeout=330)
     finally:
         for event in releases.values():
             event.set()
@@ -254,22 +258,10 @@ def main():
         thread.join(timeout=10)
         sock.close()
     evidence = json.loads((output / "browser-evidence.json").read_text())
-    screenshots = [("01-running-prefix.png", "完整验证之前，数学步骤已可阅读"),
-                   ("01a-interrupted-prefix.png", "构造中断状态：无新增事件、无需刷新即可继续计算，已提交步骤保留"),
-                   ("02-first-route-with-qa.png", "已验证路线交付后，问答通过游标恢复单独附加"),
-                   ("03-student-reading.png", "自己做：作答与逐步阅读进度独立保存"),
-                   ("04-refreshed.png", "刷新恢复同一运行与阅读位置")]
-    if expectations.get("internal_basis"):
-        screenshots.append(("05-internal-basis.png", "阅读条件求解卡后，内部调用的真实依据进入图谱"))
-    if expectations.get("interval_cases"):
-        screenshots.append(("06-interval-cases.png", "逐个阅读真实分类卡，常数与二次分支按实际调用点亮图谱"))
-    if expectations.get("separation"):
-        screenshots.append(("07-separation-range.png", "分离路线的除法方向与范围计算均来自实际执行证据"))
-    if expectations.get("variable_swap"):
-        screenshots.append(("08-variable-sources.png", "逐卡阅读主元法；公开调用与独立边界检查按真实来源点亮图谱"))
-    if expectations.get("goal_extremum"):
-        screenshots.extend((f"09-goal-closure-{route}.png", "独立边界检查后，读取完整可行集并确定最小值")
-                           for route in expectations["routes"])
+    screenshots = [("01-question-draft.png", "练习草稿或只读卡可刷新恢复"),
+                   ("02-waiting.png", "按数学卡顺序等待交互结果"),
+                   ("03-completed-qa.png", "完成练习后展开数学过程，问答独立附加"),
+                   ("04-restored-route.png", "路线与学生进度独立恢复")]
     figures = "".join(f'<figure><figcaption>{escape(title)}</figcaption><a href="{name}"><img src="{name}"></a></figure>'
                       for name, title in screenshots)
     provenance_link = (

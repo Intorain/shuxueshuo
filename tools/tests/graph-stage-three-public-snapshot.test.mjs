@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createEventConsumer, mountStageThreeStream} from '../../site/assets/graph-walk/stage-three-stream.mjs';
-import {createState, currentDecision, submitAnswer, extendStreamBundle, streamGraphState} from '../../site/assets/graph-walk/walk-state.mjs';
+import {extendStreamBundle, streamStepGraph} from '../../site/assets/graph-walk/walk-state.mjs';
 
 const read = path => JSON.parse(fs.readFileSync(new URL(path, import.meta.url), 'utf8'));
 const legacy = read('./fixtures/graph-stage-three-q03-evidence.json');
@@ -27,23 +27,10 @@ function publicSnapshot(value) {
   return result;
 }
 
-function selected(bundle, route = 'discriminant') {
-  let state = createState(bundle);
-  const answer = value => {
-    const decision = currentDecision(bundle, state);
-    state = submitAnswer(bundle, state, {decision: decision.id, answer: value ??
-      (decision.interaction.type === 'checklist' ? decision.expected_answer.terms : decision.expected_answer.one_of[0])});
-  };
-  answer(); answer();
-  const decision = currentDecision(bundle, state);
-  answer([...decision.expected_answer.cell, decision.interaction.methods.find(item => item.route === route).value]);
-  answer(route);
-  return state;
-}
-
-function reached(view, steps, route = 'discriminant') {
+function evidence(view, steps) {
   const bundle = extendStreamBundle(base, view, target, graph);
-  return streamGraphState(bundle, selected(bundle, route), {steps});
+  assert.equal(steps.length, 1);
+  return streamStepGraph(bundle, steps[0]);
 }
 
 test('v2 refresh restores every Q03 source without retaining execution state', () => {
@@ -57,7 +44,7 @@ test('v2 refresh restores every Q03 source without retaining execution state', (
     assert.ok(!JSON.stringify(consumer.view().trajectories).includes('outputs'));
   }
   for (const card of legacy.math_steps) {
-    assert.deepEqual(reached(compact.view(), [card]), reached(older.view(), [card]));
+    assert.deepEqual(evidence(compact.view(), [card]), evidence(older.view(), [card]));
   }
   assert.deepEqual(compact.view().trajectories[0].finalization.map(value => value.index), [0, 1, 2]);
 });
@@ -91,7 +78,7 @@ test('full trace updates after a public snapshot extend the same step without du
   assert.deepEqual(after.math_steps, before.math_steps);
   assert.equal(after.trajectories[0].steps.find(step => step.seq === row.seq).calls.length, row.calls.length);
   assert.ok(!JSON.stringify(after.trajectories).includes('not retained'));
-  for (const card of after.math_steps) assert.deepEqual(reached(after, [card]), reached(before, [card]));
+  for (const card of after.math_steps) assert.deepEqual(evidence(after, [card]), evidence(before, [card]));
   assert.doesNotThrow(() => consumer.hydrate({...snapshot, last_seq: 101,
     trajectories: [{...snapshot.trajectories[0], steps: after.trajectories[0].steps}]}));
   assert.deepEqual(consumer.view().math_steps, before.math_steps);
@@ -115,12 +102,12 @@ test('public evidence keeps unchecked call slots and the actual method-rule-skil
     }]}]};
   const consumer = createEventConsumer(legacy);
   consumer.hydrate(snapshot);
-  const value = reached(consumer.view(), [card], 'interval');
+  const value = evidence(consumer.view(), [card]);
   assert.equal(value.calls.length, 1);
   assert.deepEqual(value.calls[0].rule_edges, [
     'method-interval-extremum|step_rule|rule-interval-skill', 'rule-interval-skill|selects|quadratic-interval-extremum',
   ]);
-  assert.equal(value.edges['method-interval-extremum|calls|quadratic-interval-extremum'], undefined);
+  assert.equal(value.edges.includes('method-interval-extremum|calls|quadratic-interval-extremum'), false);
   for (const mutation of [
     call => delete call.rule_ref,
     call => delete call.branch,
@@ -130,7 +117,7 @@ test('public evidence keeps unchecked call slots and the actual method-rule-skil
   ]) {
     const invalid = structuredClone(snapshot);
     mutation(invalid.trajectories[0].steps[0].calls[1]);
-    assert.equal(reached(invalid, [card], 'interval').calls.length, 0);
+    assert.equal(evidence(invalid, [card]).calls.length, 0);
   }
 });
 
@@ -138,26 +125,11 @@ test('v2 evidence cannot borrow absent boundary proofs from legacy checkpoints',
   const snapshot = publicSnapshot(legacy);
   snapshot.checkpoints = structuredClone(legacy.checkpoints);
   snapshot.trajectories[0].finalization = [];
-  const value = reached(snapshot, [snapshot.math_steps.at(-1)]);
+  const value = evidence(snapshot, [snapshot.math_steps.at(-1)]);
   assert.ok(!value.usedBasis.includes('function-range-extrema#attainability'));
 });
 
-function documentFixture() {
-  const document = {createElement(tag) { return new Element(tag); }};
-  class Element {
-    constructor(tag) { this.tagName = tag; this.ownerDocument = document; this.children = []; this.dataset = {}; this.hidden = false; this.textContent = ''; }
-    append(...children) { this.children.push(...children); }
-    replaceChildren(...children) { this.children = [...children]; }
-    set innerHTML(value) { throw new Error(`unexpected HTML: ${value}`); }
-  }
-  const container = new Element('main');
-  const find = (name, parent = container) => [
-    ...(parent.className === name ? [parent] : []), ...parent.children.flatMap(child => find(name, child)),
-  ];
-  return {container, find};
-}
-
-test('conflict refresh hides completion and QA without replacing mathematics DOM', () => {
+test('conflict refresh revokes completion and stops QA forwarding while preserving math data', () => {
   const snapshot = publicSnapshot(legacy), card = snapshot.math_steps[0];
   snapshot.math_steps = [card];
   snapshot.goals = {[target]: {status: 'solved', available: true}};
@@ -166,20 +138,21 @@ test('conflict refresh hides completion and QA without replacing mathematics DOM
     answer: {kind: 'find_range', status: 'set', set: '[0,1]'}, feasible_set: '[0,1]'}];
   snapshot.qa = [{...pick(card, ['run_id', 'lesson_version', 'target_ref', 'route_id', 'step_id', 'math_step_sha256']),
     verified_route_sha256: 'verified-route', qa: {questions: ['为什么？']}}];
-  const {container, find} = documentFixture();
-  const mounted = mountStageThreeStream(container, snapshot);
+  const received = [], mathematics = [];
+  const mounted = mountStageThreeStream(snapshot, {onQA: value => received.push(value), onMathStep: value => mathematics.push(value)});
   mounted.consumer.hydrate(snapshot);
-  const node = find('stage-three-math-step')[0];
-  assert.equal(find('stage-three-qa')[0].hidden, false);
+  assert.deepEqual(received.at(-1), snapshot.qa[0]);
+  const receivedCount = received.length;
   const conflict = structuredClone(snapshot);
   conflict.last_seq += 1;
   conflict.goals[target] = {status: 'conflict', available: false, reason: 'route_conflict'};
   conflict.handoffs[0].available = false;
   conflict.handoffs[0].status = 'cancelled';
   mounted.consumer.hydrate(conflict);
-  assert.equal(find('stage-three-math-step')[0], node);
-  assert.equal(find('stage-three-completion')[0].hidden, true);
-  assert.equal(find('stage-three-qa')[0].hidden, true);
+  assert.equal(mounted.consumer.view().goals[target].available, false);
+  assert.ok(mounted.consumer.view().completions.every(value => !value.available));
+  assert.equal(received.length, receivedCount);
+  assert.deepEqual(mathematics, [card]);
 });
 
 test('v2 resnapshot retains its waterline and ignores pruned event redelivery', () => {
@@ -193,3 +166,42 @@ test('v2 resnapshot retains its waterline and ignores pruned event redelivery', 
     target_ref: target, route_id: 'discriminant', payload: {trajectory: []}}), {ignored: 'duplicate', last_seq: 100});
   assert.deepEqual(consumer.view(), before);
 });
+
+for (const status of ['interactive', 'readonly']) for (const count of [1, 2]) {
+  test(`consumer output adapts ${count}-card ${status} interactions after early snapshots and on refresh`, () => {
+    const identity = pick(legacy, ['run_id', 'lesson_version', 'stream_id']);
+    const cards = legacy.math_steps.slice(0, count);
+    const snapshot = {...identity, last_seq: 0, math_steps: [], goals: {},
+      selection_chunks: legacy.selection_chunks, interaction_protocol: null, interaction_states: [], interactions: []};
+    const consumer = createEventConsumer(identity);
+    consumer.hydrate(snapshot);
+    let bundle = extendStreamBundle(base, consumer.view(), target, graph);
+    const send = (seq, payload) => consumer.accept({...identity, seq, event_id: `live-${seq}`,
+      target_ref: target, route_id: 'discriminant', type: 'lesson.chunk_ready', payload});
+    for (const card of cards) send(card.ordinal, {kind: 'math_step', chunk: card,
+      step_id: card.step_id, math_step_sha256: card.math_step_sha256, interaction_status: 'pending'});
+    bundle = extendStreamBundle(bundle, consumer.view(), target, graph);
+    assert.deepEqual(bundle.routes.discriminant.steps, [], 'pending cards cannot create premature legacy read decisions');
+    assert.deepEqual(consumer.view().interaction_states, cards.map(card => ({
+      target_ref: target, route_id: card.route_id, step_id: card.step_id,
+      ordinal: card.ordinal, math_step_sha256: card.math_step_sha256, status: 'pending'})));
+    const chunk = {contract: 'graph-step-interaction/v1', ...identity, target_ref: target, route_id: 'discriminant',
+      interaction_id: 'decision-group', interaction_revision: 'frozen-rules', interaction_sha256: 'chunk-hash', status,
+      steps: cards.map(card => pick(card, ['step_id', 'math_step_sha256'])),
+      parts: status === 'interactive' ? [{id: 'practice-1', title: '判断分类依据', question: '选择依据',
+        interaction: {type: 'choice', options: [{value: 'coefficient', label: '二次项系数'}]},
+        expected_answer: {one_of: ['coefficient']}}] : [],
+      ...(status === 'readonly' ? {reason: 'no_rule'} : {})};
+    send(count + 1, {kind: 'step_interaction', chunk, interaction_id: chunk.interaction_id, status});
+    const view = consumer.view();
+    bundle = extendStreamBundle(bundle, view, target, graph);
+    assert.deepEqual(bundle.routes.discriminant.steps.map(value => value.interaction.type),
+      status === 'interactive' ? ['choice'] : cards.map(() => 'read'));
+    assert.deepEqual(bundle.routes.discriminant.steps.flatMap(value => value.stream_steps), chunk.steps);
+    const restored = createEventConsumer(identity);
+    restored.hydrate({...snapshot, last_seq: count + 1, math_steps: cards,
+      interaction_protocol: view.interaction_protocol, interaction_states: view.interaction_states, interactions: view.interactions});
+    assert.deepEqual(extendStreamBundle(base, restored.view(), target, graph).routes.discriminant.steps,
+      bundle.routes.discriminant.steps);
+  });
+}

@@ -27,35 +27,18 @@ const qa = (value = step()) => ({...identity, target_ref: value.target_ref, rout
 const qaEvent = (seq, chunk = qa()) => event(seq, 'lesson.chunk_ready', {kind: 'step_qa', step_id: chunk.step_id,
   math_step_sha256: chunk.math_step_sha256, verified_route_sha256: chunk.verified_route_sha256, chunk}, chunk.target_ref);
 
-function documentFixture() {
-  const document = {createElement(tag) { return new Element(tag); }};
-  class Element {
-    constructor(tag) { this.tagName = tag; this.ownerDocument = document; this.children = []; this.dataset = {}; this.hidden = false; this.textContent = ''; }
-    append(...children) { this.children.push(...children); }
-    replaceChildren(...children) { this.children = [...children]; }
-    set innerHTML(value) { throw new Error(`must not execute source markup: ${value}`); }
-  }
-  const container = new Element('main');
-  const find = (className, root = container) => {
-    const values = [];
-    if (root.className === className) values.push(root);
-    for (const child of root.children) values.push(...find(className, child));
-    return values;
-  };
-  return {container, find};
-}
-
-test('committed first steps render while the route has no completion or QA', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
+test('subscription forwards committed data without creating DOM or reading progress', () => {
+  const seen = [];
+  const view = mountStageThreeStream(identity, {
+    onMathStep: value => seen.push(['math', value.step_id]),
+    onRouteStatus: (targetRef, routeId, value) => seen.push(['status', targetRef, routeId, value.status]),
+  });
   view.consumer.accept(event(1, 'lesson.route_status', {status: 'running'}));
   view.consumer.accept(mathEvent(2));
-  assert.equal(find('stage-three-math-step').length, 1);
-  assert.equal(find('stage-three-math-step')[0].hidden, false);
-  assert.equal(find('stage-three-completion')[0].hidden, true);
-  assert.equal(find('stage-three-qa')[0].hidden, true);
+  assert.deepEqual(seen, [['status', target, route, 'running'], ['math', 'step-1']]);
   assert.equal(view.consumer.last_seq, 2);
   assert.deepEqual(view.consumer.view().completions, []);
+  assert.deepEqual(Object.keys(view).sort(), ['consumer', 'pollOnce', 'start', 'stop']);
 });
 
 test('legacy saved math is adapted at read boundaries without touching decision.display or saved hashes', () => {
@@ -64,12 +47,10 @@ test('legacy saved math is adapted at read boundaries without touching decision.
     value.display = value.latex; delete value.latex;
   }
   const original = structuredClone(legacy);
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
+  const view = mountStageThreeStream(identity);
   view.consumer.accept(mathEvent(1, legacy));
   const current = view.consumer.view().math_steps[0];
   assert.deepEqual(current.before, [{expression: 'x^2+a', latex: 'x^2+a'}]);
-  assert.equal(find('stage-three-before')[0].textContent, 'x^2+a');
   assert.equal(current.math_step_sha256, legacy.math_step_sha256);
   const decision = {expression: 'a', display: '<p>{expression}</p>'};
   view.consumer.accept(event(2, 'lesson.chunk_ready', {kind: 'D1', chunk: {decision}}));
@@ -77,19 +58,22 @@ test('legacy saved math is adapted at read boundaries without touching decision.
   view.consumer.hydrate({...identity, last_seq: 3, math_steps: [legacy], goals: {}, checkpoints: [], handoffs: [], qa: []});
   assert.deepEqual(view.consumer.view().math_steps[0], current);
   assert.deepEqual(legacy, original);
-  assert.equal(find('stage-three-math-step').length, 1);
+  assert.equal(view.consumer.view().math_steps.length, 1);
 });
 
-test('failed mathematical rendering retries before publishing the DOM card', () => {
-  const {container, find} = documentFixture();
+test('failed data subscribers retry the same mathematical event', () => {
   let fail = true;
-  const view = mountStageThreeStream(container, identity, {renderMath() { if (fail) throw new Error('renderer loading'); }});
-  assert.throws(() => view.consumer.accept(mathEvent(1)), /renderer loading/);
-  assert.equal(find('stage-three-math-step').length, 0);
+  const received = [];
+  const view = mountStageThreeStream(identity, {onMathStep(value) {
+    if (fail) throw new Error('subscriber loading');
+    received.push(value.step_id);
+  }});
+  assert.throws(() => view.consumer.accept(mathEvent(1)), /subscriber loading/);
+  assert.equal(view.consumer.view().math_steps.length, 0);
   assert.equal(view.consumer.last_seq, 0);
   fail = false;
   view.consumer.accept(mathEvent(1));
-  assert.equal(find('stage-three-math-step').length, 1);
+  assert.deepEqual(received, ['step-1']);
   assert.equal(view.consumer.last_seq, 1);
 });
 
@@ -123,24 +107,21 @@ test('same route and step names in sibling questions remain distinct', () => {
   assert.equal(consumer.view().math_steps.length, 2);
 });
 
-test('QA attaches without replacing mathematical DOM or revealing unread steps', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity, {mode: 'practice'});
+test('QA is forwarded independently and replayed on refresh without repeating math callbacks', () => {
+  const mathematics = [], supplementary = [], snapshots = [];
+  const view = mountStageThreeStream(identity, {
+    onMathStep: value => mathematics.push(value), onQA: value => supplementary.push(value),
+    onSnapshot: value => snapshots.push(value.last_seq),
+  });
   view.consumer.accept(mathEvent(1));
-  view.consumer.accept(mathEvent(2, step(2)));
-  const [first, second] = find('stage-three-math-step');
-  first.savedStudentAnswer = 'unchanged';
-  assert.equal(first.hidden, false);
-  assert.equal(second.hidden, true);
-  view.consumer.accept(event(3, 'lesson.goal_status', {status: 'solved', available: true}));
-  view.consumer.accept(doneEvent(4));
-  view.consumer.accept(qaEvent(5));
-  assert.equal(find('stage-three-math-step')[0], first);
-  assert.equal(first.savedStudentAnswer, 'unchanged');
-  assert.equal(second.hidden, true);
-  assert.equal(find('stage-three-qa')[0].hidden, false);
-  view.revealThrough(target, route, 2);
-  assert.equal(second.hidden, false);
+  view.consumer.accept(doneEvent(2));
+  view.consumer.accept(qaEvent(3));
+  assert.deepEqual(supplementary, [qa()]);
+  view.consumer.hydrate({...identity, last_seq: 4, math_steps: [step()], goals: {},
+    handoffs: [{target_ref: target, route_id: route, available: true, verified_route_sha256: 'route-hash'}], qa: [qa()]});
+  assert.deepEqual(supplementary, [qa(), qa()]);
+  assert.deepEqual(mathematics, [step()]);
+  assert.deepEqual(snapshots, [4]);
 });
 
 for (const field of ['math_step_sha256', 'verified_route_sha256', 'step_id', 'target_ref']) test(`QA cannot bind to mismatched ${field}`, () => {
@@ -151,28 +132,29 @@ for (const field of ['math_step_sha256', 'verified_route_sha256', 'step_id', 'ta
   assert.deepEqual(consumer.view().qa, []);
 });
 
-test('late conflict hides completion and QA while retaining fixed math evidence', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
+test('late conflict marks completion unavailable and stops forwarding stale QA', () => {
+  const supplementary = [], goals = [];
+  const view = mountStageThreeStream(identity, {
+    onQA: value => supplementary.push(value), onGoalStatus: (...args) => goals.push(args),
+  });
   view.consumer.accept(mathEvent(1));
-  const first = find('stage-three-math-step')[0];
   view.consumer.accept(event(2, 'lesson.goal_status', {status: 'solved', available: true}));
   view.consumer.accept(doneEvent(3));
   view.consumer.accept(qaEvent(4));
   view.consumer.accept(event(5, 'lesson.goal_status', {status: 'conflict', available: false}));
   view.consumer.accept(qaEvent(6));
   view.consumer.accept(doneEvent(7));
-  assert.equal(find('stage-three-math-step')[0], first);
-  assert.equal(find('stage-three-completion')[0].hidden, true);
-  assert.equal(find('stage-three-qa')[0].hidden, true);
+  assert.deepEqual(view.consumer.view().math_steps, [step()]);
   assert.equal(view.consumer.view().completions[0].available, false);
+  assert.deepEqual(supplementary, [qa()]);
+  assert.deepEqual(goals.at(-1), [target, {status: 'conflict', available: false}]);
 });
 
 test('cursor expiry hydrates an atomic snapshot, then polls after its watermark', async () => {
-  const {container, find} = documentFixture(), cursors = [];
+  const cursors = [];
   let call = 0;
   const snapshot = {...identity, last_seq: 3, math_steps: [step()], goals: {}, checkpoints: [], handoffs: [], qa: []};
-  const view = mountStageThreeStream(container, identity, {
+  const view = mountStageThreeStream(identity, {
     fetchEvents: async cursor => { cursors.push(cursor); return ++call === 1 ? {cursor_expired: true} : {events: [mathEvent(4, step(2))]}; },
     fetchSnapshot: async () => snapshot,
   });
@@ -180,127 +162,26 @@ test('cursor expiry hydrates an atomic snapshot, then polls after its watermark'
   assert.equal(view.consumer.last_seq, 3);
   await view.pollOnce();
   assert.deepEqual(cursors, [0, 3]);
-  assert.equal(find('stage-three-math-step').length, 2);
+  assert.equal(view.consumer.view().math_steps.length, 2);
 });
 
-test('refresh snapshot restores exact math while keeping existing DOM and reading progress', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity, {mode: 'practice'});
+test('refresh snapshot restores mathematical state without resending known cards', () => {
+  const received = [], view = mountStageThreeStream(identity, {onMathStep: value => received.push(value.step_id)});
   view.consumer.accept(mathEvent(1));
   view.consumer.accept(mathEvent(2, step(2)));
-  view.revealThrough(target, route, 2);
-  const first = find('stage-three-math-step')[0];
   view.consumer.hydrate({...identity, last_seq: 10, math_steps: [step(), step(2)], goals: {}, checkpoints: [], handoffs: [], qa: []});
-  assert.equal(find('stage-three-math-step')[0], first);
-  assert.equal(find('stage-three-math-step')[1].hidden, false);
+  assert.deepEqual(received, ['step-1', 'step-2']);
   assert.equal(view.consumer.last_seq, 10);
 });
 
-test('late transport response after view closure cannot mutate the page', async () => {
-  const {container, find} = documentFixture();
+test('late transport response after subscription closure cannot publish data', async () => {
   let respond;
-  const view = mountStageThreeStream(container, identity, {fetchEvents: () => new Promise(resolve => { respond = resolve; })});
+  const view = mountStageThreeStream(identity, {fetchEvents: () => new Promise(resolve => { respond = resolve; })});
   const pending = view.pollOnce();
   view.stop();
   respond({events: [mathEvent(1)]});
   await pending;
-  assert.equal(find('stage-three-math-step').length, 0);
-});
-
-test('untrusted text is inserted as text without HTML execution', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
-  const source = '<img src=x onerror="attack()">';
-  view.consumer.accept(mathEvent(1, {...step(), title: source}));
-  assert.equal(find('stage-three-math-step')[0].children[0].textContent, source);
-});
-
-test('completion renders readable mathematical answers and calls the shared math renderer', () => {
-  const {container, find} = documentFixture(), rendered = [];
-  const view = mountStageThreeStream(container, identity, {renderMath: node => rendered.push(node)});
-  view.consumer.accept(mathEvent(1));
-  const completion = doneEvent(2);
-  completion.payload.answer.set = {type: 'interval', latex: '[0,+\\infty)'};
-  view.consumer.accept(completion);
-  assert.equal(find('stage-three-answer')[0].textContent, '[0,+\\infty)');
-  assert.equal(rendered.at(-1), find('stage-three-completion')[0]);
-  assert.equal(container.children[0].children[0].textContent, '判别式法');
-  assert.equal(find('stage-three-evidence').length, 0);
-});
-
-const exactValue = (value, latex = value) => ({expression: value, latex,
-  exact: value.includes('/') ? {$math: 'Rational', p: value.split('/')[0], q: value.split('/')[1]} : {$math: 'Integer', value}});
-for (const [kind, status, field, label, formula] of [
-  ['find_minimum', 'attained', 'value', '最小值：', '-5/2'],
-  ['find_maximum', 'attained', 'value', '最大值：', '5/2'],
-  ['find_minimum', 'not_attained', 'bound', '最小值不存在；下确界为：', '-5/2'],
-  ['find_maximum', 'not_attained', 'bound', '最大值不存在；上确界为：', '5/2'],
-  ['find_minimum', 'unbounded_below', null, '最小值不存在：可行集没有下界。', null],
-  ['find_maximum', 'unbounded_above', null, '最大值不存在：可行集没有上界。', null],
-  ['find_minimum', 'empty_feasible_set', null, '没有满足题设的参数，最小值不存在。', null],
-  ['find_maximum', 'empty_feasible_set', null, '没有满足题设的参数，最大值不存在。', null],
-]) test(`typed ${kind}/${status} distinguishes an extremum from its bound or absence`, () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
-  view.consumer.accept(mathEvent(1));
-  const completion = doneEvent(2);
-  completion.payload.answer = {kind, status, ...(field ? {[field]: exactValue(formula)} : {})};
-  view.consumer.accept(completion);
-  const node = find('stage-three-completion')[0];
-  assert.equal(node.hidden, false);
-  assert.equal(node.children[0].textContent, label);
-  assert.deepEqual(find('stage-three-answer').map(value => value.textContent), formula ? [formula] : []);
-  assert.equal(container.children[0].dataset.answerStatus, status);
-  assert.deepEqual(view.consumer.view().completions[0].answer, completion.payload.answer);
-});
-
-for (const answer of [
-  {kind: 'find_minimum', status: 'unknown', value: exactValue('2')},
-  {kind: 'find_minimum', status: 'attained'},
-  {kind: 'find_maximum', status: 'not_attained'},
-  {kind: 'find_maximum', status: 'unbounded_below'},
-  {kind: 'find_minimum', status: 'unbounded_above'},
-  {kind: 'find_range', status: 'attained', value: exactValue('2')},
-  {kind: 'unrecognized', status: 'attained', value: exactValue('2')},
-  {kind: 'find_minimum', status: 'attained', value: {expression: '-oo', latex: '-\\infty', exact: {$math: 'NegativeInfinity'}}},
-]) test(`an unsupported or incomplete answer is never displayed as successful: ${JSON.stringify(answer)}`, () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
-  view.consumer.accept(mathEvent(1));
-  const completion = doneEvent(2);
-  completion.payload.answer = answer;
-  view.consumer.accept(completion);
-  assert.equal(find('stage-three-completion')[0].hidden, true);
-  assert.equal(find('stage-three-answer').length, 0);
-  assert.equal(container.children[0].dataset.answerStatus, 'unknown');
-  assert.match(container.children[0].children[1].textContent, /目标答案尚未确定/);
-});
-
-test('an extremum completion waits for the appended goal card and survives snapshot/QA without changing prior math', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity, {mode: 'practice'});
-  view.consumer.accept(mathEvent(1));
-  const original = find('stage-three-math-step')[0];
-  const closure = {...step(2), title: '确定最小值', display_unit: 'goal_finalization',
-    source_refs: ['/finalization/3'], explanation: '下确界不属于完整可行集，因此最小值不存在。'};
-  view.consumer.accept(mathEvent(2, closure));
-  const completion = doneEvent(3);
-  completion.payload.answer = {kind: 'find_minimum', status: 'not_attained', bound: exactValue('-5/2', '-\\frac{5}{2}')};
-  view.consumer.accept(completion);
-  assert.equal(find('stage-three-completion')[0].hidden, true);
-  view.revealThrough(target, route, 2);
-  assert.equal(find('stage-three-completion')[0].hidden, false);
-  view.consumer.accept(qaEvent(4));
-  view.consumer.hydrate({...identity, last_seq: 5, math_steps: [step(), closure], goals: {},
-    handoffs: [{target_ref: target, route_id: route, available: true, answer: completion.payload.answer,
-      feasible_set: '(−5/2,+∞)', verified_route_sha256: 'route-hash'}], qa: [qa()]});
-  assert.equal(find('stage-three-math-step')[0], original);
-  assert.equal(find('stage-three-math-step')[1].children[0].textContent, '确定最小值');
-  assert.equal(find('stage-three-answer')[0].textContent, '-\\frac{5}{2}');
-  assert.equal(find('stage-three-completion')[0].hidden, false);
-  view.consumer.accept(event(6, 'lesson.goal_status', {status: 'conflict', available: false}));
-  assert.equal(find('stage-three-completion')[0].hidden, true);
-  assert.equal(find('stage-three-math-step')[0], original);
+  assert.deepEqual(view.consumer.view().math_steps, []);
 });
 
 test('selection chunks and committed call evidence survive snapshot hydration', () => {
@@ -354,20 +235,53 @@ const interactionSnapshot = (cards, chunks, lastSeq) => ({
 });
 
 test('math cards appear pending and a merged interaction resolves both cards at once', () => {
-  const {container, find} = documentFixture(), received = [];
-  const view = mountStageThreeStream(container, identity, {onInteraction: chunk => received.push(chunk.interaction_id)});
+  const received = [];
+  const view = mountStageThreeStream(identity, {onInteraction: chunk => received.push(chunk.interaction_id)});
   view.consumer.accept(pendingEvent(1));
   view.consumer.accept(pendingEvent(2, step(2)));
   assert.deepEqual(statuses(view.consumer), [['step-1', 'pending', undefined], ['step-2', 'pending', undefined]]);
-  assert.deepEqual(find('stage-three-math-step').map(node => node.dataset.interactionStatus), ['pending', 'pending']);
   const merged = interaction([step(), step(2)]);
   view.consumer.accept(interactionEvent(3, merged));
   assert.deepEqual(statuses(view.consumer), [['step-1', 'interactive', merged.interaction_id], ['step-2', 'interactive', merged.interaction_id]]);
-  assert.deepEqual(find('stage-three-math-step').map(node => node.dataset.interactionStatus), ['interactive', 'interactive']);
   assert.deepEqual(view.consumer.view().interactions, [merged]);
   assert.equal(view.consumer.view().interaction_protocol, 'graph-step-interaction/v1');
   assert.deepEqual(received, [merged.interaction_id]);
   assert.equal(view.consumer.view().math_steps[0].title, '计算判别式');
+});
+
+for (const status of ['pending', 'readonly']) test(`the first ${status} card enables interactions after an earlier empty snapshot`, () => {
+  const consumer = createEventConsumer(identity);
+  consumer.hydrate({...identity, last_seq: 0, math_steps: [], goals: {}, interaction_protocol: null,
+    interaction_states: [], interactions: []});
+  assert.equal(consumer.view().interaction_protocol, null);
+  consumer.accept(pendingEvent(1, step(), status));
+  assert.equal(consumer.view().interaction_protocol, 'graph-step-interaction/v1');
+  assert.deepEqual(statuses(consumer), [['step-1', status, undefined]]);
+  assert.deepEqual(consumer.view().interactions, []);
+  const chunk = interaction([step()], status === 'pending' ? 'interactive' : 'readonly');
+  consumer.accept(interactionEvent(2, chunk));
+  assert.deepEqual(consumer.view().interactions, [chunk]);
+});
+
+test('a rejected status cannot activate the protocol', () => {
+  const consumer = createEventConsumer(identity);
+  assert.throws(() => consumer.accept(pendingEvent(1, step(), 'unknown')), /invalid_interaction_status/);
+  assert.equal(consumer.view().interaction_protocol, null);
+  assert.deepEqual(consumer.view().interaction_states, []);
+});
+
+test('a failed math callback does not leave an enabled protocol or pending state behind', () => {
+  let fail = true;
+  const consumer = createEventConsumer(identity, {onMathStep() { if (fail) throw new Error('temporary'); }});
+  assert.throws(() => consumer.accept(pendingEvent(1)), /temporary/);
+  assert.equal(consumer.last_seq, 0);
+  assert.equal(consumer.view().interaction_protocol, null);
+  assert.deepEqual(consumer.view().math_steps, []);
+  assert.deepEqual(consumer.view().interaction_states, []);
+  fail = false;
+  consumer.accept(pendingEvent(1));
+  assert.equal(consumer.view().interaction_protocol, 'graph-step-interaction/v1');
+  assert.deepEqual(statuses(consumer), [['step-1', 'pending', undefined]]);
 });
 
 test('legacy streams without the protocol keep no interaction state', () => {
@@ -478,7 +392,7 @@ test('a failed interaction hook can retry the same sequence', () => {
   const chunk = interaction([step()], 'readonly');
   assert.throws(() => consumer.accept(interactionEvent(2, chunk)), /temporary/);
   assert.deepEqual(statuses(consumer), [['step-1', 'pending', undefined]]);
-  assert.equal(consumer.view().interaction_protocol, null);
+  assert.equal(consumer.view().interaction_protocol, 'graph-step-interaction/v1');
   consumer.accept(interactionEvent(2, chunk));
   assert.deepEqual(statuses(consumer), [['step-1', 'readonly', chunk.interaction_id]]);
   assert.equal(consumer.view().interaction_protocol, 'graph-step-interaction/v1');
@@ -539,8 +453,7 @@ test('fresh snapshot hook failure restores the empty interaction projection with
 });
 
 test('snapshot hydration restores card states and final chunks but cannot rewrite them', () => {
-  const {container, find} = documentFixture();
-  const view = mountStageThreeStream(container, identity);
+  const view = mountStageThreeStream(identity);
   const chunk = interaction([step()]), readonly = interaction([step(2)], 'readonly');
   const snapshot = {...identity, last_seq: 4, math_steps: [step(), step(2), step(3)], goals: {},
     interaction_protocol: 'graph-step-interaction/v1', interactions: [chunk, readonly], interaction_states: [
@@ -552,7 +465,6 @@ test('snapshot hydration restores card states and final chunks but cannot rewrit
   view.consumer.hydrate(snapshot);
   assert.deepEqual(statuses(view.consumer), [['step-1', 'interactive', chunk.interaction_id],
     ['step-2', 'readonly', readonly.interaction_id], ['step-3', 'pending', undefined]]);
-  assert.deepEqual(find('stage-three-math-step').map(node => node.dataset.interactionStatus), ['interactive', 'readonly', 'pending']);
   view.consumer.hydrate({...snapshot, last_seq: 5});
   assert.throws(() => view.consumer.hydrate({...snapshot, last_seq: 6, interactions: [readonly]}), /snapshot_interaction_changed/);
   const rewritten = structuredClone(snapshot);
@@ -563,7 +475,7 @@ test('snapshot hydration restores card states and final chunks but cannot rewrit
   later.last_seq = 7; later.interactions.push(final);
   Object.assign(later.interaction_states[2], {status: 'readonly', interaction_id: final.interaction_id});
   view.consumer.hydrate(later);
-  assert.equal(find('stage-three-math-step')[2].dataset.interactionStatus, 'readonly');
+  assert.equal(statuses(view.consumer)[2][1], 'readonly');
 });
 
 for (const [name, damage] of [
@@ -633,24 +545,6 @@ test('snapshot restores a merged interaction before applying buffered later even
     ['step-2', 'interactive', chunk.interaction_id], ['step-3', 'readonly', 'interaction-3']]);
 });
 
-test('only arrived reading positions persist across a full page refresh', () => {
-  const values = new Map(), storage = {getItem: key => values.get(key), setItem: (key, value) => values.set(key, value)};
-  const first = documentFixture();
-  const view = mountStageThreeStream(first.container, identity, {mode: 'practice', storage});
-  view.consumer.accept(mathEvent(1));
-  view.revealThrough(target, route, 50);
-  view.consumer.accept(mathEvent(2, step(2)));
-  assert.equal(first.find('stage-three-math-step')[1].hidden, true);
-  view.revealThrough(target, route, 2);
-  const refreshed = documentFixture();
-  const restored = mountStageThreeStream(refreshed.container, identity, {mode: 'practice', storage});
-  restored.consumer.hydrate({...identity, last_seq: 3, math_steps: [step(), step(2), step(3)], goals: {}});
-  assert.deepEqual(refreshed.find('stage-three-math-step').map(node => node.hidden), [false, false, true]);
-  const newer = documentFixture();
-  const other = mountStageThreeStream(newer.container, {...identity, run_id: 'new'}, {mode: 'practice', storage});
-  assert.equal(other.readingPosition(target, route), 1);
-});
-
 const descriptor = {...identity, snapshot_url: '/snapshot', events_url: '/events', websocket_url: '/ws'};
 const emptySnapshot = () => ({...identity, last_seq: 0, math_steps: [], goals: {}});
 const response = (value, status = 200) => ({ok: status === 200, status, json: async () => value});
@@ -708,10 +602,10 @@ test('unavailable WebSocket does not report a disconnection while HTTP fallback 
   } finally { transport.stop(); }
 });
 
-test('HTTP cursor expiry refetches selection and QA without replacing math cards', async () => {
-  const {container, find} = documentFixture(), view = mountStageThreeStream(container, identity);
+test('HTTP cursor expiry restores selection and forwards QA without replaying known cards', async () => {
+  const received = [], supplementary = [];
+  const view = mountStageThreeStream(identity, {onMathStep: value => received.push(value.step_id), onQA: value => supplementary.push(value)});
   view.consumer.accept(mathEvent(1));
-  const original = find('stage-three-math-step')[0];
   let snapshots = 0;
   const transport = connectStageThreeStream(view.consumer, descriptor, {WebSocket: null,
     fetch: async address => {
@@ -726,7 +620,8 @@ test('HTTP cursor expiry refetches selection and QA without replacing math cards
     await transport.pollOnce();
     assert.equal(snapshots, 1);
     assert.equal(view.consumer.last_seq, 5);
-    assert.equal(find('stage-three-math-step')[0], original);
-    assert.equal(find('stage-three-qa')[0].hidden, false);
+    assert.deepEqual(received, ['step-1']);
+    assert.deepEqual(supplementary.at(-1), qa());
+    assert.equal(view.consumer.view().selection_chunks[0].kind, 'D3');
   } finally { transport.stop(); }
 });

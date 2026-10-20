@@ -10,7 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Thread
 
 from shuxueshuo_server.graph_lesson.stage_three.contracts import ROOT
-from shuxueshuo_server.graph_lesson.stage_three.preview import make_server
+from shuxueshuo_server.graph_lesson.stage_three.handoff import invalidate_goal
+from shuxueshuo_server.graph_lesson.stage_three.preview import make_server, open_store
 from shuxueshuo_server.graph_lesson.stage_three.runner import run_sample
 
 
@@ -44,6 +45,13 @@ def main():
             def do_GET(self):
                 if self.path == "/test/release":
                     release.set()
+                    self.send_response(204)
+                    self.end_headers()
+                elif self.path == "/test/invalidate":
+                    durable = open_store(output / "run")
+                    target = durable.snapshot()["handoffs"][0]["target_ref"]
+                    invalidate_goal(durable, target, status="conflict", reason="constructed_browser_probe",
+                                    commit_id="fixture-conflict")
                     self.send_response(204)
                     self.end_headers()
                 else:

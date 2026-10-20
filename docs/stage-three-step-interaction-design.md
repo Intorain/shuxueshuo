@@ -1,6 +1,6 @@
 # 阶段三步骤交互卡技术方案
 
-> 状态：设计已确认；三轮审查修订已纳入（2026-10-20）。第 1 阶段（规则与编译）与第 2 阶段（独立执行、事件与存储）已实现并通过测试，第 3～4 阶段待实施。
+> 状态：设计已确认；三轮审查修订已纳入（2026-10-20）。第 1 阶段（规则与编译）、第 2 阶段（独立执行、事件与存储）与第 3 阶段（前端适配）已实现，第 4～6 阶段待实施。分批验证记录见第 13 节。
 > 相关文档：[阶段三实施计划](graph-guided-stage-three-implementation-plan.md)、[图谱引导交互课设计](graph-guided-interactive-lesson-design.md)、[Q01 Demo 设计](graph-walk-demo-q01-design.md)。
 
 ## 1. 背景与目标
@@ -610,14 +610,22 @@ def compile_interaction(seeds, rule, repeat_context) -> dict | None:
    - 运行冻结：新运行在首张数学卡前把规则、`interaction_revision`、`engine_revision` 和每组/每路线预算限额写入元数据 `interactions`；之后不可更改。没有该键的旧运行不建交互状态，前端按旧协议显示。
    - 存储：`EventStore.commit_route` 在同一事务中写数学卡、`interaction_states`（`pending`，或无 seed / 哈希不符 / seed 未就绪时直接只读）及数学事件，事件外层 payload 带 `interaction_status`。`commit_interaction` 按 `{target}:{route}:interaction:{id}` 幂等，校验身份、修订、卡片哈希、连续性和 `interaction_sha256`；终态不可改写。诊断只存内部表 `interactions`，公共快照只投影最终结果。
    - 调度：`interaction_jobs.InteractionScheduler` 在 `run_sample` 中以后台线程运行，按 `plan_groups` 分组（路线到达数学终态前，可能与后卡合并的前缀保持待定）。编译经 `DurableCalculations` 以 `route#interaction` 租约与 `interaction` 预算桶执行，默认每组 5 秒、每路线 30 秒；超时、worker 异常、预算耗尽分别以 `compile_timeout`、`compile_error`、`budget_exhausted` 决议为只读；路线失败或目标不可用记 `route_unavailable`，引擎版本变化记 `engine_unavailable`。崩溃后续算复用已持久化的 worker 回执，不重复计时。`interaction.ENGINE_FILES` 与 `interaction_jobs.ORCHESTRATION_FILES` 均不计入数学指纹。
-   - 前端：`createEventConsumer` 处理 `step_interaction`，校验覆盖卡已发布、哈希一致且连续；同一结果重放幂等，改写报 `stream.immutable_interaction`，与其他结果争用卡片报 `stream.interaction_conflict`。`hydrate` 恢复 `interaction_states` 与 `interactions`，快照不得删除或改写已决结果；`view()` 暴露 `interaction_protocol`、`interaction_states`、`interactions`，挂载视图在卡片上标注 `data-interaction-status`。练习渲染留待第 3 阶段。
+   - 前端：`createEventConsumer` 处理 `step_interaction`，校验覆盖卡已发布、哈希一致且连续；同一结果重放幂等，改写报 `stream.immutable_interaction`，与其他结果争用卡片报 `stream.interaction_conflict`。`hydrate` 恢复 `interaction_states` 与 `interactions`，快照不得删除或改写已决结果；`view()` 暴露 `interaction_protocol`、`interaction_states`、`interactions`。第 3 阶段再接入练习引擎，挂载层转为纯数据入口。
    - 审查修复：完成数学后的续接走 `resume_interactions`，只排空待决交互；状态查询不启动计算。最终提交事务重新检查可用性，迟到结果只读；租约占用可重试，真实预算冲突可诊断；预算限额冻结并兼容旧账本；前端快照先完成状态/结果交叉校验，再整体应用。
    - 资源与恢复复审：同一运行的计算操作互斥、数学优先，排队在预算领取之前；没有新提交时跳过检查点重读并退避。交互测试只使用 `interaction_dispatch`、`interaction_calculation_returned`（回执结算前）及 `interaction_returned`（结果提交前），不继承数学故障钩子。seed 诊断使用实际原因，内容哈希错误独立报 `events.interaction_hash_mismatch`。状态查询只读、交互建表进入版本迁移；交互恢复回调失败可回滚内部投影。整轮收尾等待的取舍见第 6.4 节。
    - 测试：`server/tests/solver/test_graph_stage_three_interaction_jobs.py`（冻结规则与 `compile_route` 一致、事件顺序、幂等与不可改写、指纹、旧运行、超时/异常隔离、合并前缀待定、返回后崩溃、路线与引擎不可用、续算清空待定）；`test_graph_stage_three_interaction_commit.py`（撤销竞态、同事务降级、崩溃重放）；`test_graph_stage_three_interaction_scheduler.py`（租约重试、预算恢复与冲突）；`server/tests/search/test_stage_three_interaction_resume.py`（拍题 API 只续交互，不改变数学结果、检查点或预算）；`tools/tests/graph-stage-three-stream.test.mjs`（包括损坏快照原子拒绝）。
    - 资源与查询回归：`test_graph_stage_three_calculation_gate.py`（互斥、数学优先、排队不扣预算、异常/回执重放释放）；`test_graph_stage_three_interaction_boundaries.py`（独立钩子与诊断）；`test_graph_stage_three_interaction_storage_migration.py`（版本迁移、历史数据与回滚）；`server/tests/search/test_stage_three_interaction_status_read.py`（只读文件/表不变、活动 WAL、身份与锁异常回退）。调度器测试同时覆盖提交游标未变时不读检查点、无事件的终态提交仍被发现。
    - 持续故障复审：调度失败次数跨续接保存，三轮后只读收尾；回归覆盖坏输入、坏输出、预算冲突、缺失 seed、计数幂等与成功重置，以及产品继续入口最终消失。实时/快照复用结果形状校验；三个服务端入口复用纯身份推导并保持原哈希语义。
    - 本轮验证（2026-10-20）：最终代码固定后的后端联合回归 221 passed，前端流/快照/路线/拍题测试 120 passed，Ruff 与 `git diff --check` 通过，真实 LLM 调用为 0。覆盖迟到旧错误不误伤新卡、检查点与卡状态同事务读取及身份校验；本轮未跑全部阶段③数学测试。
-3. **前端适配**：按最终分组生成追加式 `steps`、`read` 组件、等待卡、完成态复用渲染（多问卡仅最后一问显示整卡）、独立路线进度/草稿；`streamStepGraph` 由完成记录驱动图谱；流式更新统一刷新并重算 `done`；删除旧阅读游标代码及测试。
+3. **前端适配**（已实现）：按最终分组生成追加式 `steps`、`read` 组件、等待卡、完成态复用渲染（多问卡仅最后一问显示整卡）、独立路线进度/草稿；`streamStepGraph` 由完成记录驱动图谱；流式更新统一刷新并重算 `done`；删除旧阅读游标代码及测试。
+   - 数据适配：`extendStreamBundle` 只投影已决议的顺序前缀，前面的待定卡阻挡后续卡；单卡多问与双卡合并均保留最终结果身份。已经生成的决策不可改写；没有交互协议的历史数学卡投影为 `read`。实时首卡的交互状态会确立协议，不把早期空快照之后的待定卡当成旧只读卡。`consumer.view()` 从已验证数学卡带出每卡哈希与序号，与公共快照保持一致。
+   - 练习与展示：作答中只展示 `before`，最后一问完成后展示整组数学卡；其他问题显示答案摘要。`stream-math-dom.mjs` 统一生成只读卡、已完成卡、问答区域和目标完成条，公式和说明通过文本节点渲染。`mountStageThreeStream(identity, options)` 只接收/转发数据，调试预览由独立展示适配器消费同一共享 DOM 函数。
+   - 状态与图谱：`refreshStreamState` 同时用于提交与流式刷新；完成状态受数学终态、交互终态及作答记录约束。按运行版本、小问、路线保存学生事件和草稿，AI 回放另存位置；切换路线保留各自进度，撤销只回退当前路线。初始快照暂缺路线时保留已保存进度，等待路线数据恢复。图谱只使用完成组对应的真实来源，保留内部依据以及“方法 → 规则 → 技能”路径。
+   - 拍题接线：`problem.js` 的刷新签名包含交互状态、决策与路线终态；问答独立调用 `attachStreamQA`，不触发数学卡重建。等待卡可被迟到交互替换；数学稍后完成时无需再提交一次就会显示完成态。旧阅读游标、揭示按钮与对应存储已删除。
+   - 复审修复：AI 当前路线失效或全部撤销时，不匹配没有路线的方法；若回放动作不再保持原前缀，取消旧计时器并使迟到回调失效，学生记录不变。调试预览收到目标撤销后同时撤回完成条、问答和“已完成验证”文案，保留数学步骤供检查。
+   - 第二轮复审修复：路线或目标停止后，练习结束，但等待卡内仍以只读方式展示已提交、尚未通过作答揭示的数学卡（不挂问答）。双卡合并组作答中只展示首卡 `before`，避免后卡 `before` 泄露前卡结论。流式模式在路线内没有作答时禁用撤销。运行或课程版本变化时清空卡片与问答缓存，同一运行内切换小问仍复用。
+   - 浏览器验收：[Q01 默认入口](../internal/solver-runs/graph-guided-stage-three/interaction-default-q01-20261020-04/index.html) 与 [Q13 拍题页](../internal/solver-runs/graph-guided-stage-three/interaction-frontend-20261020-04/index.html) 均使用新引擎完成两条路线，覆盖草稿刷新、待定屏障、完成条、附加问答保持数学 DOM、独立路线进度、学生/AI 隔离、显式继续、游标过期恢复、按完成卡点亮真实图谱路径及目标撤销。旧浏览器验收入口已迁移，数学金标与执行来源校验保留；完整执行证据只在测试专用接口提供，实际页面仍读取公共紧凑快照。[调试预览回归](../internal/solver-runs/graph-guided-stage-three/interaction-preview-20261020-02/browser-evidence.json) 覆盖验证前 4 张卡、完成后 10 张卡、双路线完成、刷新恢复及目标撤销。全部使用录制输入，新增真实 LLM 调用为 0；图像组件和图像选项仍属于下一阶段。
+   - 定向回归（2026-10-20）：前端流/快照/共享 DOM/状态/引擎/拍题测试 218 passed，后端运行身份与拍题 API 测试 33 passed；浏览器无未捕获错误，Ruff、JS 语法及 `git diff --check` 通过。本批没有重跑全部阶段③数学测试或其余题目的浏览器验收。
 4. **图像**：函数族识别、代表值与复核、自动窗口与刻度、`numberLine` 组件、前端按 `kind` 分发；Q13 两条路线的题干图、完成态图和图像选项。
 5. **覆盖其余模板**：判别式法、分离参数、换主元等剩余模板的规则与图像；22 份录制回归统计。
 6. **阶段④衔接**：允许 `step_qa` 为交互题改写选错后的反馈，但不改变选项、正确答案和图像参数。

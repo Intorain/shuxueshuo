@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   createState, currentDecision, submitAnswer, switchRoute, undo, graphState,
-  extendStreamBundle, streamGraphState, replayState, migrateStageTwoState,
+  extendStreamBundle, streamGraphState, streamStepGraph, replayState, migrateStageTwoState,
 } from '../../site/assets/graph-walk/walk-state.mjs';
 import {createEventConsumer} from '../../site/assets/graph-walk/stage-three-stream.mjs';
 
@@ -34,6 +34,26 @@ const checkpoint = {target_ref: target, route_id: 'discriminant', driver_state: 
 ]}}};
 const withMath = {...view, math_steps: [first, second], checkpoints: [checkpoint]};
 
+// Card-level source/path probes exercise the extracted pure evidence function.
+// Actual answer-driven graph progression is covered in graph-walk-stream-interactions.
+function evidenceView(bundle, state, {steps = [], route = state.run.route} = {}) {
+  const result = streamGraphState(bundle, state);
+  if (route !== state.run.route || state.introCompleted.length < bundle.intro.length) return result;
+  const seen = new Set(), bases = new Set(result.usedBasis);
+  for (const card of steps) {
+    const key = JSON.stringify([card.route_id, card.step_id]);
+    if (card.route_id !== route || seen.has(key)) continue;
+    seen.add(key);
+    const evidence = streamStepGraph(bundle, card);
+    for (const node of evidence.nodes) result.nodes[node] = 'confirmed';
+    for (const edge of evidence.edges) result.edges[edge] = 'chosen';
+    for (const basis of evidence.usedBasis) bases.add(basis);
+    result.calls.push(...evidence.calls);
+  }
+  result.usedBasis = [...bases].sort();
+  return result;
+}
+
 function answer(bundle, state, value) {
   const decision = currentDecision(bundle, state);
   return submitAnswer(bundle, state, {decision: decision.id, answer: value ??
@@ -60,7 +80,7 @@ test('identity is fixed before selection arrives and D1/D2 answers survive appen
   const later = extendStreamBundle(bundle, withMath, target, graph);
   assert.equal(later.bundleVersion, bundle.bundleVersion);
   assert.deepEqual(state.introCompleted.map(item => item.decision), ['D1', 'D2']);
-  assert.deepEqual(later.routes.discriminant.steps, []);
+  assert.deepEqual(later.routes.discriminant.steps.map(item => item.interaction.type), ['read', 'read']);
   assert.equal(later.stream.math_steps.length, 2);
   assert.deepEqual(original.bundle.routes, {});
 });
@@ -115,14 +135,14 @@ test('a mathematically fit method with a capability gap reaches D4 but cannot st
   assert.equal(currentDecision(bundle, state).id, 'D4');
   assert.equal(state.introCompleted.length, 3);
   assert.equal(state.done, false);
-  assert.equal(streamGraphState(bundle, state, {steps: [first], route: 'extremum'}).calls.length, 0);
+  assert.equal(evidenceView(bundle, state, {steps: [first], route: 'extremum'}).calls.length, 0);
   const usable = answer(bundle, state, 'discriminant');
   assert.equal(usable.lastFeedback.status, 'passed');
   assert.equal(usable.run.route, 'discriminant');
   assert.throws(() => switchRoute(bundle, usable, 'extremum'), /暂不支持/);
 });
 
-test('route changes preserve the two reading decisions and can be undone after refresh', () => {
+test('route changes preserve target decisions and undo stays on the current route after refresh', () => {
   const bundle = extendStreamBundle(original.bundle, withMath, target, graph);
   const prior = selected(bundle);
   const changed = switchRoute(bundle, prior, 'extremum');
@@ -132,18 +152,18 @@ test('route changes preserve the two reading decisions and can be undone after r
   assert.equal(changed.run.route, 'extremum');
   const restored = JSON.parse(JSON.stringify(changed));
   assert.equal(graphState(bundle, restored).nodes['method-separation'], 'confirmed');
-  assert.deepEqual(undo(bundle, restored).run, prior.run);
+  assert.deepEqual(undo(bundle, restored).run, changed.run);
   assert.equal(switchRoute(bundle, restored, 'discriminant').run.route, 'discriminant');
 });
 
 test('new calculation data does not illuminate unread skills or future mathematics', () => {
   const bundle = extendStreamBundle(original.bundle, withMath, target, graph);
   const state = selected(bundle);
-  const initial = streamGraphState(bundle, state);
+  const initial = evidenceView(bundle, state);
   assert.equal(initial.nodes['skill-inequality-transform'], 'idle');
   assert.equal(initial.nodes['skill-quadratic-sign'], 'idle');
   assert.equal(initial.calls.length, 0);
-  const reached = streamGraphState(bundle, state, {steps: [first]});
+  const reached = evidenceView(bundle, state, {steps: [first]});
   assert.equal(reached.nodes['skill-inequality-transform'], 'confirmed');
   assert.equal(reached.edges['method-discriminant|calls|skill-inequality-transform'], 'chosen');
   assert.ok(reached.usedBasis.includes('inequality-properties#addition'));
@@ -159,12 +179,12 @@ test('graph evidence is scoped by run, target, route, step identity and mathemat
   const state = selected(bundle);
   for (const bad of [{...first, run_id: 'old'}, {...first, target_ref: '/root/children/0/goals/0'},
     {...first, route_id: 'extremum'}, {...first, step_id: 'unknown'}, {...first, math_step_sha256: 'changed'}]) {
-    assert.equal(streamGraphState(bundle, state, {steps: [bad]}).calls.length, 0);
+    assert.equal(evidenceView(bundle, state, {steps: [bad]}).calls.length, 0);
   }
-  assert.equal(streamGraphState(bundle, state, {steps: [first, first]}).calls.length, 1);
-  assert.equal(streamGraphState(bundle, state, {steps: [first], route: 'extremum'}).calls.length, 0);
+  assert.equal(evidenceView(bundle, state, {steps: [first, first]}).calls.length, 1);
+  assert.equal(evidenceView(bundle, state, {steps: [first], route: 'extremum'}).calls.length, 0);
   const early = answer(bundle, createState(bundle));
-  assert.equal(streamGraphState(bundle, early, {steps: [first], route: 'discriminant'}).calls.length, 0);
+  assert.equal(evidenceView(bundle, early, {steps: [first], route: 'discriminant'}).calls.length, 0);
 });
 
 test('snapshot and incremental trajectory evidence produce the same reached graph', () => {
@@ -172,10 +192,10 @@ test('snapshot and incremental trajectory evidence produce the same reached grap
     steps: checkpoint.driver_state.trajectory.steps}]};
   const a = extendStreamBundle(original.bundle, withMath, target, graph);
   const b = extendStreamBundle(original.bundle, incremental, target, graph);
-  assert.deepEqual(streamGraphState(a, selected(a), {steps: [first, second]}),
-    streamGraphState(b, selected(b), {steps: [first, second]}));
+  assert.deepEqual(evidenceView(a, selected(a), {steps: [first, second]}),
+    evidenceView(b, selected(b), {steps: [first, second]}));
   const noEvidence = extendStreamBundle(original.bundle, {...withMath, checkpoints: []}, target, graph);
-  assert.equal(streamGraphState(noEvidence, selected(noEvidence), {steps: [first]}).calls.length, 0);
+  assert.equal(evidenceView(noEvidence, selected(noEvidence), {steps: [first]}).calls.length, 0);
 });
 
 test('QA and arrival order never rewrite mathematical data or selection identities', () => {
@@ -194,34 +214,34 @@ const q03Evidence = read('./fixtures/graph-stage-three-q03-evidence.json');
 const q03Bundle = snapshot => extendStreamBundle(original.bundle, snapshot, target, graph);
 const q03Reached = (snapshot, steps) => {
   const bundle = q03Bundle(snapshot);
-  return streamGraphState(bundle, selected(bundle), {steps});
+  return evidenceView(bundle, selected(bundle), {steps});
 };
 
 test('Q03 checked internal operations light their bases only after their own card is read', () => {
   const bundle = q03Bundle(q03Evidence), state = selected(bundle);
   const [classification, negativeCase, positiveCase, , , , solution, merge, boundary] = q03Evidence.math_steps;
-  const unread = streamGraphState(bundle, state);
+  const unread = evidenceView(bundle, state);
   assert.equal(unread.nodes['linear-interval-extremum'], 'idle');
   assert.ok(!unread.usedBasis.includes('method-discriminant#merge'));
-  const classified = streamGraphState(bundle, state, {steps: [classification]});
+  const classified = evidenceView(bundle, state, {steps: [classification]});
   assert.equal(classified.nodes['linear-interval-extremum'], 'idle');
   for (const card of [negativeCase, positiveCase]) {
-    const reached = streamGraphState(bundle, state, {steps: [card]});
+    const reached = evidenceView(bundle, state, {steps: [card]});
     assert.equal(reached.nodes['linear-interval-extremum'], 'confirmed');
     assert.ok(reached.usedBasis.includes('method-discriminant#degree'));
     assert.ok(reached.usedBasis.includes('quadratic-function-properties#definition'));
     assert.ok(!reached.usedBasis.includes('method-discriminant#merge'));
     assert.equal(reached.calls.length, 0); // No synthetic public call for an internal operation.
   }
-  const solved = streamGraphState(bundle, state, {steps: [solution]});
+  const solved = evidenceView(bundle, state, {steps: [solution]});
   assert.ok(solved.usedBasis.includes('method-discriminant#solve'));
   assert.equal(solved.nodes['skill-solve-quadratic'], 'confirmed');
   assert.ok(!solved.usedBasis.includes('method-discriminant#merge'));
-  const merged = streamGraphState(bundle, state, {steps: [merge]});
+  const merged = evidenceView(bundle, state, {steps: [merge]});
   assert.ok(merged.usedBasis.includes('method-discriminant#merge'));
   assert.equal(merged.nodes['linear-interval-extremum'], 'idle'); // No scan of earlier cases.
   assert.equal(merged.calls.length, 0);
-  assert.ok(streamGraphState(bundle, state, {steps: [boundary]}).usedBasis.includes('function-range-extrema#attainability'));
+  assert.ok(evidenceView(bundle, state, {steps: [boundary]}).usedBasis.includes('function-range-extrema#attainability'));
 });
 
 test('Q03 card basis claims cannot bypass source, branch and nonempty local-check validation', () => {
@@ -263,7 +283,7 @@ test('unchecked public calls cannot light a skill or inherit a card basis claim'
     const changed = structuredClone(withMath);
     changed.checkpoints[0].driver_state.trajectory.steps[0].calls[0].postconditions = postconditions;
     const bundle = extendStreamBundle(original.bundle, changed, target, graph);
-    const reached = streamGraphState(bundle, selected(bundle), {steps: [first]});
+    const reached = evidenceView(bundle, selected(bundle), {steps: [first]});
     assert.equal(reached.calls.length, 0);
     assert.notEqual(reached.nodes['skill-inequality-transform'], 'confirmed');
     assert.ok(!reached.usedBasis.includes('inequality-properties#addition'));
@@ -321,17 +341,17 @@ const intervalSkillEdge = 'rule-interval-skill|selects|quadratic-interval-extrem
 const syntheticIntervalEdge = 'method-interval-extremum|calls|quadratic-interval-extremum';
 const intervalReached = snapshot => {
   const bundle = extendStreamBundle(original.bundle, snapshot, target, graph);
-  return streamGraphState(bundle, selected(bundle, 'interval'), {steps: snapshot.math_steps});
+  return evidenceView(bundle, selected(bundle, 'interval'), {steps: snapshot.math_steps});
 };
 
 test('read checked rule calls light the real method/rule/skill path with no synthetic calls edge', () => {
   const bundle = extendStreamBundle(original.bundle, intervalView, target, graph);
   const state = selected(bundle, 'interval');
-  const unread = streamGraphState(bundle, state);
+  const unread = evidenceView(bundle, state);
   assert.equal(unread.nodes['rule-interval-skill'], 'idle');
   assert.equal(unread.edges[intervalRuleEdge], 'idle');
   assert.equal(unread.edges[intervalSkillEdge], 'idle');
-  const reached = streamGraphState(bundle, state, {steps: [intervalCard]});
+  const reached = evidenceView(bundle, state, {steps: [intervalCard]});
   assert.equal(reached.nodes['rule-interval-skill'], 'confirmed');
   assert.equal(reached.nodes['quadratic-interval-extremum'], 'confirmed');
   assert.equal(reached.edges[intervalRuleEdge], 'chosen');
@@ -375,7 +395,7 @@ test('wrong rule, branch, method step, target and unchecked or skipped sources c
   const wrongGraph = structuredClone(graph);
   wrongGraph.edges.find(item => item.id === intervalRuleEdge).occurrences[0].step = 'other';
   const bundle = extendStreamBundle(original.bundle, intervalView, target, wrongGraph);
-  assert.equal(streamGraphState(bundle, selected(bundle, 'interval'), {steps: [intervalCard]}).calls.length, 0);
+  assert.equal(evidenceView(bundle, selected(bundle, 'interval'), {steps: [intervalCard]}).calls.length, 0);
 });
 
 test('rule metadata never falls back to a valid direct method/skill edge', () => {
@@ -383,7 +403,7 @@ test('rule metadata never falls back to a valid direct method/skill edge', () =>
   const call = snapshot.checkpoints[0].driver_state.trajectory.steps[0].calls[0];
   Object.assign(call, {rule_ref: 'rule-interval-skill', branch: 'quadratic'});
   const bundle = extendStreamBundle(original.bundle, snapshot, target, graph);
-  const reached = streamGraphState(bundle, selected(bundle), {steps: [first]});
+  const reached = evidenceView(bundle, selected(bundle), {steps: [first]});
   assert.equal(reached.calls.length, 0);
   assert.notEqual(reached.edges['method-discriminant|calls|skill-inequality-transform'], 'chosen');
 });

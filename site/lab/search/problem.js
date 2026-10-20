@@ -326,10 +326,11 @@ function withdraw(fail) {
    Demo engine renders the steps and the graph. Part buttons switch bundles; the engine keeps each
    part's progress. */
 const WALK = '/assets/graph-walk/walk.mjs?v=20261019-stream';
-const STREAM = '/assets/graph-walk/stage-three-stream.mjs?v=20261019-stream';
+const STREAM = '/assets/graph-walk/stage-three-stream.mjs?v=20261020-interactions';
 const lesson = {data: null, actor: null, part: -1, engine: null, opened: false};
 let streamMount = null, streamTransport = null, streamIdentity = '', streamTicket = 0, partTicket = 0;
 let streamProjection = '', streamPreparing = null;
+let streamApplying = Promise.resolve();
 const pageProgressKey = `search-walk:${searchId || demo}`;
 
 function savePageProgress(view) {
@@ -338,25 +339,31 @@ function savePageProgress(view) {
   lesson.actor = view.actor;
   try { localStorage.setItem(pageProgressKey, JSON.stringify({actor: view.actor, part: lesson.part,
     run_id: lesson.data?.stream?.run_id, lesson_version: lesson.data?.stream?.lesson_version})); } catch {}
-  if (!streamMount) return;
-  streamMount.setMode(view.actor === 'student' ? 'practice' : 'explain');
-  streamMount.setSelection(view.target_ref, view.route, view.intro_complete);
 }
 
 function updateStreamView(view) {
-  if (!lesson.engine || !lesson.data?.stream || view.run_id !== lesson.data.stream.run_id) return;
+  if (!lesson.engine || !lesson.data?.stream || view.run_id !== lesson.data.stream.run_id ||
+      view.lesson_version !== lesson.data.stream.lesson_version) return;
   const goal = goals()[lesson.part];
   if (!goal?.walk || lesson.engine.walkView().target_ref !== goal.target_ref) return;
-  const projection = JSON.stringify([view.run_id, lesson.part, view.selection_chunks, view.math_steps, view.trajectories]);
+  const projection = JSON.stringify([view.run_id, view.lesson_version, lesson.part,
+    view.selection_chunks, view.math_steps, view.trajectories, view.interaction_protocol, view.interaction_states,
+    view.interactions, view.completions, view.route_statuses, view.goals]);
   if (projection !== streamProjection) {
     streamProjection = projection;
-    void lesson.engine.updateStreamSelection(view).catch(() => {
-      if (streamProjection !== projection) return;
-      streamProjection = '';
-      $('#pq-stream-status').hidden = false;
-      $('#pq-stream-status').textContent = '解题过程暂时无法更新，正在重新连接。';
-    });
+    streamApplying = lesson.engine.updateStreamSelection(view);
   }
+  // QA can arrive after all decisions are complete, without changing the
+  // mathematical projection. Attach it independently after the view update.
+  void streamApplying.then(() => {
+    if (streamProjection !== projection || lesson.engine.walkView().target_ref !== goal.target_ref) return;
+    for (const chunk of view.qa || []) lesson.engine.attachStreamQA(chunk);
+  }).catch(() => {
+    if (streamProjection !== projection) return;
+    streamProjection = '';
+    $('#pq-stream-status').hidden = false;
+    $('#pq-stream-status').textContent = '解题过程暂时无法更新，正在重新连接。';
+  });
 }
 
 async function prepareStream() {
@@ -366,16 +373,12 @@ async function prepareStream() {
   if (key === streamIdentity && streamMount) return streamPreparing;
   const ticket = ++streamTicket;
   streamTransport?.stop(); streamMount?.stop(); streamMount = null; streamProjection = '';
+  streamApplying = Promise.resolve();
   streamIdentity = key;
-  const host = $('#pq-stream'); host.replaceChildren(); host.hidden = false;
+  const host = $('#pq-stream'); host.replaceChildren(); host.hidden = true;
   const module = await import(STREAM);
   if (ticket !== streamTicket) return;
-  streamMount = module.mountStageThreeStream(host, descriptor, {
-    mode: lesson.actor === 'student' ? 'practice' : 'explain', readingEnabled: false, routeControls: true,
-    renderMath: root => lesson.engine.renderStreamMath(root),
-    onReading: progress => lesson.engine?.setStreamProgress(progress),
-    onRouteSelect: (_target, route) => lesson.engine?.chooseStreamRoute(route),
-  });
+  streamMount = module.mountStageThreeStream(descriptor);
   streamTransport = module.connectStageThreeStream(streamMount.consumer, descriptor, {
     onUpdate: view => { if (ticket === streamTicket) { updateStreamView(view); $('#pq-stream-status').hidden = true; } },
     onError: () => { if (ticket === streamTicket) { $('#pq-stream-status').hidden = false;
@@ -443,7 +446,6 @@ const WAITING = '<p class="gw-ai-status is-thinking" role="status"><span class="
 /* In walk mode a note replaces the steps and hides the graph; before it, notes sit under the card. */
 function showNote(html) {
   $('#pq-stream').hidden = true;
-  streamMount?.setSelection(null, null, false);
   if (!lesson.opened) { $('#pq-lesson').innerHTML = html; renderMath($('#pq-lesson')); return; }
   lesson.engine?.parkWalk();
   document.body.dataset.part = 'note';
@@ -556,7 +558,7 @@ async function openPart(index) {
   await prepareStream();
   if (ticket !== partTicket) return;
   const stream = lesson.data.stream ? {...streamMount.consumer.view(), target_ref: goal.target_ref} : null;
-  $('#pq-stream').hidden = !stream;
+  $('#pq-stream').hidden = true;
   await lesson.engine.mountWalk({bundle: goal.walk.bundle, replay: goal.walk.replay, actor,
     revealGraph: true, practicePage: null, stream, onState: savePageProgress});
   if (ticket !== partTicket) return;

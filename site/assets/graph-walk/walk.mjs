@@ -1,5 +1,6 @@
-import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState} from './walk-state.mjs';
+import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft} from './walk-state.mjs';
 import {createWalkGraph, nodeHref} from './walk-graph.mjs?v=20261015-view-tabs';
+import {createMathCard, attachMathQA, createMathContext, createRouteCompletion} from './stream-math-dom.mjs';
 
 const BUNDLE_URL = '/data/graph-walk/quadratic-always-q01.json';
 const REPLAY_INDEX_URL = '/data/graph-walk/replays/index.json';
@@ -23,8 +24,10 @@ let preview = null, previewTimer = null, story = null, replayStatuses = {replay:
 let options = {bundleUrl: BUNDLE_URL, practicePage: PRACTICE_PAGE, bundle: null, replay: null, actor: null, revealGraph: false};
 let bound = false;
 const saved = new Map();
-let streamView = null, streamProgress = {steps: [], route: null}, publicGraph = null, streamUpdateTicket = 0;
+let streamView = null, publicGraph = null, streamUpdateTicket = 0;
 let streamUpdateQueue = Promise.resolve(), mountTicket = 0, streamParked = false;
+const streamQA = new Map(), streamCards = new Map();
+let visibleStreamCards = new Set(), replayRoutes = {}, replayRoute = null;
 
 function readGraphMode() {
   // Phones always open in 3D: its camera follows the current step, which a small screen needs.
@@ -83,6 +86,7 @@ const optionsOf = component => component.options || [];
 
 function emptyAnswer(decision) {
   const component = decision.interaction;
+  if (component.type === 'read') return 'read';
   if (component.type === 'choice') return null;
   if (component.type === 'multi') return [];
   if (component.type === 'plane') return ['', '', ''];
@@ -116,6 +120,7 @@ function gridChoice(decision, answer) {
 }
 
 function ready(decision) {
+  if (decision.interaction.type === 'read') return true;
   if (decision.interaction.type === 'choice') return draft != null;
   if (decision.interaction.type === 'multi') return draft.length > 0;
   return draft.length > 0 && draft.every(value => value !== '');
@@ -123,6 +128,7 @@ function ready(decision) {
 
 function projectDraft(decision, answer) {
   const empty = emptyAnswer(decision);
+  if (decision.interaction.type === 'read') return 'read';
   if (decision.interaction.type === 'choice') return typeof answer === 'string' ? answer : empty;
   if (!Array.isArray(answer)) return empty;
   if (decision.interaction.type === 'multi') return answer.filter(value => typeof value === 'string');
@@ -132,8 +138,10 @@ function projectDraft(decision, answer) {
 function ensureDraft(decision) {
   const key = decisionKey(decision);
   if (key !== draftKey) {
-    const kept = actor === 'student' && keptDraft?.key === key ? keptDraft : null;
-    draftKey = key; draft = kept ? structuredClone(kept.draft) : emptyAnswer(decision); selectedSlot = null;
+    const routeDraft = actor === 'student' && bundle.stream ? streamDraft(bundle, state) : null;
+    const kept = routeDraft?.decision === decision.id ? {draft: routeDraft.answer, ...routeDraft}
+      : actor === 'student' && keptDraft?.key === key ? keptDraft : null;
+    draftKey = key; draft = kept ? projectDraft(decision, kept.draft) : emptyAnswer(decision); selectedSlot = kept?.selectedSlot ?? null;
     if (actor === 'student') { submitted = kept?.submitted ?? null; keptDraft = null; }
   }
   // Failed recorded actions can have any input shape. Only the display draft is normalized.
@@ -146,6 +154,7 @@ function choiceLabel(component, answer, index = 0) {
 }
 
 function answerSummary(decision, answer) {
+  if (decision.interaction.type === 'read') return '已阅读';
   if (decision.interaction.type === 'grid') {
     const {optionX, optionY, zone} = gridChoice(decision, answer);
     return zone ? `${zone.label}（${optionX.label}，${optionY.label}）` : '';
@@ -228,12 +237,14 @@ function completedHTML(record, number, runId, route) {
   const uid = `gw-${runId}-${decision.id}`;
   // A grid keeps its map as the record; only the page's collapsible derivation is borrowed from the display.
   const derivation = () => decision.display ? /<details[\s\S]*<\/details>/.exec(template(decision.display, uid))?.[0] || '' : '';
-  const body = decision.interaction.type === 'grid' ? gridHTML(decision, record.answer, false) + derivation()
+  const body = decision.source === 'stream' && decision.stream_last_part
+    ? `<div data-stream-completed="${escapeHTML(decision.id)}"></div>`
+    : decision.interaction.type === 'grid' ? gridHTML(decision, record.answer, false) + derivation()
     : decision.display ? template(decision.display, uid)
     : decision.interaction.type === 'checklist' ? checklistAnswerHTML(decision, record.answer)
     : decision.interaction.type === 'plane' ? planeHTML(decision, record.answer, false)
     : `<p class="gw-answer" data-math-text>${escapeHTML(answerSummary(decision, record.answer))}</p>`;
-  const results = !decision.display ? (record.results || []).map(resultText).filter(Boolean).map(text => `<p class="gw-result" data-math-text>${escapeHTML(text)}</p>`).join('') : '';
+  const results = decision.source !== 'stream' && !decision.display ? (record.results || []).map(resultText).filter(Boolean).map(text => `<p class="gw-result" data-math-text>${escapeHTML(text)}</p>`).join('') : '';
   return `<details class="gw-completed" data-completed-decision="${escapeHTML(decision.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(decision.title || decision.question)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${body}${results}</div></details>`;
 }
 
@@ -251,6 +262,7 @@ function graphOptionsHTML(decision) {
 
 function interactionHTML(decision) {
   const component = decision.interaction;
+  if (component.type === 'read') return '';
   const board = template(decision.board, `gw-${activeRunId()}-${decision.id}-active`);
   if (['choice', 'multi'].includes(component.type) && optionsOf(component).some(option => option.graph)) return board + graphOptionsHTML(decision);
   if (component.type === 'choice') return board + PracticeComponents.choices(component, draft, decision.title || decision.question);
@@ -310,10 +322,17 @@ function carrySummary(decision, answer) {
 function renderInteraction(decision, {focus} = {}) {
   const host = $('#gw-active');
   if (!host) return;
+  host.dataset.decisionId = decision.id;
   ensureDraft(decision);
   const disabled = actor === 'replay';
   const number = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0) + 1;
-  host.innerHTML = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(decision.title || '当前判断')}</h2><span class="status">进行中</span></header>${carryHTML()}<p class="question" data-math-text>${escapeHTML(decision.question)}</p><div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`;
+  host.innerHTML = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(decision.title || '当前判断')}</h2><span class="status">进行中</span></header>${carryHTML()}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`;
+  if (decision.source === 'stream') {
+    const context = host.querySelector('[data-stream-context]'), steps = decisionMathSteps(decision);
+    if (decision.interaction.type === 'read') for (const step of steps) context.append(createMathCard(document, step, {renderMath: renderStreamMath}).node);
+    // A later merged card's before is usually the earlier card's conclusion.
+    else context.append(createMathContext(document, steps.slice(0, 1), {renderMath: renderStreamMath}));
+  }
   for (const button of host.querySelectorAll('[data-slot]')) {
     const expanded = Number(button.dataset.slot) === selectedSlot;
     button.setAttribute('aria-expanded', String(expanded));
@@ -346,7 +365,7 @@ function callStepTitle(call) {
 
 /* Graph state plus every node the walk has reached or offered so far, for the 3D growth view. */
 function viewFor(shown) {
-  const view = bundle.stream && !preview ? streamGraphState(bundle, shown, streamProgress) : graphState(bundle, shown);
+  const view = bundle.stream ? streamGraphState(bundle, shown) : graphState(bundle, shown);
   const seen = new Set(Object.keys(view.nodes).filter(id => view.nodes[id] !== 'idle'));
   for (const run of [{completed: shown.introCompleted}, ...(shown.archives || []), shown.run]) {
     for (const record of run.completed || []) for (const id of anyDecision(record.decision)?.candidateNodes || []) seen.add(id);
@@ -584,7 +603,7 @@ function renderGraph() {
   const name = id => graphView.nodes.find(node => node.id === id)?.label || id;
   $('#gw-calls').innerHTML = view.calls?.length ? view.calls.map(call => `<li><span>${escapeHTML(name(call.method))} · ${escapeHTML(callStepTitle(call))}</span><strong>调用 ${escapeHTML(name(call.ref))}</strong></li>`).join('') : '<li>尚未发生方法或技能调用。</li>';
   const current = currentDecision(bundle, state);
-  $('#gw-path').textContent = [state.run?.route ? bundle.routes[state.run.route].label : '从读题开始', current?.title || (state.done ? '完成本路线' : '')].filter(Boolean).join(' › ');
+  $('#gw-path').textContent = [state.run?.route ? bundle.routes[state.run.route]?.label || '正在恢复解题路线' : '从读题开始', current?.title || (state.done ? '完成本路线' : '')].filter(Boolean).join(' › ');
   hydrate($('#gw-graph-panel'));
   return view;
 }
@@ -599,16 +618,26 @@ function render({focus = false, scroll = focus} = {}) {
   // The AI's cards appear only as it submits: a step it has not reached yet stays a one-line placeholder.
   const shown = current && (actor === 'student' || submitted?.decision === current.id);
   const pending = actor === 'replay' && !shown ? replayPendingHTML(current) : '';
-  const waiting = !current && !state.done && !(bundle.stream && bundle.intro.some(item => item.id === 'D4'))
+  const waiting = !current && !state.done
     ? waitingHTML(introCount + (state.run?.completed?.length || 0) + 1) : '';
-  $('#gw-steps').innerHTML = intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending || waiting);
+  $('#gw-steps').innerHTML = streamRouteTabsHTML() + intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending || waiting);
   revealGraph();
   const lastCompleted = [...(state.introCompleted || []), ...(state.run?.completed || [])].at(-1)?.decision;
   $('#gw-steps').querySelectorAll('details[data-completed-decision]').forEach(item => { item.open = open.has(item.dataset.completedDecision) || item.dataset.completedDecision === lastCompleted; });
+  mountCompletedMath();
+  mountRetainedMath();
   if (shown) renderInteraction(current);
   const archives = state.archives?.filter(run => run.route) || [];
   $('#gw-completion').innerHTML = state.done ? completionHTML(archives) : '';
-  $('#gw-undo').disabled = actor !== 'student' || busy || !(state.introCompleted?.length || state.run?.completed?.length || state.run?.route);
+  const completionHost = $('#gw-completion [data-stream-completion]');
+  if (completionHost) {
+    const completion = streamCompletion(state.run.route);
+    if (completion) completionHost.append(createRouteCompletion(document, completion, {renderMath: renderStreamMath}).node);
+  }
+  // Streamed undo only rewinds the current route; with no route answer there is nothing to undo.
+  const routeOnly = bundle.stream && state.run?.route && state.introCompleted.length >= bundle.intro.length;
+  $('#gw-undo').disabled = actor !== 'student' || busy || !(routeOnly ? state.run.completed.length
+    : state.introCompleted?.length || state.run?.completed?.length || state.run?.route);
   const completedCount = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0);
   $('#gw-progress').textContent = `${completedCount} 个步骤已确认${actor === 'replay' ? ` · AI 回放 ${replayPosition} / ${replay?.actions.length || 0}` : ''}`;
   hydrate($('#gw-steps')); hydrate($('#gw-completion'));
@@ -672,9 +701,22 @@ function mountPlayer() {
 
 /* A bundle may stop before its routes exist; the next step then shows as a numbered card still on its way. */
 function waitingHTML(number) {
-  const next = bundle.pending;
+  const route = bundle.stream && bundle.routes[state.run?.route];
+  const next = route ? route.available === false
+    ? {title: '此路线暂不可用', status: '已停止', text: '已计算的步骤保留供检查。'}
+    : {title: route.math_complete ? '计算已完成，正在准备练习' : '正在准备这一步的练习', text: '练习准备好后会自动显示。'}
+    : bundle.stream && state.run?.route ? {title: '正在恢复解题路线', text: '已保存的练习进度会随步骤一起恢复。'} : bundle.pending;
   if (!next) return '';
-  return `<section class="gw-active gw-waiting" aria-labelledby="gw-current-title"><header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(next.title)}</h2><span class="status">${escapeHTML(next.status || '准备中')}</span></header>${carryHTML()}<p class="gw-ai-status"><span class="gw-ai-dot" aria-hidden="true"></span><span data-math-text>${escapeHTML(next.text || '')}</span></p></section>`;
+  const retained = route?.available === false ? '<div class="gw-stream-retained" data-stream-retained></div>' : '';
+  return `<section class="gw-active gw-waiting" aria-labelledby="gw-current-title"><header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(next.title)}</h2><span class="status">${escapeHTML(next.status || '准备中')}</span></header>${carryHTML()}<p class="gw-ai-status"><span class="gw-ai-dot" aria-hidden="true"></span><span data-math-text>${escapeHTML(next.text || '')}</span></p>${retained}</section>`;
+}
+
+function streamRouteTabsHTML() {
+  if (!bundle.stream || state.introCompleted.length !== bundle.intro.length) return '';
+  const routes = Object.values(bundle.routes).filter(route => route.route_plan === 'planned');
+  if (routes.length < 2) return '';
+  return `<nav class="gw-stream-routes" aria-label="解题路线">${routes.map(route =>
+    `<button type="button" data-stream-route="${escapeHTML(route.id)}" aria-pressed="${route.id === state.run.route}" ${route.available === false ? 'disabled' : ''}>${escapeHTML(route.label)}</button>`).join('')}</nav>`;
 }
 
 /* With revealGraph, the graph column waits until the first step is confirmed, then opens beside the steps. */
@@ -698,6 +740,10 @@ function notifyReplay(text, retry = false) {
 
 function completionHTML(archives) {
   const route = bundle.routes[state.run?.route], {answer, back} = bundle.completion;
+  if (bundle.stream) {
+    const others = actor === 'student' ? Object.values(bundle.routes).filter(item => item.id !== route?.id && item.available !== false && item.route_plan === 'planned') : [];
+    return `<section class="gw-completion"><h2>${escapeHTML(route?.label || '本路线')} · 练习已完成</h2><div data-stream-completion></div><div class="gw-toolbar">${others.map(item => `<button type="button" data-route="${escapeHTML(item.id)}">再用${escapeHTML(item.label)}做一遍</button>`).join('')}</div></section>`;
+  }
   const walked = [...new Set([...archives.map(run => run.route), route?.id])].map(id => bundle.routes[id]).filter(Boolean);
   const others = actor === 'student' ? Object.values(bundle.routes).filter(item => item.id !== route?.id) : [];
   const takeaways = walked.length > 1
@@ -727,7 +773,7 @@ function submit() {
   submitted = {decision: decision.id, answer};
   const feedback = state.lastFeedback;
   $('#gw-announcement').textContent = feedback?.message || (feedback?.status === 'passed' ? '已确认，进入下一步。' : '请再想一想。');
-  if (feedback?.status !== 'passed') { renderInteraction(decision); renderGraph(); return; }
+  if (feedback?.status !== 'passed') { renderInteraction(decision); renderGraph(); if (bundle.stream) park(); return; }
   busy = true;
   $('#gw-submit').disabled = true;
   renderGraph();
@@ -753,8 +799,9 @@ function applyReplayPosition(next) {
 
 function playReplay() {
   if (!replay || replayPosition >= replay.actions.length) return;
+  const ticket = replayTicket;
   function advance() {
-    if (actor !== 'replay') return;
+    if (actor !== 'replay' || ticket !== replayTicket) return;
     replayPlaying = replayPosition + 1 < replay.actions.length;
     try { applyReplayPosition(replayPosition + 1); }
     catch (error) { stopReplay(); notifyReplay(`回放无法继续：${error.message}`); return; }
@@ -865,6 +912,8 @@ function ensureReplay(autoplay = true) {
 }
 
 function chooseActor(next, {autoplay = true} = {}) {
+  rememberStreamDraft(); rememberReplayRoute();
+  if (bundle.stream && next === 'replay' && !replayRoute) replayRoute = state?.run?.route || null;
   stopReplay(); ++replayTicket; actor = next;
   if ($('#gw-graph-panel').classList.contains('is-open')) closeGraph();
   document.body.dataset.actor = next; toggleSteps(false);
@@ -873,7 +922,11 @@ function chooseActor(next, {autoplay = true} = {}) {
   draftKey = ''; submitted = null;
   state = next === 'student' ? studentState : createState(bundle);
   if (options.stream && next === 'replay') {
-    replay = streamReplay(); replayPosition = autoplay ? replay.actions.length : Math.min(replayPosition, replay.actions.length);
+    replay = streamReplay();
+    const remembered = replayRoutes[replay.routes[0]];
+    replayPosition = remembered == null ? autoplay ? replay.actions.length : Math.min(replayPosition, replay.actions.length)
+      : Math.min(remembered, replay.actions.length);
+    replayRoute = replay.routes[0] || null;
     state = replayState(bundle, replay, replayPosition);
     render(); return;
   }
@@ -916,13 +969,110 @@ async function withLayout(value) {
   return {...value, graph: {...value.graph, layout: lanesLayout(value.graph.nodes, value.graph.edges, defs)}};
 }
 
+function rememberStreamDraft() {
+  if (!bundle?.stream || actor !== 'student' || !state) return;
+  const decision = currentDecision(bundle, state);
+  if (!decision || draftKey !== decisionKey(decision)) return;
+  state = setStreamDraft(bundle, state, {decision: decision.id, answer: structuredClone(draft), selectedSlot,
+    submitted: submitted ? structuredClone(submitted) : null});
+  studentState = state;
+}
+
+function rememberReplayRoute() {
+  if (!bundle?.stream || actor !== 'replay' || !replay) return;
+  const route = replay.routes?.[0];
+  if (!route) return;
+  replayRoute = route;
+  replayRoutes[route] = replayPosition;
+}
+
+const progressKey = value => value.stream ? JSON.stringify([value.problemId, value.bundleVersion]) : value.problemId;
+
+function savedProgress(value) {
+  let kept = saved.get(progressKey(value));
+  if (!kept && value.stream) try { kept = JSON.parse(localStorage.getItem(`graph-walk:${value.problemId}:${value.bundleVersion}`) || 'null'); } catch {}
+  // The previous stage can be parked just before this run receives its identity.
+  return kept || saved.get(value.problemId);
+}
+
+const streamCardKey = step => JSON.stringify([step.run_id, step.lesson_version, step.target_ref, step.route_id, step.step_id, step.math_step_sha256]);
+const streamQAKey = chunk => JSON.stringify([streamCardKey(chunk), chunk.verified_route_sha256]);
+
+function decisionMathSteps(decision) {
+  const route = state.run?.route;
+  return (decision.stream_steps || []).map(ref => bundle.stream.math_steps.find(step =>
+    step.target_ref === bundle.stream.target_ref && step.route_id === route && step.step_id === ref.step_id &&
+    step.math_step_sha256 === ref.math_step_sha256)).filter(Boolean);
+}
+
+function streamCompletion(route) {
+  const goal = streamView?.goals?.[bundle.stream.target_ref];
+  if (goal && (goal.available === false || goal.status === 'conflict' || goal.reason === 'route_consistency_undecidable')) return null;
+  if (bundle.routes[route]?.available === false) return null;
+  return (streamView?.completions || []).find(value =>
+    (value.target_ref || value.identity?.[0]) === bundle.stream.target_ref &&
+    (value.route_id || value.identity?.[1]) === route && value.available !== false) || null;
+}
+
+function availableQA(step) {
+  const completion = streamCompletion(step.route_id);
+  return completion?.verified_route_sha256 ? streamQA.get(streamQAKey({...step, verified_route_sha256: completion.verified_route_sha256})) : null;
+}
+
+function mountCardQA(card, chunk) {
+  const key = streamQAKey(chunk);
+  if (card.qaKey !== key) {
+    attachMathQA(card, chunk, {renderMath: renderStreamMath});
+    card.qaKey = key;
+  } else card.qa.hidden = false;
+}
+
+function mountCompletedMath() {
+  visibleStreamCards = new Set();
+  if (!bundle.stream) return;
+  for (const host of $('#gw-steps').querySelectorAll('[data-stream-completed]')) {
+    const decision = decisionById(host.dataset.streamCompleted, state.run.route);
+    if (!decision?.stream_last_part) continue;
+    for (const step of decisionMathSteps(decision)) {
+      const key = streamCardKey(step);
+      let card = streamCards.get(key);
+      if (!card) { card = createMathCard(document, step, {renderMath: renderStreamMath}); streamCards.set(key, card); }
+      const qa = availableQA(step);
+      if (qa) mountCardQA(card, qa);
+      else card.qa.hidden = true;
+      host.append(card.node); visibleStreamCards.add(key);
+    }
+  }
+}
+
+/* A stopped route ends practice, but its committed cards not yet shown stay readable for checking. */
+function mountRetainedMath() {
+  const host = bundle.stream && $('#gw-steps').querySelector('[data-stream-retained]');
+  if (!host) return;
+  const route = state.run.route, shown = new Set();
+  for (const record of state.run.completed) {
+    const decision = decisionById(record.decision, route);
+    if (decision?.stream_last_part) for (const ref of decision.stream_steps) shown.add(ref.step_id);
+  }
+  const retained = bundle.stream.math_steps.filter(step => step.target_ref === bundle.stream.target_ref &&
+    step.route_id === route && !shown.has(step.step_id)).sort((left, right) => left.ordinal - right.ordinal);
+  for (const step of retained) {
+    const key = streamCardKey(step);
+    let card = streamCards.get(key);
+    if (!card) { card = createMathCard(document, step, {renderMath: renderStreamMath}); streamCards.set(key, card); }
+    card.qa.hidden = true;
+    host.append(card.node);
+  }
+}
+
 function park() {
   if (!bundle) return;
-  const previous = saved.get(bundle.problemId);
-  const draftNow = actor === 'student' && draftKey ? {key: draftKey, draft: structuredClone(draft), submitted} : keptDraft;
-  const value = {bundleVersion: bundle.bundleVersion, studentState, replayPosition, actor,
+  rememberStreamDraft(); rememberReplayRoute();
+  const previous = saved.get(progressKey(bundle));
+  const draftNow = actor === 'student' && draftKey ? {key: draftKey, draft: structuredClone(draft), submitted, selectedSlot} : keptDraft;
+  const value = {bundleVersion: bundle.bundleVersion, studentState, replayPosition, replayRoute, replayRoutes, actor,
     draft: draftNow ?? (previous?.bundleVersion === bundle.bundleVersion ? previous.draft : null)};
-  saved.set(bundle.problemId, value);
+  saved.set(progressKey(bundle), value);
   if (options.stream) try { localStorage.setItem(`graph-walk:${bundle.problemId}:${bundle.bundleVersion}`, JSON.stringify(value)); } catch {}
 }
 
@@ -945,16 +1095,17 @@ async function load() {
     if (ticket !== loadTicket) return;
     if (!value.bundleVersion || !value.templates || !value.intro?.length || !value.routes || !value.graph) throw new Error('Demo 快照不完整，请重新构建后重试。');
     bundle = value; graphView = bundle.graph;
-    let kept = saved.get(bundle.problemId);
-    if (!kept && options.stream) try { kept = JSON.parse(localStorage.getItem(`graph-walk:${bundle.problemId}:${bundle.bundleVersion}`) || 'null'); } catch {}
+    const kept = savedProgress(bundle);
     // Stage two may be readable a moment before stage three publishes its run identity.
     // Carry those same-version D1/D2 answers into that run, never across an old run.
     let resume = kept?.bundleVersion === bundle.bundleVersion, restoredState = kept?.studentState, migrated = false;
     if (!resume && options.stream && kept?.bundleVersion === options.bundle?.bundleVersion) try {
       restoredState = migrateStageTwoState(options.bundle, bundle, kept.studentState); resume = true; migrated = true;
     } catch { /* Unrelated or invalid progress starts this run at D1. */ }
-    studentState = state = resume ? restoredState : createState(bundle);
+    studentState = state = resume ? bundle.stream ? refreshStreamState(bundle, restoredState) : restoredState : createState(bundle);
     replay = null; replayPosition = resume ? kept.replayPosition : 0; replayNotice = null;
+    replayRoute = resume ? kept.replayRoute || null : null;
+    replayRoutes = resume ? structuredClone(kept.replayRoutes || {}) : {};
     keptDraft = resume ? kept.draft : null;
     draftKey = ''; submitted = null;
     if ($('#gw-problem')) PracticeMath.render($('#gw-problem'), bundle.problem.text);
@@ -986,6 +1137,7 @@ function bind() {
   $('#gw-steps').addEventListener('click', event => {
     const button = event.target.closest('button');
     if (button?.id === 'gw-replay-retry') { ensureReplay(); return; }
+    if (button?.dataset.streamRoute && !busy) { chooseStreamRoute(button.dataset.streamRoute); return; }
     if (!button || actor !== 'student' || busy) return;
     if (button.id === 'gw-submit') { submit(); return; }
     const focus = button.dataset.choice != null ? `[data-choice][data-value="${CSS.escape(button.dataset.value)}"]`
@@ -1016,6 +1168,7 @@ function bind() {
   $('#gw-completion').addEventListener('click', event => {
     const button = event.target.closest('[data-route]');
     if (!button || actor !== 'student' || busy) return;
+    rememberStreamDraft();
     state = switchRoute(bundle, state, button.dataset.route); studentState = state;
     draftKey = ''; submitted = null; render({focus: true});
   });
@@ -1027,9 +1180,9 @@ function bind() {
     clearTimeout(commitTimer); busy = false; stopReplay(); ++replayTicket;
     // Drop any parked unsubmitted answer; otherwise the next student render restores it.
     keptDraft = null; draftKey = ''; submitted = null;
-    studentState = createState(bundle); replayPosition = 0;
-    const kept = saved.get(bundle.problemId);
-    if (kept) saved.set(bundle.problemId, {...kept, studentState, replayPosition: 0, draft: null});
+    studentState = createState(bundle); state = studentState; replayPosition = 0; replayRoutes = {}; replayRoute = null;
+    const kept = saved.get(progressKey(bundle));
+    if (kept) saved.set(progressKey(bundle), {...kept, studentState, replayPosition: 0, draft: null});
     chooseActor('student');
   });
   $('#gw-student').addEventListener('click', () => { if (!busy) chooseActor('student'); });
@@ -1054,8 +1207,12 @@ if (document.readyState === 'loading') await new Promise(resolve => document.add
 export async function mountWalk(next) {
   const ticket = ++mountTicket;
   streamParked = true; ++streamUpdateTicket;
-  if (next.stream?.run_id !== options.stream?.run_id || next.stream?.target_ref !== options.stream?.target_ref) {
-    streamView = next.stream || null; streamProgress = {steps: [], route: null}; ++streamUpdateTicket;
+  const newRun = next.stream?.run_id !== options.stream?.run_id || next.stream?.lesson_version !== options.stream?.lesson_version;
+  if (newRun || next.stream?.target_ref !== options.stream?.target_ref) {
+    if (newRun) {
+      streamQA.clear(); streamCards.clear(); visibleStreamCards = new Set();
+    }
+    streamView = next.stream || null; ++streamUpdateTicket;
   }
   options = {...options, ...next};
   if (!bound) { bind(); bound = true; }
@@ -1078,11 +1235,20 @@ export const walkActor = () => actor;
 function streamReplay() {
   const actions = structuredClone(options.replay?.actions || []);
   const plane = bundle.intro.find(item => item.id === 'D3'), routes = bundle.intro.find(item => item.id === 'D4');
-  const route = state?.run?.route && bundle.routes[state.run.route]?.route_plan === 'planned' ? state.run.route
-    : Object.keys(bundle.routes).find(id => bundle.routes[id].route_plan === 'planned');
-  const method = plane?.interaction.methods.find(item => item.route === route);
+  const route = [replayRoute, state?.run?.route].find(id => bundle.routes[id]?.route_plan === 'planned' && bundle.routes[id]?.available !== false)
+    || Object.keys(bundle.routes).find(id => bundle.routes[id].route_plan === 'planned' && bundle.routes[id].available !== false);
+  const method = route && plane?.interaction.methods.find(item => item.route === route);
   if (method) actions.push({decision: 'D3', answer: [...plane.expected_answer.cell, method.value]});
   if (routes && method) actions.push({decision: 'D4', answer: route});
+  if (method) for (const decision of bundle.routes[route].steps || []) {
+    const expected = decision.expected_answer || {};
+    const answer = decision.interaction.type === 'read' ? 'read'
+      : decision.interaction.type === 'choice' ? expected.one_of?.[0]
+        : decision.interaction.type === 'multi' ? expected.required
+          : ['fill', 'checklist'].includes(decision.interaction.type) ? expected.terms : null;
+    if (answer == null) break;
+    actions.push({decision: decision.id, answer: structuredClone(answer)});
+  }
   return {schemaVersion: 2, problemId: bundle.problemId, bundleVersion: bundle.bundleVersion,
     status: 'partial', routes: method ? [route] : [], actions};
 }
@@ -1103,11 +1269,15 @@ export function updateStreamSelection(view) {
 
 async function applyStreamSelection(view) {
   if (streamParked || !options.stream || view.run_id !== options.stream.run_id || view.lesson_version !== options.stream.lesson_version || !bundle) return;
-  streamView = view;
+  rememberStreamDraft();
   const signature = graph => JSON.stringify([graph.nodes, graph.edges, graph.lanes]);
+  const decisionSignature = value => JSON.stringify([value.intro, Object.entries(value.routes).map(([id, route]) =>
+    [id, route.steps, route.status, route.available, route.math_complete, route.interactions_complete, route.pending_count]),
+    value.stream?.interaction_states]);
   const ticket = ++streamUpdateTicket, previousGraph = signature(bundle.graph);
-  const next = extendStreamBundle(options.bundle, view, options.stream.target_ref, publicGraph);
-  const decisionsChanged = JSON.stringify(next.intro) !== JSON.stringify(bundle.intro);
+  const previousDecisionSignature = JSON.stringify([decisionSignature(bundle), streamView?.goals, streamView?.completions]);
+  const next = extendStreamBundle(bundle, view, options.stream.target_ref, publicGraph);
+  const decisionsChanged = JSON.stringify([decisionSignature(next), view.goals, view.completions]) !== previousDecisionSignature;
   if (signature(next.graph) !== previousGraph) {
     delete next.graph.layout;
     const laidOut = await withLayout(next);
@@ -1117,26 +1287,56 @@ async function applyStreamSelection(view) {
     if (ticket !== streamUpdateTicket) return;
     mountCaption();
   } else bundle = {...bundle, ...next, graph: bundle.graph};
+  streamView = view;
+  studentState = refreshStreamState(bundle, studentState);
   if (actor === 'replay') {
     const followedEnd = replay && replayPosition === replay.actions.length;
-    replay = streamReplay();
+    const nextReplay = streamReplay();
+    const samePath = replay && JSON.stringify(replay.routes) === JSON.stringify(nextReplay.routes) &&
+      replay.actions.every((action, index) => JSON.stringify(action) === JSON.stringify(nextReplay.actions[index]));
+    if (replay && !samePath) {
+      rememberReplayRoute();
+      // A withdrawn route can shorten or replace the replay. Invalidate even
+      // already queued callbacks before they advance the replacement's cursor.
+      clearTimeout(replayTimer); replayTimer = null; replayPlaying = false; ++replayTicket;
+    }
+    replay = nextReplay;
     replayPosition = followedEnd ? replay.actions.length : Math.min(replayPosition, replay.actions.length);
     state = replayState(bundle, replay, replayPosition);
-  }
+  } else state = studentState;
   if (decisionsChanged) render();
   else { renderGraph(); options.onState?.(walkView()); }
 }
 
-export function setStreamProgress(value) {
-  streamProgress = {route: value.route_id || value.route || null, steps: value.steps || []};
-  if (bundle?.stream && graph && state) renderGraph();
-}
-
 export function chooseStreamRoute(route) {
   if (!bundle?.stream || !walkView().intro_complete || !bundle.routes[route]) return;
+  rememberStreamDraft(); rememberReplayRoute();
+  stopReplay(); ++replayTicket;
   state = switchRoute(bundle, state, route);
   if (actor === 'student') studentState = state;
+  else {
+    replayRoute = route; replay = streamReplay();
+    replayPosition = Math.min(replayRoutes[route] ?? replay.actions.length, replay.actions.length);
+    state = replayState(bundle, replay, replayPosition);
+  }
+  draftKey = ''; submitted = null;
   render();
+}
+
+/** QA never advances practice or replaces a mathematical card. */
+export function attachStreamQA(chunk) {
+  if (streamParked || !bundle?.stream || chunk.run_id !== bundle.stream.run_id ||
+      chunk.lesson_version !== bundle.stream.lesson_version || chunk.target_ref !== bundle.stream.target_ref) return;
+  const step = bundle.stream.math_steps.find(value => streamCardKey(value) === streamCardKey(chunk));
+  if (!step) return;
+  const key = streamQAKey(chunk), previous = streamQA.get(key);
+  if (previous && JSON.stringify(previous) !== JSON.stringify(chunk)) throw new Error('stream.immutable_qa');
+  const cardKey = streamCardKey(chunk), card = streamCards.get(cardKey);
+  const completion = streamCompletion(chunk.route_id);
+  if (visibleStreamCards.has(cardKey) && card && completion?.verified_route_sha256 === chunk.verified_route_sha256) {
+    mountCardQA(card, chunk);
+  }
+  if (!previous) streamQA.set(key, structuredClone(chunk));
 }
 
 /** The same safe text/LaTeX renderer used by authored walk steps. */

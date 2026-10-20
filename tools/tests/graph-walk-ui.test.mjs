@@ -30,6 +30,7 @@ test('stream arrival preserves the AI replay reading position and chooses an exe
   const bridge = source.slice(source.indexOf('function streamReplay()'), source.indexOf('/** The same safe text/LaTeX renderer'));
   vm.runInContext(bridge.replace(/^export /gm, ''), context);
   context.extendStreamBundle = value => structuredClone(value);
+  context.refreshStreamState = (_bundle, value) => value;
   context.replayState = (_bundle, _replay, position) => ({introCompleted: [], run: {route: 'discriminant'}, readingPosition: position});
   run(`options = {bundle: {problemId: 'sample', bundleVersion: 'stable', graph: {nodes: [], edges: []},
       intro: [{id: 'D3', expected_answer: {cell: ['real', 'free']}, interaction: {methods: [

@@ -62,16 +62,20 @@ def test_real_open_interval_route_does_not_assert_a_nonexistent_extremum(fact, m
     assert any("不存在" in card["explanation"] for card in state["fragments"])
 
 
-@pytest.mark.parametrize("fact,caveat", [
-    ("∀x∈[0,1]:x^2+a>0", "值域下端取到时不能相等"),
-    ("∃x∈(0,1):x^2+a>=0", "相等时值域上端必须能取到"),
+@pytest.mark.parametrize("fact,condition,caveat", [
+    ("∀x∈[0,1]:x^2+a>0", r"g(x)_{\min} > 0", ""),
+    ("∃x∈(0,1):x^2+a>=0", r"g(x)_{\text{上端}} \geq 0", "相等时值域上端必须能取到"),
 ])
-def test_carried_policy_summary_keeps_the_equality_and_attainment_caveat(fact, caveat):
+def test_carried_policy_summary_uses_proven_attainment_or_keeps_the_caveat(fact, condition, caveat):
     state = finish(start(candidate(fact), "method-interval-extremum"))
     assert state["status"] == "method_complete", state["diagnostics"]
     policy = next(card for card in state["fragments"] if card["display_unit"] == "policy")
-    assert caveat in policy["highlight"]["result"]
-    assert caveat in policy["explanation"]
+    assert condition in policy["highlight"]["result"] and condition in policy["explanation"]
+    if caveat:
+        assert caveat in policy["highlight"]["result"] and caveat in policy["explanation"]
+    else:
+        assert "取到时不能相等" not in policy["highlight"]["result"]
+        assert "下端" not in policy["explanation"]
 
 
 def test_unnamed_product_bound_groups_the_whole_function():
@@ -79,7 +83,7 @@ def test_unnamed_product_bound_groups_the_whole_function():
     assert state["status"] == "method_complete", state["diagnostics"]
     assert driver.export_values(state)["feasible_set"] == sp.Interval(0, sp.oo)
     policy = next(card for card in state["fragments"] if card["display_unit"] == "policy")
-    assert r"\left(a x\right)_{\text{下端}}" in policy["highlight"]["result"]
+    assert r"\left(a x\right)_{\min}" in policy["highlight"]["result"]
     seed = _policy_seed(a*x, sp.Interval(1, 2), "∀", "<=")
     facts = interaction._policy_facts(decode_value(seed["values"]), decode_value(seed["context"]))
-    assert r"\left(a x\right)_{\text{下端}}" in interaction._policy_answer(facts)[0]["answer"].label
+    assert r"\left(a x\right)_{\min}" in interaction._policy_answer(facts)[0]["answer"].label

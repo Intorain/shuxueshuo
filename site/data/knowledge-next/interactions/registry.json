@@ -49,6 +49,14 @@
     "skip_case_intersection"
   ],
   "templates": {
+    "affine_substitution": {
+      "repeat": "never",
+      "parts": []
+    },
+    "affine_restore": {
+      "repeat": "never",
+      "parts": []
+    },
     "policy": {
       "repeat": "first",
       "parts": [

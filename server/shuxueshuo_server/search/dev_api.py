@@ -182,7 +182,8 @@ def create_search_router(root, *, stage_three_hooks=None):
                 return {"status": "running", "execution_status": "not_started", "stream": None}
             return {"status": "error", "message": error or "stage_two.missing"}
         presented = present_lesson(stage_two, result.get("features", []),
-                                   (result.get("candidate") or {}).get("original_text", ""), search_id)
+                                   (result.get("candidate") or {}).get("original_text", ""), search_id,
+                                   candidate=result.get("candidate"))
         presented.update(stage_three.presentation(directory, search_id, running=running, attempt=attempt))
         if error:
             presented["execution_error"] = error

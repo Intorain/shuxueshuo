@@ -50,7 +50,10 @@ const SCENARIOS = {
 const scenario = SCENARIOS[demo] || SCENARIOS.ok;
 
 function renderMath(root) {
-  window.renderMathInElement?.(root, {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false});
+  window.renderMathInElement?.(root, {delimiters: [
+    {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false},
+    {left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false},
+  ], throwOnError: false});
 }
 
 function toast(text) {
@@ -260,6 +263,20 @@ function meaningBlocks(scope, title, blocks) {
 
 function renderMeaning() {
   const box = $('#pq-meaning');
+  const bundle = goals()[lesson.part]?.walk?.bundle;
+  if (bundle?.problem?.normalization_decision && bundle.problem.source_meaning) {
+    const saved = lesson.teaching;
+    const current = saved?.problem_id === bundle.problemId && saved.base_bundle_version === bundle.bundleVersion
+      ? saved.context : null;
+    const normalized = current?.transformed === true;
+    const text = normalized ? bundle.problem.normalized_text : bundle.problem.source_meaning;
+    $('#pq-meaning-title').textContent = normalized ? '转化后的条件与目标' : '原命题与目标';
+    $('#pq-meaning-body').innerHTML = `<p><span>${escape(text)}</span></p>`;
+    box.hidden = false;
+    renderMath(box);
+    return;
+  }
+  $('#pq-meaning-title').textContent = '题意整理';
   const root = shown.root;
   const blocks = root ? meaningBlocks(root, root.children?.length ? '题干' : '', []) : [];
   box.hidden = !blocks.length;
@@ -325,7 +342,7 @@ function withdraw(fail) {
    student picks 自己做 or 看 AI 解题; the problem card then moves into the walk layout and the
    Demo engine renders the steps and the graph. Part buttons switch bundles; the engine keeps each
    part's progress. */
-const WALK = '/assets/graph-walk/walk.mjs?v=20261022-play';
+const WALK = '/assets/graph-walk/walk.mjs?v=20261022-proposition-2';
 const STREAM = '/assets/graph-walk/stage-three-stream.mjs?v=20261020-interactions';
 const lesson = {data: null, actor: null, part: -1, engine: null, opened: false};
 let streamMount = null, streamTransport = null, streamIdentity = '', streamTicket = 0, partTicket = 0;
@@ -336,6 +353,12 @@ const pageProgressKey = `search-walk:${searchId || demo}`;
 function savePageProgress(view) {
   const goal = goals()[lesson.part];
   if (lesson.data?.stream && (!goal?.walk || view.target_ref !== goal.target_ref)) return;
+  if (goal?.walk && view.problem_id === goal.walk.bundle.problemId &&
+      view.base_bundle_version === goal.walk.bundle.bundleVersion) {
+    lesson.teaching = {problem_id: view.problem_id, base_bundle_version: view.base_bundle_version,
+      context: view.teaching_context};
+    renderMeaning();
+  }
   lesson.actor = view.actor;
   try { localStorage.setItem(pageProgressKey, JSON.stringify({actor: view.actor, part: lesson.part,
     run_id: lesson.data?.stream?.run_id, lesson_version: lesson.data?.stream?.lesson_version})); } catch {}
@@ -495,6 +518,7 @@ function showLesson(data) {
     return;
   }
   if (lesson.part < 0 || !data.goals[lesson.part]) lesson.part = first;
+  renderMeaning();
   markPartTabs();
   if (lesson.opened) {
     const same = previous?.stream?.run_id === data.stream?.run_id && previous?.stream?.lesson_version === data.stream?.lesson_version &&
@@ -573,6 +597,7 @@ async function enterWalk(actor) {
 async function openPart(index) {
   const ticket = ++partTicket;
   lesson.part = index;
+  renderMeaning();
   markPartTabs();
   const goal = goals()[index];
   if (!lesson.engine) return;

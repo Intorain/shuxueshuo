@@ -81,7 +81,7 @@ function documentFixture() {
       const found = [];
       for (const child of this.children) {
         if (attr && Object.hasOwn(child.dataset, dataKey(attr[1])) && (!attr[2] || !Object.hasOwn(child.dataset, dataKey(attr[2])))) found.push(child);
-        else if (selector.startsWith('.') && child.className === selector.slice(1)) found.push(child);
+        else if (selector.startsWith('.') && child.className?.split(/\s+/).includes(selector.slice(1))) found.push(child);
         found.push(...child.querySelectorAll(selector));
       }
       return found;
@@ -132,6 +132,22 @@ test('interactive parts expose only before; only the last completed part mounts 
     document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),6,1,'discriminant'); mountCompletedMath();`);
   assert.match(roots.get('#gw-steps').textContent, /secret-after-1.*secret-explanation-1.*secret-after-2/);
   assert.equal(run('visibleStreamCards.size'), 2);
+  const mounted = [...run('streamCards.values()')];
+  assert.ok(mounted.every(card => card.node.className.includes('is-embedded')));
+  assert.ok(mounted.every(card => !card.heading.hidden), 'distinct mathematical substeps retain their headings');
+});
+
+test('a named lesson step owns the title in both readonly and completed views', () => {
+  const {run, roots} = engine(fixture({readonly: true}));
+  run('renderInteraction(currentDecision(bundle,state))');
+  const context = roots.get('#gw-active').querySelector('[data-stream-context]');
+  assert.equal(context.children[0].children[0].hidden, true, 'the active read card does not repeat its parent title');
+  assert.match(context.children[0].className, /\bis-embedded\b/);
+  run(`state = studentState = submitAnswer(bundle,state,{decision:currentDecision(bundle,state).id,answer:'read'});
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),4,1,'discriminant'); mountCompletedMath();`);
+  const mounted = [...run('streamCards.values()')][0];
+  assert.equal(mounted.heading.hidden, true, 'the completed card also uses its enclosing title');
+  assert.match(mounted.node.className, /\bis-embedded\b/);
 });
 
 test('folded cards ask nothing, ride with the next step and mount collapsed after its own card', () => {
@@ -234,12 +250,126 @@ test('streamed axis explorers drag a fixed-shape parabola and mark the target on
   assert.match(layer(0.25), /class="axis-vertex lowest"[^>]*>.*最低/s, 'the vertex is lowest while the axis is inside');
   assert.match(layer(1), /class="axis-endpoint lowest"[^>]*fill="#b65c42"[^>]*\/><text[^>]*>最低</, 'a closed end is attained');
   assert.match(layer(-0.3), /class="axis-endpoint lowest"[^>]*fill="#fff"[^>]*\/><text[^>]*>下端</, 'an open end is only approached');
+  assert.match(layer(0.25), /class="axis-endpoint"[^>]*fill="#b65c42"/, 'a closed endpoint remains solid even when the vertex is lowest');
+  assert.match(layer(0.25), /class="axis-endpoint"[^>]*fill="#fff"/, 'the open endpoint remains hollow even when it is not lowest');
   // A downward parabola turns towards its highest point.
   assert.match(api.axisExplorerLayer({...params, coefficient: -1, target: 'max', uid: 'down'}, 0.25), /axis-vertex highest/);
   const changed = values => ({...spec, params: {...params, ...values}});
   for (const bad of [changed({axis: {min: 1, max: 0, step: 0.01, value: 0.5}}), changed({axis: {min: 0, max: 1, step: 0, value: 0.5}}),
     changed({axis: {min: 0, max: 1, step: 0.01, value: 2}}), changed({constant: '1'}), changed({target: 'middle'}),
     changed({marks: [{x: 1}]})]) assert.equal(api.validateGraph(bad), false, JSON.stringify(bad.params));
+});
+
+const parameterAxis = (values = {}) => ({kind: 'axis_explorer', uid: 'parameter-axis', params: {
+  bounds: [-3, 5, -30, 40], xTicks: [[0, '0'], [2, '2']], variable: 'x', points: [],
+  interval: [0, 2], interval_closed: [true, true], title: '对称轴与参数', description: '拖动对称轴观察函数',
+  coefficient: 1, constant: 15, constant_by_axis: {linear: -2, quadratic: 0},
+  parameter: {name: 'm', scale: 2, offset: 0},
+  axis: {min: -1, max: 3, step: 0.1, value: 1}, marks: [], target: 'min', ...values,
+}});
+
+test('parameter axis curves, vertices and endpoints follow the original quadratic family', () => {
+  const {context} = engine(), api = context.PracticeComponents;
+  const cases = [
+    {spec: parameterAxis(), value: (x, m) => x * x - m * x - m + 15},
+    {spec: parameterAxis({coefficient: -2, constant: -7, constant_by_axis: {linear: 3, quadratic: 2},
+      parameter: {name: 'k', scale: -4, offset: 3}, variable: 't', target: 'max'}),
+    value: (t, k) => -2 * t * t + (3 - k) * t - 7 + 3 * (3 - k) / 4 + 2 * ((3 - k) / 4) ** 2},
+    {spec: parameterAxis({coefficient: 0.5, constant: 0, constant_by_axis: {linear: 0, quadratic: -1},
+      parameter: {name: 'b', scale: 1, offset: -2}, variable: 'u'}),
+    value: (u, b) => 0.5 * u * u - (b + 2) * u - (b + 2) ** 2},
+  ];
+  for (const {spec, value} of cases) {
+    assert.equal(api.validateGraph(spec), true);
+    const p = spec.params, [xmin, xmax, ymin, ymax] = p.bounds;
+    const pixelY = value => 222 - (value - ymin) / (ymax - ymin) * 174;
+    const near = (actual, expected, message, tolerance = 1e-8) => assert.ok(Math.abs(actual - expected) < tolerance,
+      `${message}: ${actual} versus ${expected}`);
+    for (const h of [-1, 0, 0.5, 1, 2, 3]) {
+      const parameter = p.parameter.scale * h + p.parameter.offset;
+      const layer = api.axisExplorerLayer({...p, uid: spec.uid}, h);
+      const vertex = /class="axis-vertex" cx="([^"]+)" cy="([^"]+)"/.exec(layer);
+      near(Number(vertex[2]), pixelY(value(h, parameter)), `${p.parameter.name}=${parameter} vertex`);
+      const endpoints = [...layer.matchAll(/class="axis-endpoint[^"]*" cx="([^"]+)" cy="([^"]+)"/g)];
+      for (const [i, endpoint] of endpoints.entries()) near(Number(endpoint[2]), pixelY(value(p.interval[i], parameter)), 'endpoint');
+      const path = /class="quadratic-curve" d="([^"]+)"/.exec(layer)[1];
+      for (const [, px, py] of path.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)) {
+        const x = xmin + (Number(px) - 48) / 270 * (xmax - xmin);
+        near(Number(py), pixelY(value(x, parameter)), 'curve point matches the parameterized function', 0.02);
+      }
+      assert.match(layer, new RegExp(`>${p.target === 'min' ? '最低' : '最高'}<`));
+      assert.match(layer, new RegExp(`对称轴 ${p.variable} = ${h}；${p.parameter.name} = `));
+    }
+  }
+  const original = api.graph(parameterAxis());
+  assert.match(original, /data-axis-layer[^]*class="axis-value-label"[^>]*>对称轴 x = 1；m = 2<\/text>/);
+  const noParameter = parameterAxis();
+  delete noParameter.params.parameter;
+  assert.match(api.graph(noParameter), /对称轴 x = 1<\/text>/, 'moving constants can be rendered without parameter metadata');
+});
+
+test('axis explorer extension is optional, escaped and validated before rendering', () => {
+  const {context} = engine(), api = context.PracticeComponents;
+  const legacy = parameterAxis();
+  delete legacy.params.constant_by_axis;
+  delete legacy.params.parameter;
+  const explicitZero = {...legacy, params: {...legacy.params, constant_by_axis: {linear: 0, quadratic: 0}}};
+  const layer = spec => api.axisExplorerLayer({...spec.params, uid: spec.uid}, 1);
+  assert.equal(api.validateGraph(legacy), true);
+  assert.doesNotMatch(layer(legacy), /axis-value-label/);
+  const drawings = html => [...html.matchAll(/<(?:path|circle)\b[^>]*>/g)].map(match => match[0]);
+  assert.deepEqual(drawings(layer(legacy)), drawings(layer(explicitZero)), 'zero extra terms keep every legacy curve and marker coordinate');
+  const label = '<img src=x onerror="alert(1)">';
+  const escaped = parameterAxis({parameter: {name: label, scale: -1, offset: 2}, variable: 't<&'});
+  const html = api.graph(escaped);
+  assert.match(html, /对称轴 t&lt;&amp; = 1；&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt; = 1/);
+  assert.doesNotMatch(html, /<img|onerror="/);
+  for (const [field, invalid] of [
+    ['constant_by_axis', [null, [], 2, {}, {linear: 1}, {quadratic: 1}, {linear: '1', quadratic: 0},
+      {linear: Infinity, quadratic: 0}, {linear: 0, quadratic: NaN}, {linear: 0, quadratic: 0, expression: 'h'}]],
+    ['parameter', [null, [], 'm', {}, {name: 'm', scale: 2}, {name: 'm', offset: 0}, {scale: 2, offset: 0},
+      {name: '', scale: 2, offset: 0}, {name: 3, scale: 2, offset: 0}, {name: 'm', scale: 0, offset: 0},
+      {name: 'm', scale: '2', offset: 0}, {name: 'm', scale: Infinity, offset: 0},
+      {name: 'm', scale: 2, offset: NaN}, {name: 'm', scale: 2, offset: 0, expression: '2*h'}]],
+  ]) for (const value of invalid) {
+    const bad = parameterAxis({[field]: value});
+    assert.equal(api.validateGraph(bad), false, `${field}: ${JSON.stringify(value)}`);
+    assert.equal(api.graph(bad), '', 'invalid metadata falls back to the original answer labels');
+  }
+});
+
+test('mounted parameter explorers update values during drag and stay on their case tracks', () => {
+  const {context, run} = engine();
+  const mounted = spec => {
+    const events = {}, layer = {}, input = {value: spec.params.axis.value,
+      addEventListener: (name, callback) => { events[name] = callback; }};
+    const svg = {getBoundingClientRect: () => ({left: 0, width: 360}),
+      addEventListener: (name, callback) => { events[name] = callback; },
+      setPointerCapture(id) { this.pointer = id; }, hasPointerCapture(id) { return this.pointer === id; }};
+    const host = {dataset: {graph: JSON.stringify(spec)}, querySelector: selector =>
+      selector === '[data-axis-layer]' ? layer : selector === '[data-axis-input]' ? input : svg};
+    context.axisTestHost = host;
+    run('mountAxisExplorer(axisTestHost)');
+    return {events, layer, input};
+  };
+  const whole = mounted(parameterAxis());
+  whole.input.value = '1.5'; whole.events.input();
+  assert.match(whole.layer.innerHTML, /对称轴 x = 1.5；m = 3/);
+  whole.events.pointerdown({clientX: 48, pointerId: 1});
+  assert.equal(whole.input.value, -1);
+  assert.match(whole.layer.innerHTML, /对称轴 x = -1；m = -2/);
+  const remounted = mounted(parameterAxis());
+  assert.equal(remounted.input.value, -1, 'a redraw restores both the axis position and the parameter value');
+  assert.match(remounted.layer.innerHTML, /m = -2/);
+  for (const [index, [min, max]] of [[-1, 0], [0, 2], [2, 3]].entries()) {
+    const spec = {...parameterAxis({axis: {min, max, step: 0.1, value: min}}), uid: `case-axis-${index}`};
+    const current = mounted(spec);
+    current.events.pointerdown({clientX: -100, pointerId: 1});
+    assert.equal(current.input.value, min);
+    current.events.pointermove({clientX: 1000, pointerId: 1});
+    assert.equal(current.input.value, max);
+    assert.match(current.layer.innerHTML, new RegExp(`对称轴 x = ${max}；m = ${2 * max}`));
+  }
 });
 
 test('a server board replaces the card premises under the question', () => {

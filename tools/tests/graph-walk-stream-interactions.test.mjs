@@ -345,6 +345,49 @@ test('unknown public references retain checked internal bases but cannot invent 
   assert.equal(result.nodes['not-in-the-public-graph'], undefined);
 });
 
+test('affine substitution read cards use the registered separation range call path', () => {
+  const contract = read('../../site/data/knowledge-next/execution/method-separation.json');
+  const range = contract.steps.find(step => step.id === 'range');
+  const capabilities = ['substitution', 'restore_substitution_range'];
+  const calls = capabilities.map(capability => {
+    const call = range.calls.find(call => call.capability === capability);
+    assert.equal(call?.public_ref, 'method-substitution');
+    return {public_ref: call.public_ref, used_basis: ['equality-properties#identity'],
+      postconditions: [{passed: true}]};
+  });
+  const cards = calls.map((_, index) => ({...card(index + 1, 'extremum'),
+    method_ref: 'method-separation#range', display_unit: index ? 'affine_restore' : 'affine_substitution',
+    source_refs: [`/steps/0/calls/${index}`], case_path: []}));
+  const source = view(cards, cards.map(item => chunk([item], [])), {trajectories: [{
+    target_ref: target, route_id: 'extremum', steps: [{seq: 1, method: 'method-separation',
+      step: 'range', case_path: [], calls}],
+  }]});
+  const edgeId = 'method-separation|calls|method-substitution';
+  const publicEdge = graph.edges.find(edge => edge.id === edgeId);
+  assert.ok(publicEdge?.occurrences.some(occurrence => occurrence.step === 'range'));
+  const bundle = extendStreamBundle(base, source, target, graph);
+  for (const item of cards) {
+    const evidence = streamStepGraph(bundle, item);
+    assert.ok(evidence.nodes.includes('method-substitution'));
+    assert.ok(evidence.edges.includes(edgeId));
+    assert.equal(evidence.calls.length, 1);
+    assert.equal(evidence.calls[0].source, item.source_refs[0]);
+    assert.equal(publicEdge.occurrences[evidence.calls[0].occurrence].step, 'range');
+  }
+  let state = selected(bundle, 'extremum');
+  assert.equal(currentDecision(bundle, state).interaction.type, 'read');
+  assert.equal(streamGraphState(bundle, state).nodes['method-substitution'], 'idle');
+  state = answer(bundle, state);
+  assert.equal(streamGraphState(bundle, state).edges[edgeId], 'chosen');
+  assert.equal(streamGraphState(bundle, undo(bundle, state)).edges[edgeId], 'idle');
+
+  const wrongStep = structuredClone(source);
+  wrongStep.trajectories[0].steps[0].step = 'restore';
+  const rejected = extendStreamBundle(base, wrongStep, target, graph);
+  assert.deepEqual(streamStepGraph(rejected, cards[0]).calls, []);
+  assert.ok(!streamStepGraph(rejected, cards[0]).edges.includes(edgeId));
+});
+
 test('completed rule-directed cards light method/rule/skill edges and undo removes that path', () => {
   const item = {...card(1), route_id: 'interval', method_ref: 'method-interval-extremum#select'};
   const group = chunk([item]);

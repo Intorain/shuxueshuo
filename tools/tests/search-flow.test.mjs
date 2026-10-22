@@ -38,6 +38,28 @@ const page = {page_id: crop.page_id, latency_ms: {detect: 1000}, regions: [], mo
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return {promise, resolve}; };
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
+test('problem meaning follows the confirmed conversion and ignores another goal or bundle version', () => {
+  const {context, element} = setup('problem.js');
+  vm.runInContext(`renderMath = () => {}; lesson.part = 0;
+    lesson.data = {goals: [{target_ref: '/root/goals/0', walk: {bundle: {
+      problemId: 'conversion/goal', bundleVersion: 'current', problem: {
+        normalization_decision: 'D1-transform', source_meaning: '原命题为假', normalized_text: '存在反例，求参数范围'
+      }}}}]};`, context);
+  context.renderMeaning();
+  assert.match(element('#pq-meaning-body').innerHTML, /原命题为假/);
+  const accepted = {actor: 'student', problem_id: 'conversion/goal', base_bundle_version: 'current',
+    teaching_context: {transformed: true, text: 'ignore arbitrary text'}};
+  context.savePageProgress(accepted);
+  assert.match(element('#pq-meaning-body').innerHTML, /存在反例，求参数范围/);
+  assert.doesNotMatch(element('#pq-meaning-body').innerHTML, /arbitrary/);
+  assert.equal(element('#pq-meaning-title').textContent, '转化后的条件与目标');
+  context.savePageProgress({...accepted, teaching_context: {transformed: false}});
+  assert.match(element('#pq-meaning-body').innerHTML, /原命题为假/);
+  context.savePageProgress({...accepted, problem_id: 'another/goal'});
+  context.savePageProgress({...accepted, base_bundle_version: 'old'});
+  assert.match(element('#pq-meaning-body').innerHTML, /原命题为假/);
+});
+
 for (const order of ['decode-first', 'upload-first']) test(`submitting waits for both image decoding and upload: ${order}`, async () => {
   const {context, element, location} = setup('camera.js');
   const decoded = deferred(), uploaded = deferred(), requests = [];

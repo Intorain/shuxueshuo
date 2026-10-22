@@ -660,7 +660,8 @@
             "skill-linear-range",
             "skill-reciprocal-range",
             "method-square-extremum",
-            "skill-inequality-transform"
+            "skill-inequality-transform",
+            "method-substitution"
           ]
         },
         {
@@ -1751,6 +1752,18 @@
         {
           "step": "range",
           "when": "另一边可配成常数加减平方，并能验证取等或区间边界时"
+        }
+      ]
+    },
+    {
+      "id": "method-separation|calls|method-substitution",
+      "from": "method-separation",
+      "to": "method-substitution",
+      "type": "calls",
+      "occurrences": [
+        {
+          "step": "range",
+          "when": "另一边的线性分母可设为新变量，并能将函数化为已有的求值域形式时；同步转换区间并回代取等点"
         }
       ]
     },

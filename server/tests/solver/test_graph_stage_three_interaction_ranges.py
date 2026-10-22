@@ -248,15 +248,15 @@ def test_separation_card_highlights_the_conclusion(relation, domain, caption, fi
 
 @pytest.mark.parametrize("quantifier,operator,expression,function,name,caption,relation_tex,condition,note", [
     ("∀", "<=", a, -x - 2/x, "", "恒成立转化为最值条件", r"a \leq - x - \frac{2}{x}",
-     r"a \leq \left(- x - \frac{2}{x}\right)_{\text{下端}}", "从函数值范围的最小一侧判断，并检查等号与能否取到"),
+     r"a \leq \left(- x - \frac{2}{x}\right)_{\text{下端}}", ""),
     ("∀", "<=", a, -x - 2/x, "h", "恒成立转化为最值条件", r"a \leq h(x)",
-     r"a \leq h(x)_{\text{下端}}", "从函数值范围的最小一侧判断，并检查等号与能否取到"),
+     r"a \leq h(x)_{\text{下端}}", ""),
     ("∀", ">", sp.S.Zero, x**2 + a*x + 4, "", "恒成立转化为最值条件", r"x^{2} + a x + 4 < 0",
      r"\left(x^{2} + a x + 4\right)_{\text{上端}} \leq 0",
-     "从函数值范围的最大一侧判断，并检查等号与能否取到；值域上端取到时不能相等"),
+     "（值域上端取到时不能相等）"),
     ("∃", ">=", a, -x - 1/x, "", "能成立转化为最值条件", r"a \geq - x - \frac{1}{x}",
      r"a \geq \left(- x - \frac{1}{x}\right)_{\text{下端}}",
-     "从函数值范围的最小一侧判断，并检查等号与能否取到；相等时值域下端必须能取到"),
+     "（相等时值域下端必须能取到）"),
 ])
 def test_policy_card_highlights_the_bound_condition(quantifier, operator, expression, function, name, caption,
                                                      relation_tex, condition, note):
@@ -268,12 +268,13 @@ def test_policy_card_highlights_the_bound_condition(quantifier, operator, expres
     highlight = render_highlight(specification, bindings)
     assert highlight["caption"] == caption and highlight["connector"] == "⇔"
     left, right = highlight["items"]
-    assert left["math"] == relation_tex and right["math"] == condition and right["note"].endswith(note)
-    assert "能取到时就是最小值/最大值" in right["note"]
-    caveat = "（" + note.split("；", 1)[1] + "）" if "；" in note else ""
+    assert left["math"] == relation_tex and right["math"] == condition and right.get("note", "") == note
+    assert "note" not in right or "能取到时就是最小值/最大值" not in right["note"]
+    caveat = note
     assert highlight["result"] == f"${condition}$" + caveat
     _, _, text = render_template(specification, bindings)
     assert f"$\\iff {condition}$" in text
+    assert "能取到时就是最小值/最大值" in text
 
 
 def test_policy_card_introducing_a_name_defines_it_before_the_bound_condition():
@@ -306,7 +307,7 @@ def test_existential_bound_answer_and_display_match_attainment(operator, closed)
             points += [sp.S.Zero, sp.S.One]
         expected = any(sp.Rel(parameter, point, operator) is sp.true for point in points)
         assert item["answer"].value(parameter) is expected
-    assert ("等号成立时" in item["answer"].label) == (operator in ("<=", ">="))
+    assert ("等号成立时" in item["answer"].label) == (not closed and operator in ("<=", ">="))
 
 
 def test_every_presentation_template_has_an_explicit_rule():
@@ -314,7 +315,7 @@ def test_every_presentation_template_has_an_explicit_rule():
                               .read_text())
     registry = interaction.load_registry()
     assert set(presentation["templates"]) <= set(registry["templates"])
-    assert len(registry["templates"]) == 35
+    assert len(registry["templates"]) == 37
 
 
 def hook_seed(function, domain, fact):

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {attachMathQA, createMathCard, createMathContext, createRouteCompletion} from '../../site/assets/graph-walk/stream-math-dom.mjs';
+import {attachMathQA, createMathCard, setMathCardLayout, createMathContext, createRouteCompletion} from '../../site/assets/graph-walk/stream-math-dom.mjs';
 
 function documentFixture() {
   const document = {createElement(tag) { return new Element(tag); }};
@@ -39,6 +39,20 @@ test('shared card preserves identity, formula structure and a separate empty QA 
   assert.equal(find('stage-three-explanation', card.node)[0].dataset.mathText, 'true');
   assert.equal(card.qa.hidden, true);
   assert.deepEqual(rendered, [card.node]);
+});
+
+test('embedding hides only a repeated title and moving the card restores its standalone heading without rebuilding math', () => {
+  const {document} = documentFixture();
+  const card = createMathCard(document, step, {embedded: true, parentTitle: step.title});
+  const children = [...card.node.children];
+  assert.equal(card.heading.hidden, true);
+  assert.match(card.node.className, /\bis-embedded\b/);
+  setMathCardLayout(card, {embedded: true, parentTitle: '检查边界并得出最值'});
+  assert.equal(card.heading.hidden, false, 'a merged step keeps each distinct subheading');
+  setMathCardLayout(card);
+  assert.equal(card.heading.hidden, false);
+  assert.equal(card.node.className, 'stage-three-math-step');
+  assert.deepEqual(card.node.children, children, 'layout changes do not replace the math or QA nodes');
 });
 
 test('a highlighted card leads with the conclusion board and folds the prose into a derivation', () => {

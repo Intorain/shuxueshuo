@@ -10,7 +10,7 @@ mathematics of its own.
 
 from dataclasses import dataclass
 from itertools import combinations, pairwise
-from math import ceil, floor, hypot
+from math import ceil, floor, hypot, isfinite
 
 import sympy as sp
 
@@ -368,12 +368,26 @@ def _axis_reach(axis, parameter, allowed, step):
     return reach
 
 
+def _axis_extrema(expression, axis, low, high):
+    """Exact extrema of a polynomial of degree at most two on a closed axis track."""
+    if low > high:
+        return []
+    poly = sp.Poly(expression, axis)
+    positions = [low, high]
+    if poly.nth(2) != 0:
+        stationary = -poly.nth(1) / (2 * poly.nth(2))
+        if low <= stationary <= high:
+            positions.append(stationary)
+    return [poly.eval(position) for position in positions]
+
+
 def axis_explorer(function, variable, parameter, domain, *, breakpoints, start, target, allowed=sp.S.Reals,
                   within=None, title, description, caption=None):
-    """A parabola the student moves by its axis, for ``a x^2 + b(p) x + c`` with only ``b`` depending on ``p``.
+    """Move ``a x^2 + b(p) x + c(p)`` by its axis, with fixed ``a`` and affine ``b``.
 
-    The page draws ``a(x-h)^2 + c - a h^2``; that is the function itself exactly when the
-    parameter moves the axis and nothing else. The track covers every case boundary; ``within``
+    The inverse parameter map and quadratic-or-lower constant are expressed in ``h=-b/(2a)``,
+    so the page draws the original family as ``a(x-h)^2 + c(h) - a h^2`` at every position.
+    The track covers every case boundary; ``within``
     keeps the same window but lets the axis move only over that set of parameters.
     """
     if not isinstance(domain, sp.Interval) or parameter is None:
@@ -383,10 +397,23 @@ def axis_explorer(function, variable, parameter, domain, *, breakpoints, start, 
         raise GraphUnavailable("family_unsupported")
     poly = sp.Poly(expression, variable)
     leading, slope, constant = poly.nth(2), poly.nth(1), poly.nth(0)
-    if (leading.free_symbols or constant.free_symbols or slope.free_symbols != {parameter}
-            or sp.degree(slope, parameter) != 1):
+    if (not _finite(leading) or slope.free_symbols != {parameter}
+            or not slope.is_polynomial(parameter) or not constant.is_polynomial(parameter)):
+        raise GraphUnavailable("axis_not_movable")
+    slope_poly, constant_poly = sp.Poly(slope, parameter), sp.Poly(constant, parameter)
+    if (slope_poly.degree() != 1 or constant_poly.degree() > 2
+            or not all(_finite(value) for value in (*slope_poly.all_coeffs(), *constant_poly.all_coeffs()))):
         raise GraphUnavailable("axis_not_movable")
     axis = sp.expand(-slope / (2 * leading))
+    offset, axis_slope = axis.subs(parameter, 0), sp.diff(axis, parameter)
+    h = sp.Dummy("axis", real=True)
+    parameter_scale, parameter_offset = 1 / axis_slope, -offset / axis_slope
+    constant_by_axis = sp.Poly(sp.expand(constant.subs(parameter, parameter_scale * h + parameter_offset)), h)
+    a, c, c1, c2, scale, parameter_zero = map(_float, (
+        leading, constant_by_axis.nth(0), constant_by_axis.nth(1), constant_by_axis.nth(2),
+        parameter_scale, parameter_offset))
+    if not all(isfinite(number) for number in (a, c, c1, c2, scale, parameter_zero)) or a == 0 or scale == 0:
+        raise GraphUnavailable("axis_not_movable")
     ends = [point for point in (domain.start, domain.end) if _finite(point)]
     turns = [sp.simplify(axis.subs(parameter, point)) for point in breakpoints]
     anchors = [_float(value) for value in (*ends, *turns)] or [0.0]
@@ -412,21 +439,20 @@ def axis_explorer(function, variable, parameter, domain, *, breakpoints, start, 
     # The slider is continuous.  Its endpoints must describe a whole interval
     # of allowed parameters, and rounding must not put an open endpoint back in.
     scope = allowed if within is None else sp.Intersection(allowed, within)
-    offset, axis_slope = axis.subs(parameter, 0), sp.diff(axis, parameter)
     for position in (*track, value):
         point = (sp.Rational(str(position)) - offset) / axis_slope
         if scope.contains(point) is not sp.true:
             raise GraphUnavailable("axis_parameter_outside_domain")
     margin = span * 0.3
     xs = [min(0.0, window_track[0]) - margin, max(0.0, window_track[1]) + margin]
-    a, c = _float(leading), _float(constant)
-    inside = [_float(point) for point in ends]
-    ys = [0.0]
-    for index in range(41):
-        h = window_track[0] + (window_track[1] - window_track[0]) * index / 40
-        ys.extend(a * x * x - 2 * a * h * x + c for x in inside)
-        if domain.contains(sp.nsimplify(h)) is sp.true:
-            ys.append(c - a * h * h)
+    axis_low, axis_high = (sp.Rational(str(value)) for value in window_track)
+    values = [sp.S.Zero]
+    for end in ends:
+        values.extend(_axis_extrema(leading * end**2 - 2 * leading * h * end + constant_by_axis.as_expr(),
+                                    h, axis_low, axis_high))
+    values.extend(_axis_extrema(constant_by_axis.as_expr() - leading * h**2, h,
+                                max(axis_low, domain.start), min(axis_high, domain.end)))
+    ys = list(map(_float, values))
     y_span = max(max(ys) - min(ys), 1.0)
     bounds = [xs[0], xs[1], min(ys) - y_span * 0.15, max(ys) + y_span * 0.15]
     marks = [{"x": _float(turn), "label": short_label(turn)} for turn in turns
@@ -438,8 +464,11 @@ def axis_explorer(function, variable, parameter, domain, *, breakpoints, start, 
         "interval_closed": [not domain.left_open and _finite(domain.start), not domain.right_open and _finite(domain.end)],
         "points": [], "title": title, "description": description,
         "coefficient": a, "constant": c, "axis": {"min": track[0], "max": track[1], "step": step, "value": value},
+        "parameter": {"name": str(parameter), "scale": scale, "offset": parameter_zero},
         "marks": marks, "target": target,
     }
+    if c1 != 0 or c2 != 0:
+        params["constant_by_axis"] = {"linear": c1, "quadratic": c2}
     graph = {"kind": "axis_explorer", "params": params}
     if caption:
         graph["caption"] = caption

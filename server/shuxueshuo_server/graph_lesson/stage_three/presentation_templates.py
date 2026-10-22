@@ -6,7 +6,13 @@ from string import Formatter
 import sympy as sp
 
 from .capabilities.ranges import reciprocal_coefficients
-from .math_values import BOUND_EXPLANATION, BOUND_TEX, EXTREMUM_TEX, math_value
+from .math_values import (
+    BOUND_EXPLANATION,
+    BOUND_TEX,
+    EXTREMUM_TEX,
+    math_value,
+    polynomial_extrema_attained,
+)
 from .presentation_intervals import (
     cases_view,
     classified_view,
@@ -129,14 +135,15 @@ _WEAK = {"<": "<=", ">": ">=", "<=": "<=", ">=": ">="}
 def _policy_view(values):
     """The quantified relation and the bound comparison it reduces to, as the policy states them.
 
-    A universal strict relation reads as the weak bound comparison (equality allowed
-    only when the bound is not attained); the template adds that caveat in words.
+    Without an attainment proof, a universal strict relation reads as the weak
+    bound comparison with an equality caveat. Proven extrema keep strictness.
     A function the method named earlier is referred to by that name.
     """
     policy, function, expression, x = values["policy"], values["function"], values["parameter_expression"], values["x"]
     operator, universal = policy["operator"], policy["quantifier"] == "∀"
     numeric = not expression.free_symbols
-    shown = _WEAK[operator] if universal else operator
+    attained = polynomial_extrema_attained(function, x, values["domain"])
+    shown = _WEAK[operator] if universal and not attained else operator
     x_tex = math_value(x)["latex"]
     named = bool(values["function_name"]) and function.has(x)
     body = f"{values['function_name']}({x_tex})" if named else math_value(function)["latex"]
@@ -146,12 +153,12 @@ def _policy_view(values):
     def compare(left, op):
         return (f"{left} {_OPERATOR_TEX[_MIRROR[op]]} {target}" if numeric
                 else f"{target} {_OPERATOR_TEX[op]} {left}")
-    extreme = rf"{bound_body}_{{{BOUND_TEX[policy['bound']]}}}"
+    extreme = rf"{bound_body}_{{{(EXTREMUM_TEX if attained else BOUND_TEX)[policy['bound']]}}}"
     definition = f"{body}={math_value(function)['latex']}" if named and values["define_name"] else ""
     return {"policy_relation": compare(body, operator), "policy_definition": definition,
             "policy_condition": compare(extreme, shown), "policy_condition_short": compare(extreme, shown),
             "policy_universal": universal, "policy_low": policy["bound"] == "inf", "policy_strict": policy["strict"],
-            "bound_explanation": BOUND_EXPLANATION}
+            "policy_attained": attained, "bound_explanation": "" if attained else BOUND_EXPLANATION}
 
 
 def _hook_view(values):
@@ -171,6 +178,7 @@ def _hook_view(values):
             else "right" if (domain.inf - point).is_nonnegative else "both")
     label = (f"{values['function_name']}({math_value(x)['latex']})" if values["function_name"]
              else math_value(function)["latex"])
+    peak_label = label if values["function_name"] else rf"\left({label}\right)"
 
     def tex(value):
         return {sp.oo: r"+\infty", -sp.oo: r"-\infty"}.get(value, math_value(value)["latex"])
@@ -207,8 +215,31 @@ def _hook_view(values):
             "hook_side": side, "hook_relation": f"{x_tex}>0" if positive else f"{x_tex}<0",
             "hook_positive": [math_value(t)["latex"] for t in (p, q) if t != x], "hook_amgm": amgm,
             "hook_equal": math_value(sp.Eq(p, q, evaluate=False))["latex"],
-            "hook_peak": f"{label}_{{{EXTREMUM_TEX['inf' if minimum else 'sup']}}}={call(point)}={tex(turn['value'])}",
+            "hook_peak": f"{peak_label}_{{{EXTREMUM_TEX['inf' if minimum else 'sup']}}}={call(point)}={tex(turn['value'])}",
             "hook_ends": ends}
+
+
+def _affine_substitution_view(values):
+    """Keep the original function's argument while displaying its substituted expression."""
+    original = math_value(values["original_expression"])["latex"]
+    variable = math_value(values["original_variable"])["latex"]
+    label = f"{values['function_name']}({variable})" if values["function_name"] else original
+    return {"affine_original": f"{label}={original}" if values["function_name"] else original,
+            "affine_identity": f"{label}={math_value(values['expression'])['latex']}"}
+
+
+def _affine_restore_view(values):
+    """Select certified points and attainment; never infer an extremum from the turn alone."""
+    points, turn = values["points"], values["turn"]
+    rows = [*points, *(row for row in values["endpoints"]
+                       if not any(row["point"] == point["point"] for point in points))]
+    turn_attained = turn is not None and turn.get(
+        "attained", any(row["point"] == turn["point"] and row["attained"] for row in points))
+    bounds = values["range"]
+    return {"affine_restored_rows": rows, "affine_turn_outside": turn is not None and not turn_attained,
+            "affine_bounds": [{"low": key == "inf", "value": bounds[key],
+                               "finite": bounds[key] not in (-sp.oo, sp.oo),
+                               "attained": bounds[key + "_attained"]} for key in ("inf", "sup")]}
 
 
 # Preparation functions only select supplied evidence or construct equivalent
@@ -223,6 +254,7 @@ PREPARERS = {
     "interval_conditions": lambda v: {**_interval_conditions(v), **conditions_view(v)},
     "opening": _opening, "degenerate_case": _degenerate_case, "separation_naming": _separation_naming,
     "policy_view": _policy_view, "hook_view": _hook_view, "solution_view": _solution_view,
+    "affine_substitution_view": _affine_substitution_view, "affine_restore_view": _affine_restore_view,
 }
 PREPARED_FIELDS = {
     "variable_range": {"after", "square", "has_square", "multiple"},
@@ -241,10 +273,12 @@ PREPARED_FIELDS = {
     "opening": {"opening", "fixed_positive", "positive_relation"}, "degenerate_case": {"constant"},
     "separation_naming": {"named", "operator_tex", "divisor_negative"},
     "policy_view": {"policy_relation", "policy_definition", "policy_condition", "policy_condition_short", "policy_universal",
-                    "policy_low", "policy_strict", "bound_explanation"},
+                    "policy_low", "policy_strict", "policy_attained", "bound_explanation"},
     "solution_view": {"solution_set", "solution_symbol"},
     "hook_view": {"hook_label", "hook_left", "hook_right", "hook_minimum", "hook_turn", "hook_side",
                   "hook_relation", "hook_positive", "hook_amgm", "hook_equal", "hook_peak", "hook_ends"},
+    "affine_substitution_view": {"affine_original", "affine_identity"},
+    "affine_restore_view": {"affine_restored_rows", "affine_turn_outside", "affine_bounds"},
 }
 
 

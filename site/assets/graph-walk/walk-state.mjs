@@ -411,19 +411,32 @@ const streamStepKey = step => JSON.stringify([step.route_id, step.step_id]);
 const sameStream = (identity, value) => identity.run_id === value.run_id &&
   identity.lesson_version === value.lesson_version && identity.target_ref === value.target_ref;
 
+/** A confirmed conversion changes the teaching context, never the original problem.
+ * The accepted context is authored by the server; a student's chosen text is not data.
+ */
+export function teachingContext(bundle, state) {
+  const problem = bundle?.problem || {}, id = problem.normalization_decision;
+  const available = Boolean(id && problem.normalized_text && bundle.intro.some(step => step.id === id));
+  const transformed = available && Boolean(state?.introCompleted?.some(entry => entry.decision === id));
+  return {transformed, text: transformed ? problem.normalized_text : problem.text || '',
+    label: transformed ? '转化后' : '原题',
+    meaning: available ? transformed ? problem.normalized_text : problem.source_meaning || null : null};
+}
+
 /** Preserve work done before the server could expose its stage-three identity.
- * Only a genuine D1/D2 state from this exact base bundle may enter the new run.
+ * Only verified reading, optional conversion and type answers from this exact base enter the new run.
  */
 export function migrateStageTwoState(baseBundle, streamBundle, state) {
   const invalid = () => { throw new Error('stream.invalid_stage_two_progress'); };
+  const allowed = new Set(baseBundle.intro.map(item => item.id));
   if (!streamBundle.stream || baseBundle.stream || state?.bundleVersion !== baseBundle.bundleVersion ||
       streamBundle.stream.base_bundle_version !== baseBundle.bundleVersion ||
-      baseBundle.problemId !== streamBundle.problemId || !baseBundle.intro.every(item => ['D1', 'D2'].includes(item.id)) ||
+      baseBundle.problemId !== streamBundle.problemId || !baseBundle.intro.every(item => ['D1', 'D1-transform', 'D2'].includes(item.id)) ||
       state.run?.route !== null || state.run?.completed?.length !== 0 || state.archives?.length !== 0 ||
       !Array.isArray(state.events)) invalid();
   let verified = createState(baseBundle);
   for (const event of state.events) {
-    if (event.kind !== 'answer' || !['D1', 'D2'].includes(event.action?.decision)) invalid();
+    if (event.kind !== 'answer' || !allowed.has(event.action?.decision)) invalid();
     verified = submitAnswer(baseBundle, verified, event.action);
   }
   // Undo intentionally removes the feedback while preserving its event prefix.
@@ -672,12 +685,14 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
   }
   bundle.graph = {...bundle.graph, nodes: [...ids].map(id => copy(nodes.get(id))),
     edges: [...edges.values()].filter(edge => ids.has(edge.from) && ids.has(edge.to)).map(copy)};
-  // Newly encountered skills/bases use the same public lane layout as D1/D2.
+  // Incremental arrivals and a complete snapshot share one calls/bases lane.
+  // Rebuild it from the current nodes so earlier streamed lanes cannot accumulate.
   if (bundle.graph.lanes) {
-    const covered = new Set(bundle.graph.lanes.flatMap(lane => lane.ids || []));
-    for (const lane of bundle.graph.lanes) for (const node of bundle.graph.nodes) if (node.kind === lane.kind) covered.add(node.id);
+    const lanes = bundle.graph.lanes.filter(lane => lane.label !== CALL_LANE);
+    const covered = new Set(lanes.flatMap(lane => lane.ids || []));
+    for (const lane of lanes) for (const node of bundle.graph.nodes) if (node.kind === lane.kind) covered.add(node.id);
     const extra = bundle.graph.nodes.filter(node => !covered.has(node.id)).map(node => node.id);
-    if (extra.length) bundle.graph.lanes.push({label: CALL_LANE, ids: extra});
+    bundle.graph.lanes = extra.length ? [...lanes, {label: CALL_LANE, ids: extra}] : lanes;
   }
   return bundle;
 }

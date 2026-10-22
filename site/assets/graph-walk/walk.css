@@ -71,6 +71,7 @@
 .gw-stream-context { margin: 12px 0 18px; }
 .gw-stream-retained { margin-top: 16px; }
 .gw-stream-context .stage-three-before { margin: 8px 0; overflow-x: auto; }
+.stage-three-math-step.is-embedded { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .gw-completed-body .stage-three-math-step + .stage-three-math-step { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e1e9e5; }
 .gw-completed-body .stage-three-math-step h3 { margin: 12px 0; font-size: 15px; }
 .gw-case-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 4px 0 14px; }

@@ -47,7 +47,8 @@
       "elimination"
     ],
     "method-substitution": [
-      "substitution"
+      "substitution",
+      "restore_substitution_range"
     ],
     "quadratic-inequality-solve": [
       "submethod"

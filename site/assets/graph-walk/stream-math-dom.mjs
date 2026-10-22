@@ -98,7 +98,8 @@ export function createMathCard(document, step, options = {}) {
   node.className = 'stage-three-math-step';
   Object.assign(node.dataset, {stepId: step.step_id, mathStepSha256: step.math_step_sha256,
     targetRef: step.target_ref, routeId: step.route_id, ordinal: String(step.ordinal)});
-  node.append(text(document, 'h3', step.title));
+  const heading = text(document, 'h3', step.title);
+  node.append(heading);
   if (step.highlight) {
     node.append(highlightBoard(document, step.highlight));
     if (!step.highlight.conclusion_only) node.append(derivationDetails(document, step.explanation || ''));
@@ -116,9 +117,16 @@ export function createMathCard(document, step, options = {}) {
   const qa = document.createElement('aside');
   qa.className = 'stage-three-qa'; qa.hidden = true; node.append(qa);
   options.renderMath?.(node);
-  const card = {node, qa, step: structuredClone(step)};
+  const card = {node, qa, heading, step: structuredClone(step)};
+  setMathCardLayout(card, options);
   if (options.qa) attachMathQA(card, options.qa, options);
   return card;
+}
+
+/** A cached mathematical card can move between a named lesson step and a standalone view. */
+export function setMathCardLayout(card, {embedded = false, parentTitle = ''} = {}) {
+  card.node.className = `stage-three-math-step${embedded ? ' is-embedded' : ''}`;
+  card.heading.hidden = embedded && card.step.title === parentTitle;
 }
 
 /** Question context deliberately excludes conclusions, explanation and QA, and formulas the question already states. */

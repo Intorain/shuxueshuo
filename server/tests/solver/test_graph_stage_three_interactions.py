@@ -185,7 +185,7 @@ def test_q13_interval_route_matches_the_designed_table(q13, registry):
 
     policy, diagnostics = results[0]
     part, = policy["parts"]
-    assert part["interaction"]["type"] == "choice" and len(part["interaction"]["options"]) == 3
+    assert part["interaction"]["type"] == "choice" and len(part["interaction"]["options"]) == 4
     assert part["question"].startswith(r"记 $g(x)=x^{2} + a x + 1$，对所有 $x \in")
     assert _correct(part) == [r"$x \in \left(0, \frac{1}{2}\right]$ 时，$g(x)_{\text{下端}} \geq 0$"]
     assert any(r"g(x)_{\text{上端}}" in label for label in _labels(part))
@@ -195,7 +195,10 @@ def test_q13_interval_route_matches_the_designed_table(q13, registry):
                                                                "result": "witness", "witness": "1"}
     assert _diagnostic(diagnostics, "swap_quantifier")[0]["result"] == "duplicate"
     assert _diagnostic(diagnostics, "endpoint_only")[0]["result"] == "unproven"
-    assert _diagnostic(diagnostics, "flip_strictness")[0]["result"] == "unproven"
+    # The current polynomial's endpoint threshold supplies an exact equality
+    # witness, even though the original constant grid did not include it.
+    assert _diagnostic(diagnostics, "flip_strictness")[0]["result"] == "witness"
+    assert _diagnostic(diagnostics, "flip_strictness")[0]["witness"] == r"- \frac{5}{2}"
 
     cases, diagnostics = results[1]
     basis, locations = cases["parts"]
@@ -271,8 +274,10 @@ def test_q13_interval_route_draws_stems_options_and_the_closing_picture(q13, reg
     assert explorer["kind"] == "axis_explorer"
     assert explorer["caption"] == r"拖动对称轴 $x=- \frac{a}{2}$，观察区间上的最低点在哪里"
     params = explorer["params"]
-    # x^2+ax+1 = (x-h)^2 + 1 - h^2 with h=-a/2: the parameter only moves the axis.
+    # x^2+ax+1 = (x-h)^2 + 1 - h^2 with h=-a/2.
     assert (params["coefficient"], params["constant"], params["target"]) == (1.0, 1.0, "min")
+    assert params["parameter"] == {"name": "a", "scale": -2.0, "offset": 0.0}
+    assert "constant_by_axis" not in params
     assert params["interval"] == [0.0, 0.5] and params["interval_closed"] == [False, True]
     assert params["xTicks"] == [[0.0, "0"], [0.5, "1/2"]]
     axis = params["axis"]
@@ -623,7 +628,7 @@ def test_case_checklist_names_the_opening_when_the_parameter_flips_it(registry):
     interaction.validate_chunk(chunk)
 
 
-def test_axis_explorer_only_draws_a_parameter_that_moves_the_axis():
+def test_axis_explorer_requires_an_invertible_affine_axis():
     drawing = interaction.drawing
     domain = sp.Interval(1, 2)
     common = {"breakpoints": [sp.Integer(-3)], "start": sp.Integer(-2), "target": "max", "title": "t",
@@ -631,6 +636,7 @@ def test_axis_explorer_only_draws_a_parameter_that_moves_the_axis():
     graph = drawing.axis_explorer(x**2 + a * x + 4, x, a, domain, **common)
     params = graph["params"]
     assert (params["coefficient"], params["constant"]) == (1.0, 4.0)
+    assert params["parameter"] == {"name": "a", "scale": -2.0, "offset": 0.0}
     assert params["marks"] == [{"x": 1.5, "label": "3/2"}] and params["axis"]["value"] == 1.0
     for moving in (a * x**2 + x, x**2 + x + a, x**2 + a**2 * x):
         with pytest.raises(interaction.GraphUnavailable, match="axis_not_movable"):

@@ -15,6 +15,7 @@ from pathlib import Path
 from shuxueshuo_server.graph_lesson.stage_two.contracts import ROOT
 from shuxueshuo_server.graph_lesson.stage_two.runner import run_result
 
+from .proposition import transformation
 from .walk import walk
 
 NODES = ROOT / "site/data/knowledge-next/nodes"
@@ -76,7 +77,7 @@ def knowledge_label(ref):
     return {"ref": ref, "node": node_id, "label": node.get("label", node_id), "title": entry.get("title", "")}
 
 
-def present_lesson(stage_two, features, text, problem_id="problem"):
+def present_lesson(stage_two, features, text, problem_id="problem", *, candidate=None):
     """``lesson`` for GET status: one section per goal, in authored order.
 
     A resolved goal also carries ``walk``: its graph-walk bundle and AI replay.
@@ -86,7 +87,7 @@ def present_lesson(stage_two, features, text, problem_id="problem"):
     by_target = {}
     for row in features:
         by_target.setdefault(row["target_ref"], {})[row["feature_id"]] = row
-    goals = [_goal(goal, by_target.get(goal["target_ref"], {}), text) for goal in stage_two["goals"]]
+    goals = [_goal(goal, by_target.get(goal["target_ref"], {}), text, candidate) for goal in stage_two["goals"]]
     seen = {}
     for goal in goals:
         for row in goal["d1"]["rows"]:
@@ -99,7 +100,7 @@ def present_lesson(stage_two, features, text, problem_id="problem"):
     return {"status": stage_two["status"], "goals": goals}
 
 
-def _goal(goal, features, text):
+def _goal(goal, features, text, candidate=None):
     section = {"target_ref": goal["target_ref"], "scope": goal["scope"], "label": goal["label"],
                "status": goal["status"], "primary": goal.get("primary"),
                "supported": goal.get("supported", [])}
@@ -107,7 +108,7 @@ def _goal(goal, features, text):
         section["d1"] = {"rows": [], "summary": ""}
         return section
     known = {key: row["value"] for key, row in features.items() if row.get("status") == "known"}
-    section["d1"] = d1_rows(goal["target_ref"], goal["d1"]["fragments"], known, text)
+    section["d1"] = d1_rows(goal["target_ref"], goal["d1"]["fragments"], known, text, candidate=candidate)
     section["d2"] = d2_options(goal)
     section["knowledge"] = [knowledge_label(item["ref"]) for item in goal["knowledge"]["items"]]
     section["links"] = goal["knowledge"]["links"]
@@ -218,7 +219,8 @@ def _spans(fragments, text):
     A span wholly inside one formula is quoted as its own formula, so two rows
     from the same formula (``$∀x<0，x^2+ax+2≥0$``) keep distinct quotes.
     """
-    start, end = fragments[0]["start"], fragments[-1]["end"]
+    start = min(fragment["start"] for fragment in fragments)
+    end = max(fragment["end"] for fragment in fragments)
     if not text:
         return {"start": start, "end": end, "text": fragments[0]["text"]}
     regions = _math(text)
@@ -301,6 +303,23 @@ def _quantifier_row(q, v, domain):
     return options, summary
 
 
+def _relation_text(relation):
+    return f"${tex(relation['lhs'])}{tex(relation['operator'])}{tex(relation['rhs'])}$"
+
+
+def _source_quantifier_row(transform, v, domain):
+    options, summary = _quantifier_row(transform["source_quantifier"], v, domain)
+    correct = options[0]["text"].replace("满足", "满足原关系")
+    explanation = f"原命题要求：{correct}；“为假”说明这个命题不成立。"
+    for option in options:
+        reading = option["text"].replace("满足", "满足原关系")
+        option["text"] = f"原命题要求：{reading}；题目说明这个命题为假"
+        if option["feedback"]:
+            option["feedback"] = explanation
+    options.append(_option(f"原命题要求：{correct}；题目说明这个命题为真", "truth", explanation))
+    return options, summary
+
+
 def _relation_row(case, v, p, relation, bound_degree=None):
     noun = "不等式"
     equation = (_option(f"关于 ${p}$ 的方程", "relation", "题中是不等号，这是不等式，不是方程。")
@@ -347,12 +366,16 @@ def _goal_row(case, v, s, kind):
     return options, f"求{'参数' if param else ''} ${s}$ 的取值范围"
 
 
-def d1_rows(target, fragments, known, text):
+def d1_rows(target, fragments, known, text, *, candidate=None):
     """Rows of the reading checklist; see docs/student-problem-search-design.md 3.7."""
+    transform, diagnostics = transformation(target, fragments, known, tex, text=text, candidate=candidate)
+    extra = {"transformation": transform} if transform else {}
+    if diagnostics:
+        extra["diagnostics"] = diagnostics
     bound, goal = known.get("bound_vars") or [], known.get("goal") or {}
     if (len(bound) != 1 or goal.get("kind") not in ("find_range", "find_minimum", "find_maximum")
             or goal.get("symbol") in (None, bound[0])):
-        return {"rows": [], "summary": ""}
+        return {"rows": [], "summary": "", **extra}
     v, s = bound[0], goal["symbol"]
     case = _relation_case(known)
     groups = _groups(fragments, text)
@@ -369,19 +392,35 @@ def d1_rows(target, fragments, known, text):
                      "knowledge_refs": refs, "options": _shuffle(row_id, options), "signature": signature})
         pieces[kind] = summary
 
-    quantified = next((g for g in groups if any(f["fragment_kind"] == "quantifier" for f in g)), None)
-    if quantified and known.get("quantifier") in ("∀", "∃") and known.get("domain"):
+    quantified = next((g for g in groups if any(f["fragment_kind"] == "quantifier"
+                                              and (not transform or f.get("reading_transform")) for f in g)), None)
+    if quantified and not diagnostics and known.get("quantifier") in ("∀", "∃") and known.get("domain"):
         used = [quantified]
         if not any(f["fragment_kind"] == "domain" for f in quantified):
-            extra = next((g for g in groups if all(f["fragment_kind"] == "domain" for f in g)), None)
-            used = sorted([quantified] + ([extra] if extra else []), key=lambda g: g[0]["start"])
-        options, summary = _quantifier_row(known["quantifier"], v, known["domain"])
-        add("quantifier", used, options, summary, [known["quantifier"], v, known["domain"]])
-    relation = next((g for g in groups if g[0]["fragment_kind"] == "relation"), None)
-    if relation and case and known.get("relation", {}).get("operator") in INEQUALITIES:
+            domain_group = next((g for g in groups if all(f["fragment_kind"] == "domain" for f in g)), None)
+            used = sorted([quantified] + ([domain_group] if domain_group else []), key=lambda g: g[0]["start"])
+        values = [known["quantifier"], v, known["domain"]]
+        if transform:
+            options, summary = _source_quantifier_row(transform, v, known["domain"])
+            values += [transform["signature"]]
+        else:
+            options, summary = _quantifier_row(known["quantifier"], v, known["domain"])
+        add("quantifier", used, options, summary, values)
+    relation = next((g for g in groups if g[0]["fragment_kind"] == "relation"
+                     and (not transform or g[0].get("reading_transform"))), None)
+    if relation and not diagnostics and case and known.get("relation", {}).get("operator") in INEQUALITIES:
         bound_degree = (known.get("degree_in_bound") or {}).get("degree")
-        options, summary = _relation_row(case, v, s, known["relation"], bound_degree)
-        add("relation", [relation], options, summary, [case, v, s, known["relation"], bound_degree])
+        reading_relation = transform["source_relation"] if transform else known["relation"]
+        options, summary = _relation_row(case, v, s, reading_relation, bound_degree)
+        values = [case, v, s, reading_relation, bound_degree]
+        if transform:
+            expression = _relation_text(reading_relation)
+            for option in options:
+                option["text"] = f"原命题中的关系为 {expression}；{option['text']}"
+                if option["feedback"]:
+                    option["feedback"] = f"这里识别的是原命题中的关系 {expression}。{option['feedback']}"
+            values.append(transform["signature"])
+        add("relation", [relation], options, summary, values)
     target_group = next((g for g in groups if g[0]["fragment_kind"] == "goal"), None)
     if target_group and case:
         options, summary = _goal_row(case, v, s, goal["kind"])
@@ -389,8 +428,9 @@ def d1_rows(target, fragments, known, text):
         add("goal", [target_group], options, summary, values)
     summary = ""
     if len(pieces) == 3:
-        summary = f"合起来：{pieces['relation']}{pieces['quantifier']}，{pieces['goal']}。"
-    return {"rows": rows, "summary": summary}
+        summary = (f"合起来：{transform['source_meaning']}" if transform else
+                   f"合起来：{pieces['relation']}{pieces['quantifier']}，{pieces['goal']}。")
+    return {"rows": rows, "summary": summary, **extra}
 
 
 def d2_options(goal):

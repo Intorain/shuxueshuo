@@ -453,6 +453,77 @@
           },
           "skip_reason": "not_selected",
           "order": 5
+        },
+        {
+          "id": "substitute",
+          "capability": "substitution",
+          "public_ref": "method-substitution",
+          "inputs": {
+            "expression": "$function",
+            "variable": "$x",
+            "domain": "$domain",
+            "new_variable": "$affine_plan.new_variable",
+            "forward": "$affine_plan.forward"
+          },
+          "outputs": {
+            "affine_expression": "expression",
+            "affine_variable": "variable",
+            "affine_domain": "domain",
+            "affine_mapping": "mapping"
+          },
+          "guard": {
+            "ref": "range_choice",
+            "equals": "affine_reciprocal"
+          },
+          "skip_reason": "not_selected",
+          "order": 6
+        },
+        {
+          "id": "affine_range",
+          "capability": "reciprocal_range",
+          "public_ref": "skill-reciprocal-range",
+          "inputs": {
+            "expression": "$affine_expression",
+            "variable": "$affine_variable",
+            "domain": "$affine_domain"
+          },
+          "outputs": {
+            "affine_range": "range",
+            "affine_points": "critical_points",
+            "affine_endpoints": "endpoint_values",
+            "affine_shape": "shape",
+            "affine_turn": "turning_point"
+          },
+          "guard": {
+            "ref": "range_choice",
+            "equals": "affine_reciprocal"
+          },
+          "skip_reason": "not_selected",
+          "order": 7
+        },
+        {
+          "id": "substitution_restore",
+          "capability": "restore_substitution_range",
+          "public_ref": "method-substitution",
+          "inputs": {
+            "mapping": "$affine_mapping",
+            "range": "$affine_range",
+            "critical_points": "$affine_points",
+            "endpoint_values": "$affine_endpoints",
+            "turning_point": "$affine_turn"
+          },
+          "outputs": {
+            "restored_range": "range",
+            "restored_points": "critical_points",
+            "restored_endpoints": "endpoint_values",
+            "restored_turn": "turning_point"
+          },
+          "guard": {
+            "ref": "range_choice",
+            "equals": "affine_reciprocal"
+          },
+          "skip_reason": "not_selected",
+          "order": 8
         }
       ],
       "judgments": [
@@ -462,11 +533,15 @@
           "inputs": {
             "expression": "$function",
             "variable": "$x",
-            "domain": "$domain"
+            "domain": "$domain",
+            "reserved_symbols": [
+              "$parameter"
+            ]
           },
           "outputs": {
             "range_choice": "choice",
-            "denominator": "denominator"
+            "denominator": "denominator",
+            "affine_plan": "affine"
           },
           "options": [
             {
@@ -483,12 +558,16 @@
             },
             {
               "id": "inverse"
+            },
+            {
+              "id": "affine_reciprocal"
             }
           ],
           "order": -1,
           "depends_on": [
             "domain",
             "function",
+            "parameter",
             "x"
           ]
         }
@@ -720,12 +799,164 @@
             "ref": "range_choice",
             "equals": "inverse"
           }
+        },
+        {
+          "id": "affine_substitution",
+          "after": "substitute",
+          "template": "affine_substitution",
+          "bindings": {
+            "before": [
+              "$function",
+              "$domain"
+            ],
+            "after": [
+              "$affine_expression",
+              "$affine_domain"
+            ],
+            "original_expression": "$function",
+            "original_variable": "$x",
+            "original_domain": "$domain",
+            "new_variable": "$affine_variable",
+            "forward": "$affine_mapping.forward",
+            "inverse": "$affine_mapping.inverse",
+            "expression": "$affine_expression",
+            "domain": "$affine_domain",
+            "function_name": "$function_name"
+          },
+          "depends_on": [
+            "affine_domain",
+            "affine_expression",
+            "affine_mapping",
+            "affine_variable",
+            "domain",
+            "function",
+            "function_name",
+            "x"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "affine_reciprocal"
+          }
+        },
+        {
+          "id": "affine_reciprocal_range",
+          "after": "affine_range",
+          "template": "hook_range",
+          "bindings": {
+            "before": [
+              "$affine_expression"
+            ],
+            "after": [
+              "$affine_range.set"
+            ],
+            "range": "$affine_range",
+            "domain": "$affine_domain",
+            "function": "$affine_expression",
+            "x": "$affine_variable",
+            "turn": "$affine_turn",
+            "endpoints": "$affine_endpoints",
+            "function_name": ""
+          },
+          "depends_on": [
+            "affine_domain",
+            "affine_endpoints",
+            "affine_expression",
+            "affine_range",
+            "affine_turn",
+            "affine_variable"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "range_choice",
+                "equals": "affine_reciprocal"
+              },
+              {
+                "ref": "affine_shape",
+                "equals": "hook"
+              }
+            ]
+          }
+        },
+        {
+          "id": "affine_monotone_range",
+          "after": "affine_range",
+          "template": "range_evidence",
+          "bindings": {
+            "before": [
+              "$affine_expression"
+            ],
+            "after": [
+              "$affine_range.set"
+            ],
+            "range": "$affine_range",
+            "domain": "$affine_domain",
+            "function": "$affine_expression",
+            "x": "$affine_variable",
+            "points": "$affine_points",
+            "endpoints": "$affine_endpoints",
+            "function_name": ""
+          },
+          "depends_on": [
+            "affine_domain",
+            "affine_endpoints",
+            "affine_expression",
+            "affine_points",
+            "affine_range",
+            "affine_variable"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "range_choice",
+                "equals": "affine_reciprocal"
+              },
+              {
+                "ref": "affine_shape",
+                "equals": "monotone"
+              }
+            ]
+          }
+        },
+        {
+          "id": "affine_restore",
+          "after": "substitution_restore",
+          "template": "affine_restore",
+          "bindings": {
+            "before": [
+              "$affine_range.set"
+            ],
+            "after": [
+              "$restored_range.set"
+            ],
+            "original_variable": "$x",
+            "new_variable": "$affine_variable",
+            "inverse": "$affine_mapping.inverse",
+            "points": "$restored_points",
+            "endpoints": "$restored_endpoints",
+            "turn": "$restored_turn",
+            "range": "$restored_range"
+          },
+          "depends_on": [
+            "affine_mapping",
+            "affine_range",
+            "affine_variable",
+            "restored_endpoints",
+            "restored_points",
+            "restored_range",
+            "restored_turn",
+            "x"
+          ],
+          "guard": {
+            "ref": "range_choice",
+            "equals": "affine_reciprocal"
+          }
         }
       ],
       "merges": [
         {
           "id": "range_result",
-          "order": 6,
+          "order": 9,
           "branches": [
             {
               "guard": {
@@ -770,6 +1001,15 @@
               },
               "bindings": {
                 "function_range": "$inverse_range"
+              }
+            },
+            {
+              "guard": {
+                "ref": "range_choice",
+                "equals": "affine_reciprocal"
+              },
+              "bindings": {
+                "function_range": "$restored_range"
               }
             }
           ]

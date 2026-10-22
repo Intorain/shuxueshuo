@@ -1,6 +1,6 @@
-import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft, CALL_LANE} from './walk-state.mjs';
+import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft, teachingContext, CALL_LANE} from './walk-state.mjs?v=20261022-proposition-2';
 import {createWalkGraph, nodeHref} from './walk-graph.mjs?v=20261015-view-tabs';
-import {createMathCard, attachMathQA, createMathContext, createRouteCompletion} from './stream-math-dom.mjs';
+import {createMathCard, setMathCardLayout, attachMathQA, createMathContext, createRouteCompletion} from './stream-math-dom.mjs?v=20261022-proposition-2';
 
 const BUNDLE_URL = '/data/graph-walk/quadratic-always-q01.json';
 const REPLAY_INDEX_URL = '/data/graph-walk/replays/index.json';
@@ -472,7 +472,8 @@ function renderInteraction(decision, {focus, pending = null} = {}) {
   if (context) {
     const folded = new Set(decision.stream_folded || []);
     const steps = decisionMathSteps(decision).filter(step => !folded.has(step.step_id));
-    if (decision.interaction.type === 'read') for (const step of steps) context.append(createMathCard(document, step, {renderMath: renderStreamMath}).node);
+    if (decision.interaction.type === 'read') for (const step of steps) context.append(createMathCard(document, step,
+      {renderMath: renderStreamMath, embedded: true, parentTitle: title}).node);
     // A later merged card's before is usually the earlier card's conclusion.
     else context.append(createMathContext(document, steps.slice(0, 1), {renderMath: renderStreamMath, question: decision.question}));
   }
@@ -768,6 +769,7 @@ function renderGraph() {
 
 function render({focus = false, scroll = focus} = {}) {
   stopPreview(); preview = null;
+  renderProblemContext();
   const open = new Set([...$('#gw-steps').querySelectorAll('details[open]')].map(item => item.dataset.completedDecision));
   const current = currentDecision(bundle, state);
   const introCount = state.introCompleted?.length || 0;
@@ -808,7 +810,8 @@ function render({focus = false, scroll = focus} = {}) {
   const target = (openPart && $('#gw-part-title')) || $('#gw-current-title') || $('#gw-completion h2');
   if (target && focus) { target.tabIndex = -1; target.focus({preventScroll: true}); }
   if (scroll) revealStep();
-  if (options.stream) { park(); options.onState?.(walkView()); }
+  if (options.stream) park();
+  options.onState?.(walkView());
 }
 
 function revealStep(behavior = reduced.matches ? 'auto' : 'smooth') {
@@ -1010,7 +1013,19 @@ function mountProblemBar() {
     new ResizeObserver(measureProblemBar).observe(dock.firstElementChild);
     new IntersectionObserver(([entry]) => dock.classList.toggle('is-shown', !entry.isIntersecting)).observe(card);
   }
-  PracticeMath.render(dock.querySelector('.gw-problem-bar-text'), bundle.problem.text);
+  renderProblemContext();
+}
+
+function renderProblemContext() {
+  const context = teachingContext(bundle, state), bar = $('.gw-problem-bar');
+  if (!bar) return;
+  const label = bar.querySelector('.gw-problem-bar-label'), text = bar.querySelector('.gw-problem-bar-text');
+  if (!label || !text) return;
+  const signature = JSON.stringify([context.label, context.text]);
+  if (bar.dataset.context === signature) return;
+  label.textContent = context.label;
+  PracticeMath.render(text, context.text);
+  bar.dataset.context = signature;
 }
 
 function measureProblemBar() {
@@ -1199,12 +1214,14 @@ function mountCompletedMath() {
   for (const host of $('#gw-steps').querySelectorAll('[data-stream-completed]')) {
     const decision = decisionById(host.dataset.streamCompleted, state.run.route);
     if (!decision?.stream_last_part) continue;
+    const parentTitle = groupOf(decision) ? decision.stream_group_title || decision.title : decision.title || decision.question;
     const folded = new Set(decision.stream_folded || []);
     let fold = null;
     for (const step of decisionMathSteps(decision)) {
       const key = streamCardKey(step);
       let card = streamCards.get(key);
       if (!card) { card = createMathCard(document, step, {renderMath: renderStreamMath}); streamCards.set(key, card); }
+      setMathCardLayout(card, {embedded: true, parentTitle: folded.has(step.step_id) ? '' : parentTitle});
       const qa = availableQA(step);
       if (qa) mountCardQA(card, qa);
       else card.qa.hidden = true;
@@ -1239,6 +1256,7 @@ function mountRetainedMath() {
     const key = streamCardKey(step);
     let card = streamCards.get(key);
     if (!card) { card = createMathCard(document, step, {renderMath: renderStreamMath}); streamCards.set(key, card); }
+    setMathCardLayout(card);
     card.qa.hidden = true;
     host.append(card.node);
   }
@@ -1435,6 +1453,8 @@ function streamReplay() {
 
 export function walkView() {
   return {actor, route: state?.run?.route || null, target_ref: options.stream?.target_ref,
+    problem_id: bundle?.problemId, teaching_context: teachingContext(bundle, state),
+    base_bundle_version: bundle?.stream?.base_bundle_version || bundle?.bundleVersion,
     intro_complete: Boolean(bundle?.intro.some(item => item.id === 'D3') && state?.introCompleted.length === bundle.intro.length),
     intro_completed: state?.introCompleted.map(item => item.decision) || []};
 }

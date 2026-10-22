@@ -5,8 +5,8 @@ from copy import deepcopy
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
 
-# A policy card precedes range computation: attainment is not known yet.
-# Reserve min/max for a certified attained value (or an explicit claim that it exists).
+# A policy card precedes range computation. Use min/max only when the current
+# function and domain already prove attainment, or a later value certifies it.
 BOUND_NAMES = {"inf": "值域下端", "sup": "值域上端"}
 EXTREMUM_NAMES = {"inf": "最小值", "sup": "最大值"}
 BOUND_TEX = {"inf": r"\text{下端}", "sup": r"\text{上端}"}
@@ -15,6 +15,39 @@ BOUND_EXPLANATION = (
     "这里“下端/上端”指函数值范围的两端：能取到时就是最小值/最大值；"
     "取不到时，是函数值向下/向上无限接近的值；向下/向上无界时记为 $-\\infty/+\\infty$。"
 )
+
+
+def polynomial_extrema_attained(function, variable, domain):
+    """Prove attainment from a real polynomial on a nonempty compact input domain.
+
+    Parameters are fixed real numbers. Checking polynomial dependence on *all*
+    symbols also rejects coefficients such as ``1/a``, whose value is not defined
+    for every real parameter. No range, critical point or future step is used.
+    """
+    if not isinstance(function, sp.Expr) or not isinstance(variable, sp.Symbol):
+        return False
+    if isinstance(domain, sp.Interval):
+        if domain.left_open or domain.right_open or domain.is_empty is not False:
+            return False
+        boundary = (domain.start, domain.end)
+    elif isinstance(domain, sp.FiniteSet) and domain:
+        boundary = tuple(domain)
+    else:
+        return False
+    if domain.has(variable) or any(point.is_real is not True or point.is_finite is not True for point in boundary):
+        return False
+    symbols = function.free_symbols | {variable}
+    # The real domain already restricts the quantified variable to real values.
+    if variable.is_real is False or any(symbol != variable and symbol.is_real is not True for symbol in symbols):
+        return False
+    # Preserve holes in an unevaluated input rather than letting Poly cancel them.
+    if any(power.base.free_symbols and power.exp.is_negative is True for power in function.atoms(sp.Pow)):
+        return False
+    try:
+        polynomial = sp.Poly(function, *sorted(symbols, key=sp.default_sort_key))
+    except sp.PolynomialError:
+        return False
+    return all(value.is_real is True and value.is_finite is True for value in polynomial.coeffs())
 
 
 class _DescendingPrinter(LatexPrinter):

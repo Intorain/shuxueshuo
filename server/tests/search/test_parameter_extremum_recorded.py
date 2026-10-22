@@ -143,7 +143,8 @@ def test_real_parameter_minimum_recording_reaches_the_student_lesson(tmp_path, m
     stage_two = run_stage_two(output, result, provider=forbidden, unsupported_root=output / "unsupported")
     record_run(output / "stage-two-1", output / "recording")
     replay = replay_run(output / "recording", output / "replay")
-    lesson = present_lesson(stage_two, result["features"], result["candidate"]["original_text"])
+    lesson = present_lesson(stage_two, result["features"], result["candidate"]["original_text"],
+                            candidate=result["candidate"])
     debug_report(output, result, evidence, lesson)
     report = str(output / "index.html")
     assert stage_two["status"] == lesson["status"] == "completed", report

@@ -178,22 +178,11 @@
           {
             "label": "只需看{bound_name}",
             "math": "{policy_condition_short}",
-            "note": [
-              "{bound_explanation}",
-              "从函数值范围的最{extreme_word}一侧判断，并检查等号与能否取到",
-              {
-                "if": "policy_universal",
-                "then": {
-                  "if": "policy_strict",
-                  "then": "；{bound_name}取到时不能相等"
-                },
-                "else": {
-                  "if": "policy_strict",
-                  "then": "",
-                  "else": "；相等时{bound_name}必须能取到"
-                }
-              }
-            ]
+            "note": {
+              "if": "policy_attained",
+              "then": "该最值可以取得。",
+              "else": "{policy_caveat}"
+            }
           }
         ],
         "result": [
@@ -202,7 +191,42 @@
             "then": "${policy_definition}$，${policy_condition_short}$",
             "else": "${policy_condition_short}$"
           },
-          {
+          "{policy_caveat}"
+        ]
+      },
+      "render": [
+        {
+          "if": "policy_definition",
+          "then": "记 ${policy_definition}$，"
+        },
+        "{quantifier_text} ${x} \\in {domain}$，${policy_relation}$ $\\iff {policy_condition}$",
+        "{policy_caveat}",
+        "。{bound_explanation}"
+      ],
+      "variables": {
+        "bound_name": {
+          "if": "policy_attained",
+          "then": {
+            "select": "policy.bound",
+            "cases": {
+              "sup": "最大值",
+              "inf": "最小值"
+            },
+            "default": ""
+          },
+          "else": {
+            "select": "policy.bound",
+            "cases": {
+              "sup": "值域上端",
+              "inf": "值域下端"
+            },
+            "default": ""
+          }
+        },
+        "policy_caveat": {
+          "if": "policy_attained",
+          "then": "",
+          "else": {
             "if": "policy_universal",
             "then": {
               "if": "policy_strict",
@@ -214,44 +238,6 @@
               "else": "（相等时{bound_name}必须能取到）"
             }
           }
-        ]
-      },
-      "render": [
-        {
-          "if": "policy_definition",
-          "then": "记 ${policy_definition}$，"
-        },
-        "{quantifier_text} ${x} \\in {domain}$，${policy_relation}$ $\\iff {policy_condition}$",
-        {
-          "if": "policy_universal",
-          "then": {
-            "if": "policy_strict",
-            "then": "（{bound_name}取到时不能相等）"
-          },
-          "else": {
-            "if": "policy_strict",
-            "then": "",
-            "else": "（相等时{bound_name}必须能取到）"
-          }
-        },
-        "。{bound_explanation}"
-      ],
-      "variables": {
-        "extreme_word": {
-          "select": "policy.bound",
-          "cases": {
-            "sup": "大",
-            "inf": "小"
-          },
-          "default": ""
-        },
-        "bound_name": {
-          "select": "policy.bound",
-          "cases": {
-            "sup": "值域上端",
-            "inf": "值域下端"
-          },
-          "default": ""
         },
         "quantifier_text": {
           "select": "policy.quantifier",
@@ -934,6 +920,130 @@
           "separator": ""
         }
       ]
+    },
+    "affine_substitution": {
+      "title": "换元整理函数",
+      "explanation": "用分母中的一次式作新变量，同时换算区间，再求新表达式的值域。",
+      "required_bindings": [
+        "before",
+        "after",
+        "original_expression",
+        "original_variable",
+        "original_domain",
+        "new_variable",
+        "forward",
+        "inverse",
+        "expression",
+        "domain",
+        "function_name"
+      ],
+      "prepare": "affine_substitution_view",
+      "render": [
+        "令 ${new_variable}={forward}$，则 ${original_variable}={inverse}$。",
+        "这一换元在题目区间内一一对应，${original_variable} \\in {original_domain}$ 对应 ${new_variable} \\in {domain}$。",
+        "将 ${original_variable}={inverse}$ 代入 ${affine_original}$，得到 ${affine_identity}$。",
+        "因此只需在 ${new_variable} \\in {domain}$ 上求表达式 ${expression}$ 的值域。"
+      ],
+      "highlight": {
+        "caption": "新变量与对应区间",
+        "connector": "→",
+        "items": [
+          {
+            "label": "换元关系",
+            "math": "{new_variable}={forward}"
+          },
+          {
+            "label": "对应区间",
+            "math": "{new_variable} \\in {domain}"
+          },
+          {
+            "label": "换元后的表达式",
+            "math": "{expression}"
+          }
+        ]
+      }
+    },
+    "affine_restore": {
+      "title": "回代原变量",
+      "explanation": "用逆变换把关键点还原到原变量，保留端点是否可取和函数值域。",
+      "required_bindings": [
+        "before",
+        "after",
+        "original_variable",
+        "new_variable",
+        "inverse",
+        "points",
+        "endpoints",
+        "turn",
+        "range"
+      ],
+      "prepare": "affine_restore_view",
+      "render": [
+        "按 ${original_variable}={inverse}$ 回代。",
+        {
+          "for": "affine_restored_rows",
+          "as": "item",
+          "body": {
+            "if": "item.attained",
+            "then": "当 ${new_variable}={item.transformed_point}$ 时，${original_variable}={item.point}$，原函数值为 ${item.value}$，可以取得。",
+            "else": "在题目区间内，${new_variable} \\to {item.transformed_point}$ 对应 ${original_variable} \\to {item.point}$，原函数值趋近 ${item.value}$，对应端点不能取到。"
+          },
+          "separator": ""
+        },
+        {
+          "if": "affine_turn_outside",
+          "then": "对勾函数的拐点 ${new_variable}={turn.transformed_point}$ 对应 ${original_variable}={turn.point}$，该点不属于题目区间，不能把它作为区间内的取值点。"
+        },
+        "换元前后的函数值逐一相同，所以原函数的值域仍为 ${range.set}$。",
+        {
+          "for": "affine_bounds",
+          "as": "item",
+          "body": {
+            "if": "item.finite",
+            "then": [
+              {
+                "if": "item.low",
+                "then": {
+                  "if": "item.attained",
+                  "then": "最小值",
+                  "else": "值域下端"
+                },
+                "else": {
+                  "if": "item.attained",
+                  "then": "最大值",
+                  "else": "值域上端"
+                }
+              },
+              "为 ${item.value}$，",
+              {
+                "if": "item.attained",
+                "then": "可以取得。",
+                "else": "只能趋近、不能取得。"
+              }
+            ],
+            "else": {
+              "if": "item.low",
+              "then": "函数值没有下界。",
+              "else": "函数值没有上界。"
+            }
+          },
+          "separator": ""
+        }
+      ],
+      "highlight": {
+        "caption": "回代后的值域",
+        "items": [
+          {
+            "label": "回代关系",
+            "math": "{original_variable}={inverse}"
+          },
+          {
+            "label": "原函数的值域",
+            "math": "{range.set}"
+          }
+        ],
+        "result": "原函数的值域为 ${range.set}$"
+      }
     },
     "hook_range": {
       "title": "用对勾函数求值域",

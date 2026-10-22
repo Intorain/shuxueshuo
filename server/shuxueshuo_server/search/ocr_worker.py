@@ -17,11 +17,11 @@ from time import monotonic
 import numpy as np
 from PIL import Image, ImageOps
 
-from shuxueshuo_server.search.segmentation import head_candidates
+from shuxueshuo_server.search.ocr_crops import head_crop
+from shuxueshuo_server.search.segmentation import page_head_candidates
 
 MAX_SIDE = 1600
 DETECT_SIDE = 736
-HEAD_HEIGHTS = 3
 ENGINE = {"run_mode": "paddle", "device_type": "cpu", "cpu_threads": 8, "enable_new_ir": False}
 
 
@@ -57,14 +57,16 @@ def observe(models, path):
 
     polys = [[(float(x), float(y)) for x, y in poly] for poly in detected.get("dt_polys", ())]
     boxes = [_bounds(poly) for poly in polys]
+    lines = [{"box": [x0 / w, y0 / h, x1 / w, y1 / h], "poly": [[x / w, y / h] for x, y in poly]}
+             for (x0, y0, x1, y1), poly in zip(boxes, polys, strict=True)]
+    regions = [{"label": str(item.get("label")), "confidence": float(item.get("score", 0.0)),
+                "box": [item["coordinate"][0] / w, item["coordinate"][1] / h,
+                        item["coordinate"][2] / w, item["coordinate"][3] / h]}
+               for item in layout.get("boxes", ())]
     # Per-line recognition costs ~40 ms on CPU and batching does not help, so only
     # row-leading lines (the only ones that can start a question) are recognised.
-    wanted = head_candidates(boxes)
-    crops = []
-    for i in wanted:
-        x0, y0, x1, y1 = boxes[i]
-        line_h = max(1.0, y1 - y0)
-        crops.append(pixels[int(y0):int(y1) + 1, int(x0):int(min(x1, x0 + HEAD_HEIGHTS * line_h)) + 1])
+    wanted = page_head_candidates(lines, regions, w, h)
+    crops = [np.asarray(head_crop(image, polys[i])) for i in wanted]
     started = monotonic()
     heads = dict(zip(wanted, (r.json["res"] for r in models["rec"].predict(crops)), strict=True)) if crops else {}
     timings["recognize_heads"] = round((monotonic() - started) * 1000)
@@ -73,17 +75,12 @@ def observe(models, path):
         "width": w,
         "height": h,
         "lines": [
-            {"box": [x0 / w, y0 / h, x1 / w, y1 / h], "poly": [[x / w, y / h] for x, y in poly],
+            {**line,
              "head": heads.get(i, {}).get("rec_text", ""),
              "confidence": float(heads.get(i, {}).get("rec_score", 0.0))}
-            for i, ((x0, y0, x1, y1), poly) in enumerate(zip(boxes, polys, strict=True))
+            for i, line in enumerate(lines)
         ],
-        "layout": [
-            {"label": str(item.get("label")), "confidence": float(item.get("score", 0.0)),
-             "box": [item["coordinate"][0] / w, item["coordinate"][1] / h,
-                     item["coordinate"][2] / w, item["coordinate"][3] / h]}
-            for item in layout.get("boxes", ())
-        ],
+        "layout": regions,
         "latency_ms": timings,
     }
 

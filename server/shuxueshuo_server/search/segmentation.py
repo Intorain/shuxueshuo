@@ -25,7 +25,10 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from itertools import pairwise
 from statistics import median
+
+from .segmentation_numbering import gap_number_hint
 
 NUMBER = re.compile(r"^\s*(\d{1,2})\s*([.．、。,，:：)）])?\s*(.?)")
 SECTION = re.compile(r"^\s*[一二三四五六七八九十]{1,3}\s*[、.．]")
@@ -81,7 +84,7 @@ def _rows_overlap(a, b):
     return min(a.y1, b.y1) - max(a.y0, b.y0) > 0.5 * min(a.h, b.h)
 
 
-def head_candidates(boxes, median_h=None):
+def head_candidates(boxes, median_h=None, *, text_regions=()):
     """Indices of boxes that start their row, i.e. nothing sits just to their left.
 
     The OCR worker recognises only these heads; continuations never start a question.
@@ -91,12 +94,22 @@ def head_candidates(boxes, median_h=None):
     if not items:
         return []
     mh = median_h or median(i.h for i in items)
+    # Only broad text regions can identify a separate sheet/column. Per-line
+    # text and formula boxes must not turn continuations into new row heads.
+    bodies = [Item(*b) for b in text_regions if b[2] - b[0] >= 4 * mh and b[3] - b[1] >= 3 * mh]
+
+    def separate_body(item, other):
+        return any(body.x0 <= (item.x0 + item.x1) / 2 <= body.x1
+                   and body.y0 <= item.cy <= body.y1
+                   and other.x1 < body.x0 <= item.x0 for body in bodies)
+
     keep = []
     for i, item in enumerate(items):
         reach = 2 * max(item.h, mh)
         blocked = any(
             j != i and _rows_overlap(item, other) and other.x1 <= item.x0 + 0.3 * item.h
             and item.x0 - other.x1 < reach
+            and not separate_body(item, other)
             for j, other in enumerate(items))
         if not blocked:
             keep.append(i)
@@ -147,6 +160,17 @@ def _corners(box):
     return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 
 
+def page_head_candidates(raw_lines, layout, width, height):
+    """Shared deskew/layout filtering before OCR and after head recognition."""
+    frame = _Frame(_angle(raw_lines, width, height), width, height)
+    lines = [frame.item([(x * width, y * height) for x, y in
+                         (line.get("poly") or _corners(line["box"]))]) for line in raw_lines]
+    bodies = [frame.item([(x * width, y * height) for x, y in _corners(item["box"])])
+              for item in layout if item.get("label") == "text"]
+    return head_candidates([(line.x0, line.y0, line.x1, line.y1) for line in lines],
+                           text_regions=[(body.x0, body.y0, body.x1, body.y1) for body in bodies])
+
+
 def question_number(head, *, has_right_neighbour):
     """The question number this line head starts with, or None."""
     match = NUMBER.match(head or "")
@@ -195,7 +219,7 @@ def _chain(starts, sections):
 def _cluster_columns(xs, width):
     order = sorted(range(len(xs)), key=lambda i: xs[i])
     columns, current = [], [order[0]]
-    for a, b in zip(order, order[1:]):
+    for a, b in pairwise(order):
         if xs[b] - xs[a] > 0.2 * width:
             columns.append(current)
             current = []
@@ -226,7 +250,7 @@ def segment(ocr) -> Segmentation:
     # Detection at DETECT_SIDE ends line boxes about one character short on the right.
     tail = 1.5 * mh
 
-    leftmost = set(head_candidates([(l.x0, l.y0, l.x1, l.y1) for l in lines], mh))
+    leftmost = set(page_head_candidates(raw_lines, ocr.get("layout", []), width, height))
     candidates, sections = [], []
     for i, line in enumerate(lines):
         if i not in leftmost:
@@ -311,8 +335,8 @@ def _repair_gaps(chain, row_leaders, mh):
     """Fill numbering gaps with margin lines whose number OCR misread (circled or ticked digits).
 
     Between consecutive chain members ``a`` and ``b`` of one column with missing
-    numbers, a row-leading line on that column's left margin whose head starts
-    with a digit is taken as the next missing question.
+    numbers, eligible row-leading lines on that column's left margin can fill
+    the gap. Weak number hints must match the complete missing sequence.
     """
     used = {id(s.item) for s in chain}
     result, repaired = [], []
@@ -324,11 +348,32 @@ def _repair_gaps(chain, row_leaders, mh):
         between = sorted((line for line in row_leaders
                           if id(line) not in used and a.item.cy < line.cy < b.item.cy
                           and abs(line.x0 - margin) < 1.5 * mh and line.h >= 0.6 * mh
-                          and DIGIT_HEAD.match(line.head)), key=lambda line: line.cy)
+                          and _repairable_head(line.head)), key=lambda line: line.cy)
+        # Isolated numbers, letter-confused digits and damaged source labels
+        # are weak hints. Require an unambiguous, complete sequence bounded
+        # by strong numbers in the same column.
+        hints = [gap_number_hint(line.head) for line in between]
+        if any(hint is not None for hint in hints) and (
+            len(between) != b.number - a.number - 1
+            or any(hint not in {None, a.number + offset} for offset, hint in enumerate(hints, start=1))
+        ):
+            between = []
         for offset, line in enumerate(between[: b.number - a.number - 1], start=1):
             result.append(Start(line, a.number + offset, a.column))
             repaired.append({"number": a.number + offset, "head": line.head})
     return result, repaired
+
+
+def _repairable_head(head):
+    """Repair a damaged number only between already established question starts.
+
+    Bare numbers, letter-confused digits and decimal-like source labels
+    require a fully confirmed gap. Other decimal/formula heads must never
+    enter through this gap-repair back door.
+    """
+    if gap_number_hint(head) is not None:
+        return True
+    return bool(DIGIT_HEAD.match(head)) and question_number(head, has_right_neighbour=False) is not None
 
 
 def _clear_headers(boxes, starts, header_cys, mh):

@@ -11,6 +11,7 @@ import json
 import random
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
+from functools import cmp_to_key
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -19,9 +20,14 @@ from jsonschema import Draft202012Validator, ValidationError
 
 from . import interaction_graph_contract as graph_contract
 from . import interaction_graphs as drawing
+from .capabilities import CapabilityGap
 from .capabilities.cases import exact_set_equal
 from .capabilities.parametric import _compare
 from .capabilities.ranges import _sign, quadratic_interval_range, reciprocal_range
+from .capabilities.substitution import (
+    inspect_affine_reciprocal,
+    restore_substitution_range,
+)
 from .contracts import ROOT
 from .interaction_graphs import GraphUnavailable
 from .math_values import (
@@ -30,6 +36,7 @@ from .math_values import (
     BOUND_TEX,
     EXTREMUM_NAMES,
     EXTREMUM_TEX,
+    polynomial_extrema_attained,
 )
 from .math_values import latex as _latex
 from .presentation_intervals import in_set, merge_view, oriented
@@ -45,6 +52,8 @@ CHUNK_SCHEMA = ROOT / "internal/schemas/graph-step-interaction-v1.schema.json"
 ENGINE_FILES = (Path(__file__).resolve(), Path(drawing.__file__).resolve(),
                 Path(graph_contract.__file__).resolve(), CHUNK_SCHEMA)
 MAX_REPRESENTATIVES = 12
+# Policies can need exact equality witnesses outside the generic constant grid.
+MAX_POLICY_REPRESENTATIVES = 2 * MAX_REPRESENTATIVES
 GRID = tuple(sp.Integer(value) for value in range(-4, 5))
 NEIGHBOR = sp.Rational(1, 2)
 
@@ -330,7 +339,16 @@ def range_at(function, variable, domain):
         outputs = quadratic_interval_range(sp.expand(function), variable, domain)["outputs"]
         ends, critical, name = outputs["endpoint_values"], outputs["critical_points"], "vertex"
     else:
-        outputs = reciprocal_range(function, variable, domain)["outputs"]
+        try:
+            outputs = reciprocal_range(function, variable, domain)["outputs"]
+        except CapabilityGap:
+            substitution = inspect_affine_reciprocal(function, variable, domain)
+            transformed = reciprocal_range(substitution["expression"], substitution["new_variable"],
+                                           substitution["domain"])["outputs"]
+            outputs = restore_substitution_range(
+                substitution["mapping"], transformed["range"], transformed["critical_points"],
+                transformed["endpoint_values"], transformed["turning_point"],
+            )["outputs"]
         ends, critical, name = outputs["endpoint_values"], outputs["critical_points"], "critical"
     positions = []
     for row in ends:
@@ -349,11 +367,12 @@ class _Ranges:
         self.cache = {}
 
     def __call__(self, point):
-        if point not in self.cache:
-            value = self.function.subs(self.parameter, point) if self.parameter is not None else self.function
-            self.cache[point] = range_at(sp.cancel(value) if not value.is_polynomial(self.variable) else value,
-                                         self.variable, self.domain)
-        return self.cache[point]
+        varying = self.parameter is not None and self.function.has(self.parameter)
+        key = point if varying else None
+        if key not in self.cache:
+            value = self.function.subs(self.parameter, point) if varying else self.function
+            self.cache[key] = range_at(value, self.variable, self.domain)
+        return self.cache[key]
 
 
 def _attempt(function, *arguments):
@@ -384,6 +403,7 @@ def _policy_facts(values, context):
     relation = (sp.Rel(function, expression, MIRROR[operator], evaluate=False) if numeric
                 else sp.Rel(expression, function, operator, evaluate=False))
     named = _named_function(values, function, values["x"])
+    attained = polynomial_extrema_attained(function, values["x"], context["domain"])
     label = named or _latex(function)
     definition = f"记 ${named}={_latex(function)}$，" if named and values.get("define_name") else ""
     shown = (f"{label} {LATEX_OPERATORS[MIRROR[operator]]} {_latex(expression)}" if numeric
@@ -391,10 +411,11 @@ def _policy_facts(values, context):
     return {
         "policy": policy, "function": function, "expression": expression, "operator": operator,
         "bound": bound, "x": values["x"], "domain": context["domain"], "parameter": context.get("parameter"),
-        "numeric": numeric, "relation": relation, "label": label, "named": bool(named),
+        "numeric": numeric, "relation": relation, "label": label, "named": bool(named), "attained": attained,
         "display": {"x": values["x"], "domain": context["domain"], "relation": shown, "function": label,
-                    "definition": definition, "bound_explanation": BOUND_EXPLANATION,
-                    "bound_name": BOUND_NAMES[bound], "extremum_name": EXTREMUM_NAMES[bound],
+                    "definition": definition, "bound_explanation": "" if attained else BOUND_EXPLANATION,
+                    "bound_name": (EXTREMUM_NAMES if attained else BOUND_NAMES)[bound],
+                    "extremum_name": EXTREMUM_NAMES[bound],
                     "quantifier_text": "对所有" if policy["quantifier"] == "∀" else "至少存在一个",
                     "quantifier_goal": (f"对所有 ${_latex(values['x'])}$ 都成立" if policy["quantifier"] == "∀"
                                         else f"至少有一个 ${_latex(values['x'])}$ 使它成立"),
@@ -432,7 +453,7 @@ def _quantified(quantifier, operator, expression, value):
 def _bound_tex(facts, key, *, attained=False):
     body = facts["label"] if facts["named"] or facts["function"].is_Atom \
         else rf"\left({facts['label']}\right)"
-    return f"{body}_{{{(EXTREMUM_TEX if attained else BOUND_TEX)[key]}}}"
+    return f"{body}_{{{(EXTREMUM_TEX if attained or facts.get('attained') else BOUND_TEX)[key]}}}"
 
 
 def _scope(facts):
@@ -447,7 +468,9 @@ def _relation_label(facts, operator, key):
 
 
 def _policy_proposition(facts, truth):
-    ranges = _Ranges(facts["function"], facts["x"], facts["domain"], facts["parameter"])
+    if "ranges" not in facts:
+        facts["ranges"] = _Ranges(facts["function"], facts["x"], facts["domain"], facts["parameter"])
+    ranges = facts["ranges"]
     expression, parameter = facts["expression"], facts["parameter"]
 
     def evaluate(point):
@@ -459,11 +482,12 @@ def _policy_proposition(facts, truth):
 def _policy_answer(facts):
     policy, operator, bound = facts["policy"], facts["operator"], facts["bound"]
     universal = policy["quantifier"] == "∀"
-    label_operator = FLIP_STRICTNESS[operator] if universal and operator in ("<", ">") else operator
+    needs_attainment = not facts.get("attained")
+    label_operator = FLIP_STRICTNESS[operator] if needs_attainment and universal and operator in ("<", ">") else operator
     label = _relation_label(facts, label_operator, bound)
-    if universal and operator in ("<", ">"):
+    if needs_attainment and universal and operator in ("<", ">"):
         label += f"，且{BOUND_NAMES[bound]}取到时不能相等"
-    elif not universal and operator in ("<=", ">="):
+    elif needs_attainment and not universal and operator in ("<=", ">="):
         label += f"，且等号成立时{BOUND_NAMES[bound]}必须能取到"
     truth = _policy_proposition(facts, lambda e, v: _quantified(policy["quantifier"], operator, e, v))
     return [{"answer": Candidate("policy:answer", label, truth)}]
@@ -529,8 +553,84 @@ def _flip_direction(facts, item):
     return [Candidate("policy:flip_direction", _relation_label(facts, operator, bound), truth)]
 
 
+def _policy_roots(expression, parameter):
+    """Bounded exact linear/quadratic roots; unsupported equations add no evidence."""
+    if expression.free_symbols - {parameter} or expression.has(sp.Float) or sp.count_ops(expression) > 128:
+        return []
+    try:
+        polynomial = sp.Poly(expression, parameter)
+    except sp.PolynomialError:
+        return []
+    degree = polynomial.degree()
+    if degree not in (1, 2) or any(not _finite(c) for c in polynomial.all_coeffs()):
+        return []
+    if degree == 1:
+        roots = [-polynomial.nth(0) / polynomial.nth(1)]
+    else:
+        a, b, c = (polynomial.nth(index) for index in (2, 1, 0))
+        discriminant = sp.simplify(b**2 - 4 * a * c)
+        if discriminant.is_nonnegative is not True:
+            return []
+        roots = [(-b - sp.sqrt(discriminant)) / (2 * a),
+                 (-b + sp.sqrt(discriminant)) / (2 * a)]
+    return [point for root in roots if _finite(point := sp.simplify(root))]
+
+
+def _policy_breakpoints(facts):
+    """Threshold/shape changes from this card's function, relation and domain only."""
+    function, variable, parameter = facts["function"], facts["x"], facts["parameter"]
+    domain, expression = facts["domain"], facts["expression"]
+    if parameter is None or not isinstance(domain, sp.Interval):
+        return []
+    equations = []
+    residual = function - expression
+    if residual.free_symbols <= {variable, parameter} and sp.count_ops(residual) <= 128:
+        try:
+            polynomial = sp.Poly(residual, variable)
+        except sp.PolynomialError:
+            polynomial = None
+        if polynomial is not None and polynomial.degree() <= 2:
+            a, b, c = (polynomial.nth(index) for index in (2, 1, 0))
+            endpoints = [point for point in (domain.start, domain.end) if _finite(point)]
+            equations.extend(residual.subs(variable, point) for point in endpoints)
+            equations.extend((b**2 - 4 * a * c, a, b, c))
+            equations.extend(2 * a * point + b for point in endpoints)
+            if len(endpoints) == 2:
+                equations.append(residual.subs(variable, endpoints[0]) - residual.subs(variable, endpoints[1]))
+    # A separated parameter is compared with a numeric range, including a range
+    # proved after an affine coordinate change. Its extrema give exact thresholds.
+    if not function.free_symbols - {variable}:
+        bounds = _attempt(range_at, function, variable, domain)
+        if bounds:
+            equations.extend(expression - bounds[key] for key in ("inf", "sup") if _finite(bounds[key]))
+    roots = []
+    for equation in equations:
+        for point in _policy_roots(equation, parameter):
+            if point not in roots:
+                roots.append(point)
+    return roots
+
+
 def _policy_representatives(facts, values, context):
-    return representatives(values, context, facts["known"])
+    allowed = sp.Intersection(facts["known"], values.get("case", {}).get("domain", sp.S.Reals))
+    chosen = representatives(values, context, allowed)
+    roots = _policy_breakpoints(facts)
+    # Retain existing witness order, then exact equalities and interior points
+    # between adjacent thresholds. A fixed count bounds all candidate checking;
+    # missing or unsupported witnesses stay unproven in _proposition_check.
+    ordered = sorted(roots, key=cmp_to_key(_cmp))
+    pool = []
+    for point in roots:
+        index = ordered.index(point)
+        left = (point + ordered[index - 1]) / 2 if index else point - NEIGHBOR
+        right = (point + ordered[index + 1]) / 2 if index + 1 < len(ordered) else point + NEIGHBOR
+        pool.extend((point, sp.simplify(left), sp.simplify(right)))
+    for point in pool:
+        if len(chosen) == MAX_POLICY_REPRESENTATIVES:
+            break
+        if _finite(point) and point not in chosen and allowed.contains(point) is sp.true:
+            chosen.append(point)
+    return chosen
 
 
 def _by_quantifier(generator):
@@ -1536,8 +1636,9 @@ def _checklist_part(part, number, part_id, seeds):
 def compile_interaction(seeds, rule, repeat_context, *, interaction_id):
     """Return ``{"parts", "diagnostics"}``; raise NotInteractive for read-only.
 
-    ``seeds`` hold one card, or two for a merge, in card order. Only these seeds
-    and the fixed grid feed representative values; later cards are never read.
+    ``seeds`` hold one card, or two for a merge, in card order. Only these seeds,
+    their exact thresholds and the fixed grid feed representatives; later cards
+    are never read.
     """
     first_values = decode_value(seeds[0]["values"])
     if not _repeat_allows(rule, first_values, repeat_context):

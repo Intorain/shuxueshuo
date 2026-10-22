@@ -443,7 +443,7 @@ def test_swap_resumes_without_repeating_calls_cards_or_events(tmp_path, case, po
     def stop_after_actual_range(state, _durable):
         if stopped or state["method"] != METHOD:
             return
-        if any(call["capability"] == "parameter_linear_range" for call in _calls(state["trajectory"])):
+        if any(call["capability"] == "parameter_linear_case_range" for call in _calls(state["trajectory"])):
             stopped.append(deepcopy(state))
             raise Interrupted()
 
@@ -468,6 +468,6 @@ def test_swap_resumes_without_repeating_calls_cards_or_events(tmp_path, case, po
         assert matching["calls"][:len(old_step["calls"])] == old_step["calls"]
     sequence = events(output)
     assert [event["seq"] for event in sequence] == list(range(1, len(sequence) + 1))
-    assert sum(call["capability"] == "parameter_linear_range" for call in _calls(trajectory)) == 1
+    assert sum(call["capability"] == "parameter_linear_case_range" for call in _calls(trajectory)) == 1
     runner.resume_sample(output)
     assert events(output) == sequence

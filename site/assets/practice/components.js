@@ -286,7 +286,9 @@
     </svg>`;
   }
   // Exploration, not an answer: the student drags the axis of symmetry of
-  // f(x) = coefficient·(x − h)² + constant − coefficient·h² and watches which point of the interval is highest
+  // f(x) = coefficient·(x − h)² + c(h) − coefficient·h² and watches which point of the interval is highest.
+  // c(h) defaults to constant; constant_by_axis adds linear·h + quadratic·h². Optional parameter metadata
+  // displays the original parameter p = scale·h + offset alongside the current axis position.
   // (target "min": lowest — the vertex when it lies inside, otherwise the lower end).
   // axis {min, max, step, value} bounds the axis x = h; marks are dashed reference x-positions (such as the
   // interval midpoint). open makes the interval open: endpoints stay hollow and a marked end is labelled 上端／下端.
@@ -296,12 +298,25 @@
     const [xmin, xmax, ymin, ymax] = bounds;
     return {x: value => 48 + (value - xmin) / (xmax - xmin) * 270, y: value => 222 - (value - ymin) / (ymax - ymin) * 174};
   }
+  function axisValueLabel(spec, h) {
+    if (!spec.parameter && !spec.constant_by_axis) return '';
+    const number = value => String(Number(value.toPrecision(10)));
+    const parameter = spec.parameter;
+    let label = `对称轴 ${spec.variable ?? 'x'} = ${number(h)}`;
+    if (parameter) {
+      const {name, scale, offset} = parameter;
+      label += `；${name} = ${number(scale * h + offset)}`;
+    }
+    return `<text class="axis-value-label" x="180" y="262" text-anchor="middle" fill="#526e64" font-size="12">${escape(label)}</text>`;
+  }
   function axisExplorerLayer(spec, h) {
     const {coefficient, constant, bounds, open = false, target = 'max'} = spec;
     const interval = bounded(spec.interval);
     const closed = spec.interval_closed ?? [!open, !open];
     const {x, y} = axisFrame(spec);
-    const f = value => coefficient * (value - h) ** 2 + constant - coefficient * h * h;
+    const movingConstant = spec.constant_by_axis
+      ? constant + spec.constant_by_axis.linear * h + spec.constant_by_axis.quadratic * h * h : constant;
+    const f = value => coefficient * (value - h) ** 2 + movingConstant - coefficient * h * h;
     const ends = interval.filter(Number.isFinite);
     const samples = sampleRange(bounds[0], bounds[1], ends, 160);
     const path = values => values.map((value, i) => `${i ? 'L' : 'M'}${x(value).toFixed(2)} ${Math.max(-400, Math.min(700, y(f(value)))).toFixed(2)}`).join(' ');
@@ -317,7 +332,7 @@
       const marked = extreme !== null && Math.abs(fx - extreme) < 1e-9;
       const shut = closed[value === interval[0] ? 0 : 1];
       const word = lowest ? (shut ? '最低' : '下端') : (shut ? '最高' : '上端');
-      const fill = marked && shut ? '#b65c42' : '#fff';
+      const fill = shut ? '#b65c42' : '#fff';
       const before = value === interval[0] && !tie;
       return `<circle class="axis-endpoint${marked ? (lowest ? ' lowest' : ' highest') : ''}" cx="${x(value)}" cy="${y(fx)}" r="${marked ? 6 : 4.5}" fill="${fill}" stroke="#b65c42" stroke-width="${marked && !shut ? 3 : 2.2}"/>` +
         (marked ? `<text x="${x(value) + (before ? -9 : 9)}" y="${y(fx) - 11}" text-anchor="${before ? 'end' : 'start'}" fill="#a04c36" font-size="14">${word}</text>` : '');
@@ -331,7 +346,8 @@
       <rect class="axis-handle" x="${x(h) - 30}" y="30" width="60" height="20" rx="10" fill="#b6782c"/>
       <text x="${x(h)}" y="44" text-anchor="middle" fill="#fff" font-size="12">‹ 对称轴 ›</text>
       ${ends.map((value, i) => endpoint(value, values[i])).join('')}
-      ${inside ? `<circle class="axis-vertex ${lowest ? 'lowest' : 'highest'}" cx="${x(h)}" cy="${y(f(h))}" r="6" fill="#b65c42"/><text x="${x(h)}" y="${y(f(h)) + (lowest ? 24 : -12)}" text-anchor="middle" fill="#a04c36" font-size="14">${lowest ? '最低' : '最高'}</text>` : ''}`;
+      ${inside ? `<circle class="axis-vertex ${lowest ? 'lowest' : 'highest'}" cx="${x(h)}" cy="${y(f(h))}" r="6" fill="#b65c42"/><text x="${x(h)}" y="${y(f(h)) + (lowest ? 24 : -12)}" text-anchor="middle" fill="#a04c36" font-size="14">${lowest ? '最低' : '最高'}</text>` : ''}
+      ${axisValueLabel(spec, h)}`;
   }
   function axisExplorer(spec, h = spec.axis.value) {
     const {bounds, marks = [], title, description, axis, variable = 'x'} = spec;
@@ -424,10 +440,14 @@
     if (spec.kind === 'linear') return Number.isFinite(p.slope) && Number.isFinite(p.intercept);
     if (spec.kind === 'axis_explorer') {
       const axis = p.axis;
+      const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
       return Number.isFinite(p.coefficient) && p.coefficient !== 0 && Number.isFinite(p.constant) && object(axis) &&
         ['min', 'max', 'step', 'value'].every(key => Number.isFinite(axis[key])) && axis.min < axis.max && axis.step > 0 &&
         axis.value >= axis.min && axis.value <= axis.max && optional(p, 'target', value => ['min', 'max'].includes(value)) &&
-        optional(p, 'marks', value => array(value, mark => object(mark) && Number.isFinite(mark.x) && string(mark.label)));
+        optional(p, 'marks', value => array(value, mark => object(mark) && Number.isFinite(mark.x) && string(mark.label))) &&
+        optional(p, 'constant_by_axis', value => fields(value, ['linear', 'quadratic']) && Number.isFinite(value.linear) && Number.isFinite(value.quadratic)) &&
+        optional(p, 'parameter', value => fields(value, ['name', 'scale', 'offset']) && string(value.name) && value.name.length > 0 &&
+          Number.isFinite(value.scale) && value.scale !== 0 && Number.isFinite(value.offset));
     }
     if (spec.kind === 'reciprocal_sum') return Number.isFinite(p.a) && Number.isFinite(p.b) && p.b !== 0 && boolean(p.negative) &&
       optional(p, 'c', Number.isFinite) && !p.points.some(point => point.x === 0);

@@ -4,6 +4,7 @@ import re
 
 import sympy as sp
 
+from .proposition_surface import negated_propositions, proposition_parts
 from .surface_math import (
     PolynomialReader,
     equivalent,
@@ -208,6 +209,31 @@ def _domain_matches(formula, variable, reader, domain):
             and closed_left == domain["left_closed"] and closed_right == domain["right_closed"])
 
 
+def _negated_match(text, region, variable, values, reader):
+    parts = proposition_parts(text, region)
+    if not parts or not variable or not all(key in values for key in ("quantifier", "domain", "relation")):
+        return None
+    quantifier, real, domain_span, relation_span = parts
+    if values["quantifier"] != {"∀": "∃", "∃": "∀"}[quantifier]:
+        return None
+    domain = text[slice(*domain_span)]
+    if real:
+        if domain.strip() != variable:
+            return None
+        domain = f"{variable}∈ℝ"
+    if not _domain_matches(domain, variable, reader, values["domain"]):
+        return None
+    lhs, operator, rhs = split_relation(text[slice(*relation_span)])
+    complement = {"<": ">=", "<=": ">", ">": "<=", ">=": "<"}.get(operator)
+    if not complement or not _relation_matches(f"{lhs}{complement}{rhs}", reader, values["relation"]):
+        return None
+    return domain_span, relation_span, {
+        "kind": "quantifier_negation", "source_quantifier": quantifier,
+        "source_operator": operator, "target_quantifier": values["quantifier"],
+        "target_operator": values["relation"]["operator"],
+    }
+
+
 def build_d1(candidate: dict, target_ref: str, features: list[dict], knowledge: dict):
     """Return conservative original-text fragments, independent of type choice."""
     diagnostics, fragments = [], []
@@ -223,7 +249,7 @@ def build_d1(candidate: dict, target_ref: str, features: list[dict], knowledge: 
     bound = values.get("bound_vars", [])
     variable = bound[0] if len(bound) == 1 else None
 
-    def add(surface, start, end, kind, matched):
+    def add(surface, start, end, kind, matched, transform=None):
         matched = [feature for feature in matched if feature in known]
         if not matched:
             return
@@ -256,17 +282,43 @@ def build_d1(candidate: dict, target_ref: str, features: list[dict], knowledge: 
             "knowledge_rule_ids": sorted({item["rule_id"] for item in rules}),
             "knowledge_refs": sorted({item["ref"] for item in rules}),
             "source_refs": sorted({ref for feature in evidence for ref in known[feature].get("source_refs", [])}),
+            **({"reading_transform": transform} if transform else {}),
         })
 
     for begin, end in ranges:
         surface = normalize_surface(text, begin, end)
         normalized = surface.text
-        for start, stop in formula_spans(normalized):
+        negations = negated_propositions(normalized)
+
+        def inside_negation(start, stop, negations=negations):
+            return any(start < region.end and region.start < stop for region in negations)
+
+        # Definitions and negated propositions share the same source order;
+        # a later definition must not retroactively resolve an earlier formula.
+        entries = [(start, stop, None) for start, stop in formula_spans(normalized)]
+        entries += [(region.start, region.end, region) for region in negations]
+        for start, stop, region in sorted(entries, key=lambda entry: entry[0]):
+            if region is not None:
+                try:
+                    match = _negated_match(normalized, region, variable, values, reader)
+                except (KeyError, TypeError, ValueError, RecursionError, OverflowError):
+                    match = None
+                if match:
+                    domain_span, relation_span, transform = match
+                    add(surface, region.start, region.end, "quantifier", ["quantifier", "bound_vars"], transform)
+                    add(surface, *domain_span, "domain", ["domain", "bound_vars"])
+                    add(surface, *relation_span, "relation", ["relation"], transform)
+                else:
+                    diagnostics.append({"code": "d1.negation_not_mapped", "target_ref": target_ref,
+                                        "start": surface.offsets[region.start][0]})
+                continue
             formula = normalized[start:stop]
             if "¤" in formula:
                 diagnostics.append({"code": "d1.unsupported_surface_command", "start": surface.offsets[start][0]})
                 continue
             try:
+                if inside_negation(start, stop):
+                    continue
                 if _register_definition(formula, reader):
                     continue
                 if variable and "domain" in values and _domain_matches(formula, variable, reader, values["domain"]):
@@ -284,6 +336,8 @@ def build_d1(candidate: dict, target_ref: str, features: list[dict], knowledge: 
         words = {"∀": ("任意", "所有", "恒成立", "∀"), "∃": ("存在", "有解", "∃")}.get(quantifier, ())
         for word in words:
             for match in re.finditer(re.escape(word), normalized):
+                if inside_negation(match.start(), match.end()):
+                    continue
                 stop = match.end()
                 matched = ["quantifier"]
                 if word in ("∀", "∃") and variable:
@@ -304,18 +358,26 @@ def build_d1(candidate: dict, target_ref: str, features: list[dict], knowledge: 
         if goal.get("kind") in ("find_range", "find_minimum", "find_maximum") and isinstance(goal.get("symbol"), str):
             symbol = re.escape(goal["symbol"])
             if goal["kind"] == "find_range":
-                pattern = rf"求\s*(?:实数\s*)?\$?\s*{symbol}\s*\$?\s*(?:的\s*)?取值范围"
+                target = rf"(?:\$\s*{symbol}\s*\$|{symbol}(?![A-Za-z0-9_]))"
+                pattern = rf"(?:求\s*)?(?:(?:实数|参数)\s*)?{target}\s*(?:的\s*)?取值范围"
             else:
                 noun = "最小值" if goal["kind"] == "find_minimum" else "最大值"
                 target = rf"(?:\$\s*{symbol}\s*\$|{symbol}(?![A-Za-z0-9_]))"
                 pattern = rf"(?:求\s*)?(?:(?:实数|参数)\s*)?{target}\s*(?:的\s*)?{noun}"
             for match in re.finditer(pattern, normalized):
+                if goal["kind"] == "find_range" and not match.group().startswith("求"):
+                    # A stated parameter domain is a condition, not a request.
+                    # Fill-in questions may omit 求, but still have a question
+                    # boundary (则) or an explicit answer blank.
+                    prefix, suffix = normalized[:match.start()], normalized[match.end():]
+                    if not (re.search(r"(?:则|那么)\s*$", prefix)
+                            or re.match(r"\s*(?:为|是)\s*(?:[_＿]+|[（(]\s*[）)])", suffix)):
+                        continue
                 # With no required “求”, a suffix of ba or a+a can look like
                 # the requested symbol. Do not turn that suffix into a goal.
                 previous = normalized[:match.start()].rstrip()[-1:]
                 if (
-                    goal["kind"] != "find_range"
-                    and not match.group().startswith(("求", "实数", "参数"))
+                    not match.group().startswith(("求", "实数", "参数"))
                     and previous
                     and (
                         (previous.isascii() and previous.isalnum())

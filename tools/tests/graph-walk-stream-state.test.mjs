@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   createState, currentDecision, submitAnswer, switchRoute, undo, graphState,
-  extendStreamBundle, streamGraphState, streamStepGraph, replayState, migrateStageTwoState, refreshStreamState,
+  extendStreamBundle, streamGraphState, streamStepGraph, replayState, migrateStageTwoState, refreshStreamState, teachingContext,
 } from '../../site/assets/graph-walk/walk-state.mjs';
 import {createEventConsumer} from '../../site/assets/graph-walk/stage-three-stream.mjs';
 
@@ -67,6 +67,61 @@ function selected(bundle, route = 'discriminant') {
   const method = plane.interaction.methods.find(item => item.route === route || item.target === methodOf[route]);
   return answer(bundle, state, [...plane.expected_answer.cell, method.value]);
 }
+
+function convertedBase() {
+  const base = structuredClone(original.bundle);
+  base.bundleVersion = 'with-verified-proposition-conversion';
+  base.problem = {...base.problem, normalization_decision: 'D1-transform',
+    source_meaning: '$\\forall u\\in[1,4], f(u)>0$ 为假命题，求 $b$ 的范围。',
+    normalized_text: '$\\exists u\\in[1,4], f(u)\\le0$，求 $b$ 的范围。'};
+  base.intro.splice(1, 0, {id: 'D1-transform', title: '命题转化', source: 'authored',
+    interaction: {type: 'choice', field: 'transformation', options: [
+      {value: 'complement', label: base.problem.normalized_text},
+      {value: 'wrong', label: '全称且不改变不等号', feedback: '量词与关系需要同时取反。'},
+    ]}, expected_answer: {one_of: ['complement']},
+    effects: {nodes: ['quantifiers'], edges: [], calls: [], results: [base.problem.normalized_text]}});
+  return base;
+}
+
+test('conversion is optional, and only the accepted canonical condition changes teaching context', () => {
+  const base = convertedBase();
+  let state = answer(base, createState(base));
+  assert.equal(currentDecision(base, state).id, 'D1-transform');
+  assert.equal(teachingContext(base, state).meaning, base.problem.source_meaning);
+  const wrong = answer(base, state, 'wrong');
+  assert.equal(wrong.lastFeedback.status, 'wrong');
+  assert.equal(currentDecision(base, wrong).id, 'D1-transform');
+  assert.equal(teachingContext(base, wrong).transformed, false);
+  const outOfOrder = submitAnswer(base, wrong, {decision: 'D2', answer: base.intro[2].expected_answer.one_of[0]});
+  assert.equal(outOfOrder.lastFeedback.status, 'wrong');
+  assert.equal(currentDecision(base, outOfOrder).id, 'D1-transform');
+  assert.equal(teachingContext(base, outOfOrder).transformed, false);
+  state = answer(base, wrong);
+  assert.equal(currentDecision(base, state).id, 'D2');
+  assert.equal(teachingContext(base, state).text, base.problem.normalized_text);
+  assert.equal(teachingContext(base, undo(base, state)).transformed, false);
+  const plain = original.bundle;
+  assert.equal(currentDecision(plain, answer(plain, createState(plain))).id, 'D2');
+  assert.equal(teachingContext(plain, createState(plain)).text, plain.problem.text);
+});
+
+test('conversion survives stream migration and route switches and rewinds with replay', () => {
+  const base = convertedBase(), stream = extendStreamBundle(base, withMath, target, graph);
+  let state = createState(base);
+  for (const _step of base.intro) state = answer(base, state);
+  const migrated = migrateStageTwoState(base, stream, state);
+  assert.equal(currentDecision(stream, migrated).id, 'D3');
+  assert.equal(teachingContext(stream, migrated).text, base.problem.normalized_text);
+  const choice = currentDecision(stream, migrated);
+  state = answer(stream, migrated, [...choice.expected_answer.cell,
+    choice.interaction.methods.find(method => method.route === 'discriminant').value]);
+  assert.equal(teachingContext(stream, switchRoute(stream, state, 'extremum')).transformed, true);
+  const replay = {schemaVersion: 2, problemId: base.problemId, bundleVersion: base.bundleVersion,
+    status: 'partial', routes: [], actions: migrated.events.map(event => event.action)};
+  assert.equal(teachingContext(base, replayState(base, replay, 1)).transformed, false);
+  assert.equal(teachingContext(base, replayState(base, replay, 2)).transformed, true);
+  assert.equal(teachingContext(stream, refreshStreamState(stream, JSON.parse(JSON.stringify(state)))).transformed, true);
+});
 const methodOf = {discriminant: 'method-discriminant', extremum: 'method-separation'};
 
 test('identity is fixed before selection arrives and D1/D2 answers survive append-only expansion', () => {

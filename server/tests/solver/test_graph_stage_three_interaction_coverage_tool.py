@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import pytest
 
-from shuxueshuo_server.graph_lesson.stage_three import interaction
+from shuxueshuo_server.graph_lesson.stage_three import execution_contracts, interaction
 from shuxueshuo_server.graph_lesson.stage_three.revision_manifest import math_step_hash
 from shuxueshuo_server.problem_understanding.identity import revision
 from tools import compile_graph_stage_three_interactions as audit
@@ -49,8 +49,9 @@ def test_real_compiler_reads_frozen_seeds_and_preserves_all_source_bytes(tmp_pat
     assert result["totals"]["cards"] == result["totals"]["readonly_cards"] == 2
     assert result["readonly_reasons"] == {"no_rule": 2}
     assert result["templates"]["unknown-test"]["readonly_cards"] == 2
-    assert result["declared_template_count"] == 35
-    assert len(result["declared_templates"]) == 35
+    declared_templates = sorted(execution_contracts.read("presentation-registry")["templates"])
+    assert result["declared_template_count"] == len(declared_templates)
+    assert result["declared_templates"] == declared_templates
     assert result["seen_templates"] == ["unknown-test"]
     assert result["unseen_templates"] == result["declared_templates"]
     assert result["undeclared_templates"] == ["unknown-test"]

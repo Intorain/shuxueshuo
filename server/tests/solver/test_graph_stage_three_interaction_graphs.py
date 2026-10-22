@@ -204,12 +204,16 @@ def test_repeated_same_exact_function_mark_is_not_a_distinct_endpoint_collision(
 
 def test_unreadable_set_picture_keeps_the_entire_original_text_question(monkeypatch):
     answer = sp.Complement(sp.Interval(0, 100), sp.FiniteSet(epsilon))
-    seed = {"values": encode_value({"after": [answer], "solutions": list(answer.args), "cases": [{"parameter": a}]}),
+    pieces = list(answer.args)
+    values = {"before": [x], "after": [answer], "x": x, "solutions": pieces,
+              "cases": [{"parameter": a, "condition": piece.contains(a), "domain": piece} for piece in pieces],
+              "results": [{"outputs": {"conditions": [a >= 0, a <= 100], "combiner": "all"}} for _ in pieces]}
+    seed = {"values": encode_value(values),
             "context": encode_value({"parameter": a})}
     monkeypatch.setattr(interaction, "known_set", lambda _: sp.S.Reals)
-    part = interaction.load_registry()["templates"]["interval_merge"]["parts"][0]
-    plain = deepcopy(part)
-    plain.pop("graphs")
+    plain = deepcopy(interaction.load_registry()["templates"]["interval_merge"]["parts"][0])
+    plain.pop("graphs", None)
+    part = {**plain, "graphs": {"options": "parameter_sets"}}
     expected, _, _ = interaction._choice_part(plain, 0, "set-options", seed)
     actual, diagnostics, _ = interaction._choice_part(part, 0, "set-options", seed)
     assert actual == expected

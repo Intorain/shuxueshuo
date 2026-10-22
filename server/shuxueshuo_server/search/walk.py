@@ -91,8 +91,10 @@ def _d2(goal, clues, edges):
     reasons = [r.rstrip("。；; ") for r in next(o["reasons"] for o in options if o["type_id"] == primary)]
     others = [o for o in options if o["type_id"] != primary]
     lit = [_edge(primary, "involves", c) for c in clues if _edge(primary, "involves", c) in edges]
+    transformation = goal["d1"].get("transformation")
+    context = f"已转化为：{transformation['normalized_text']}\n\n" if transformation else ""
     return {
-        "id": "D2", "title": "确定题型", "question": "哪一个题型最直接描述这一问的条件与求解目标？",
+        "id": "D2", "title": "确定题型", "question": context + "哪一个题型最直接描述这一问的条件与求解目标？",
         "source": "authored", "submit_label": "确认题型",
         "interaction": {"type": "choice", "field": "problem_type",
                         "options": [{"value": o["type_id"], "label": o["label"],
@@ -109,12 +111,36 @@ def _d2(goal, clues, edges):
     }, label, reasons
 
 
+def _transformation(value, nodes):
+    answer = next(option["id"] for option in value["options"] if option["correct"])
+    return {
+        "id": "D1-transform", "title": "命题转化", "source": "authored",
+        "question": f"题目给出 {value['source_math']}。按量词命题的否定规则，量词和关系应怎样同时改写？",
+        "submit_label": "确认转化",
+        "interaction": {"type": "choice", "field": "transformation",
+                        "options": [{"value": option["id"], "label": option["text"],
+                                     **({"feedback": option["feedback"]} if option["feedback"] else {})}
+                                    for option in value["options"]]},
+        "expected_answer": {"one_of": [answer]},
+        "feedback": {"answer": "量词和不等号需要同时取反，再对照原命题想一想。"},
+        "candidateNodes": nodes,
+        "effects": {"nodes": nodes, "edges": [], "calls": [],
+                    "results": [value["equivalence"], value["explanation"], value["normalized_text"]],
+                    "log": "命题转化：确认等价条件，后续按转化后的量词与不等式确定题型和方法。"},
+    }, answer
+
+
 def walk(goal, text, problem_id):
     """``{"bundle", "replay"}`` for one presented goal, or None when it has nothing to walk."""
     if goal["status"] != "resolved" or not goal.get("d2") or not goal.get("primary"):
         return None
+    if goal["d1"].get("diagnostics"):
+        return None
     graph = _graph()
+    transformation = goal["d1"].get("transformation")
     refs = [r for row in goal["d1"]["rows"] for r in row["knowledge_refs"]] or [k["ref"] for k in goal["knowledge"]]
+    if transformation:
+        refs += transformation["knowledge_refs"]
     clues = list(dict.fromkeys(r.partition("#")[0] for r in refs if r.partition("#")[0] in graph["nodes"]))
     types = [o["type_id"] for o in goal["d2"]]
     shown_graph, shown, best = subgraph(clues, types, goal["primary"])
@@ -126,6 +152,12 @@ def walk(goal, text, problem_id):
         reading = "；".join(f"{slot['label']}——{next(o['label'] for o in slot['options'] if o['value'] == value)}"
                             for slot, value in zip(d1["interaction"]["slots"], answer))
         actions.append({"decision": "D1", "answer": answer, "reason": f"逐句读题：{reading}。"})
+    if transformation:
+        nodes = ["quantifiers"] if "quantifiers" in clues else []
+        step, answer = _transformation(transformation, nodes)
+        intro.append(step)
+        actions.append({"decision": "D1-transform", "answer": answer,
+                        "reason": f"{transformation['equivalence']}。{transformation['explanation']}"})
     d2, label, reasons = _d2(goal, clues, edges)
     intro.append(d2)
     actions.append({"decision": "D2", "answer": goal["primary"],
@@ -138,6 +170,10 @@ def walk(goal, text, problem_id):
         "completion": {"answer": "", "back": {"href": "/lab/search/", "label": "再拍一题"}},
         "graph": shown_graph,
     }
+    if transformation:
+        bundle["problem"].update(source_text=text, source_meaning=transformation["source_meaning"],
+                                 normalized_text=transformation["normalized_text"],
+                                 normalization_decision="D1-transform")
     bundle["bundleVersion"] = _digest(bundle)
     replay = {"schemaVersion": 2, "problemId": bundle["problemId"], "bundleVersion": bundle["bundleVersion"],
               "status": "partial", "routes": [], "actions": actions}

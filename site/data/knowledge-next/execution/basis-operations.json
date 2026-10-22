@@ -94,6 +94,14 @@
     ],
     "variable_case_union": [
       "method-variable-swap#merge"
+    ],
+    "substitution": [
+      "equality-properties#identity",
+      "method-substitution#range"
+    ],
+    "substitution_range_restore": [
+      "method-substitution#range",
+      "function-range-extrema#attainability"
     ]
   }
 }

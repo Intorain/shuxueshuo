@@ -57,10 +57,11 @@ def polynomial_relation(relation, variable):
     }
 
 
-def range_skill(expression, variable, domain):
+def range_skill(expression, variable, domain, reserved_symbols=()):
     if expression.free_symbols - {variable}:
         raise CapabilityGap("range_skill_unavailable")
     denominator = None
+    affine = None
     if not expression.is_polynomial(variable):
         from .capabilities.reciprocal import inspect_reciprocal
 
@@ -68,12 +69,19 @@ def range_skill(expression, variable, domain):
             execute("reciprocal_range", {"expression": expression, "variable": variable, "domain": domain})
             choice = "reciprocal"
         except CapabilityGap:
-            denominator = inspect_reciprocal(expression, variable)["denominator"]
-            bounds = execute("quadratic_interval_range", {
-                "expression": denominator, "variable": variable, "domain": domain,
-            })["outputs"]["range"]
-            execute("reciprocal_of_range", {"range": bounds})
-            choice = "inverse"
+            try:
+                denominator = inspect_reciprocal(expression, variable)["denominator"]
+                bounds = execute("quadratic_interval_range", {
+                    "expression": denominator, "variable": variable, "domain": domain,
+                })["outputs"]["range"]
+                execute("reciprocal_of_range", {"range": bounds})
+                choice = "inverse"
+            except CapabilityGap:
+                from .capabilities.substitution import inspect_affine_reciprocal
+
+                affine = inspect_affine_reciprocal(expression, variable, domain,
+                                                  reserved_symbols=reserved_symbols)
+                choice = "affine_reciprocal"
         degree = None
     else:
         poly = polynomial(expression, variable)
@@ -85,6 +93,7 @@ def range_skill(expression, variable, domain):
         "selected": choice,
         "choice": choice,
         "denominator": denominator,
+        "affine": affine,
         "evidence": {"degree": degree, "domain": domain},
     }
 

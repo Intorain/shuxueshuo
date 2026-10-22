@@ -86,7 +86,7 @@ def _rational_parameter_coefficients(expression, variable, parameter):
 def _separable_range(relation, parameter, variable, domain):
     separated = capabilities.inspect_separation(relation, parameter, variable, domain)["outputs"]
     capabilities.polynomial(separated["parameter_expression"], parameter)
-    judgments.range_skill(separated["function"], variable, domain)
+    judgments.range_skill(separated["function"], variable, domain, reserved_symbols=(parameter,))
     return True
 
 

@@ -32,7 +32,8 @@ def lesson(case, tmp_path, result=None, provider=None):
     directory = tmp_path / case
     directory.mkdir()
     stage_two = run_stage_two(directory, result, provider=provider, unsupported_root=tmp_path / "unsupported")
-    return present_lesson(stage_two, result["features"], result["candidate"]["original_text"])
+    return present_lesson(stage_two, result["features"], result["candidate"]["original_text"],
+                          candidate=result["candidate"])
 
 
 def test_student_input_never_claims_gold_evaluation():

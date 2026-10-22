@@ -284,6 +284,25 @@
         "constant": {
           "type": "number"
         },
+        "constant_by_axis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["linear", "quadratic"],
+          "properties": {
+            "linear": {"type": "number"},
+            "quadratic": {"type": "number"}
+          }
+        },
+        "parameter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "scale", "offset"],
+          "properties": {
+            "name": {"$ref": "#/$defs/text", "minLength": 1},
+            "scale": {"type": "number", "not": {"const": 0}},
+            "offset": {"type": "number"}
+          }
+        },
         "axis": {
           "type": "object",
           "additionalProperties": false,

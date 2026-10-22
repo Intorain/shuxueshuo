@@ -94,9 +94,9 @@ def test_status_pins_material_and_stream_to_one_attempt_during_concurrent_retry(
     present = dev_api.present_lesson
     published = False
 
-    def publish_retry_between_material_read_and_stream_read(stage_two, *args):
+    def publish_retry_between_material_read_and_stream_read(stage_two, *args, **kwargs):
         nonlocal published
-        rendered = present(stage_two, *args)
+        rendered = present(stage_two, *args, **kwargs)
         if not published:
             published = True
             second = deepcopy(stage_two)

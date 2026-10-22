@@ -333,6 +333,7 @@ from .ranges import (
 from .reciprocal import reciprocal_of_range
 from .separation import inspect_separation as inspect_separation
 from .separation import separate_parameter, separation_division
+from .substitution import restore_substitution_range, substitution
 from .variable_swap import (
     combine_variable_solutions,
     intersect_variable_case_solution,
@@ -356,6 +357,8 @@ REGISTRY = {
         quadratic_sign_pattern,
         separate_parameter,
         separation_division,
+        substitution,
+        restore_substitution_range,
         reciprocal_range,
         reciprocal_of_range,
         linear_range,
@@ -388,7 +391,6 @@ REGISTRY = {
 PLANNED = frozenset(
     {
         "elimination",
-        "substitution",
     }
 )
 

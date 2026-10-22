@@ -110,8 +110,11 @@ def test_positive_division_has_identity_direction_and_domain_evidence(operator, 
     assert sp.cancel(cap.residual(result["separated_relation"]) * x - cap.residual(initial)) == 0
     assert "multiply_positive" in computed["operations"]
     assert {check["kind"] for check in computed["checks"]} == {
-        "separated_symbol_roles", "positive_scaled_residual", "strict_positive_divisor",
+        "moved_residual", "separated_symbol_roles", "positive_scaled_residual", "strict_positive_divisor",
     }
+    moved = result["moved_relation"]
+    assert moved.rel_op == operator and not moved.rhs.has(m)
+    assert sp.expand(cap.residual(moved) - cap.residual(initial)) == 0
 
 
 @pytest.mark.parametrize("domain", [sp.Interval(0, 2), sp.Interval(-1, 1)])

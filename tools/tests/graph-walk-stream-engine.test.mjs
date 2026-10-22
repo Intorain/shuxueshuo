@@ -22,12 +22,18 @@ const part = (id, type = 'choice') => ({id, title: id, question: `请判断 ${id
   interaction: type === 'fill' ? {type, slot_labels: ['第一项'], terms: ['yes', 'no']}
     : {type, field: id, options: [{value: 'yes', label: '成立'}, {value: 'no', label: '不成立'}]},
   expected_answer: type === 'fill' ? {terms: ['yes']} : {one_of: ['yes']}});
-function fixture({parts = [part('first'), part('last')], merged = false, readonly = false} = {}) {
-  const math_steps = routes.flatMap(route => Array.from({length: merged ? 2 : 1}, (_, i) => card(i + 1, route)));
-  const interactions = routes.map(route => ({...identity, target_ref: target, route_id: route,
-    interaction_id: `${route}-interaction`, status: readonly ? 'readonly' : 'interactive',
-    steps: math_steps.filter(step => step.route_id === route).map(({step_id, math_step_sha256}) => ({step_id, math_step_sha256})),
-    parts: readonly ? [] : structuredClone(parts)}));
+function fixture({parts = [part('first'), part('last')], merged = false, readonly = false, folded = false} = {}) {
+  const math_steps = routes.flatMap(route => Array.from({length: merged || folded ? 2 : 1}, (_, i) => card(i + 1, route)));
+  const refs = route => math_steps.filter(step => step.route_id === route).map(({step_id, math_step_sha256}) => ({step_id, math_step_sha256}));
+  const interactions = folded
+    ? routes.flatMap(route => [
+      {...identity, target_ref: target, route_id: route, interaction_id: `${route}-folded`, status: 'readonly',
+        reason: 'folded', steps: refs(route).slice(0, 1), parts: []},
+      {...identity, target_ref: target, route_id: route, interaction_id: `${route}-interaction`, status: 'interactive',
+        steps: refs(route).slice(1), parts: structuredClone(parts)}])
+    : routes.map(route => ({...identity, target_ref: target, route_id: route,
+      interaction_id: `${route}-interaction`, status: readonly ? 'readonly' : 'interactive',
+      steps: refs(route), parts: readonly ? [] : structuredClone(parts)}));
   const view = {...identity, goals: {}, math_steps, interaction_protocol: 'graph-step-interaction/v1',
     selection_chunks: [{target_ref: target, kind: 'D3', chunk: d3}, {target_ref: target, kind: 'D4', chunk: {id: 'D4', title: '选路线', options: [
       {branch: 'discriminant', route_id: routes[0], method: 'method-discriminant', route_plan: 'planned'},
@@ -42,7 +48,7 @@ function fixture({parts = [part('first'), part('last')], merged = false, readonl
   for (const decision of bundle.intro) {
     const answer = decision.interaction.type === 'plane'
       ? [...decision.expected_answer.cell, decision.interaction.methods.find(method => method.route === routes[0]).value]
-      : decision.id === 'D4' ? routes[0] : decision.interaction.type === 'multi'
+      : decision.interaction.type === 'multi'
         ? decision.expected_answer.required : decision.expected_answer.one_of?.[0] || decision.expected_answer.terms;
     state = stateAPI.submitAnswer(bundle, state, {decision: decision.id, answer});
     assert.equal(state.lastFeedback.status, 'passed');
@@ -128,6 +134,31 @@ test('interactive parts expose only before; only the last completed part mounts 
   assert.equal(run('visibleStreamCards.size'), 2);
 });
 
+test('folded cards ask nothing, ride with the next step and mount collapsed after its own card', () => {
+  const value = fixture({folded: true});
+  const steps = value.bundle.routes[routes[0]].steps;
+  assert.deepEqual(steps.map(step => step.id), ['first', 'last']);
+  for (const step of steps) {
+    assert.deepEqual(step.stream_steps.map(ref => ref.step_id), ['math-2', 'math-1']);
+    assert.deepEqual(step.stream_folded, ['math-1']);
+  }
+  const {run, roots} = engine(value);
+  run('renderInteraction(currentDecision(bundle,state))');
+  const active = roots.get('#gw-active');
+  assert.match(active.textContent, /before-2/);
+  assert.doesNotMatch(active.textContent, /before-1|secret-/);
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'first',answer:'yes'});
+    state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),6,1,'discriminant'); mountCompletedMath();`);
+  const host = roots.get('#gw-steps').querySelector('[data-stream-completed]');
+  const [own, fold] = host.children;
+  assert.match(own.textContent, /secret-after-2/);
+  assert.equal(fold.tagName, 'details');
+  assert.match(fold.textContent, /各情况的推导/);
+  assert.match(fold.textContent, /secret-after-1/);
+  assert.equal(run('visibleStreamCards.size'), 2);
+});
+
 const quadratic = {kind: 'quadratic', caption: '示意图：取 $a=0$', params: {coefficient: 1, vertex: [0, 1], bounds: [-0.25, 0.75, -0.25, 1.5],
   xTicks: [[0, '0'], [0.5, '1/2']], variable: 'x', interval: [0, 0.5], interval_closed: [false, true],
   points: [{x: 0, open: true}, {x: 0.5}], yLabel: '1', showVertex: false, title: '曲线', description: '左端空心'}};
@@ -185,6 +216,71 @@ test('streamed graph contracts reject malformed drawing data without affecting t
     assert.equal(api.graph(spec), '', 'bad graph returns no SVG rather than throwing');
   }
   assert.equal(api.graph({...changed(quadratic, {coefficient: 1e308, vertex: [-1e308, 1e308]}), uid: 'overflow'}), '', 'finite inputs must not produce nonfinite SVG coordinates');
+});
+
+test('streamed axis explorers drag a fixed-shape parabola and mark the target on each end as drawn', () => {
+  const {context} = engine(), api = context.PracticeComponents;
+  // x^2+ax+1 on (0,1/2], minimum: the open left end is a hollow "下端", the closed right end a solid "最低".
+  const params = {bounds: [-0.94, 1.45, -0.28, 2.12], xTicks: [[0, '0'], [0.5, '1/2']], variable: 'x', points: [],
+    interval: [0, 0.5], interval_closed: [false, true], title: '对称轴与区间', description: '拖动对称轴',
+    coefficient: 1, constant: 1, axis: {min: -0.59, max: 1.1, step: 0.01, value: 0.25}, marks: [], target: 'min'};
+  const spec = {kind: 'axis_explorer', params, caption: '拖动对称轴'};
+  assert.equal(api.validateGraph(spec), true);
+  const html = api.graph({...spec, uid: 'axis'});
+  assert.match(html, /^<div class="axis-explorer">/);
+  assert.match(html, /data-axis-input min="-0.59" max="1.1" step="0.01" value="0.25"/);
+  assert.match(html, />1\/2<\/text>/, 'server tick labels replace raw decimals');
+  const layer = h => api.axisExplorerLayer({...params, uid: 'axis'}, h);
+  assert.match(layer(0.25), /class="axis-vertex lowest"[^>]*>.*最低/s, 'the vertex is lowest while the axis is inside');
+  assert.match(layer(1), /class="axis-endpoint lowest"[^>]*fill="#b65c42"[^>]*\/><text[^>]*>最低</, 'a closed end is attained');
+  assert.match(layer(-0.3), /class="axis-endpoint lowest"[^>]*fill="#fff"[^>]*\/><text[^>]*>下端</, 'an open end is only approached');
+  // A downward parabola turns towards its highest point.
+  assert.match(api.axisExplorerLayer({...params, coefficient: -1, target: 'max', uid: 'down'}, 0.25), /axis-vertex highest/);
+  const changed = values => ({...spec, params: {...params, ...values}});
+  for (const bad of [changed({axis: {min: 1, max: 0, step: 0.01, value: 0.5}}), changed({axis: {min: 0, max: 1, step: 0, value: 0.5}}),
+    changed({axis: {min: 0, max: 1, step: 0.01, value: 2}}), changed({constant: '1'}), changed({target: 'middle'}),
+    changed({marks: [{x: 1}]})]) assert.equal(api.validateGraph(bad), false, JSON.stringify(bad.params));
+});
+
+test('a server board replaces the card premises under the question', () => {
+  const board = {caption: '各情况各自要满足', lines: ['① $a\\le-1$：$g(x)_{\\min}\\ge0$', '② $a>-1$：$1\\ge0$']};
+  const {run, roots} = engine(fixture({parts: [{...part('first'), stem_board: board}]}));
+  run('renderInteraction(currentDecision(bundle,state))');
+  const active = roots.get('#gw-active');
+  assert.match(active.innerHTML, /<div class="visual-board gw-question-board"><div class="board-caption">各情况各自要满足<\/div>/);
+  assert.match(active.innerHTML, /<p class="case-line" data-math-text>① \$a\\le-1\$：/);
+  assert.doesNotMatch(active.innerHTML, /data-stream-context/);
+  assert.doesNotMatch(active.textContent, /before-1/);
+});
+
+test('case pictures are the conclusion; the math card mounts open under them; one bad picture drops the set', () => {
+  const panel = (min, max, caption) => ({kind: 'axis_explorer', caption, params: {bounds: [-0.44, 0.95, -0.23, 1.77],
+    xTicks: [[0, '0'], [0.5, '1/2']], variable: 'x', points: [], interval: [0, 0.5], interval_closed: [false, true],
+    title: caption, description: caption, coefficient: 1, constant: 1, marks: [], target: 'min',
+    axis: {min, max, step: 0.01, value: min}}});
+  const cases = [panel(0.5, 0.8, '情况①：最小值在右端点'), panel(-0.29, 0, '情况②：最小值取不到')];
+  const finish = (graphs, card = {}) => {
+    const {run, roots} = engine(fixture({parts: [part('first'), {...part('last'), completion_graphs: graphs}]}));
+    run(`bundle.stream.math_steps.forEach(step => Object.assign(step, ${JSON.stringify(card)}));
+      state = studentState = submitAnswer(bundle,state,{decision:'first',answer:'yes'});
+      state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+      document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),6,1,'discriminant'); mountCompletedMath();`);
+    const steps = roots.get('#gw-steps');
+    return {html: steps.innerHTML, host: steps.querySelector('[data-stream-completed]')};
+  };
+  const shown = finish(cases, {derivation: true, explanation: '① 当 $a\\le-1$ 时最小值在右端点。\n② 当 $a\\ge0$ 时取不到。', highlight: undefined});
+  assert.match(shown.html, /<div class="gw-case-figures">(?:<figure[^]*?<\/figure>){2}<\/div>/);
+  assert.match(shown.html, /情况①：最小值在右端点[^]*情况②：最小值取不到/);
+  assert.doesNotMatch(shown.html, /gw-derivation|各情况的最小值/);
+  const card = shown.host.children[0];
+  assert.equal(card.tagName, 'article');
+  const details = card.querySelector?.('details') || card.children.find(child => child.tagName === 'details');
+  assert.equal(details.open, true, 'the derivation under the pictures starts open');
+  assert.match(details.textContent, /完整推导/);
+  assert.match(details.textContent, /最小值在右端点/);
+  const broken = finish([cases[0], {...cases[1], params: {...cases[1].params, axis: {min: 1, max: 0, step: 0.01, value: 0}}}]);
+  assert.doesNotMatch(broken.html, /gw-case-figures/);
+  assert.match(broken.host.textContent, /secret-after-1/);
 });
 
 test('strict linear plots distinguish small nonzero values from a line lying on the axis', () => {
@@ -362,18 +458,21 @@ test('routes retain independent drafts and selected fill slots, including persis
 
 test('AI route replay uses expected answers without completing or overwriting the student route', () => {
   const {run, context} = engine(fixture({parts: [part('first', 'fill')]}));
-  context.introActions = run('state.events.map(event=>event.action).filter(action=>!["D3","D4"].includes(action.decision))');
+  const scheduled = [];
+  context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
+  context.introActions = run('state.events.map(event=>event.action).filter(action=>action.decision!=="D3")');
   run(`options.replay={actions:introActions}; ensureDraft(currentDecision(bundle,state)); draft=['no']; selectedSlot=0;
     chooseActor('replay');`);
+  while (scheduled.length) scheduled.shift()();
   assert.equal(run('state.done'), true);
   assert.equal(run('studentState.run.completed.length'), 0);
-  run(`chooseStreamRoute('extremum'); replayPosition=4; park(); chooseActor('student');`);
+  run(`chooseStreamRoute('extremum'); replayPosition=3; park(); chooseActor('student');`);
   assert.equal(run('state.run.route'), 'discriminant');
   assert.equal(run('JSON.stringify(draft)'), '["no"]');
   assert.equal(run('selectedSlot'), 0);
   run(`chooseActor('replay')`);
   assert.equal(run('state.run.route'), 'extremum');
-  assert.equal(run('replayPosition'), 4);
+  assert.equal(run('replayPosition'), 3);
   assert.equal(run('state.done'), false);
 });
 
@@ -418,7 +517,7 @@ test('an initial D1/D2-only snapshot renders saved route progress without requir
   assert.equal(roots.get('#gw-path').textContent, '正在恢复解题路线');
   assert.match(run('waitingHTML(5)'), /正在恢复解题路线/);
   assert.equal(run('state.run.route'), 'discriminant');
-  assert.equal(run('state.introCompleted.length'), 4);
+  assert.equal(run('state.introCompleted.length'), 3);
 });
 
 test('switching AI routes cancels its old timer and invalidates an already queued playback callback', () => {
@@ -426,10 +525,10 @@ test('switching AI routes cancels its old timer and invalidates an already queue
   const scheduled = [], cancelled = [];
   context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
   context.clearTimeout = handle => cancelled.push(handle);
-  context.introActions = run('state.events.map(event=>event.action).filter(action=>!["D3","D4"].includes(action.decision))');
-  run(`options.replay={actions:introActions}; chooseActor('replay');
-    stopReplay=realStopReplay; updatePlayButton=()=>{}; replayPosition=4; playReplay();`);
-  assert.equal(run('replayPosition'), 5);
+  context.introActions = run('state.events.map(event=>event.action).filter(action=>action.decision!=="D3")');
+  run(`options.replay={actions:introActions}; replayRoutes={discriminant:0}; chooseActor('replay');
+    stopReplay=realStopReplay; updatePlayButton=()=>{}; replayPosition=3; playReplay();`);
+  assert.equal(run('replayPosition'), 4);
   assert.equal(run('replayPlaying'), true);
   assert.equal(scheduled.length, 1);
   const oldTicket = run('replayTicket');
@@ -455,11 +554,11 @@ for (const allRoutes of [true, false]) test(`withdrawing ${allRoutes ? 'all rout
   const {run, context} = engine(value), scheduled = [], cancelled = [];
   context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
   context.clearTimeout = handle => cancelled.push(handle);
-  context.introActions = run('state.events.map(event=>event.action).filter(action=>!["D3","D4"].includes(action.decision))');
+  context.introActions = run('state.events.map(event=>event.action).filter(action=>action.decision!=="D3")');
   const studentBefore = run('JSON.stringify([studentState.introCompleted,studentState.run,studentState.events])');
-  run(`options.replay={actions:introActions}; chooseActor('replay');
-    stopReplay=realStopReplay; updatePlayButton=()=>{}; replayPosition=4; playReplay();`);
-  assert.equal(run('replayPosition'), 5);
+  run(`options.replay={actions:introActions}; replayRoutes={discriminant:0}; chooseActor('replay');
+    stopReplay=realStopReplay; updatePlayButton=()=>{}; replayPosition=3; playReplay();`);
+  assert.equal(run('replayPosition'), 4);
   assert.equal(scheduled.length, 1);
   const previousTicket = run('replayTicket');
   context.revoked = structuredClone(value.view);
@@ -473,7 +572,7 @@ for (const allRoutes of [true, false]) test(`withdrawing ${allRoutes ? 'all rout
   assert.equal(run('JSON.stringify([studentState.introCompleted,studentState.run,studentState.events])'), studentBefore);
   assert.equal(run('studentState.done'), false);
   assert.equal(run('currentDecision(bundle,studentState)'), null);
-  assert.equal(run('replayRoutes.discriminant'), 5, 'a revoked route keeps its own last replay cursor');
+  assert.equal(run('replayRoutes.discriminant'), 4, 'a revoked route keeps its own last replay cursor');
   if (allRoutes) {
     assert.equal(run('replay.routes.length'), 0);
     assert.equal(run('state.done'), false);
@@ -483,4 +582,42 @@ for (const allRoutes of [true, false]) test(`withdrawing ${allRoutes ? 'all rout
   assert.equal(run('replayPosition'), cursor);
   assert.equal(run('renderCount'), renders);
   assert.equal(run('replayNotice'), null);
+});
+
+test('the AI plays a route from the start the first time, whatever the student did, and resumes paused later', () => {
+  const {run, context} = engine(fixture({parts: [part('first'), part('last')]}));
+  const scheduled = [];
+  context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
+  context.clearTimeout = () => {};
+  context.introActions = run('state.events.map(event=>event.action).filter(action=>action.decision!=="D3")');
+  assert.ok(run('studentState.introCompleted.length') > 0, 'the student is part way through');
+  run(`options.replay={actions:introActions}; stopReplay=realStopReplay; updatePlayButton=()=>{}; chooseActor('replay');`);
+  assert.equal(run('replayPosition'), 1);
+  assert.equal(run('replayPlaying'), true);
+  while (scheduled.length) scheduled.shift()();
+  assert.equal(run('replayPosition'), run('replay.actions.length'), 'it plays on to the last step without stopping');
+  run(`replayPosition=2; chooseActor('student'); chooseActor('replay');`);
+  assert.equal(run('replayPosition'), 2);
+  assert.equal(run('replayPlaying'), false);
+  assert.equal(scheduled.length, 0);
+});
+
+test('an AI following the end keeps playing into steps that arrive later', async () => {
+  const final = fixture({parts: [part('first')]}), pending = structuredClone(final.view);
+  pending.interactions = []; pending.interaction_states.forEach(row => { row.status = 'pending'; delete row.interaction_id; });
+  const pendingBundle = stateAPI.extendStreamBundle(base, pending, target, graph);
+  const pendingState = stateAPI.refreshStreamState(pendingBundle, {...final.state, bundleVersion: pendingBundle.bundleVersion});
+  const {run, context} = engine({bundle: pendingBundle, state: pendingState, view: pending});
+  const scheduled = [];
+  context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
+  context.clearTimeout = () => {};
+  context.introActions = run('state.events.map(event=>event.action).filter(action=>!["D3","first"].includes(action.decision))');
+  run(`options.replay={actions:introActions}; stopReplay=realStopReplay; updatePlayButton=()=>{}; chooseActor('replay');`);
+  while (scheduled.length) scheduled.shift()();
+  const end = run('replay.actions.length');
+  assert.equal(run('replayPosition'), end);
+  context.finalView = final.view;
+  await run('updateStreamSelection(finalView)');
+  assert.ok(run('replay.actions.length') > end);
+  assert.equal(run('replayPosition'), end + 1, 'the next step is played, not skipped to the end');
 });

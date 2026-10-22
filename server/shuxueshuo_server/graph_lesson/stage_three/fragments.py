@@ -5,12 +5,13 @@ from copy import deepcopy
 import sympy as sp
 
 from ...problem_understanding.notation_parser import NotationError
+from .math_values import latex
 from .premises import FeatureMath, UnknownPremise, parse_expression
 
 
 def _bindings(indexed, branch, additional_checks=()):
     values = FeatureMath(indexed)
-    bindings = {"bound": sp.latex(values.x), "parameter": sp.latex(values.parameter)}
+    bindings = {"bound": latex(values.x), "parameter": latex(values.parameter)}
     for check in [*branch["checks"], *additional_checks]:
         bindings.update(check["display_bindings"])
     # Display the coefficient in the original relation, as in the Demo, while
@@ -19,7 +20,7 @@ def _bindings(indexed, branch, additional_checks=()):
         relation = values.value("relation")
         expression = parse_expression(relation["lhs"]) - parse_expression(relation["rhs"])
         coefficient = sp.Poly(expression, values.x).nth(2)
-        bindings["original_coefficient"] = sp.latex(coefficient)
+        bindings["original_coefficient"] = latex(coefficient)
     except (UnknownPremise, NotationError, sp.PolynomialError):
         bindings["original_coefficient"] = bindings.get("coefficient", "未知")
     return bindings
@@ -56,7 +57,7 @@ def build_fragments(contract, selection, indexed, primary):
     cell = [axes["x"]["values"][indexed[axes["x"]["feature"]]["value"]],
             "free" if indexed[axes["y"]["feature"]]["value"] else "given"]
     values = FeatureMath(indexed)
-    base = {"bound": sp.latex(values.x), "parameter": sp.latex(values.parameter)}
+    base = {"bound": latex(values.x), "parameter": latex(values.parameter)}
     case_split = next(c for c in selection["recommendation_checks"] if c["check_id"] == "interval_case_split")
     branches = {b["branch"]: b for b in selection["branches"]}
     coverage, verdicts, options = {}, {}, []

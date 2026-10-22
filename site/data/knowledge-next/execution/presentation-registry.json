@@ -23,7 +23,7 @@
         "if": "fixed_positive",
         "then": {
           "if": "strict",
-          "then": "二次项系数确定为正且非零。原式需恒严格大于零，因此图像必须完全位于横轴上方，不能相切。",
+          "then": "二次项系数确定为正且非零。原式需恒严格大于零，$\\therefore$ 图像必须完全位于横轴上方，不能相切。",
           "else": "二次项系数确定为正且非零。要在全体实数上非负，图像不能穿过横轴；非严格不等式允许相切。"
         },
         "else": [
@@ -66,7 +66,7 @@
         {
           "if": "constant",
           "then": "一次项系数也为零，只需判断常数关系的真假",
-          "else": "一次项系数不为零，一次式在全体实数上无上界也无下界，因此不可能始终满足同一方向的不等式"
+          "else": "一次项系数不为零，一次式在全体实数上无上界也无下界，$\\therefore$ 不可能始终满足同一方向的不等式"
         },
         "：",
         {
@@ -101,7 +101,40 @@
       "required_bindings": [
         "before",
         "after"
-      ]
+      ],
+      "prepare": "solution_view",
+      "render": [
+        "$\\therefore$ ",
+        {
+          "for": "before",
+          "as": "item",
+          "body": "${item}$",
+          "separator": "，"
+        },
+        {
+          "if": "solution_symbol",
+          "then": "，即 ${solution_symbol} \\in {solution_set}$。",
+          "else": "，即 ${solution_set}$。"
+        }
+      ],
+      "highlight": {
+        "caption": "解出参数范围",
+        "items": [
+          {
+            "label": "取值范围",
+            "math": {
+              "if": "solution_symbol",
+              "then": "{solution_symbol} \\in {solution_set}",
+              "else": "{solution_set}"
+            }
+          }
+        ],
+        "result": {
+          "if": "solution_symbol",
+          "then": "${solution_symbol} \\in {solution_set}$",
+          "else": "${solution_set}$"
+        }
+      }
     },
     "separated": {
       "title": "确认参数已分离",
@@ -113,22 +146,110 @@
     },
     "policy": {
       "title": "转化为最值条件",
-      "explanation": "对每个变量值都要满足比较关系，因此先确定应比较上确界还是下确界；具体数值由下一步计算。",
+      "explanation": "对每个变量值都要满足比较关系，$\\therefore$ 先确定应比较值域上端还是下端；能取到时才是最大值或最小值，具体数值由下一步计算。",
       "required_bindings": [
         "before",
         "after",
         "policy",
         "x",
         "parameter_expression",
-        "function"
+        "function",
+        "domain",
+        "function_name",
+        "define_name"
       ],
-      "render": "{quantifier_text} ${x}$ 使关系成立，比较式 ${parameter_expression}$ 需要与函数 ${function}$ 的{bound_name}比较。先确定策略，下一步再计算数值和是否取到。",
+      "prepare": "policy_view",
+      "highlight": {
+        "caption": {
+          "if": "policy_universal",
+          "then": "恒成立转化为最值条件",
+          "else": "能成立转化为最值条件"
+        },
+        "connector": "⇔",
+        "items": [
+          {
+            "label": {
+              "if": "policy_universal",
+              "then": "对所有 ${x} \\in {domain}$ 都成立",
+              "else": "至少有一个 ${x} \\in {domain}$ 使它成立"
+            },
+            "math": "{policy_relation}"
+          },
+          {
+            "label": "只需看{bound_name}",
+            "math": "{policy_condition_short}",
+            "note": [
+              "{bound_explanation}",
+              "从函数值范围的最{extreme_word}一侧判断，并检查等号与能否取到",
+              {
+                "if": "policy_universal",
+                "then": {
+                  "if": "policy_strict",
+                  "then": "；{bound_name}取到时不能相等"
+                },
+                "else": {
+                  "if": "policy_strict",
+                  "then": "",
+                  "else": "；相等时{bound_name}必须能取到"
+                }
+              }
+            ]
+          }
+        ],
+        "result": [
+          {
+            "if": "policy_definition",
+            "then": "${policy_definition}$，${policy_condition_short}$",
+            "else": "${policy_condition_short}$"
+          },
+          {
+            "if": "policy_universal",
+            "then": {
+              "if": "policy_strict",
+              "then": "（{bound_name}取到时不能相等）"
+            },
+            "else": {
+              "if": "policy_strict",
+              "then": "",
+              "else": "（相等时{bound_name}必须能取到）"
+            }
+          }
+        ]
+      },
+      "render": [
+        {
+          "if": "policy_definition",
+          "then": "记 ${policy_definition}$，"
+        },
+        "{quantifier_text} ${x} \\in {domain}$，${policy_relation}$ $\\iff {policy_condition}$",
+        {
+          "if": "policy_universal",
+          "then": {
+            "if": "policy_strict",
+            "then": "（{bound_name}取到时不能相等）"
+          },
+          "else": {
+            "if": "policy_strict",
+            "then": "",
+            "else": "（相等时{bound_name}必须能取到）"
+          }
+        },
+        "。{bound_explanation}"
+      ],
       "variables": {
+        "extreme_word": {
+          "select": "policy.bound",
+          "cases": {
+            "sup": "大",
+            "inf": "小"
+          },
+          "default": ""
+        },
         "bound_name": {
           "select": "policy.bound",
           "cases": {
-            "sup": "上确界",
-            "inf": "下确界"
+            "sup": "值域上端",
+            "inf": "值域下端"
           },
           "default": ""
         },
@@ -152,9 +273,17 @@
         "square",
         "x",
         "vertex",
-        "extremum"
+        "extremum",
+        "function_name"
       ],
-      "render": "${function}={square}$。平方非负，${x}={vertex}$ 在定义域中，回代得到取等值 ${extremum}$。"
+      "render": [
+        {
+          "if": "function_name",
+          "then": "${function_name}({x})={function}={square}$",
+          "else": "${function}={square}$"
+        },
+        "。平方非负，${x}={vertex}$ 在定义域中，回代得到取等值 ${extremum}$。"
+      ]
     },
     "boundary": {
       "title": "检查边界",
@@ -162,127 +291,365 @@
       "required_bindings": [
         "before",
         "after",
-        "checks"
+        "checks",
+        "parameter",
+        "feasible"
       ],
       "render": [
-        "将候选集合的每个有限边界代回原题的全部条件，独立检查量词关系及边界是否保留。",
         {
           "if": "checks",
-          "then": [
-            {
-              "for": "checks",
-              "as": "item",
-              "body": [
-                "参数等于 ${item.point.latex}$ 时",
-                {
-                  "if": "item.holds",
-                  "then": "满足",
-                  "else": "不满足"
-                },
-                "原题条件，该边界",
-                {
-                  "if": "item.included",
-                  "then": "保留",
-                  "else": "排除"
-                }
-              ],
-              "separator": "；"
-            },
-            "。"
-          ],
-          "else": "当前可行集没有有限边界，边界检查为空。"
+          "then": {
+            "for": "checks",
+            "as": "item",
+            "separator": "；\n",
+            "body": [
+              "当 ",
+              {
+                "if": "parameter",
+                "then": "${parameter}={item.point.latex}$",
+                "else": "参数为 ${item.point.latex}$"
+              },
+              " 时，代回原题",
+              {
+                "if": "item.holds",
+                "then": "成立",
+                "else": "不成立"
+              },
+              "，$\\therefore$ 边界 ${item.point.latex}$ ",
+              {
+                "if": "item.included",
+                "then": "保留",
+                "else": "舍去"
+              }
+            ]
+          },
+          "else": "可行集没有有限边界，无需检查边界"
+        },
+        {
+          "if": "feasible",
+          "then": {
+            "if": "parameter",
+            "then": "，\n$\\therefore\\ {parameter} \\in {feasible}$。",
+            "else": "，\n$\\therefore$ 可行集为 ${feasible}$。"
+          },
+          "else": "。"
         }
-      ]
+      ],
+      "highlight": {
+        "caption": "检查边界",
+        "items": [
+          {
+            "label": {
+              "if": "parameter",
+              "then": "${parameter}$ 的取值范围",
+              "else": "可行集"
+            },
+            "math": {
+              "if": "feasible",
+              "then": {
+                "if": "parameter",
+                "then": "{parameter} \\in {feasible}",
+                "else": "{feasible}"
+              },
+              "else": "\\varnothing"
+            },
+            "note": {
+              "if": "checks",
+              "then": {
+                "for": "checks",
+                "as": "item",
+                "separator": "；",
+                "body": [
+                  {
+                    "if": "parameter",
+                    "then": "${parameter}={item.point.latex}$",
+                    "else": "${item.point.latex}$"
+                  },
+                  " 代回原题",
+                  {
+                    "if": "item.holds",
+                    "then": "成立",
+                    "else": "不成立"
+                  },
+                  "，",
+                  {
+                    "if": "item.included",
+                    "then": "保留",
+                    "else": "舍去"
+                  }
+                ]
+              },
+              "else": "没有有限边界"
+            }
+          }
+        ],
+        "conclusion_only": true
+      }
     },
     "goal_minimum": {
       "title": "确定最小值",
-      "explanation": "从已验证的完整可行集读取下确界，再根据有界性和成员关系确定最小值是否存在。",
+      "explanation": "从已验证的完整可行集读取下界，再根据有界性和成员关系确定最小值是否存在。",
       "required_bindings": [
         "before",
         "after",
         "status",
-        "bound"
+        "bound",
+        "parameter",
+        "feasible"
       ],
       "render": {
         "select": "status",
         "cases": {
-          "empty_feasible_set": "完整可行集为空，没有满足题设的参数，因此最小值不存在。",
-          "unbounded_below": "完整可行集已通过独立验证。可行集没有下界，因此最小值不存在。",
-          "unbounded_above": "完整可行集已通过独立验证。可行集没有下界，因此最小值不存在。",
-          "attained": "完整可行集已通过独立验证。下确界为 ${bound}$，该界属于可行集。因此最小值为 ${bound}$，能够取得。",
-          "not_attained": "完整可行集已通过独立验证。下确界为 ${bound}$，该界不属于可行集。因此最小值不存在，只能趋近该下确界。"
+          "empty_feasible_set": "可行集为 $\\varnothing$，没有满足题设的参数，$\\therefore$ {who}的最小值不存在。",
+          "unbounded_below": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "可行集没有下界，\n$\\therefore$ {who}的最小值不存在。"
+          ],
+          "unbounded_above": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "可行集没有下界，\n$\\therefore$ {who}的最小值不存在。"
+          ],
+          "attained": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "\n$\\therefore$ {who}的最小值为 ${bound}$。"
+          ],
+          "not_attained": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "\n$\\therefore$ {who}的最小值不存在，只能趋近 ${bound}$。"
+          ]
         },
         "default": ""
+      },
+      "variables": {
+        "who": {
+          "if": "parameter",
+          "then": "${parameter}$ ",
+          "else": "参数"
+        }
+      },
+      "highlight": {
+        "caption": "确定最小值",
+        "items": [
+          {
+            "label": {
+              "select": "status",
+              "cases": {
+                "attained": "{who}的最小值",
+                "not_attained": "{who}的最小值不存在，只能趋近",
+                "empty_feasible_set": "可行集为空，{who}的最小值不存在"
+              },
+              "default": "可行集没有下界，{who}的最小值不存在"
+            },
+            "math": {
+              "select": "status",
+              "cases": {
+                "attained": "{bound}",
+                "not_attained": "{bound}",
+                "empty_feasible_set": "\\varnothing"
+              },
+              "default": {
+                "if": "parameter",
+                "then": "{parameter} \\in {feasible}",
+                "else": "{feasible}"
+              }
+            }
+          }
+        ],
+        "conclusion_only": true
       }
     },
     "goal_maximum": {
       "title": "确定最大值",
-      "explanation": "从已验证的完整可行集读取上确界，再根据有界性和成员关系确定最大值是否存在。",
+      "explanation": "从已验证的完整可行集读取上界，再根据有界性和成员关系确定最大值是否存在。",
       "required_bindings": [
         "before",
         "after",
         "status",
-        "bound"
+        "bound",
+        "parameter",
+        "feasible"
       ],
       "render": {
         "select": "status",
         "cases": {
-          "empty_feasible_set": "完整可行集为空，没有满足题设的参数，因此最大值不存在。",
-          "unbounded_below": "完整可行集已通过独立验证。可行集没有上界，因此最大值不存在。",
-          "unbounded_above": "完整可行集已通过独立验证。可行集没有上界，因此最大值不存在。",
-          "attained": "完整可行集已通过独立验证。上确界为 ${bound}$，该界属于可行集。因此最大值为 ${bound}$，能够取得。",
-          "not_attained": "完整可行集已通过独立验证。上确界为 ${bound}$，该界不属于可行集。因此最大值不存在，只能趋近该上确界。"
+          "empty_feasible_set": "可行集为 $\\varnothing$，没有满足题设的参数，$\\therefore$ {who}的最大值不存在。",
+          "unbounded_below": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "可行集没有上界，\n$\\therefore$ {who}的最大值不存在。"
+          ],
+          "unbounded_above": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "可行集没有上界，\n$\\therefore$ {who}的最大值不存在。"
+          ],
+          "attained": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "\n$\\therefore$ {who}的最大值为 ${bound}$。"
+          ],
+          "not_attained": [
+            {
+              "if": "parameter",
+              "then": "$\\because\\ {parameter} \\in {feasible}$，",
+              "else": "$\\because$ 可行集为 ${feasible}$，"
+            },
+            "\n$\\therefore$ {who}的最大值不存在，只能趋近 ${bound}$。"
+          ]
         },
         "default": ""
+      },
+      "variables": {
+        "who": {
+          "if": "parameter",
+          "then": "${parameter}$ ",
+          "else": "参数"
+        }
+      },
+      "highlight": {
+        "caption": "确定最大值",
+        "items": [
+          {
+            "label": {
+              "select": "status",
+              "cases": {
+                "attained": "{who}的最大值",
+                "not_attained": "{who}的最大值不存在，只能趋近",
+                "empty_feasible_set": "可行集为空，{who}的最大值不存在"
+              },
+              "default": "可行集没有上界，{who}的最大值不存在"
+            },
+            "math": {
+              "select": "status",
+              "cases": {
+                "attained": "{bound}",
+                "not_attained": "{bound}",
+                "empty_feasible_set": "\\varnothing"
+              },
+              "default": {
+                "if": "parameter",
+                "then": "{parameter} \\in {feasible}",
+                "else": "{feasible}"
+              }
+            }
+          }
+        ],
+        "conclusion_only": true
       }
     },
     "divided": {
       "title": "分离参数",
-      "explanation": "先证明除数在给定区间恒正，再两边同除，不等号方向保持不变。",
+      "explanation": "先移项，再证明除数在给定区间恒正，两边同除，不等号方向保持不变。",
       "required_bindings": [
         "before",
         "after",
-        "divisor"
+        "moved",
+        "separated",
+        "function",
+        "parameter_expression",
+        "operator",
+        "x",
+        "divisor",
+        "domain",
+        "function_name"
       ],
-      "render": "在给定范围内，除数 ${divisor}>0$。将参数项移到一边，再两边同除以这个正数，不等号不变，得到等价关系。"
+      "prepare": "separation_naming",
+      "highlight": {
+        "caption": "两边同除以正数",
+        "items": [
+          {
+            "label": "移项后",
+            "math": "{moved}"
+          },
+          {
+            "label": "两边除以 ${divisor}$",
+            "math": "{separated}",
+            "note": "${divisor}>0$，不等号方向不变"
+          }
+        ],
+        "result": {
+          "if": "named",
+          "then": "${parameter_expression} {operator_tex} {function_name}({x})$，其中 ${function_name}({x})={function}$"
+        }
+      },
+      "render": [
+        "$\\because\\ {x} \\in {domain}$，$\\therefore\\ {divisor}>0$，\n",
+        "移项得 ${moved}$，\n",
+        "两边同除以 ${divisor}$ 得 ${separated}$。",
+        {
+          "if": "named",
+          "then": "记 ${function_name}({x})={function}$，则 ${parameter_expression} {operator_tex} {function_name}({x})$。"
+        }
+      ]
     },
     "numeric_range": {
       "title": "计算区间值域",
-      "explanation": "按端点极限及区间内的转折点求上下确界，并记录边界是否取得。",
+      "explanation": "按端点极限及区间内的转折点求最值，并记录能否取到。",
       "required_bindings": [
         "before",
         "after",
         "range",
         "domain",
         "function",
-        "x"
+        "x",
+        "function_name"
       ],
       "render": [
-        "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。下确界为 ${range.inf}$，",
+        "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。",
+        {
+          "if": "function_name",
+          "then": "${function_name}({x})$ 的"
+        },
         {
           "if": "range.inf_attained",
-          "then": "能取得",
-          "else": "不能取得"
+          "then": "最小值为 ${range.inf}$，能取得",
+          "else": "最小值不存在，只能趋近 ${range.inf}$"
         },
-        "；上确界为 ${range.sup}$，",
+        "；",
         {
           "if": "range.sup_attained",
-          "then": "能取得",
-          "else": "不能取得"
+          "then": "最大值为 ${range.sup}$，能取得",
+          "else": "最大值不存在，只能趋近 ${range.sup}$"
         },
         "。"
       ]
     },
     "endpoint_bounds": {
       "title": "计算端点候选",
-      "explanation": "根据开口方向，所需确界来自两个端点；开放端点只给极限，不能当作已经取得的最值。",
+      "explanation": "根据开口方向，所需最值来自两个端点；开放端点只给极限，不能当作已经取得的最值。",
       "required_bindings": [
         "before",
         "after",
         "range",
         "function",
         "x",
-        "domain"
+        "domain",
+        "function_name"
       ],
       "render": [
         "二次函数开口{opening}，所需{bound_name}由两个端点候选决定，无需按含参对称轴分类。",
@@ -290,7 +657,11 @@
           "for": "range.candidates",
           "as": "item",
           "body": [
-            "${x}={item.point}$ 时的候选值为 ${item.value}$，",
+            {
+              "if": "function_name",
+              "then": "${function_name}({item.point})={item.value}$，",
+              "else": "${x}={item.point}$ 时的候选值为 ${item.value}$，"
+            },
             {
               "if": "item.attained",
               "then": "端点在区间中",
@@ -314,53 +685,60 @@
         "bound_name": {
           "select": "range.bound",
           "cases": {
-            "sup": "上确界",
-            "inf": "下确界"
+            "sup": "最大值",
+            "inf": "最小值"
           },
           "default": ""
         }
       }
     },
     "interval_conditions": {
-      "title": "求解并合并参数条件",
-      "explanation": "将量词策略应用到确界及其可达性，分别求出参数条件并按逻辑组合。",
+      "title": "求本情况的参数范围",
+      "explanation": "将量词策略应用到最值及其能否取到，分别求出参数条件并按逻辑组合。",
       "required_bindings": [
         "before",
         "after",
         "conditions",
         "combiner",
-        "solutions"
+        "solutions",
+        "condition"
       ],
-      "render": [
-        {
-          "if": "multiple",
-          "then": "将已选量词策略应用到端点候选及其可达性，{logical}。分别解出下列参数条件后取{operation}；开放端点的极限值不当作已取得的最值。",
-          "else": "将已选量词策略应用到确界及其可达性，得到并解出下面的参数条件。"
-        },
-        {
-          "if": "has_case",
-          "then": "再与当前情况的参数范围取交集，保留同时满足的参数。",
-          "else": ""
-        }
-      ],
+      "render": {
+        "if": "any_condition",
+        "then": [
+          "由 ",
+          {
+            "for": "condition_list",
+            "as": "item",
+            "body": "${item}$",
+            "separator": " 或 "
+          },
+          {
+            "if": "case_condition",
+            "then": "，及 ${case_condition}$"
+          },
+          "，得 ${case_answer}$。"
+        ],
+        "else": "由 ${condition_system}$ 得 ${case_answer}$。"
+      },
       "prepare": "interval_conditions",
-      "variables": {
-        "logical": {
-          "select": "combiner",
-          "cases": {
-            "all": "两端条件都要满足",
-            "any": "至少一端条件满足"
-          },
-          "default": ""
+      "case_prefix": false,
+      "highlight": {
+        "caption": {
+          "if": "has_case",
+          "then": "本情况的参数范围",
+          "else": "求出参数范围"
         },
-        "operation": {
-          "select": "combiner",
-          "cases": {
-            "all": "交集",
-            "any": "并集"
-          },
-          "default": ""
-        }
+        "items": [
+          {
+            "label": {
+              "if": "case_condition",
+              "then": "当 ${case_condition}$ 时",
+              "else": "参数范围"
+            },
+            "math": "{case_answer}"
+          }
+        ]
       }
     },
     "moved": {
@@ -368,18 +746,142 @@
       "explanation": "将含参数的项留在一边，其余项移到另一边，不等号方向不变，得到等价关系。",
       "required_bindings": [
         "before",
-        "after"
+        "after",
+        "relation",
+        "moved",
+        "separated",
+        "function",
+        "parameter_expression",
+        "operator",
+        "x",
+        "function_name"
+      ],
+      "prepare": "separation_naming",
+      "highlight": {
+        "caption": "移项分离参数",
+        "items": [
+          {
+            "label": "原不等式",
+            "math": "{relation}"
+          },
+          {
+            "label": "移项后",
+            "math": "{separated}",
+            "note": "只移项，不等号方向不变"
+          }
+        ],
+        "result": {
+          "if": "named",
+          "then": "${parameter_expression} {operator_tex} {function_name}({x})$，其中 ${function_name}({x})={function}$"
+        }
+      },
+      "render": [
+        "移项得 ${separated}$。",
+        {
+          "if": "named",
+          "then": "记 ${function_name}({x})={function}$，则 ${parameter_expression} {operator_tex} {function_name}({x})$。"
+        }
       ]
     },
     "negative_divided": {
       "title": "除以负数分离参数",
-      "explanation": "除数在定义域上严格为负，两边同除时不等号反向。",
+      "explanation": "先移项，除数在给定区间严格为负，两边同除时不等号反向。",
       "required_bindings": [
         "before",
         "after",
-        "divisor"
+        "moved",
+        "separated",
+        "function",
+        "parameter_expression",
+        "operator",
+        "x",
+        "divisor",
+        "domain",
+        "function_name"
       ],
-      "render": "在给定范围内，除数 ${divisor}<0$。将参数项移到一边，再两边同除以这个负数，不等号反向，得到等价关系。"
+      "prepare": "separation_naming",
+      "highlight": {
+        "caption": "两边同除以负数",
+        "items": [
+          {
+            "label": "移项后",
+            "math": "{moved}"
+          },
+          {
+            "label": "两边除以 ${divisor}$",
+            "math": "{separated}",
+            "note": "${divisor}<0$，不等号方向改变"
+          }
+        ],
+        "result": {
+          "if": "named",
+          "then": "${parameter_expression} {operator_tex} {function_name}({x})$，其中 ${function_name}({x})={function}$"
+        }
+      },
+      "render": [
+        "$\\because\\ {x} \\in {domain}$，$\\therefore\\ {divisor}<0$，\n",
+        "移项得 ${moved}$，\n",
+        "两边同除以 ${divisor}$，不等号变向，得 ${separated}$。",
+        {
+          "if": "named",
+          "then": "记 ${function_name}({x})={function}$，则 ${parameter_expression} {operator_tex} {function_name}({x})$。"
+        }
+      ]
+    },
+    "constant_divided": {
+      "title": "除以常数分离参数",
+      "explanation": "先移项，再两边同除以参数的常数系数；除以负数时不等号反向。",
+      "required_bindings": [
+        "before",
+        "after",
+        "moved",
+        "separated",
+        "function",
+        "parameter_expression",
+        "operator",
+        "x",
+        "divisor",
+        "function_name"
+      ],
+      "prepare": "separation_naming",
+      "highlight": {
+        "caption": {
+          "if": "divisor_negative",
+          "then": "两边同除以负数",
+          "else": "两边同除以正数"
+        },
+        "items": [
+          {
+            "label": "移项后",
+            "math": "{moved}"
+          },
+          {
+            "label": "两边除以 ${divisor}$",
+            "math": "{separated}",
+            "note": {
+              "if": "divisor_negative",
+              "then": "不等号方向改变",
+              "else": "不等号方向不变"
+            }
+          }
+        ],
+        "result": {
+          "if": "named",
+          "then": "${parameter_expression} {operator_tex} {function_name}({x})$，其中 ${function_name}({x})={function}$"
+        }
+      },
+      "render": [
+        "移项得 ${moved}$，\n",
+        {
+          "if": "divisor_negative",
+          "then": "两边同除以 ${divisor}$，不等号变向，得 ${separated}$。",
+          "else": "两边同除以 ${divisor}$ 得 ${separated}$。"
+        },
+        {
+          "if": "named",
+          "then": "记 ${function_name}({x})={function}$，则 ${parameter_expression} {operator_tex} {function_name}({x})$。"
+        }
+      ]
     },
     "range_evidence": {
       "title": "求区间值域",
@@ -392,21 +894,26 @@
         "function",
         "x",
         "points",
-        "endpoints"
+        "endpoints",
+        "function_name"
       ],
       "render": [
         [
-          "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。下确界为 ${range.inf}$，",
+          "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。",
+          {
+            "if": "function_name",
+            "then": "${function_name}({x})$ 的"
+          },
           {
             "if": "range.inf_attained",
-            "then": "能取得",
-            "else": "不能取得"
+            "then": "最小值为 ${range.inf}$，能取得",
+            "else": "最小值不存在，只能趋近 ${range.inf}$"
           },
-          "；上确界为 ${range.sup}$，",
+          "；",
           {
             "if": "range.sup_attained",
-            "then": "能取得",
-            "else": "不能取得"
+            "then": "最大值为 ${range.sup}$，能取得",
+            "else": "最大值不存在，只能趋近 ${range.sup}$"
           },
           "。"
         ],
@@ -426,6 +933,104 @@
           "body": "区间内转折点为 ${x}={item.point}$，函数值 ${item.value}$ 可取得。",
           "separator": ""
         }
+      ]
+    },
+    "hook_range": {
+      "title": "用对勾函数求值域",
+      "explanation": "由对勾函数的性质得单调区间，再看题目区间落在拐点哪一侧。",
+      "required_bindings": [
+        "before",
+        "after",
+        "range",
+        "domain",
+        "function",
+        "x",
+        "turn",
+        "endpoints",
+        "function_name"
+      ],
+      "prepare": "hook_view",
+      "variables": {
+        "hook_kind": {
+          "if": "hook_minimum",
+          "then": "最低点",
+          "else": "最高点"
+        },
+        "hook_falling": {
+          "if": "hook_minimum",
+          "then": "递减",
+          "else": "递增"
+        },
+        "hook_rising": {
+          "if": "hook_minimum",
+          "then": "递增",
+          "else": "递减"
+        },
+        "hook_side_name": {
+          "select": "hook_side",
+          "cases": {
+            "left": "左侧",
+            "right": "右侧",
+            "both": "两侧"
+          }
+        },
+        "hook_trend": {
+          "select": "hook_side",
+          "cases": {
+            "left": "函数在区间上{hook_falling}",
+            "right": "函数在区间上{hook_rising}",
+            "both": "函数在区间上先{hook_falling}后{hook_rising}"
+          }
+        }
+      },
+      "highlight": {
+        "caption": "对勾函数在区间上的一段",
+        "connector": "→",
+        "items": [
+          {
+            "label": "图像的{hook_kind}",
+            "math": "{hook_turn}",
+            "note": "在 ${hook_left}$ 上{hook_falling}，在 ${hook_right}$ 上{hook_rising}"
+          },
+          {
+            "label": "区间 ${domain}$ 在拐点{hook_side_name}",
+            "math": "{hook_label} \\in {range.set}",
+            "note": "{hook_trend}"
+          }
+        ],
+        "result": "${hook_label} \\in {range.set}$"
+      },
+      "render": [
+        "$\\because\\ {hook_relation}$，$\\therefore$ ",
+        {
+          "for": "hook_positive",
+          "as": "item",
+          "body": "${item}>0$",
+          "separator": "，"
+        },
+        "，\n",
+        "$\\therefore\\ {hook_amgm}$，\n",
+        "当且仅当 ${hook_equal}$，即 ${x}={turn.point}$ 时取等号。",
+        "由对勾函数的性质，${hook_label}$ 在 ${hook_left}$ 上单调{hook_falling}，在 ${hook_right}$ 上单调{hook_rising}。",
+        {
+          "select": "hook_side",
+          "cases": {
+            "left": "$\\because\\ {domain} \\subseteq {hook_left}$，$\\therefore\\ {hook_label}$ 在 ${domain}$ 上单调{hook_falling}，\n$\\therefore$ ",
+            "right": "$\\because\\ {domain} \\subseteq {hook_right}$，$\\therefore\\ {hook_label}$ 在 ${domain}$ 上单调{hook_rising}，\n$\\therefore$ ",
+            "both": "$\\because\\ {x}={turn.point} \\in {domain}$，$\\therefore\\ {hook_peak}$，\n又 "
+          }
+        },
+        {
+          "for": "hook_ends",
+          "as": "item",
+          "body": {
+            "if": "item.attained",
+            "then": "${item.equation}$",
+            "else": "${item.approach}$ 时 ${item.limit}$"
+          },
+          "separator": "，"
+        },
+        "，\n$\\therefore\\ {hook_label} \\in {range.set}$。"
       ]
     },
     "inverse_range": {
@@ -449,20 +1054,65 @@
       }
     },
     "interval_cases": {
-      "title": "确定完整分类",
-      "explanation": "按开口、退化情形和对称轴位置确定互不重叠且覆盖全部参数的情况。",
+      "title": "分类讨论最值",
+      "explanation": "按开口、退化情形和对称轴位置分类，写出每种情况下的最值。",
       "required_bindings": [
         "before",
         "after",
         "cases",
-        "parameter"
+        "parameter",
+        "function_name",
+        "x",
+        "domain"
       ],
-      "render": "按二次项系数是否为零、开口方向以及对称轴与端点的位置确定以下情况。这些情况互不重叠并覆盖全部实数参数，分别求确界后再合并参数范围。",
-      "prepare": "interval_cases"
+      "render": [
+        {
+          "if": "opening",
+          "then": [
+            "${function_label}$ 的图像开口",
+            {
+              "select": "opening",
+              "cases": {
+                "up": "向上",
+                "down": "向下"
+              },
+              "default": ""
+            },
+            "，"
+          ]
+        },
+        {
+          "if": "axis",
+          "then": "对称轴为 ${x}={axis}$，"
+        },
+        "\n",
+        {
+          "for": "case_rows",
+          "as": "item",
+          "separator": "；\n",
+          "body": [
+            "{item.mark} ",
+            {
+              "if": "item.axis_relation",
+              "then": "当 ${item.axis_relation}$，即 ${item.condition}$ 时，",
+              "else": "当 ${item.condition}$ 时，"
+            },
+            "${item.extreme}$",
+            {
+              "if": "item.attained",
+              "then": "",
+              "else": "，{bound_name}不存在，只能趋近上述值"
+            }
+          ]
+        },
+        "。"
+      ],
+      "prepare": "interval_cases",
+      "derivation": true
     },
     "classified_range": {
-      "title": "求本情况的确界",
-      "explanation": "结合当前参数条件、端点和对称轴位置求确界，记录是否取到。",
+      "title": "求本情况的最值",
+      "explanation": "结合当前参数条件、端点和对称轴位置求最值，记录是否取到。",
       "required_bindings": [
         "before",
         "after",
@@ -471,33 +1121,110 @@
         "vertex",
         "coefficient",
         "x",
-        "domain"
+        "domain",
+        "function_name"
       ],
       "render": [
-        "二次项系数为 ${coefficient}$。",
         {
-          "if": "has_vertex",
-          "then": "对称轴为 ${x}={vertex}$。",
-          "else": ""
+          "if": "case_condition",
+          "then": "$\\because\\ {case_condition}$，"
         },
-        "结合当前条件与区间 ${domain}$，由端点极限和区间内顶点比较得到{bound_name} ${bound_value}$，",
         {
-          "if": "bound_attained",
-          "then": "能取得",
-          "else": "不能取得"
+          "if": "opening",
+          "then": [
+            "$\\therefore$ ",
+            {
+              "if": "leading_relation",
+              "then": "${leading_relation}$，"
+            },
+            "${function_label}$ 的图像开口",
+            {
+              "select": "opening",
+              "cases": {
+                "up": "向上",
+                "down": "向下"
+              },
+              "default": ""
+            },
+            "，"
+          ]
         },
-        "。"
+        {
+          "if": "axis_relation",
+          "then": "$\\therefore\\ {axis_relation}$，"
+        },
+        "\n",
+        {
+          "if": "axis_fixed",
+          "then": [
+            "对称轴 ${x}={axis_fixed}$ ",
+            {
+              "select": "place",
+              "cases": {
+                "right": "在区间右侧",
+                "left": "在区间左侧",
+                "inside": "在区间内",
+                "left_of_middle": "在区间中点左侧",
+                "right_of_middle": "在区间中点右侧"
+              },
+              "default": ""
+            },
+            "，"
+          ]
+        },
+        {
+          "select": "monotone",
+          "cases": {
+            "increasing": "${function_label}$ 在 ${domain}$ 上单调递增，\n",
+            "decreasing": "${function_label}$ 在 ${domain}$ 上单调递减，\n",
+            "right_far": "右端点离对称轴更远，\n",
+            "left_far": "左端点离对称轴更远，\n",
+            "vertex": "顶点在区间内，\n"
+          },
+          "default": ""
+        },
+        {
+          "if": "approach",
+          "then": "$\\therefore$ 当 ${approach}$ 时，${extreme}$，{bound_name}不存在。",
+          "else": [
+            "$\\therefore\\ {extreme}$",
+            {
+              "if": "bound_attained",
+              "then": "。",
+              "else": "，{bound_name}不存在，只能趋近上述值。"
+            }
+          ]
+        }
       ],
       "prepare": "classified_range",
       "variables": {
         "bound_name": {
           "select": "range.bound",
           "cases": {
-            "sup": "上确界",
-            "inf": "下确界"
+            "sup": "最大值",
+            "inf": "最小值"
           },
           "default": ""
         }
+      },
+      "case_prefix": false,
+      "highlight": {
+        "caption": "本情况的{bound_name}",
+        "items": [
+          {
+            "label": {
+              "if": "case_condition",
+              "then": "当 ${case_condition}$ 时",
+              "else": "区间上的{bound_name}"
+            },
+            "math": "{extreme}",
+            "note": {
+              "if": "bound_attained",
+              "then": "",
+              "else": "{bound_name}取不到"
+            }
+          }
+        ]
       }
     },
     "case_linear_range": {
@@ -510,48 +1237,88 @@
         "condition",
         "kind",
         "domain",
-        "x"
+        "x",
+        "function_name"
       ],
-      "render": {
-        "if": "constant",
-        "then": "代入后函数为常数 ${range.inf}$，在原区间上处处取得该值。",
-        "else": [
-          "只在题目给定的 ${domain}$ 上求值，比较端点的值或极限，并检查区间内的转折点。下确界为 ${range.inf}$，",
+      "render": [
+        {
+          "if": "case_condition",
+          "then": "$\\because\\ {case_condition}$，"
+        },
+        {
+          "if": "constant",
+          "then": "$\\therefore\\ {function_label}={range.inf}$，为常数。",
+          "else": [
+            "$\\therefore\\ {function_label}={case_function}$，在 ${domain}$ 上单调",
+            {
+              "select": "trend",
+              "cases": {
+                "increasing": "递增",
+                "decreasing": "递减"
+              },
+              "default": ""
+            },
+            "，\n$\\therefore\\ {function_label} \\in {range_set}$。"
+          ]
+        }
+      ],
+      "prepare": "linear_case",
+      "case_prefix": false,
+      "highlight": {
+        "caption": "本情况的函数值",
+        "items": [
           {
-            "if": "range.inf_attained",
-            "then": "能取得",
-            "else": "不能取得"
-          },
-          "；上确界为 ${range.sup}$，",
-          {
-            "if": "range.sup_attained",
-            "then": "能取得",
-            "else": "不能取得"
-          },
-          "。"
+            "label": {
+              "if": "case_condition",
+              "then": "当 ${case_condition}$ 时",
+              "else": "函数值"
+            },
+            "math": {
+              "if": "constant",
+              "then": "{function_label}={range.inf}",
+              "else": "{function_label} \\in {range_set}"
+            }
+          }
         ]
-      },
-      "prepare": "numeric_range"
+      }
     },
     "interval_merge": {
-      "title": "合并各情况",
-      "explanation": "各情况互不重叠并覆盖全部参数，把每个情况内求得的参数集取并集。",
+      "title": "求参数范围",
+      "explanation": "每种情况内由最值条件求出参数范围（与本情况取交集），再把各情况的结果取并集。",
       "required_bindings": [
         "before",
         "after",
         "cases",
-        "solutions"
+        "solutions",
+        "results",
+        "function_name",
+        "x"
       ],
       "render": [
         {
-          "for": "case_solutions",
+          "for": "merge_rows",
           "as": "item",
-          "body": "${item.condition}$ 时得到 ${item.solution}$",
-          "separator": "；"
+          "separator": "；\n",
+          "body": [
+            "{item.mark} 由 ${item.system}$ 得 ${item.answer}$"
+          ]
         },
-        "。把各情况的参数集取并集，随后独立验证并检查边界。"
+        "。\n综上，取并集得 ${merge_total}$。"
       ],
-      "prepare": "interval_merge"
+      "prepare": "interval_merge",
+      "highlight": {
+        "caption": "取并集",
+        "layout": "merge",
+        "items": [
+          {
+            "for": "merge_rows",
+            "as": "item",
+            "label": "情况{item.mark}（${item.condition}$）",
+            "math": "{item.value}"
+          }
+        ],
+        "result": "${merge_total}$"
+      }
     },
     "variable_roles": {
       "title": "确定变化的字母",
@@ -564,7 +1331,7 @@
         "domain",
         "quantifier"
       ],
-      "render": "题目要求{quantifier_text} ${x}\\in {domain}$ 使关系成立。因此以 ${x}$ 为变化的字母，先固定所求的 ${parameter}$，再由整个区间上的条件求它的取值范围。",
+      "render": "题目要求{quantifier_text} ${x}\\in {domain}$ 使关系成立。$\\therefore$ 以 ${x}$ 为变化的字母，先固定所求的 ${parameter}$，再由整个区间上的条件求它的取值范围。",
       "variables": {
         "quantifier_text": {
           "select": "quantifier",
@@ -627,7 +1394,7 @@
             ],
             "zero": "一次项系数恒为零，函数为常数，在区间内部也能取得该值。"
           },
-          "default": "一次项系数 ${slope}$ 不能统一判定为严格正或严格负。一次函数在闭区间上的确界由两端决定，保留两个端点条件。"
+          "default": "一次项系数 ${slope}$ 不能统一判定为严格正或严格负。一次函数在闭区间上的最值由两端决定，保留两个端点条件。"
         },
         {
           "for": "range.candidates",
@@ -655,8 +1422,8 @@
         "bound_name": {
           "select": "range.bound",
           "cases": {
-            "sup": "上确界",
-            "inf": "下确界"
+            "sup": "最大值",
+            "inf": "最小值"
           },
           "default": ""
         },
@@ -691,10 +1458,10 @@
         "parameter"
       ],
       "render": [
-        "按确界及其是否取得建立关于 ${parameter}$ 的条件，移项并按非零常数作等价变形，分别求解。",
+        "按最值及其是否取得建立关于 ${parameter}$ 的条件，移项并按非零常数作等价变形，分别求解。",
         {
           "if": "multiple",
-          "then": "原量词要求{logical}，因此各解集取{operation}。",
+          "then": "原量词要求{logical}，$\\therefore$ 各解集取{operation}。",
           "else": ""
         },
         "所得范围随后与其余题设求交，并独立验证边界。"
@@ -759,7 +1526,7 @@
             ],
             "zero": "一次项系数恒为零，函数为常数，在区间内部也能取得该值。"
           },
-          "default": "一次项系数 ${slope}$ 不能统一判定为严格正或严格负。一次函数在闭区间上的确界由两端决定，保留两个端点条件。"
+          "default": "一次项系数 ${slope}$ 不能统一判定为严格正或严格负。一次函数在闭区间上的最值由两端决定，保留两个端点条件。"
         },
         {
           "for": "range.candidates",
@@ -787,8 +1554,8 @@
         "bound_name": {
           "select": "range.bound",
           "cases": {
-            "sup": "上确界",
-            "inf": "下确界"
+            "sup": "最大值",
+            "inf": "最小值"
           },
           "default": ""
         },
@@ -824,10 +1591,10 @@
         "condition"
       ],
       "render": [
-        "按确界及其是否取得建立关于 ${parameter}$ 的条件，移项并按非零常数作等价变形，分别求解。",
+        "按最值及其是否取得建立关于 ${parameter}$ 的条件，移项并按非零常数作等价变形，分别求解。",
         {
           "if": "multiple",
-          "then": "原量词要求{logical}，因此各解集取{operation}。",
+          "then": "原量词要求{logical}，$\\therefore$ 各解集取{operation}。",
           "else": ""
         },
         "先与当前情况的参数范围取交集，保留同时满足的参数。合并各情况后，再与其余题设求交，并独立验证边界。"
@@ -871,7 +1638,7 @@
         },
         "。把各情况的参数集取并集，随后独立验证并检查边界。"
       ],
-      "prepare": "interval_merge"
+      "prepare": "variable_case_merge"
     },
     "variable_cases": {
       "title": "按斜率确定完整分类",
@@ -884,7 +1651,7 @@
         "slope"
       ],
       "render": "先求一次项系数 ${slope}$ 为零的参数值。在这些值上按常数关系判断；其余参数按斜率符号与开放端点规则判断。这些情况互不重叠并覆盖全部参数。",
-      "prepare": "interval_cases"
+      "prepare": "variable_cases"
     }
   },
   "boundary_steps": {

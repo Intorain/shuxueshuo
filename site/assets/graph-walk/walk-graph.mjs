@@ -34,10 +34,10 @@ export function nodeHref(node) {
    so a solution reads downward from the clues like a tree. A long lane wraps into a grid of at most perRow
    columns, filled column by column so left to right still means one order. A few sweeps move each name toward
    the mean x of its neighbours in other lanes, which keeps connected names roughly above one another. */
-export function treeLayout(graph, {perRow = 4, ...options} = {}) {
+export function treeLayout(graph, {perRow = 4, hidden = new Set(), ...options} = {}) {
   const {nodeW, gapX, gapY, laneGap, gutter, pad, sweeps} = {...TREE, ...options};
   const {layout} = graph;
-  const source = layout.positions instanceof Map ? layout.positions : new Map(Object.entries(layout.positions));
+  const source = new Map([...(layout.positions instanceof Map ? layout.positions : Object.entries(layout.positions))].filter(([id]) => !hidden.has(id)));
   const byId = new Map([...graph.nodes, ...(graph.entries || [])].map(node => [node.id, node]));
   const sizes = new Map([...source.keys()].map(id => {
     const lines = linesOf(byId.get(id)?.label || id, Math.floor((nodeW - 26) / 6.5));
@@ -93,13 +93,22 @@ export function treeLayout(graph, {perRow = 4, ...options} = {}) {
   return {direction: 'down', perRow, width, ...placed};
 }
 
+/* The ids the snapshot layout places in the lane named `label`. */
+export function laneMembers(graph, label) {
+  const {positions, bands = []} = graph.layout;
+  const band = bands.find(item => item.label === label);
+  if (!label || !band) return new Set();
+  return new Set([...(positions instanceof Map ? positions : Object.entries(positions))]
+    .filter(([, p]) => p.x + p.w / 2 >= band.x && p.x + p.w / 2 < band.x + band.w).map(([id]) => id));
+}
+
 /* The panorama is the point of the 2D view, so pick the row width whose whole tree is largest in this panel. */
-export function panoramaLayout(graph, width, height) {
+export function panoramaLayout(graph, width, height, hidden = new Set()) {
   const {bands, positions} = graph.layout;
   const longest = bands?.length ? Math.max(...bands.map(band => band.count || 0)) : Object.keys(positions instanceof Map ? Object.fromEntries(positions) : positions).length;
   let best = null;
   for (let perRow = 2; perRow <= Math.max(2, longest); perRow++) {
-    const layout = treeLayout(graph, {perRow});
+    const layout = treeLayout(graph, {perRow, hidden});
     const k = Math.min((width - 16) / layout.width, (height - 16) / layout.height);
     if (!best || k > best.k + 1e-6) best = {k, layout};
   }
@@ -123,14 +132,18 @@ function edgePath(start, end) {
 
 /* Unlike the 3D view, the 2D view never moves on its own: it shows the whole tree, and only the student zooms
    or drags it. Each resize lays the tree out again to fill the new panel. */
-export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = null} = {}) {
+export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = null, usedOnlyLane = ''} = {}) {
   if (!graph.layout?.positions) throw new Error('图谱快照缺少布局信息。');
   const nodes = [...graph.nodes, ...(graph.entries || [])];
   const byId = new Map(nodes.map(node => [node.id, node]));
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  // In the calls lane only what this route has used so far is shown; the rest waits behind a toggle.
+  const usedOnly = laneMembers(graph, usedOnlyLane);
+  let hidden = new Set(), showIdle = false;
   const controls = document.createElement('div');
   controls.className = 'gw-graph-controls';
   controls.innerHTML = '<button type="button" data-graph-action="out" aria-label="缩小图谱">−</button><button type="button" data-graph-action="in" aria-label="放大图谱">＋</button>'
+    + (usedOnly.size ? '<button type="button" data-graph-action="idle" aria-pressed="false">显示未用到</button>' : '')
     + '<span class="gw-mode-switch" role="group" aria-label="图谱视图">'
     + (onSwitch ? '<button type="button" data-graph-action="switch" aria-pressed="false" aria-label="切换为三维图">3D</button>' : '')
     + '<button type="button" aria-pressed="true" aria-label="平面图">平面图</button></span>';
@@ -190,7 +203,8 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
   for (const node of nodes) {
     if (!(graph.layout.positions instanceof Map ? graph.layout.positions.has(node.id) : node.id in graph.layout.positions)) continue;
     const group = element('g', {class: 'gw-node', 'data-node': node.id, 'data-kind': node.kind, 'data-state': 'idle', role: 'button', tabindex: 0});
-    group.append(element('rect', {rx: 11}), element('text', {class: 'gw-node-label'}), element('text', {y: -6, class: 'gw-node-status', 'text-anchor': 'end'}, ''));
+    group.append(element('rect', {rx: 11}), element('text', {class: 'gw-node-label'}), element('text', {y: -6, class: 'gw-node-status', 'text-anchor': 'end'}, ''),
+      element('text', {x: 4, y: -6, class: 'gw-node-steps'}, ''));
     function select() {
       selected = node.id;
       for (const [id, item] of nodeElements) item.classList.toggle('is-selected', id === selected);
@@ -212,7 +226,7 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
 
   function arrange() {
     const {width, height} = dimensions();
-    layout = panoramaLayout(graph, width, height);
+    layout = panoramaLayout(graph, width, height, hidden);
     laneLayer.replaceChildren();
     layout.bands.forEach((band, index) => {
       if (index) laneLayer.append(element('line', {x1: band.x, x2: band.x + band.w, y1: band.y - 9, y2: band.y - 9, class: 'gw-lane-rule'}));
@@ -220,6 +234,8 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
     });
     for (const [id, group] of nodeElements) {
       const p = layout.positions.get(id);
+      group.setAttribute('display', p ? 'inline' : 'none');
+      if (!p) continue;
       group.setAttribute('transform', `translate(${p.x},${p.y})`);
       const [rect, label, status] = group.children;
       rect.setAttribute('width', p.w); rect.setAttribute('height', p.h);
@@ -228,6 +244,9 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
       status.setAttribute('x', p.w - 8);
     }
     for (const {group, edge} of edgeElements.values()) {
+      const shown = layout.positions.has(edge.from) && layout.positions.has(edge.to);
+      group.setAttribute('display', shown ? 'inline' : 'none');
+      if (!shown) continue;
       const route = edgePath(layout.positions.get(edge.from), layout.positions.get(edge.to));
       group.children[1].setAttribute('d', route.d);
       group.children[2]?.setAttribute('x', route.x); group.children[2]?.setAttribute('y', route.y);
@@ -237,11 +256,15 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
 
   function render(state) {
     lastState = state;
+    const next = new Set(showIdle ? [] : [...usedOnly].filter(id => (state.nodes[id] || 'idle') === 'idle'));
+    if ([...next].join() !== [...hidden].join()) { hidden = next; arrange(); }
     const archive = new Set(state.archivedEdges || []);
     for (const [id, item] of nodeElements) {
       const value = state.nodes[id] || 'idle', node = byId.get(id);
+      const steps = usedOnly.has(id) ? state.stepMarks?.[id] || [] : [];
       item.dataset.state = value;
       item.querySelector('.gw-node-status').textContent = value === 'idle' ? '' : STATUS_LABELS[value] || value;
+      item.querySelector('.gw-node-steps').textContent = steps.length ? `第 ${steps.join('、')} 步` : '';
       item.setAttribute('aria-label', `${node.label}，${KIND_LABELS[node.kind] || '条目'}，${STATUS_LABELS[value] || value}`);
       item.setAttribute('aria-pressed', String(id === selected));
     }
@@ -256,6 +279,11 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
     if (action === 'in') zoom(1.25);
     if (action === 'out') zoom(.8);
     if (action === 'switch') onSwitch?.();
+    if (action === 'idle') {
+      showIdle = !showIdle;
+      event.target.closest('button').setAttribute('aria-pressed', String(showIdle));
+      if (lastState) render(lastState);
+    }
   });
   svg.addEventListener('dblclick', event => { if (!event.target.closest('.gw-node')) fit(); });
   svg.addEventListener('wheel', event => {

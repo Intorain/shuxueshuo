@@ -8,6 +8,7 @@ function documentFixture() {
     constructor(tag) { this.tagName = tag; this.ownerDocument = document; this.children = []; this.dataset = {}; this.hidden = false; this.textContent = ''; }
     get childNodes() { return this.children; }
     append(...children) { this.children.push(...children); }
+    setAttribute(name, value) { this[name] = value; }
     replaceChildren(...children) { this.children = [...children]; }
     set innerHTML(value) { throw new Error(`must not execute source markup: ${value}`); }
   }
@@ -40,6 +41,71 @@ test('shared card preserves identity, formula structure and a separate empty QA 
   assert.deepEqual(rendered, [card.node]);
 });
 
+test('a highlighted card leads with the conclusion board and folds the prose into a derivation', () => {
+  const {document, find} = documentFixture();
+  const highlighted = {...step, title: '分离参数', explanation: '$\\because x<0$，$\\therefore x<0$。移项得 $ax\\ge-x^2-2$。',
+    highlight: {caption: '两边同除以负数', items: [{label: '移项后', math: 'ax\\ge-x^2-2'},
+      {label: '两边除以 $x$', math: 'a\\le-x-\\frac2x', note: '$x<0$，不等号方向改变'}]}};
+  const {node} = createMathCard(document, highlighted);
+  const [board] = find('visual-board completed-visual stage-three-highlight', node);
+  assert.equal(find('board-caption', board)[0].textContent, '两边同除以负数');
+  assert.deepEqual(find('math', board).map(item => [item.textContent, item.dataset.mathFormula]),
+    [['\\displaystyle ax\\ge-x^2-2', 'true'], ['\\displaystyle a\\le-x-\\frac2x', 'true']]);
+  assert.deepEqual(find('conversion-label', board).map(item => item.textContent), ['移项后', '两边除以 $x$', '$x<0$，不等号方向改变']);
+  assert.equal(find('conversion-arrow', board).length, 1);
+  const [details] = find('details stage-three-derivation', node);
+  assert.equal(details.open, true);
+  assert.deepEqual(find('stage-three-explanation', details).map(line => line.textContent),
+    ['$\\because x<0$，$\\therefore x<0$。', '移项得 $ax\\ge-x^2-2$。']);
+  assert.equal(find('stage-three-after', node).length, 0);
+});
+
+test('a newline in the derivation starts a new line, as each ∵/∴ step does', () => {
+  const {document, find} = documentFixture();
+  const chained = {...step, explanation: '$\\because x>0$，$\\therefore \\frac1x>0$，\n$\\therefore h(x)\\le-2$。由对勾函数的性质。',
+    highlight: {caption: '对勾函数', items: [{label: '最高点', math: '(1,-2)'}]}};
+  const [details] = find('details stage-three-derivation', createMathCard(document, chained).node);
+  assert.deepEqual(find('stage-three-explanation', details).map(line => line.textContent),
+    ['$\\because x>0$，$\\therefore \\frac1x>0$，', '$\\therefore h(x)\\le-2$。', '由对勾函数的性质。']);
+});
+
+test('a derivation-only card skips before/after and opens the prose under 完整推导', () => {
+  const {document, find} = documentFixture();
+  const cases = {...step, title: '分类讨论最值', derivation: true,
+    explanation: '$g(x)$ 开口向上，\n① 当 $a\\le-1$ 时，$g(x)_{\\min}=g(\\frac12)$。'};
+  const {node} = createMathCard(document, cases);
+  assert.equal(find('visual-board completed-visual stage-three-highlight', node).length, 0);
+  assert.equal(find('stage-three-before', node).length + find('stage-three-after', node).length, 0);
+  const [details] = find('details stage-three-derivation', node);
+  assert.equal(details.open, true);
+  assert.deepEqual(find('stage-three-explanation', details).map(line => line.textContent),
+    ['$g(x)$ 开口向上，', '① 当 $a\\le-1$ 时，$g(x)_{\\min}=g(\\frac12)$。']);
+});
+
+test('a merge card shows one cell per case and the union on its own line, then the derivation', () => {
+  const {document, find} = documentFixture();
+  const merged = {...step, title: '求参数范围', explanation: '① 由 $m\\ge-3$ 得 $m\\in\\varnothing$；\n综上，取并集得 $m<-5$。',
+    highlight: {caption: '取并集', layout: 'merge', result: '$m<-5$', items: [
+      {label: '情况①（$m\\ge-3$）', math: '\\text{无解}'}, {label: '情况②（$m<-3$）', math: 'm<-5'}]}};
+  const {node} = createMathCard(document, merged);
+  const [board] = find('case-merge stage-three-highlight', node);
+  assert.deepEqual(find('case-merge-name', board).map(item => item.textContent), ['情况①（$m\\ge-3$）', '情况②（$m<-3$）']);
+  assert.deepEqual(find('case-merge-value', board).map(item => item.textContent), ['$\\text{无解}$', '$m<-5$']);
+  assert.equal(find('case-merge-total', board)[0].textContent, '取并集：$m<-5$');
+  assert.equal(find('conversion-arrow', node).length, 0);
+  assert.equal(find('details stage-three-derivation', node).length, 1);
+});
+
+test('a conclusion-only card shows the board alone, with no derivation or formula lists', () => {
+  const {document, find} = documentFixture();
+  const closing = {...step, title: '确定最小值', explanation: '$\\therefore$ $a$ 的最小值为 $-1$。',
+    highlight: {caption: '确定最小值', items: [{label: '$a$ 的最小值', math: '-1'}], conclusion_only: true}};
+  const {node} = createMathCard(document, closing);
+  assert.equal(find('visual-board completed-visual stage-three-highlight', node).length, 1);
+  assert.equal(find('details stage-three-derivation', node).length, 0);
+  assert.equal(find('stage-three-before', node).length + find('stage-three-after', node).length, 0);
+});
+
 test('active question context reveals only before formulas from all covered cards', () => {
   const {document, find} = documentFixture(), rendered = [];
   const other = {...step, before: [{latex: 'b>1'}], after: [{latex: 'hidden answer'}]};
@@ -49,6 +115,13 @@ test('active question context reveals only before formulas from all covered card
   assert.equal(find('stage-three-explanation', node).length, 0);
   assert.equal(find('stage-three-qa', node).length, 0);
   assert.deepEqual(rendered, [node]);
+});
+
+test('question context skips a formula the question already states', () => {
+  const {document, find} = documentFixture();
+  const node = createMathContext(document, [{...step, before: [{latex: 'a \\geq - \\frac{5}{2}'}, {latex: 'b>1'}]}],
+    {question: '由 $a \\geq - \\frac{5}{2}$，$a$ 的取值范围是？'});
+  assert.deepEqual(find('stage-three-before', node).map(value => value.textContent), ['b>1']);
 });
 
 test('late QA only changes its region and preserves the mathematical DOM', () => {
@@ -114,8 +187,8 @@ test('range completion preserves readable math and calls the injected renderer',
 for (const [kind, status, field, label, formula] of [
   ['find_minimum', 'attained', 'value', '最小值：', '-5/2'],
   ['find_maximum', 'attained', 'value', '最大值：', '5/2'],
-  ['find_minimum', 'not_attained', 'bound', '最小值不存在；下确界为：', '-5/2'],
-  ['find_maximum', 'not_attained', 'bound', '最大值不存在；上确界为：', '5/2'],
+  ['find_minimum', 'not_attained', 'bound', '最小值不存在，只能趋近：', '-5/2'],
+  ['find_maximum', 'not_attained', 'bound', '最大值不存在，只能趋近：', '5/2'],
   ['find_minimum', 'unbounded_below', null, '最小值不存在：可行集没有下界。', null],
   ['find_maximum', 'unbounded_above', null, '最大值不存在：可行集没有上界。', null],
   ['find_minimum', 'empty_feasible_set', null, '没有满足题设的参数，最小值不存在。', null],

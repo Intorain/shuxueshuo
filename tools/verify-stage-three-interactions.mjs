@@ -302,7 +302,7 @@ try {
   for (const decision of bundle.intro) {
     const answer = decision.id === 'D3'
       ? [...decision.expected_answer.cell, decision.interaction.methods.find(method => method.route === route).value]
-      : decision.id === 'D4' ? route : undefined;
+      : undefined;
     await submit(decision, answer);
   }
   const first = bundle.routes[route].steps[0];

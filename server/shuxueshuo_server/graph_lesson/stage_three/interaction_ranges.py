@@ -14,12 +14,24 @@ def register(api):
             api.cmp(bounds["sup"], 0) == 0 and not bounds["sup_attained"])
         if not (positive or negative):
             raise api.NotInteractive("divisor_sign_unknown")
-        return {"reverse": negative, "display": {"divisor": divisor, "domain": domain, "x": variable}}
+        return {"reverse": negative, "display": {"divisor": divisor, "domain": domain, "x": variable,
+                                                 "moved": values.get("moved"), "parameter": context.get("parameter")}}
 
     def division_answer(facts):
         reverse = facts["reverse"]
         return [{"label": "不等号方向", "answer": api.Candidate(
             f"direction:{reverse}", "反向" if reverse else "保持不变", reverse)}]
+
+    sign_labels = {"positive": "恒正", "negative": "恒负", "unknown": "可能为零或变号，不能直接除"}
+
+    def sign_answer(facts):
+        sign = "negative" if facts["reverse"] else "positive"
+        return [{"label": f"除数 {api.math(facts['display']['divisor'])} 的符号",
+                 "answer": api.Candidate(f"sign:{sign}", sign_labels[sign], sign)}]
+
+    def other_signs(facts, item):
+        return [api.Candidate(f"sign:{sign}", label, sign) for sign, label in sign_labels.items()
+                if sign != item["answer"].value]
 
     def direction_error(facts, item):
         reverse = not item["answer"].value
@@ -38,10 +50,13 @@ def register(api):
         function = values.get("function")
         if function is None and values.get("before") and isinstance(values["before"][0], sp.Expr):
             function = values["before"][0]
+        variable = values.get("x", context["x"])
+        name = api.named_function(values, function, variable)
         return {"answer": answer, "function": function, "parameter": context.get("parameter"),
-                "x": values.get("x", context["x"]), "domain": values.get("domain", context["domain"]),
+                "x": variable, "domain": values.get("domain", context["domain"]),
                 "case_domain": values.get("case", {}).get("domain", sp.S.Reals),
-                "display": {"function": function if function is not None else "该函数",
+                "display": {"function": name or (function if function is not None else "该函数"),
+                            "subject": f"${name}$ " if name else "本步的函数",
                             "domain": values.get("domain", context["domain"])}}
 
     def answer_set(facts):
@@ -87,7 +102,8 @@ def register(api):
         return {"points": points, "candidates": candidates, "bound": values["range"]["bound"],
                 "parameter": context.get("parameter"), "case_domain": values.get("case", {}).get("domain", sp.S.Reals),
                 "x": values["x"], "domain": values["domain"],
-                "display": {"function": values["function"], "domain": values["domain"],
+                "display": {"function": api.named_function(values, values["function"], values["x"])
+                            or values["function"], "domain": values["domain"],
                             "bound_name": api.BOUND_NAMES[values["range"]["bound"]]}}
 
     def endpoint_label(facts, points):
@@ -150,9 +166,144 @@ def register(api):
                                     "parameter": context.get("parameter"), "known": api.known_set(seeds[0])},
                                    values, context)
 
+    # --- The hook ax+b/x+c: its turn, where the interval sits, then the range ---------
+
+    def hook_facts(values, context):
+        function, variable, domain, turn = values.get("function"), values["x"], values["domain"], values.get("turn")
+        if function is None or not turn:
+            raise api.NotInteractive("hook_turn_missing")
+        try:
+            drawn = api.drawing.family(function, variable)
+        except api.GraphUnavailable as exc:
+            raise api.NotInteractive("hook_family_unknown") from exc
+        if drawn["kind"] != "reciprocal_sum":
+            raise api.NotInteractive("hook_family_unknown")
+        point = turn["point"]
+        positive = api.cmp(point, 0) > 0
+        half = sp.Interval.open(0, sp.oo) if positive else sp.Interval.open(-sp.oo, 0)
+        side = ("left" if api.cmp(domain.sup, point) <= 0
+                else "right" if api.cmp(domain.inf, point) >= 0 else "both")
+        name = api.named_function(values, function, variable)
+        label = name or api.latex(function)
+        expanded = api.latex(sp.expand(function))
+        formula = f"{name}={expanded}" if name else expanded
+        relation = f"{api.latex(variable)}{'>' if positive else '<'}0"
+        balance = api.latex(sp.Eq(drawn["a"] * variable, drawn["b"] / variable, evaluate=False))
+        return {"drawn": drawn, "x": variable, "domain": domain, "half": half, "point": point,
+                "value": turn["value"], "minimum": turn["minimum"], "side": side, "label": label,
+                "formula": formula, "relation": relation,
+                "display": {"label": label, "formula": formula, "relation": relation, "balance": balance,
+                            "x": variable, "domain": domain, "turn_x": point}}
+
+    def turn_candidate(facts, point, minimum):
+        value = sp.simplify(facts["drawn"]["function"].subs(facts["x"], point))
+        kind = "最低点" if minimum else "最高点"
+        return api.Candidate(f"turn:{minimum}:{sp.srepr(point)}:{sp.srepr(value)}",
+                             rf"{kind} $\left({api.latex(point)},\,{api.latex(value)}\right)$", (point, value))
+
+    def turn_answer(facts):
+        return [{"label": "拐点", "answer": turn_candidate(facts, facts["point"], facts["minimum"])}]
+
+    def turn_errors(facts, item):
+        """The other branch's turn, a sign slip in the value, b/a without the square root, the other kind."""
+        point, minimum, drawn = facts["point"], facts["minimum"], facts["drawn"]
+        sign = 1 if api.cmp(point, 0) > 0 else -1
+        produced = [turn_candidate(facts, -point, not minimum)]
+        wrong = api.Candidate(f"turn:{minimum}:{sp.srepr(point)}:{sp.srepr(-facts['value'])}",
+                              rf"{'最低点' if minimum else '最高点'} "
+                              rf"$\left({api.latex(point)},\,{api.latex(-facts['value'])}\right)$")
+        produced.append(wrong)
+        unrooted = sign * sp.Abs(drawn["b"] / drawn["a"])
+        if api.cmp(unrooted, point) != 0:
+            produced.append(turn_candidate(facts, unrooted, minimum))
+        produced.append(api.Candidate(f"turn:{not minimum}:{sp.srepr(point)}:{sp.srepr(facts['value'])}",
+                                      rf"{'最高点' if minimum else '最低点'} "
+                                      rf"$\left({api.latex(point)},\,{api.latex(facts['value'])}\right)$"))
+        seen, unique = {item["answer"].key}, []
+        for candidate in produced:
+            if candidate.key not in seen:
+                seen.add(candidate.key)
+                unique.append(candidate)
+        return unique
+
+    side_names = {"left": "左侧", "right": "右侧", "both": "两侧都有"}
+
+    def side_answer(facts):
+        return [{"label": rf"区间 ${api.latex(facts['domain'])}$ 在拐点 ${api.latex(facts['x'])}"
+                          rf"={api.latex(facts['point'])}$ 的",
+                 "answer": api.Candidate("side:" + facts["side"], side_names[facts["side"]], facts["side"])}]
+
+    def other_sides(facts, item):
+        return [api.Candidate("side:" + side, name, side) for side, name in side_names.items()
+                if side != item["answer"].value]
+
+    def hook_range_answer(facts):
+        return [{"label": f"${facts['display']['label']}$ 在区间上的值域",
+                 "answer": api.set_candidate("range", facts["answer"])}]
+
+    def hook_picture(facts, *, interval, marks, title, description, caption=None):
+        """The whole branch with a symmetric window around the turn, so the hook shape is visible."""
+        drawn, variable, point = facts["drawn"], facts["x"], facts["point"]
+        anchors = [point / 3, point, 3 * point, *(end for end, _ in marks)]
+        xs = [float(value) for value in anchors]
+        ys = [float(value) for value in (api.drawing.value_at(drawn, item, variable) for item in anchors)
+              if value is not None]
+        bounds = api.drawing.window(xs, ys)
+        priority = [*(end for end, _ in marks), *api.drawing.grid(bounds[0], bounds[1])]
+        return api.drawing.function_graph(
+            drawn, variable, interval, bounds=bounds, x_ticks=api.drawing.ticks(priority, bounds[0], bounds[1]),
+            marks=marks, title=title, description=description, caption=caption)
+
+    def hook_shape(facts, values, context):
+        variable = facts["x"]
+        graph = hook_picture(
+            facts, interval=facts["half"], marks=[],
+            title=f"y={api.drawing.plain(sp.expand(facts['drawn']['function']))}（{variable}∈{api.drawing.plain(facts['half'])}）的图像",
+            description="对勾函数的一支：曲线先朝一个方向走到拐点，再折回",
+            caption=f"${facts['formula']}$，${facts['relation']}$")
+        return graph
+
+    def hook_interval(facts, values, context, *, caption=None):
+        variable, point, value = facts["x"], facts["point"], facts["value"]
+        ends = [(end, attained) for end, attained in api.drawing.domain_points(facts["domain"])
+                if api.drawing.value_at(facts["drawn"], end, variable) is not None]
+        marks = [*ends, *([(point, True)] if all(api.cmp(end, point) != 0 for end, _ in ends) else [])]
+        graph = hook_picture(
+            facts, interval=facts["domain"], marks=marks,
+            title=f"对勾函数 y={api.drawing.plain(sp.expand(facts['drawn']['function']))} 在 {api.drawing.plain(facts['domain'])} 上的一段",
+            description=(f"拐点 ({api.drawing.short_label(point)}, {api.drawing.short_label(value)})；"
+                         + api.drawing.endpoint_story(facts["drawn"], variable, facts["domain"])),
+            caption=caption)
+        for entry in graph["params"]["points"]:
+            if abs(entry["x"] - float(point)) < 1e-12:
+                entry["label"] = f"({api.drawing.short_label(point)}, {api.drawing.short_label(value)})"
+                entry["place"] = "below-right" if facts["minimum"] else "above-right"
+        return graph
+
+    def hook_completion(seeds):
+        values, context = api.decode_value(seeds[0]["values"]), api.decode_value(seeds[0]["context"])
+        facts = hook_facts(values, context)
+        bound = values["range"]["set"]
+        return hook_interval(facts, values, context,
+                             caption=f"区间上的一段：${facts['label']} \\in {api.latex(bound)}$")
+
+    def hook_range_facts(values, context):
+        facts = range_facts(values, context)
+        facts["display"].update(hook_facts(values, context)["display"])
+        return facts
+
     return {"answers": {
+        "hook_turn": {"kind": "fixed", "checklist": False, "facts": hook_facts, "answer": turn_answer,
+                      "generators": {"turn_alternatives": turn_errors}},
+        "hook_side": {"kind": "fixed", "facts": hook_facts, "answer": side_answer,
+                      "generators": {"other_hook_sides": other_sides}},
+        "hook_range": {"kind": "validated", "checklist": True, "requires_known": True, "facts": hook_range_facts,
+                       "answer": hook_range_answer, "validate": validate_range,
+                       "generators": {"range_alternatives": range_errors}},
         "division_direction": {"kind": "fixed", "facts": division_facts, "answer": division_answer,
                                "generators": {"reverse_division": direction_error}},
+        "divisor_sign": {"kind": "fixed", "facts": division_facts, "answer": sign_answer,
+                         "generators": {"other_divisor_signs": other_signs}},
         "movement_direction": {"kind": "fixed", "facts": move_facts, "answer": division_answer,
                                "generators": {"reverse_division": direction_error}},
         "certified_range": {"kind": "validated", "requires_known": True, "facts": range_facts,
@@ -161,6 +312,8 @@ def register(api):
         "endpoint_candidates": {"kind": "validated", "checklist": True, "requires_known": True,
                                 "facts": endpoint_facts, "answer": endpoint_answer,
                                 "validate": endpoint_check, "generators": {"omit_endpoint": endpoint_errors}},
-    }, "stem_graphs": {"range_function": ({"certified_range"}, range_graph)},
+    }, "stem_graphs": {"range_function": ({"certified_range"}, range_graph),
+                       "hook_shape": ({"hook_turn"}, hook_shape),
+                       "hook_interval": ({"hook_side", "hook_range"}, hook_interval)},
         "option_graphs": {"range_sets": ({"certified_range"}, range_options)},
-        "completion_graphs": {"range_evidence_function": completion}}
+        "completion_graphs": {"range_evidence_function": completion, "hook_completion": hook_completion}}

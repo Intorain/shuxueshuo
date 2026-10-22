@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {RELATIONS, createWalkGraph, nodeHref, panoramaLayout, treeLayout} from '../../site/assets/graph-walk/walk-graph.mjs';
+import {RELATIONS, createWalkGraph, laneMembers, nodeHref, panoramaLayout, treeLayout} from '../../site/assets/graph-walk/walk-graph.mjs';
 import {createState, replayState} from '../../site/assets/graph-walk/walk-state.mjs';
 
 const source = fs.readFileSync(new URL('../../site/assets/graph-walk/walk.mjs', import.meta.url), 'utf8');
@@ -34,7 +34,7 @@ test('stream arrival preserves the AI replay reading position and chooses an exe
   context.replayState = (_bundle, _replay, position) => ({introCompleted: [], run: {route: 'discriminant'}, readingPosition: position});
   run(`options = {bundle: {problemId: 'sample', bundleVersion: 'stable', graph: {nodes: [], edges: []},
       intro: [{id: 'D3', expected_answer: {cell: ['real', 'free']}, interaction: {methods: [
-        {value: 'discriminant', route: 'discriminant'}, {value: 'unsupported', route: 'unsupported'}]}}, {id: 'D4'}],
+        {value: 'discriminant', route: 'discriminant'}, {value: 'unsupported', route: 'unsupported'}]}}],
       routes: {discriminant: {route_plan: 'planned'}, unsupported: {route_plan: 'capability_gap'}}},
       stream: {run_id: 'run', lesson_version: 'version', target_ref: '/root/goals/0'},
       replay: {actions: [{decision: 'D1'}, {decision: 'D2'}]}};
@@ -64,11 +64,11 @@ for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream mi
   context.PracticeMath = {render() {}};
   context.createState = value => ({bundleVersion: value.bundleVersion, introCompleted: [], run: {route: null}, events: []});
   context.replayState = (value, recording, position) => ({bundleVersion: value.bundleVersion,
-    introCompleted: recording.actions.slice(0, position), run: {route: position === 4 ? 'discriminant' : null}, events: []});
+    introCompleted: recording.actions.slice(0, position), run: {route: position === 3 ? 'discriminant' : null}, events: []});
   context.migrateStageTwoState = (_base, value, state) => ({...state, bundleVersion: value.bundleVersion});
   context.extendStreamBundle = value => ({...structuredClone(value), bundleVersion: 'stream-version',
     intro: [...value.intro, {id: 'D3', expected_answer: {cell: ['real', 'free']},
-      interaction: {methods: [{value: 'discriminant', route: 'discriminant'}]}}, {id: 'D4'}],
+      interaction: {methods: [{value: 'discriminant', route: 'discriminant'}]}}],
     routes: {discriminant: {route_plan: 'planned'}}});
   run(`options = {bundle: {problemId: 'sample', bundleVersion: 'base-version', graphVersion: 'graph',
       graph: {nodes: [], edges: [], layout: {}}, templates: {}, problem: {text: ''},
@@ -84,11 +84,15 @@ for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream mi
     context.document.querySelector(selector);
     Object.assign(nodes.get(selector), {classList: {contains: () => false}, setAttribute() {}});
   }
+  const scheduled = [];
+  context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
   run(`replayPosition = ${mode === 'at-end' ? 2 : 1}; replayPlaying = ${mode === 'playing'};`);
   await run('load()');
   assert.equal(run('bundle.bundleVersion'), 'stream-version');
-  assert.equal(run('replayPosition'), mode === 'paused' ? 1 : 4);
-  assert.equal(run('state.introCompleted.length'), mode === 'paused' ? 1 : 4);
+  const expected = {playing: 2, 'at-end': 3, paused: 1}[mode];
+  assert.equal(run('replayPosition'), expected, 'playback continues step by step from where stage two left it');
+  assert.equal(run('state.introCompleted.length'), expected);
+  assert.equal(run('replayPlaying'), mode === 'playing');
   assert.equal(nodes.get('#gw-error')?.hidden, true);
 });
 
@@ -199,6 +203,40 @@ test('the active card carries the immediately previous step: results, else its a
   assert.match(run('carryHTML()'), /接第 3 步 · 选择解题方法[\s\S]*选用分离参数法/);
   run(`state = {introCompleted: [], run: {id: 1, completed: []}, events: []};`);
   assert.equal(run('carryHTML()'), '');
+});
+
+test('the parts of one streamed interaction share a card, a step number and one completed record', () => {
+  const {context, run} = viewContext();
+  const part = (index, title, interaction) => ({id: `sep#${index + 1}`, source: 'stream', title, question: `${title}？`, interaction,
+    stream_steps: [{step_id: 'divide', math_step_sha256: 'h'}], stream_interaction_id: 'sep', stream_part_index: index,
+    stream_part_count: 3, stream_last_part: index === 2, stream_group_title: '分离参数'});
+  const choice = (field, label) => ({type: 'choice', field, options: [{value: 'right', label}, {value: 'wrong', label: '错'}]});
+  context.fixture.routes.separation = {id: 'separation', steps: [
+    {id: 'rewrite', source: 'stream', title: '整理不等式', question: '', interaction: {type: 'read'}, stream_steps: [], stream_last_part: true},
+    part(0, '移项', choice('moved', '$ax\\ge -x^2-1$')),
+    part(1, '判断除数符号与不等号方向', {type: 'checklist', slots: [
+      {label: '除数 $x$ 的符号', options: [{value: 'positive', label: '恒正'}]},
+      {label: '不等号方向', options: [{value: 'keep', label: '保持不变'}]}]}),
+    part(2, '分离参数', choice('separated', '$a\\ge -x-\\frac1x$'))]};
+  run(`bundle = fixture; state = {introCompleted: [{decision: 'D1', results: ['读题结论']}],
+    run: {id: 1, route: 'separation', completed: [{decision: 'rewrite', answer: 'read', results: ['整理结果']}, {decision: 'sep#1', answer: 'right', results: []}]}, events: []};`);
+  assert.equal(run('JSON.stringify(stepUnits().units.map(unit => unit.records.length))'), '[1]');
+  assert.equal(run('stepUnits().open.records[0].decision'), 'sep#1');
+  // Partway through the card, the carry still points at the step before it, numbered by whole steps.
+  assert.match(run('carryHTML()'), /接第 2 步 · 整理不等式[\s\S]*整理结果/);
+  const stepper = run(`partStepperHTML(bundle.routes.separation.steps[2])`);
+  assert.match(stepper, /data-state="done"[^>]*><span aria-hidden="true">✓<\/span>移项[\s\S]*data-state="current" aria-current="step"><span aria-hidden="true">2<\/span>判断除数符号与不等号方向[\s\S]*data-state="todo"><span aria-hidden="true">3<\/span>分离参数/);
+  assert.match(run('partRowsHTML(stepUnits().open.records)'), /✓<\/span>移项[\s\S]*ax\\ge -x\^2-1/);
+  run(`state.run.completed.push({decision: 'sep#2', answer: ['positive', 'keep'], results: []}, {decision: 'sep#3', answer: 'right', results: []});`);
+  const {units, open} = JSON.parse(run('JSON.stringify(stepUnits())'));
+  assert.equal(open, null);
+  assert.deepEqual(units.map(unit => [unit.group, unit.records.length]), [[null, 1], ['sep', 3]]);
+  const done = run('groupCompletedHTML(stepUnits().units[1], 3)');
+  assert.equal((done.match(/class="gw-completed"/g) || []).length, 1);
+  assert.match(done, /data-completed-decision="sep#3"[\s\S]*aria-label="第 3 步"[\s\S]*分离参数<\/span>/);
+  assert.match(done, /data-stream-completed="sep#3"><\/div><\/div><\/details>$/);
+  assert.doesNotMatch(done, /gw-part-row|查看各小问作答/);
+  assert.match(run('carryHTML()'), /接第 3 步 · 分离参数/);
 });
 
 test('call records use the authored method step title', () => {
@@ -390,6 +428,34 @@ test('the 2D graph shows the whole tree and stays still while the walk advances'
     const edges = viewport.children.find(node => node.attributes.class === 'gw-edge-layer').children;
     assert.equal(edges.find(edge => edge.attributes['data-edge'] === first.id).children.at(-1).textContent, RELATIONS[first.type]);
     assert.equal(nodeHref({id: 'quadratic', ref: 'quadratic#sign'}), '/knowledge/quadratic/#sign');
+  } finally {
+    for (const key of globals) previous.get(key) === undefined ? delete globalThis[key] : globalThis[key] = previous.get(key);
+  }
+});
+
+test('the 2D calls lane shows only used nodes, each with its step numbers, until the toggle shows the rest', () => {
+  const globals = ['document', 'matchMedia', 'ResizeObserver', 'cancelAnimationFrame'];
+  const previous = new Map(globals.map(key => [key, globalThis[key]]));
+  try {
+    globalThis.document = {createElement: tag => new SVGElement(tag), createElementNS: (_, tag) => new SVGElement(tag)};
+    globalThis.matchMedia = () => ({matches: true});
+    globalThis.ResizeObserver = class {observe() {} disconnect() {}};
+    globalThis.cancelAnimationFrame = () => {};
+    const graph = structuredClone(bundle.graph);
+    const lane = graph.layout.bands.at(-1).label, members = [...laneMembers(graph, lane)];
+    assert.ok(members.length >= 2, 'the fixture lane has a used and an unused node');
+    const [used, unused] = members;
+    const host = new SVGElement('div');
+    const view = createWalkGraph(host, graph, {usedOnlyLane: lane});
+    const [controls, svg] = host.children;
+    const nodeOf = id => svg.children[1].children[2].children.find(node => node.attributes['data-node'] === id);
+    view.render({nodes: {[used]: 'confirmed'}, edges: {}, stepMarks: {[used]: [4, 5]}});
+    assert.equal(nodeOf(used).attributes.display, 'inline');
+    assert.equal(nodeOf(unused).attributes.display, 'none');
+    assert.equal(nodeOf(used).querySelector('.gw-node-steps').textContent, '第 4、5 步');
+    assert.ok(!treeLayout(graph, {hidden: new Set([unused])}).positions.has(unused));
+    controls.listeners.click({target: {closest: () => ({setAttribute() {}, dataset: {graphAction: 'idle'}})}});
+    assert.equal(nodeOf(unused).attributes.display, 'inline');
   } finally {
     for (const key of globals) previous.get(key) === undefined ? delete globalThis[key] : globalThis[key] = previous.get(key);
   }

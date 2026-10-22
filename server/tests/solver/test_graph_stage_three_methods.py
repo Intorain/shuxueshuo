@@ -501,6 +501,7 @@ def test_separation_binding_is_a_checked_contract_call_not_initial_state(monkeyp
     assert call["public_ref"] is None
     assert {check["kind"] for check in call["postconditions"]} == {
         "separated_symbol_roles",
+        "moved_residual",
         "direction_residual",
     }
     assert all(check["passed"] for check in call["postconditions"])

@@ -64,7 +64,7 @@ def test_negative_divisor_reverses_each_relation_with_positive_scaled_residual(o
     assert values["divisor"] == x
     assert values["divisor_sign"] == "negative"
     assert values["transformation"] == "negative_division"
-    assert values["operator"] == {">": "<", ">=": "<=", "<": ">", "<=": ">="}[original.rel_op]
+    assert values["operator"] == {">": "<", ">=": "<=", "<": ">", "<=": ">="}[operator]
     assert values["candidate"]["divisor_sign"] == "negative"
     assert sp.cancel(residual(values["separated_relation"]) * (-x) - residual(original)) == 0
     assert evaluated["operations"] == ["add_both_sides", "multiply_negative"]

@@ -196,23 +196,23 @@
       </g>
     </svg>`;
   }
-  // Read-only y = a·x + b/x on x > 0 (the hook curve when a, b > 0). Window, interval, points and reference lines
+  // Read-only y = a·x + b/x + c on x > 0 (the hook curve when a, b > 0). Window, interval, points and reference lines
   // work as in quadraticGraph; the branch near x = 0 simply leaves the window.
-  // asymptotes draws the two lines the curve approaches: the y-axis (x → 0⁺) and y = a·x (x → +∞).
+  // asymptotes draws the two lines the curve approaches: the y-axis (x → 0⁺) and y = a·x + c (x → +∞).
   // negative draws the x < 0 branch instead (such as −x − 2/x, a hook opening upward on the left).
-  function reciprocalSumGraph({a, b, bounds, interval = null, xTicks = [], variable = 'x', title, description, uid, referenceLines = [], points = [], asymptotes = false, negative = false, interval_closed: closed = null}) {
+  function reciprocalSumGraph({a, b, c = 0, bounds, interval = null, xTicks = [], variable = 'x', title, description, uid, referenceLines = [], points = [], asymptotes = false, negative = false, interval_closed: closed = null}) {
     interval = bounded(interval);
     const [xmin, xmax, ymin, ymax] = bounds;
     const x = value => 48 + (value - xmin) / (xmax - xmin) * 270;
     const y = value => 222 - (value - ymin) / (ymax - ymin) * 174;
-    const f = value => a * value + b / value;
+    const f = value => a * value + b / value + c;
     const gap = (xmax - xmin) / 400;
     const samples = negative ? sampleRange(xmin, Math.min(xmax, -gap), interval || [], 240) : sampleRange(Math.max(xmin, gap), xmax, interval || [], 240);
     const path = values => values.map((value, i) => `${i ? 'L' : 'M'}${x(value).toFixed(3)} ${Math.max(-400, Math.min(700, y(f(value)))).toFixed(3)}`).join(' ');
     const focus = interval ? samples.filter(value => value >= interval[0] && value <= interval[1]) : samples;
     const exit = negative
-      ? (a > 0 ? Math.max(xmin, ymin / a) : a < 0 ? Math.max(xmin, ymax / a) : xmin)
-      : (a > 0 ? Math.min(xmax, ymax / a) : a < 0 ? Math.min(xmax, ymin / a) : xmax);
+      ? (a > 0 ? Math.max(xmin, (ymin - c) / a) : a < 0 ? Math.max(xmin, (ymax - c) / a) : xmin)
+      : (a > 0 ? Math.min(xmax, (ymax - c) / a) : a < 0 ? Math.min(xmax, (ymin - c) / a) : xmax);
     const inward = (negative ? 1 : -1) * 40 * (xmax - xmin) / 270;
     const id = escape(uid);
     return `<svg viewBox="0 0 360 270" role="img" aria-labelledby="${id}-title ${id}-description">
@@ -224,7 +224,7 @@
       <g clip-path="url(#${id}-clip)">
         ${intervalGuides(interval, x, closed)}
         ${referenceLines.map(line => `<path class="graph-reference" d="M48 ${y(line.value)}H318" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/>`).join('')}
-        ${asymptotes ? `<path class="graph-asymptote" d="M${x(0)} 48V${y(0)}" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/><path class="graph-asymptote" d="M${x(0)} ${y(0)}L${x(exit)} ${y(a * exit)}" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/>` : ''}
+        ${asymptotes ? `<path class="graph-asymptote" d="M${x(0)} 48V${y(c)}" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/><path class="graph-asymptote" d="M${x(0)} ${y(c)}L${x(exit)} ${y(a * exit + c)}" fill="none" stroke="#b6782c" stroke-width="2" stroke-dasharray="6 4"/>` : ''}
         ${interval ? `<path class="graph-outside" d="${path(samples)}" fill="none" stroke="#07847d" stroke-width="2.2" opacity=".3"/>` : ''}
         <path class="reciprocal-curve" d="${path(focus)}" fill="none" stroke="#07847d" stroke-width="3"/>
         ${points.map(point => `<circle class="graph-point" cx="${x(point.x)}" cy="${y(f(point.x))}" ${pointDot(point)}/>`).join('')}
@@ -232,7 +232,7 @@
       <g fill="#526e64" font-family="Georgia,serif" font-size="14">
         ${xTicks.map(([value, label]) => `<text x="${x(value)}" y="${y(0)+21}" text-anchor="${value === 0 ? 'end' : 'middle'}" dx="${value === 0 ? -8 : 0}">${escape(label)}</text>`).join('')}
         ${referenceLines.map(line => `<text x="312" y="${y(line.value)-8}" text-anchor="end" fill="#99611f">${escape(line.label)}</text>`).join('')}
-        ${asymptotes ? `<text x="${x(exit) + (negative ? 6 : -6)}" y="${y(a * (exit + inward)) + 18}" text-anchor="${negative ? 'start' : 'end'}" fill="#99611f">y = ${a === 1 ? '' : a === -1 ? '−' : a}${escape(variable)}</text>` : ''}
+        ${asymptotes ? `<text x="${x(exit) + (negative ? 6 : -6)}" y="${y(a * (exit + inward) + c) + 18}" text-anchor="${negative ? 'start' : 'end'}" fill="#99611f">y = ${a === 1 ? '' : a === -1 ? '−' : a}${escape(variable)}${c > 0 ? ` + ${c}` : c < 0 ? ` − ${-c}` : ''}</text>` : ''}
         ${pointLabels(points, x, value => y(f(value)))}
         <text x="335" y="${y(0)+5}" font-style="italic">${escape(variable)}</text>
         <text x="${x(0)-8}" y="28" text-anchor="end" font-style="italic">y</text>
@@ -299,6 +299,7 @@
   function axisExplorerLayer(spec, h) {
     const {coefficient, constant, bounds, open = false, target = 'max'} = spec;
     const interval = bounded(spec.interval);
+    const closed = spec.interval_closed ?? [!open, !open];
     const {x, y} = axisFrame(spec);
     const f = value => coefficient * (value - h) ** 2 + constant - coefficient * h * h;
     const ends = interval.filter(Number.isFinite);
@@ -307,14 +308,18 @@
     const lowest = target === 'min';
     const values = ends.map(f);
     const tie = values.length === 2 && Math.abs(values[0] - values[1]) < 1e-9;
-    const inside = lowest && h > interval[0] && h < interval[1];
-    const extreme = coefficient > 0 && !inside ? (lowest ? Math.min(...values) : Math.max(...values)) : null;
-    const word = lowest ? (open ? '下端' : '最低') : (open ? '上端' : '最高');
+    // The vertex is the target when the parabola turns towards it; an unbounded side running away from it has none.
+    const turns = (coefficient > 0) === lowest;
+    const inside = turns && h > interval[0] && h < interval[1];
+    const runaway = !turns && interval.some(value => !Number.isFinite(value));
+    const extreme = inside || runaway ? null : (lowest ? Math.min(...values) : Math.max(...values));
     const endpoint = (value, fx) => {
       const marked = extreme !== null && Math.abs(fx - extreme) < 1e-9;
-      const fill = marked && !open ? '#b65c42' : '#fff';
+      const shut = closed[value === interval[0] ? 0 : 1];
+      const word = lowest ? (shut ? '最低' : '下端') : (shut ? '最高' : '上端');
+      const fill = marked && shut ? '#b65c42' : '#fff';
       const before = value === interval[0] && !tie;
-      return `<circle class="axis-endpoint${marked ? (lowest ? ' lowest' : ' highest') : ''}" cx="${x(value)}" cy="${y(fx)}" r="${marked ? 6 : 4.5}" fill="${fill}" stroke="#b65c42" stroke-width="${marked && open ? 3 : 2.2}"/>` +
+      return `<circle class="axis-endpoint${marked ? (lowest ? ' lowest' : ' highest') : ''}" cx="${x(value)}" cy="${y(fx)}" r="${marked ? 6 : 4.5}" fill="${fill}" stroke="#b65c42" stroke-width="${marked && !shut ? 3 : 2.2}"/>` +
         (marked ? `<text x="${x(value) + (before ? -9 : 9)}" y="${y(fx) - 11}" text-anchor="${before ? 'end' : 'start'}" fill="#a04c36" font-size="14">${word}</text>` : '');
     };
     return `<g clip-path="url(#${escape(spec.uid)}-clip)">
@@ -326,7 +331,7 @@
       <rect class="axis-handle" x="${x(h) - 30}" y="30" width="60" height="20" rx="10" fill="#b6782c"/>
       <text x="${x(h)}" y="44" text-anchor="middle" fill="#fff" font-size="12">‹ 对称轴 ›</text>
       ${ends.map((value, i) => endpoint(value, values[i])).join('')}
-      ${inside ? `<circle class="axis-vertex lowest" cx="${x(h)}" cy="${y(f(h))}" r="6" fill="#b65c42"/><text x="${x(h)}" y="${y(f(h)) + 24}" text-anchor="middle" fill="#a04c36" font-size="14">最低</text>` : ''}`;
+      ${inside ? `<circle class="axis-vertex ${lowest ? 'lowest' : 'highest'}" cx="${x(h)}" cy="${y(f(h))}" r="6" fill="#b65c42"/><text x="${x(h)}" y="${y(f(h)) + (lowest ? 24 : -12)}" text-anchor="middle" fill="#a04c36" font-size="14">${lowest ? '最低' : '最高'}</text>` : ''}`;
   }
   function axisExplorer(spec, h = spec.axis.value) {
     const {bounds, marks = [], title, description, axis, variable = 'x'} = spec;
@@ -344,7 +349,7 @@
         ${intervalGuides(interval, x)}
         ${marks.map(mark => `<path class="axis-mark" d="M${x(mark.x)} 48V222" fill="none" stroke="#5f86b8" stroke-width="1.6" stroke-dasharray="2 4"/>`).join('')}
         <g fill="#526e64" font-family="Georgia,serif" font-size="14">
-          ${[...interval.filter(Number.isFinite).map(value => ({x: value, label: String(value)})), ...marks].map(tick => `<text x="${x(tick.x)}" y="240" text-anchor="middle" fill="${marks.includes(tick) ? '#3f6b9e' : '#526e64'}">${escape(tick.label)}</text>`).join('')}
+          ${[...(spec.xTicks?.map(([value, label]) => ({x: value, label})) ?? interval.filter(Number.isFinite).map(value => ({x: value, label: String(value)}))), ...marks].map(tick => `<text x="${x(tick.x)}" y="240" text-anchor="middle" fill="${marks.includes(tick) ? '#3f6b9e' : '#526e64'}">${escape(tick.label)}</text>`).join('')}
           <text x="335" y="${y(0)+5}" font-style="italic">${escape(variable)}</text>
           <text x="${x(0)-8}" y="28" text-anchor="end" font-style="italic">y</text>
         </g>
@@ -383,7 +388,9 @@
     </svg>`;
   }
   // A server-built picture {kind, params, uid}: the page only picks the component for its kind.
-  const graphKinds = {quadratic: quadraticGraph, reciprocal_sum: reciprocalSumGraph, linear: linearGraph, number_line: numberLine};
+  // axis_explorer returns a draggable explorer (SVG plus slider); the page mounts its dragging.
+  const graphKinds = {quadratic: quadraticGraph, reciprocal_sum: reciprocalSumGraph, linear: linearGraph, number_line: numberLine,
+    axis_explorer: spec => axisExplorer(spec)};
   // Validate streamed pictures separately from the older authored quadratic API.
   // A rejected picture is optional presentation: callers can keep the original answer labels.
   function validateGraph(spec) {
@@ -415,8 +422,15 @@
       (piece.to !== null || !piece.right_closed));
     if (!ticks(p.xTicks) || !interval(p.interval) || !tuple(p.interval_closed, 2, boolean)) return false;
     if (spec.kind === 'linear') return Number.isFinite(p.slope) && Number.isFinite(p.intercept);
+    if (spec.kind === 'axis_explorer') {
+      const axis = p.axis;
+      return Number.isFinite(p.coefficient) && p.coefficient !== 0 && Number.isFinite(p.constant) && object(axis) &&
+        ['min', 'max', 'step', 'value'].every(key => Number.isFinite(axis[key])) && axis.min < axis.max && axis.step > 0 &&
+        axis.value >= axis.min && axis.value <= axis.max && optional(p, 'target', value => ['min', 'max'].includes(value)) &&
+        optional(p, 'marks', value => array(value, mark => object(mark) && Number.isFinite(mark.x) && string(mark.label)));
+    }
     if (spec.kind === 'reciprocal_sum') return Number.isFinite(p.a) && Number.isFinite(p.b) && p.b !== 0 && boolean(p.negative) &&
-      !p.points.some(point => point.x === 0);
+      optional(p, 'c', Number.isFinite) && !p.points.some(point => point.x === 0);
     return Number.isFinite(p.coefficient) && p.coefficient !== 0 && tuple(p.vertex, 2, Number.isFinite) && ticks(p.xTicks) &&
       optional(p, 'yLabel', string) && optional(p, 'vertexLabel', string) &&
       optional(p, 'domain', interval) && optional(p, 'excluded', value => array(value, Number.isFinite)) &&

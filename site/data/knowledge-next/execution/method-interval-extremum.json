@@ -28,6 +28,9 @@
     },
     "goal": {
       "role": "goal"
+    },
+    "function_name": {
+      "role": "function_name"
     }
   },
   "steps": [
@@ -63,9 +66,14 @@
             "policy": "$policy",
             "x": "$x",
             "parameter_expression": "$zero",
-            "function": "$interval_function"
+            "function": "$interval_function",
+            "domain": "$domain",
+            "function_name": "$function_name",
+            "define_name": true
           },
           "depends_on": [
+            "domain",
+            "function_name",
             "interval_function",
             "policy",
             "x",
@@ -121,12 +129,18 @@
             ],
             "after": [],
             "cases": "$interval_cases",
-            "parameter": "$parameter"
+            "parameter": "$parameter",
+            "function_name": "$function_name",
+            "x": "$x",
+            "domain": "$domain"
           },
           "depends_on": [
+            "domain",
+            "function_name",
             "interval_cases",
             "interval_function",
-            "parameter"
+            "parameter",
+            "x"
           ],
           "guard": {
             "ref": "has_cases",
@@ -140,7 +154,10 @@
         "through": "conditions",
         "collect": "interval_case_results",
         "outputs": {
-          "solution": "$case_solution"
+          "solution": "$case_solution",
+          "conditions": "$conditions",
+          "combiner": "$combiner",
+          "condition_sets": "$condition_sets"
         },
         "entry": {
           "calls": [
@@ -333,11 +350,13 @@
                 "range": "$endpoint_range",
                 "function": "$interval_function",
                 "x": "$x",
-                "domain": "$domain"
+                "domain": "$domain",
+                "function_name": "$function_name"
               },
               "depends_on": [
                 "domain",
                 "endpoint_range",
+                "function_name",
                 "interval_function",
                 "x"
               ],
@@ -368,10 +387,12 @@
                 "range": "$numeric_range",
                 "function": "$interval_function",
                 "x": "$x",
-                "domain": "$domain"
+                "domain": "$domain",
+                "function_name": "$function_name"
               },
               "depends_on": [
                 "domain",
+                "function_name",
                 "interval_function",
                 "numeric_range",
                 "x"
@@ -403,7 +424,8 @@
                 "vertex": "$case_vertex",
                 "coefficient": "$case_coefficient",
                 "x": "$x",
-                "domain": "$domain"
+                "domain": "$domain",
+                "function_name": "$function_name"
               },
               "depends_on": [
                 "case",
@@ -411,6 +433,7 @@
                 "case_vertex",
                 "classified_range",
                 "domain",
+                "function_name",
                 "interval_function",
                 "x"
               ],
@@ -442,12 +465,14 @@
                 "condition": "$case.condition",
                 "kind": "$case.kind",
                 "domain": "$domain",
-                "x": "$x"
+                "x": "$x",
+                "function_name": "$function_name"
               },
               "depends_on": [
                 "case",
                 "case_expression",
                 "domain",
+                "function_name",
                 "linear_range",
                 "x"
               ],
@@ -593,9 +618,11 @@
             ],
             "conditions": "$conditions",
             "combiner": "$combiner",
-            "solutions": "$condition_sets"
+            "solutions": "$condition_sets",
+            "condition": "$case.condition"
           },
           "depends_on": [
+            "case",
             "case_solution",
             "combiner",
             "condition_sets",
@@ -629,17 +656,26 @@
           "after": "merge",
           "template": "interval_merge",
           "bindings": {
-            "before": [],
+            "before": [
+              "$interval_function"
+            ],
             "after": [
               "$candidate_set"
             ],
             "cases": "$interval_cases",
-            "solutions": "$case_solutions"
+            "solutions": "$case_solutions",
+            "results": "$interval_case_results",
+            "function_name": "$function_name",
+            "x": "$x"
           },
           "depends_on": [
             "candidate_set",
             "case_solutions",
-            "interval_cases"
+            "function_name",
+            "interval_case_results",
+            "interval_cases",
+            "interval_function",
+            "x"
           ],
           "guard": {
             "ref": "has_cases",
@@ -691,6 +727,9 @@
       },
       "goal": {
         "resolver": "goal"
+      },
+      "function_name": {
+        "constant": "g"
       }
     },
     "checks": [

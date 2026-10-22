@@ -15,6 +15,7 @@ from ...problem_understanding.notation_compile import NotationValidator
 from ...problem_understanding.notation_parser import NotationError
 from ...problem_understanding.notation_semantics import bounded_expand
 from ..stage_one.features import FEATURE_REGISTRY, _Algebra
+from .math_values import latex
 
 _REGISTERED_FEATURES = frozenset(spec.feature_id for spec in FEATURE_REGISTRY)
 
@@ -104,7 +105,7 @@ def _result(status, reason, **bindings):
     return {
         "status": status, "reason": reason,
         "bindings": {**bindings, **{key: math_text(value) for key, value in mathematical.items()}},
-        "display_bindings": {**bindings, **{key: sp.latex(value) for key, value in mathematical.items()}},
+        "display_bindings": {**bindings, **{key: latex(value) for key, value in mathematical.items()}},
         "evidence": [],
     }
 

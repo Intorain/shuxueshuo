@@ -10,11 +10,11 @@ mathematics of its own.
 
 from dataclasses import dataclass
 from itertools import combinations, pairwise
-from math import hypot
+from math import ceil, floor, hypot
 
 import sympy as sp
 
-KINDS = ("quadratic", "reciprocal_sum", "linear", "number_line")
+KINDS = ("quadratic", "reciprocal_sum", "linear", "number_line", "axis_explorer")
 # Plot widths in SVG units, as drawn by site/assets/practice/components.js.
 PLOT_WIDTH, PLOT_HEIGHT, LINE_WIDTH = 270, 174, 288
 # Marks closer than this read as one mark; labels closer than LABEL_GAP collide.
@@ -89,9 +89,11 @@ def family(function, variable):
         raise GraphUnavailable("family_unknown")
     if not expression.is_rational_function(variable):
         raise GraphUnavailable("family_unknown")
-    linear = reciprocal = sp.S.Zero
+    linear = reciprocal = constant = sp.S.Zero
     for term in sp.Add.make_args(sp.expand(sp.apart(expression, variable))):
-        if not (term / variable).has(variable):
+        if not term.has(variable):
+            constant += term
+        elif not (term / variable).has(variable):
             linear += term / variable
         elif not (term * variable).has(variable):
             reciprocal += term * variable
@@ -99,7 +101,7 @@ def family(function, variable):
             raise GraphUnavailable("family_unknown")
     if reciprocal == 0:
         raise GraphUnavailable("family_unknown")
-    return {"kind": "reciprocal_sum", "function": expression, "a": linear, "b": reciprocal}
+    return {"kind": "reciprocal_sum", "function": expression, "a": linear, "b": reciprocal, "c": constant}
 
 
 def _nice_inside(low, high):
@@ -162,6 +164,13 @@ def window(xs, ys, *, padding=0.18):
         high += span * padding
         bounds.extend((step * int(low // step), step * -int(-high // step)))
     return bounds
+
+
+def grid(low, high):
+    """Nonzero round values across a window, as exact numbers for ``ticks``."""
+    step = sp.nsimplify(2 * _step(high - low))
+    first, last = int(sp.ceiling(sp.nsimplify(low) / step)), int(sp.floor(sp.nsimplify(high) / step))
+    return [step * index for index in range(first, last + 1) if index]
 
 
 def ticks(values, low, high, width=PLOT_WIDTH):
@@ -327,11 +336,111 @@ def function_graph(drawn, variable, domain, *, bounds, x_ticks, marks=(), show_v
         if domain.start < 0 < domain.end:
             raise GraphUnavailable("domain_crosses_pole")
         params.update(a=_float(drawn["a"]), b=_float(drawn["b"]), negative=bool(domain.end <= 0))
+        if drawn.get("c"):
+            params["c"] = _float(drawn["c"])
     if mark_sign:
         if drawn["kind"] == "reciprocal_sum":
             raise GraphUnavailable("sign_marking_unsupported")
         params.update(markSign=mark_sign, strict=strict)
     graph = {"kind": drawn["kind"], "params": params}
+    if caption:
+        graph["caption"] = caption
+    return graph
+
+
+def _axis_reach(axis, parameter, allowed, step):
+    """The axis positions reachable for parameters in ``allowed``, one step inside its open ends."""
+    if allowed == sp.S.Reals:
+        return [-float("inf"), float("inf")]
+    if not isinstance(allowed, sp.Interval):
+        raise GraphUnavailable("axis_parameter_domain_unsupported")
+    rising = sp.diff(axis, parameter) > 0
+    ends = [(allowed.start, bool(allowed.left_open)), (allowed.end, bool(allowed.right_open))]
+    if not rising:
+        ends.reverse()
+    reach = []
+    for side, (end, open_end) in enumerate(ends):
+        if not _finite(end):
+            reach.append(float("inf") * (1 if side else -1))
+            continue
+        image = _float(axis.subs(parameter, end))
+        reach.append(image + (step if side == 0 else -step) * open_end)
+    return reach
+
+
+def axis_explorer(function, variable, parameter, domain, *, breakpoints, start, target, allowed=sp.S.Reals,
+                  within=None, title, description, caption=None):
+    """A parabola the student moves by its axis, for ``a x^2 + b(p) x + c`` with only ``b`` depending on ``p``.
+
+    The page draws ``a(x-h)^2 + c - a h^2``; that is the function itself exactly when the
+    parameter moves the axis and nothing else. The track covers every case boundary; ``within``
+    keeps the same window but lets the axis move only over that set of parameters.
+    """
+    if not isinstance(domain, sp.Interval) or parameter is None:
+        raise GraphUnavailable("domain_unsupported")
+    expression = sp.expand(function)
+    if not expression.is_polynomial(variable) or sp.degree(expression, variable) != 2:
+        raise GraphUnavailable("family_unsupported")
+    poly = sp.Poly(expression, variable)
+    leading, slope, constant = poly.nth(2), poly.nth(1), poly.nth(0)
+    if (leading.free_symbols or constant.free_symbols or slope.free_symbols != {parameter}
+            or sp.degree(slope, parameter) != 1):
+        raise GraphUnavailable("axis_not_movable")
+    axis = sp.expand(-slope / (2 * leading))
+    ends = [point for point in (domain.start, domain.end) if _finite(point)]
+    turns = [sp.simplify(axis.subs(parameter, point)) for point in breakpoints]
+    anchors = [_float(value) for value in (*ends, *turns)] or [0.0]
+    low, high = min(anchors), max(anchors)
+    span = max(high - low, 0.5)
+    step = _step(span) / 25
+    track = [low - span * 0.6, high + span * 0.6]
+    reach = _axis_reach(axis, parameter, allowed, step)
+    track = [max(track[0], reach[0]), min(track[1], reach[1])]
+    track = [round(step * -int(-track[0] // step), 6), round(step * int(track[1] // step), 6)]
+    if track[0] >= track[1]:
+        raise GraphUnavailable("axis_track_empty")
+    window_track = track
+    if within is not None:
+        reach = _axis_reach(axis, parameter, within, step)
+        low_end, high_end = max(track[0], reach[0]), min(track[1], reach[1])
+        track = [round(step * ceil(low_end / step - 1e-9), 6), round(step * floor(high_end / step + 1e-9), 6)]
+        if track[0] >= track[1]:
+            raise GraphUnavailable("axis_track_empty")
+        start = None
+    value = round(step * round((track[0] + track[1]) / 2 / step), 6) if start is None else \
+        min(track[1], max(track[0], round(step * round(_float(axis.subs(parameter, start)) / step), 6)))
+    # The slider is continuous.  Its endpoints must describe a whole interval
+    # of allowed parameters, and rounding must not put an open endpoint back in.
+    scope = allowed if within is None else sp.Intersection(allowed, within)
+    offset, axis_slope = axis.subs(parameter, 0), sp.diff(axis, parameter)
+    for position in (*track, value):
+        point = (sp.Rational(str(position)) - offset) / axis_slope
+        if scope.contains(point) is not sp.true:
+            raise GraphUnavailable("axis_parameter_outside_domain")
+    margin = span * 0.3
+    xs = [min(0.0, window_track[0]) - margin, max(0.0, window_track[1]) + margin]
+    a, c = _float(leading), _float(constant)
+    inside = [_float(point) for point in ends]
+    ys = [0.0]
+    for index in range(41):
+        h = window_track[0] + (window_track[1] - window_track[0]) * index / 40
+        ys.extend(a * x * x - 2 * a * h * x + c for x in inside)
+        if domain.contains(sp.nsimplify(h)) is sp.true:
+            ys.append(c - a * h * h)
+    y_span = max(max(ys) - min(ys), 1.0)
+    bounds = [xs[0], xs[1], min(ys) - y_span * 0.15, max(ys) + y_span * 0.15]
+    marks = [{"x": _float(turn), "label": short_label(turn)} for turn in turns
+             if _finite(turn) and all(sp.simplify(turn - end) != 0 for end in ends)]
+    params = {
+        "bounds": bounds, "xTicks": ticks(ends, bounds[0], bounds[1]), "variable": str(variable),
+        "interval": [_float(domain.start) if _finite(domain.start) else None,
+                     _float(domain.end) if _finite(domain.end) else None],
+        "interval_closed": [not domain.left_open and _finite(domain.start), not domain.right_open and _finite(domain.end)],
+        "points": [], "title": title, "description": description,
+        "coefficient": a, "constant": c, "axis": {"min": track[0], "max": track[1], "step": step, "value": value},
+        "marks": marks, "target": target,
+    }
+    graph = {"kind": "axis_explorer", "params": params}
     if caption:
         graph["caption"] = caption
     return graph

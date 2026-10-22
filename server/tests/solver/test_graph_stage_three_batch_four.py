@@ -304,18 +304,24 @@ def test_student_cards_show_real_case_conditions_and_signed_range_evidence(case,
     assert all("*" not in card["explanation"] and "sqrt(" not in card["explanation"] for card in cards)
     if method == "method-interval-extremum":
         conditional = [card for card in cards if card["case_path"]]
-        assert conditional and all(card["explanation"].startswith("在 $") for card in conditional)
+        assert conditional and all(card["highlight"]["items"][0]["label"].startswith("当 $") for card in conditional)
         conditions = [card for card in conditional if card["display_unit"] == "conditions"]
-        assert conditions and all("两端" not in card["explanation"] for card in conditions)
-        assert all("与当前情况的参数范围取交集" in card["explanation"] for card in conditions)
+        assert conditions and all(card["explanation"].startswith(r"由 $\begin{cases}") for card in conditions)
+        bounds = [card for card in conditional if card["display_unit"] == "classified_range"]
+        assert bounds and all(card["explanation"].startswith(r"$\because\ ") for card in bounds)
         if case == "q07":
             constant, = [card for card in cards if card["display_unit"] == "linear_range"]
-            assert "$m = 0$" in constant["explanation"] and "常数 $-1$" in constant["explanation"]
+            assert constant["explanation"] == r"$\because\ m=0$，$\therefore\ g(x)=-1$，为常数。"
+            rising, = [card for card in bounds if "m > 0" in card["explanation"]]
+            assert "开口向上" in rising["explanation"] and "右端点离对称轴更远" in rising["explanation"]
+            assert r"g(x)_{\max}=g\left(3\right)=6 m - 1" in rising["explanation"]
     elif case == "q06":
         negative, = [card for card in cards if card["display_unit"] == "negative_divided"]
-        assert "$x<0$" in negative["explanation"] and "不等号反向" in negative["explanation"]
+        assert r"$\therefore\ x<0$" in negative["explanation"] and "不等号变向" in negative["explanation"]
         extent, = [card for card in cards if card["display_unit"] == "reciprocal_range"]
-        assert "转折点" in extent["explanation"] and "趋近" in extent["explanation"]
+        assert "由对勾函数的性质" in extent["explanation"]
+        assert r"h(x)_{\min}=h\left(- \sqrt{2}\right)=2 \sqrt{2}" in extent["explanation"]
+        assert extent["highlight"]["result"] == r"$h(x) \in \left[2 \sqrt{2}, \infty\right)$"
     else:
         inverse, = [card for card in cards if card["display_unit"] == "inverse_range"]
         assert "始终为正" in inverse["explanation"] and "端点是否取得" in inverse["explanation"]

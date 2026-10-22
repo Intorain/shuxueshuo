@@ -84,13 +84,26 @@
 .pq-parts button[aria-pressed="true"] { border-color: var(--sq-teal); background: #e9f5f0; color: var(--sq-teal-dark); }
 .gw-page[data-part="note"] :is(.gw-actor-panel, .gw-history-controls, #gw-completion, .gw-path-toggle) { display: none; }
 .gw-page[data-part="note"] .gw-graph-panel { display: none !important; }
+/* Loading floats over the lesson and shows only when it lasts, so a quick load never pushes content. */
+#gw-main { position: relative; }
+#gw-main > #gw-loading { position: absolute; z-index: 20; top: 12px; left: 50%; padding: 6px 14px; border: 1px solid var(--sq-line); border-radius: 999px; background: #fff; box-shadow: var(--sq-shadow); color: var(--sq-muted); font-size: 13px; transform: translateX(-50%); animation: pq-late-in .2s .4s both; pointer-events: none; }
+@keyframes pq-late-in { from { opacity: 0; } }
+.gw-page #gw-steps:empty ~ .gw-history-controls { visibility: hidden; }
 /* The graph opens beside the steps once step 1 is confirmed. */
+.gw-page[data-graph="shown"] .gw-graph-panel { animation: pq-graph-in .32s ease-out; }
+@keyframes pq-graph-in { from { opacity: 0; transform: translateX(12px); } }
 @media (min-width: 960px) {
   .gw-page[data-graph="hidden"] .gw-graph-panel { display: none; }
   .gw-page[data-graph="hidden"] .gw-layout { grid-template-columns: minmax(0, 720px); justify-content: center; }}
 @media (max-width: 959px) {
   .gw-page[data-graph="hidden"][data-actor="student"] :is(.gw-graph-panel:not(.is-open), .gw-path-toggle) { display: none; }
 }
+/* On a wide screen the student can fold the graph away; the steps then take the centred column. */
+#pq-graph-toggle { display: none; margin-left: 8px; color: #647a74; background: transparent; }
+@media (min-width: 960px) {
+  .gw-page[data-graph="shown"] #pq-graph-toggle { display: inline-flex; }
+  .gw-page[data-graph="shown"][data-graph-folded] .gw-graph-panel { display: none; }
+  .gw-page[data-graph="shown"][data-graph-folded] .gw-layout { grid-template-columns: minmax(0, 1080px); justify-content: center; }}
 
 /* Failure */
 .pq-fail { animation: pq-in .35s ease-out; }

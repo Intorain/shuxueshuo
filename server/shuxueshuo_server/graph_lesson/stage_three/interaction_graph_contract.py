@@ -66,6 +66,11 @@ def validate_graph(graph):
         _interval(params["interval"], params["interval_closed"])
         if graph["kind"] == "reciprocal_sum" and any(point["x"] == 0 for point in params["points"]):
             raise ValueError("interaction.graph_undefined_point")
+        if graph["kind"] == "axis_explorer":
+            axis = params["axis"]
+            _ordered(axis["min"], axis["max"])
+            if not axis["min"] <= axis["value"] <= axis["max"]:
+                raise ValueError("interaction.graph_axis_outside_track")
     return graph
 
 
@@ -75,6 +80,8 @@ def validate_part_graphs(parts):
         for field in ("graph", "completion_graph"):
             if field in part:
                 validate_graph(part[field])
+        for graph in part.get("completion_graphs", []):
+            validate_graph(graph)
         component = part["interaction"]
         for option in component.get("options", []):
             if "graph" in option:

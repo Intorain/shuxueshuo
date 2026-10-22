@@ -142,6 +142,13 @@ def register(api):
     def intersect_cases(facts, item):
         return [api.set_candidate("set", sp.Intersection(*facts["solutions"]))]
 
+    def merge_facts(values, context):
+        """Affine case merging uses the frozen solved sets, without quadratic-bound display data."""
+        parameter = values.get("parameter", context.get("parameter"))
+        return {"answer": values["after"][-1], "solutions": values["solutions"], "parameter": parameter,
+                "display": {"parameter": parameter,
+                            "pieces": "、".join(math(item) for item in values["solutions"])}}
+
     def goal_facts(values, context):
         facts = api.goal_facts(values, context)
         if facts["status"] not in ("attained", "not_attained", "empty_feasible_set",
@@ -218,7 +225,7 @@ def register(api):
         "variable_constant_cases": {"kind": "set", "facts": constant_case_facts,
                                     "answer": api.case_solution_answer,
                                     "generators": {"complement_set": complement_set, "all_or_none": all_or_none}},
-        "variable_merged_set": {"kind": "set", "facts": api.merge_facts, "answer": api.case_solution_answer,
+        "variable_merged_set": {"kind": "set", "facts": merge_facts, "answer": api.case_solution_answer,
                                 "generators": {"intersect_cases": intersect_cases, "drop_piece": api.drop_piece,
                                                "flip_endpoint": api.flip_endpoint, "complement_set": complement_set}},
         "goal_conclusion": {"kind": "fixed", "facts": goal_facts, "answer": goal_answer,

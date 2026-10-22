@@ -24,6 +24,15 @@ from .capabilities.parametric import _compare
 from .capabilities.ranges import _sign, quadratic_interval_range, reciprocal_range
 from .contracts import ROOT
 from .interaction_graphs import GraphUnavailable
+from .math_values import (
+    BOUND_EXPLANATION,
+    BOUND_NAMES,
+    BOUND_TEX,
+    EXTREMUM_NAMES,
+    EXTREMUM_TEX,
+)
+from .math_values import latex as _latex
+from .presentation_intervals import in_set, merge_view, oriented
 from .presentation_templates import _render
 from .route_constraints import apply_visible_constraints
 from .trajectory import decode_value
@@ -39,8 +48,6 @@ MAX_REPRESENTATIVES = 12
 GRID = tuple(sp.Integer(value) for value in range(-4, 5))
 NEIGHBOR = sp.Rational(1, 2)
 
-BOUND_NAMES = {"inf": "下确界", "sup": "上确界"}
-EXTREMUM_NAMES = {"inf": "最小值", "sup": "最大值"}
 LOCATION_NAMES = {"left_endpoint": "左端点", "right_endpoint": "右端点", "vertex": "顶点", "critical": "转折点"}
 LATEX_OPERATORS = {"<=": r"\leq", "<": "<", ">=": r"\geq", ">": ">"}
 MIRROR = {"<=": ">=", "<": ">", ">=": "<=", ">": "<"}
@@ -71,10 +78,6 @@ def _canonical(value):
 
 def _sha256(value):
     return hashlib.sha256(_canonical(value).encode()).hexdigest()
-
-
-def _latex(value):
-    return sp.latex(value)
 
 
 def _math(value):
@@ -118,9 +121,10 @@ def _rule_validator(schema, definition):
 
 def _validate_graphs(part):
     graphs, sources = part.get("graphs", {}), {row["answer"]["from"] for row in _rows(part)}
-    for slot, table in (("stem", STEM_GRAPHS), ("options", OPTION_GRAPHS)):
+    for slot, table, components in (("stem", STEM_GRAPHS, ("choice", "multi", "checklist")),
+                                    ("options", OPTION_GRAPHS, ("choice", "multi"))):
         name = graphs.get(slot)
-        if name is not None and (name not in table or part["component"] not in ("choice", "multi")
+        if name is not None and (name not in table or part["component"] not in components
                                  or not sources <= table[name][0]):
             raise ValueError(f"interaction.graph_not_allowed:{slot}:{name}")
     if graphs.get("completion") is not None and graphs["completion"] not in COMPLETION_GRAPHS:
@@ -364,6 +368,12 @@ def _bound_positions(ranges, point, bound):
     return {row["location"] for row in value["positions"] if _cmp(row["value"], value[bound]) == 0}
 
 
+def _named_function(values, function, variable):
+    """``h(x)`` when the method named this function on an earlier card, else None."""
+    name = values.get("function_name")
+    return f"{name}({_latex(variable)})" if name and function is not None and function.has(variable) else None
+
+
 # --- Policy -------------------------------------------------------------------
 
 def _policy_facts(values, context):
@@ -373,11 +383,17 @@ def _policy_facts(values, context):
     numeric = not expression.free_symbols
     relation = (sp.Rel(function, expression, MIRROR[operator], evaluate=False) if numeric
                 else sp.Rel(expression, function, operator, evaluate=False))
+    named = _named_function(values, function, values["x"])
+    label = named or _latex(function)
+    definition = f"记 ${named}={_latex(function)}$，" if named and values.get("define_name") else ""
+    shown = (f"{label} {LATEX_OPERATORS[MIRROR[operator]]} {_latex(expression)}" if numeric
+             else f"{_latex(expression)} {LATEX_OPERATORS[operator]} {label}")
     return {
         "policy": policy, "function": function, "expression": expression, "operator": operator,
         "bound": bound, "x": values["x"], "domain": context["domain"], "parameter": context.get("parameter"),
-        "numeric": numeric,
-        "display": {"x": values["x"], "domain": context["domain"], "relation": relation, "function": function,
+        "numeric": numeric, "relation": relation, "label": label, "named": bool(named),
+        "display": {"x": values["x"], "domain": context["domain"], "relation": shown, "function": label,
+                    "definition": definition, "bound_explanation": BOUND_EXPLANATION,
                     "bound_name": BOUND_NAMES[bound], "extremum_name": EXTREMUM_NAMES[bound],
                     "quantifier_text": "对所有" if policy["quantifier"] == "∀" else "至少存在一个",
                     "quantifier_goal": (f"对所有 ${_latex(values['x'])}$ 都成立" if policy["quantifier"] == "∀"
@@ -413,15 +429,21 @@ def _quantified(quantifier, operator, expression, value):
     return strictly or (weak and comparison == 0 and value[key + "_attained"])
 
 
-def _bound_phrase(facts, name):
-    return f"{_math(facts['function'])} 在 {_math(facts['domain'])} 上的{name}"
+def _bound_tex(facts, key, *, attained=False):
+    body = facts["label"] if facts["named"] or facts["function"].is_Atom \
+        else rf"\left({facts['label']}\right)"
+    return f"{body}_{{{(EXTREMUM_TEX if attained else BOUND_TEX)[key]}}}"
 
 
-def _relation_label(facts, operator, name):
-    phrase = _bound_phrase(facts, name)
+def _scope(facts):
+    return f"${_latex(facts['x'])} \\in {_latex(facts['domain'])}$ 时，"
+
+
+def _relation_label(facts, operator, key):
+    bound = _bound_tex(facts, key)
     if facts["numeric"]:
-        return f"{phrase} ${LATEX_OPERATORS[MIRROR[operator]]} {_latex(facts['expression'])}$"
-    return f"${_latex(facts['expression'])} {LATEX_OPERATORS[operator]}$ {phrase}"
+        return f"{_scope(facts)}${bound} {LATEX_OPERATORS[MIRROR[operator]]} {_latex(facts['expression'])}$"
+    return f"{_scope(facts)}${_latex(facts['expression'])} {LATEX_OPERATORS[operator]} {bound}$"
 
 
 def _policy_proposition(facts, truth):
@@ -438,7 +460,7 @@ def _policy_answer(facts):
     policy, operator, bound = facts["policy"], facts["operator"], facts["bound"]
     universal = policy["quantifier"] == "∀"
     label_operator = FLIP_STRICTNESS[operator] if universal and operator in ("<", ">") else operator
-    label = _relation_label(facts, label_operator, BOUND_NAMES[bound])
+    label = _relation_label(facts, label_operator, bound)
     if universal and operator in ("<", ">"):
         label += f"，且{BOUND_NAMES[bound]}取到时不能相等"
     elif not universal and operator in ("<=", ">="):
@@ -451,15 +473,15 @@ def _swap_bound(facts, item):
     other = "sup" if facts["bound"] == "inf" else "inf"
     operator = facts["operator"]
     truth = _policy_proposition(facts, _literal(operator, other))
-    return [Candidate("policy:swap_bound", _relation_label(facts, operator, BOUND_NAMES[other]), truth)]
+    return [Candidate("policy:swap_bound", _relation_label(facts, operator, other), truth)]
 
 
 def _swap_quantifier(facts, item):
-    relation = facts["display"]["relation"]
+    relation = f"${facts['display']['relation']}$"
     other = "∃" if facts["policy"]["quantifier"] == "∀" else "∀"
     truth = _policy_proposition(facts, lambda e, v: _quantified(other, facts["operator"], e, v))
     scope = f"${_latex(facts['x'])} \\in {_latex(facts['domain'])}$"
-    label = f"存在 {scope}，使 {_math(relation)}" if other == "∃" else f"对所有 {scope}，{_math(relation)} 都成立"
+    label = f"存在 {scope}，使 {relation}" if other == "∃" else f"对所有 {scope}，{relation} 都成立"
     return [Candidate("policy:swap_quantifier", label, truth)]
 
 
@@ -469,7 +491,7 @@ def _endpoint_only(facts, item):
     for point, closed in ((domain.start, not domain.left_open), (domain.end, not domain.right_open)):
         if not closed or not _finite(point):
             continue
-        relation = facts["display"]["relation"].subs(variable, point)
+        relation = facts["relation"].subs(variable, point)
 
         def truth(at, point=point):
             expression = facts["expression"].subs(facts["parameter"], at) if facts["parameter"] is not None \
@@ -486,25 +508,25 @@ def _require_attained(facts, item):
     bound, operator = facts["bound"], facts["operator"]
     truth = _policy_proposition(
         facts, lambda e, v: bool(v[bound + "_attained"]) and _compare_holds(operator, _cmp(e, v[bound])))
-    name = EXTREMUM_NAMES[bound]
-    phrase = f"{_math(facts['function'])} 在 {_math(facts['domain'])} 上的{name}存在"
+    value = _bound_tex(facts, bound, attained=True)
+    phrase = f"{_scope(facts)}${value}$ 存在"
     if facts["numeric"]:
         label = f"{phrase}且 ${LATEX_OPERATORS[MIRROR[operator]]} {_latex(facts['expression'])}$"
     else:
-        label = f"{phrase}，且 ${_latex(facts['expression'])} {LATEX_OPERATORS[operator]}$ 该{name}"
+        label = f"{phrase}，且 ${_latex(facts['expression'])} {LATEX_OPERATORS[operator]} {value}$"
     return [Candidate("policy:require_attained", label, truth)]
 
 
 def _flip_strictness(facts, item):
     operator, bound = FLIP_STRICTNESS[facts["operator"]], facts["bound"]
     truth = _policy_proposition(facts, _literal(operator, bound))
-    return [Candidate("policy:flip_strictness", _relation_label(facts, operator, BOUND_NAMES[bound]), truth)]
+    return [Candidate("policy:flip_strictness", _relation_label(facts, operator, bound), truth)]
 
 
 def _flip_direction(facts, item):
     operator, bound = MIRROR[facts["operator"]], facts["bound"]
     truth = _policy_proposition(facts, _literal(operator, bound))
-    return [Candidate("policy:flip_direction", _relation_label(facts, operator, BOUND_NAMES[bound]), truth)]
+    return [Candidate("policy:flip_direction", _relation_label(facts, operator, bound), truth)]
 
 
 def _policy_representatives(facts, values, context):
@@ -544,8 +566,9 @@ def _cases_facts(values, context):
         "cases": cases, "parameter": parameter, "function": function, "x": variable, "domain": domain,
         "bound": bound, "breakpoints": _breakpoints(cases), "critical": cases[0].get("critical_polynomials", []),
         "vertex": vertex,
-        "display": {"function": function, "domain": domain, "parameter": parameter, "x": variable,
-                    "bound_name": BOUND_NAMES[bound], "vertex": vertex if vertex is not None else sp.S.Zero},
+        "display": {"function": _named_function(values, function, variable) or function, "domain": domain,
+                    "parameter": parameter, "x": variable, "bound_name": BOUND_NAMES[bound],
+                    "vertex": vertex if vertex is not None else sp.S.Zero},
     }
 
 
@@ -635,6 +658,51 @@ def _domain_endpoints(facts, item):
             for point in (domain.start, domain.end) if _finite(point)]
 
 
+# --- Bound location in every case (one checklist row per case) -------------------
+
+def _case_row_label(facts, case, point):
+    parameter, bound = facts["parameter"], facts["bound"]
+    leading, _, _ = _coefficients(facts["function"], facts["x"])
+    where = []
+    if parameter in leading.free_symbols:
+        where.append("开口向上" if _sign(leading.subs(parameter, point)) > 0 else "开口向下")
+    vertex = case.get("vertex")
+    if vertex is not None and parameter in sp.sympify(vertex).free_symbols:
+        where.append(f"对称轴在区间{_axis_place(vertex.subs(parameter, point), facts['domain'])}")
+    condition = f"${in_set(parameter, case['domain'])}$"
+    head = f"{'、'.join(where)}（{condition}）" if where else f"当 {condition} "
+    name = EXTREMUM_NAMES[bound] if case["range"][bound + "_attained"] else BOUND_NAMES[bound]
+    return f"{head}时，{name}"
+
+
+def _case_location_answers(facts):
+    """Every case whose bound sits at an end or the vertex; a constant or linear case has no place to find."""
+    rows = []
+    for case in facts["cases"]:
+        selected = case["range"]["candidates"][0]
+        region = sp.Intersection(case["domain"], facts["known"])
+        if selected["location"] not in LOCATION_NAMES or selected["location"] == "critical" \
+                or case.get("kind") != "quadratic" or region.is_empty:
+            continue
+        try:
+            point = drawing.representative_parameter(region)
+        except GraphUnavailable:
+            point = next(iter(region), None) if isinstance(region, sp.FiniteSet) else None
+        if point is None:
+            continue
+        local = {**facts, "selected": selected, "vertex": case.get("vertex"), "case_domain": case["domain"]}
+        answer = _location_answer(local)[0]["answer"]
+        rows.append({"label": _case_row_label(facts, case, point), "answer": answer, "facts": local})
+    if len(rows) < 2:
+        raise NotInteractive("too_few_cases")
+    return rows
+
+
+def _case_location_check(facts, values, context, item, candidates):
+    region = sp.Intersection(item["facts"]["case_domain"], facts["known"])
+    return _claim_check(item["answer"], candidates, representatives(values, context, region))
+
+
 # --- Bound location -----------------------------------------------------------
 
 def _range_facts(values, context):
@@ -646,8 +714,10 @@ def _range_facts(values, context):
     return {
         "function": function, "x": variable, "domain": domain, "parameter": parameter, "bound": bound,
         "selected": selected, "vertex": values.get("vertex"), "case_domain": case.get("domain", sp.S.Reals),
-        "display": {"function": function, "x": variable, "domain": domain, "parameter": parameter,
-                    "condition": values.get("condition", sp.true), "bound_name": BOUND_NAMES[bound]},
+        "display": {"function": _named_function(values, function, variable) or function, "x": variable,
+                    "domain": domain, "parameter": parameter,
+                    "condition": values.get("condition", sp.true),
+                    "bound_name": (EXTREMUM_NAMES if values["range"][bound + "_attained"] else BOUND_NAMES)[bound]},
     }
 
 
@@ -786,12 +856,46 @@ def _flip_endpoint(facts, item):
     return result
 
 
+CASE_COUNTS = {2: "两", 3: "三", 4: "四", 5: "五"}
+REQUIREMENT_WORDS = {">=": "不小于", ">": "大于", "<=": "不大于", "<": "小于"}
+
+
+def _merge_requirement(values, results):
+    """Summarize a shared bound condition without assuming that every case attains it."""
+    relations = {(oriented(item).rel_op, oriented(item).rhs) for result in results
+                 for item in result["outputs"]["conditions"] if isinstance(item, sp.Rel)}
+    single = all(len(result["outputs"]["conditions"]) == 1 for result in results)
+    if not single or len(relations) != 1 or next(iter(relations))[0] not in REQUIREMENT_WORDS:
+        return "各情况分别要满足下面的条件"
+    operator, bound = next(iter(relations))
+    count = CASE_COUNTS.get(len(results), "各")
+    return (f"{count}种情况下，都要求区间上的{BOUND_NAMES[values['cases'][0]['range']['bound']]}"
+            f"{REQUIREMENT_WORDS[operator]} ${_latex(bound)}$")
+
+
 def _merge_facts(values, context):
     parameter = values["cases"][0].get("parameter", context.get("parameter"))
+    results = values.get("results") or []
+    view = merge_view(values)
     return {
-        "answer": values["after"][0], "solutions": values["solutions"], "parameter": parameter,
-        "display": {"parameter": parameter, "pieces": "、".join(_math(item) for item in values["solutions"])},
+        "answer": values["after"][-1], "solutions": values["solutions"], "parameter": parameter,
+        "cases": values["cases"], "results": results,
+        "display": {"parameter": parameter, "pieces": "、".join(_math(item) for item in values["solutions"]),
+                    "requirement": _merge_requirement(values, results),
+                    "case_requirements": [f"{row['mark']} ${row['condition']}$：${row['requirement']}$"
+                                          for row in view["merge_rows"]]},
     }
+
+
+def _skip_case_intersection(facts, item):
+    """Each case's conditions solved over all parameters, without keeping only that case."""
+    pieces = []
+    for result in facts["results"]:
+        sets = result["outputs"].get("condition_sets")
+        if not sets:
+            return []
+        pieces.append((sp.Union if result["outputs"].get("combiner") == "any" else sp.Intersection)(*sets))
+    return [_set_candidate("set", sp.Union(*pieces))] if pieces else []
 
 
 def _drop_piece(facts, item):
@@ -930,6 +1034,27 @@ def _case_stem(facts, values, context):
         caption=_sample_caption(facts, point, f"，此时对称轴在区间{place}"))
 
 
+def _axis_stem(facts, values, context):
+    """The student drags the axis across every case; a parabola whose opening moves keeps the sample picture."""
+    parameter, variable, domain = facts["parameter"], facts["x"], facts["domain"]
+    case = next((case for case in facts["cases"] if case["range"]["candidates"][0]["location"] == "vertex"),
+                facts["cases"][0])
+    known = facts.get("known", sp.S.Reals)
+    lowest = facts["bound"] == "inf"
+    try:
+        start = drawing.representative_parameter(sp.Intersection(case["domain"], known))
+        return drawing.axis_explorer(
+            facts["function"], variable, parameter, domain, breakpoints=facts["breakpoints"], start=start,
+            target="min" if lowest else "max", allowed=known,
+            title=f"y={drawing.plain(facts['function'])} 的对称轴与区间 {drawing.plain(domain)}",
+            description=f"拖动对称轴 {variable}={drawing.short_label(facts['vertex'])}，观察区间上的"
+                        f"{'最低' if lowest else '最高'}点",
+            caption=f"拖动对称轴 ${_latex(variable)}={_latex(facts['vertex'])}$，"
+                    f"观察区间上的{'最低' if lowest else '最高'}点在哪里")
+    except GraphUnavailable:
+        return _case_stem(facts, values, context)
+
+
 def _claim_mark(drawn, facts, positions, location, attained):
     domain = facts["domain"]
     if location == "left_endpoint":
@@ -1026,11 +1151,47 @@ def _boundary_completion(seeds):
         caption=f"${_latex(parameter)}={_latex(point)}$ 时的函数图像，只看区间 ${_latex(domain)}$")
 
 
+CASE_MARKS = "①②③④⑤⑥⑦⑧⑨"
+
+
+def _case_completion(seeds):
+    """One explorer per case in a shared window, its axis held inside that case; all cases or none."""
+    values, context = decode_value(seeds[0]["values"]), decode_value(seeds[0]["context"])
+    facts = _cases_facts(values, context)
+    try:
+        facts["known"] = known_set(seeds[0])
+        rows = _case_location_answers(facts)
+    except NotInteractive as exc:
+        raise GraphUnavailable("cases_unavailable") from exc
+    present = [(index, case) for index, case in enumerate(facts["cases"])
+               if not sp.Intersection(case["domain"], facts["known"]).is_empty]
+    if len(rows) != len(present) or len(present) > len(CASE_MARKS):
+        raise GraphUnavailable("case_not_drawable")
+    parameter, variable, domain = facts["parameter"], facts["x"], facts["domain"]
+    lowest, bound_name = facts["bound"] == "inf", EXTREMUM_NAMES[facts["bound"]]
+    graphs = []
+    for (index, case), row in zip(present, rows, strict=True):
+        region = sp.Intersection(case["domain"], facts["known"])
+        if row["facts"]["case_domain"] != case["domain"]:
+            raise GraphUnavailable("case_not_drawable")
+        label, mark = row["answer"].label, CASE_MARKS[index]
+        statement = f"{bound_name}{label}" if label.startswith("在") else label.replace("取不到", f"{bound_name}不存在")
+        graphs.append(drawing.axis_explorer(
+            facts["function"], variable, parameter, domain, breakpoints=facts["breakpoints"],
+            start=None, target="min" if lowest else "max",
+            allowed=facts["known"], within=region,
+            title=f"情况{mark}：{parameter} 在 {drawing.plain(case['domain'])} 内",
+            description=f"对称轴 {variable}={drawing.short_label(facts['vertex'])} 只在本情况内拖动；{statement}",
+            caption=f"情况{mark}：${in_set(parameter, case['domain'])}$，{statement}"))
+    return graphs
+
+
 STEM_GRAPHS = {"function_sample": ({"policy_statement"}, _function_stem),
-               "case_sample": ({"case_basis"}, _case_stem)}
+               "case_sample": ({"case_basis"}, _case_stem),
+               "axis_explorer": ({"case_basis", "case_locations"}, _axis_stem)}
 OPTION_GRAPHS = {"location_marks": ({"bound_location"}, _location_options),
                  "parameter_sets": ({"case_solution", "merged_set"}, _set_options)}
-COMPLETION_GRAPHS = {"boundary_function": _boundary_completion}
+COMPLETION_GRAPHS = {"boundary_function": _boundary_completion, "case_explorers": _case_completion}
 
 
 def _picture(builder, diagnostics, part, *arguments, option_count=None):
@@ -1038,7 +1199,12 @@ def _picture(builder, diagnostics, part, *arguments, option_count=None):
     try:
         result = builder(*arguments)
         try:
-            if option_count is None:
+            if option_count is None and isinstance(result, list):
+                if len(result) < 2:
+                    raise ValueError("interaction.graph_set_shape")
+                for graph in result:
+                    graph_contract.validate_graph(graph)
+            elif option_count is None:
                 graph_contract.validate_graph(result)
             else:
                 if (not isinstance(result, tuple) or len(result) != 2 or not isinstance(result[0], list)
@@ -1069,6 +1235,12 @@ ANSWERS = {
                    "generators": {"case_basis_alternatives": _case_basis_alternatives}},
     "case_breakpoints": {"kind": "number", "facts": _cases_facts, "answer": _breakpoint_answer,
                          "generators": {"boundary_scale": _boundary_scale, "domain_endpoints": _domain_endpoints}},
+    "case_locations": {"kind": "claims", "checklist": True, "requires_known": True, "facts": _cases_facts,
+                       "answer": _case_location_answers, "validate": _case_location_check,
+                       "generators": {"location_alternatives": lambda facts, item: _location_alternatives(
+                                          item["facts"], item),
+                                      "flip_attained": lambda facts, item: _flip_location_attained(
+                                          item["facts"], item)}},
     "bound_location": {"kind": "claim", "facts": _range_facts, "answer": _location_answer,
                        "representatives": _range_representatives,
                        "generators": {"location_alternatives": _location_alternatives,
@@ -1077,8 +1249,11 @@ ANSWERS = {
                       "generators": {"skip_intersection": _skip_intersection, "case_only": _case_only,
                                      "flip_endpoint": _flip_endpoint}},
     "merged_set": {"kind": "set", "facts": _merge_facts, "answer": _case_solution_answer,
+                   "label": lambda facts, value: "无解" if value == sp.S.EmptySet
+                   else f"${in_set(facts['parameter'], value)}$",
                    "generators": {"drop_piece": _drop_piece, "flip_endpoint": _flip_endpoint,
-                                  "seam_puncture": _seam_puncture}},
+                                  "seam_puncture": _seam_puncture,
+                                  "skip_case_intersection": _skip_case_intersection}},
     "boundary_decisions": {"kind": "fixed", "facts": _boundary_facts, "answer": _boundary_answer,
                            "generators": {"flip_keep": _flip_keep}},
     "goal_value": {"kind": "fixed", "facts": _goal_facts, "answer": _goal_answer,
@@ -1285,7 +1460,8 @@ def _choice_part(part, number, part_id, seed):
             pictures = {id(candidate): picture for (candidate, _), picture in zip(entries, built[0], strict=True)}
     options, answers = [], []
     for index, (candidate, specification) in enumerate(_shuffled(entries, part_id), 1):
-        option = {"value": f"o{index}", "label": candidate.label}
+        label = source["label"](facts, candidate.value) if "label" in source else candidate.label
+        option = {"value": f"o{index}", "label": label}
         if id(candidate) in pictures:
             option["graph"] = pictures[id(candidate)]
         if specification is not None:
@@ -1325,11 +1501,12 @@ def _fill_part(part, part_id, item, kept, display, diagnostics):
 
 
 def _checklist_part(part, number, part_id, seeds):
-    slots, terms, diagnostics, display = [], [], [], {}
+    slots, terms, diagnostics, display, first = [], [], [], {}, None
     for row in part["rows"]:
         seed = seeds[row["seed"]]
         source = ANSWERS[row["answer"]["from"]]
         values, context, facts = _prepare(seed, source)
+        first = first or (facts, values, context)
         for key, value in facts["display"].items():
             display.setdefault(key, value)
         for item in source["answer"](facts):
@@ -1347,8 +1524,13 @@ def _checklist_part(part, number, part_id, seeds):
     if not slots:
         raise NotInteractive("no_checklist_items", diagnostics)
     interaction = {"type": "checklist", "title": part["title"], "slots": slots}
-    return {"interaction": interaction, "expected_answer": {"terms": terms},
-            "feedback": {"terms": _render_text(part.get("feedback", ""), display)}}, diagnostics, display
+    body = {"interaction": interaction, "expected_answer": {"terms": terms},
+            "feedback": {"terms": _render_text(part.get("feedback", ""), display)}}
+    if stem_name := part.get("graphs", {}).get("stem"):
+        stem = _picture(STEM_GRAPHS[stem_name][1], diagnostics, number, *first)
+        if stem is not None:
+            body["graph"] = stem
+    return body, diagnostics, display
 
 
 def compile_interaction(seeds, rule, repeat_context, *, interaction_id):
@@ -1377,11 +1559,13 @@ def compile_interaction(seeds, rule, repeat_context, *, interaction_id):
         question = _render_text(part["question"], display)
         if note := body.pop("question_note", None):
             question = f"{question}{note}"
+        if board := part.get("board"):
+            body["stem_board"] = {"caption": _render_text(board["caption"], display), "lines": display[board["lines"]]}
         completion = part.get("graphs", {}).get("completion")
         if completion:
             picture = _picture(COMPLETION_GRAPHS[completion], diagnostics, number, seeds)
             if picture is not None:
-                body["completion_graph"] = picture
+                body["completion_graphs" if isinstance(picture, list) else "completion_graph"] = picture
         parts.append({"id": part_id, "title": part["title"], "question": question,
                       **body, "submit_label": part.get("submit_label", "确认判断")})
     if not parts:
@@ -1433,6 +1617,9 @@ def build_chunk(seeds, registry, context, *, revision=None):
         rule = select_rule(registry, seeds)
         if rule is None:
             raise NotInteractive("no_rule")
+        # A folded case card is read inside the next step, which asks for all cases at once.
+        if rule.get("fold") and seeds[0]["case_path"]:
+            raise NotInteractive("folded")
         compiled = compile_interaction(seeds, rule, context, interaction_id=interaction_id)
         chunk.update(status="interactive", parts=compiled["parts"])
         diagnostics = compiled["diagnostics"]
@@ -1474,7 +1661,7 @@ EXTENSION_API = SimpleNamespace(
     flip_endpoint=_flip_endpoint, drop_piece=_drop_piece, skip_intersection=_skip_intersection,
     flip_keep=_flip_keep, conditions_facts=_conditions_facts, merge_facts=_merge_facts,
     goal_facts=_goal_facts, boundary_facts=_boundary_facts, boundary_answer=_boundary_answer,
-    function_stem=_function_stem, set_options=_set_options)
+    function_stem=_function_stem, set_options=_set_options, named_function=_named_function)
 
 
 def _register_extensions():

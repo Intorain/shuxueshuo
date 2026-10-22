@@ -325,7 +325,7 @@ function withdraw(fail) {
    student picks 自己做 or 看 AI 解题; the problem card then moves into the walk layout and the
    Demo engine renders the steps and the graph. Part buttons switch bundles; the engine keeps each
    part's progress. */
-const WALK = '/assets/graph-walk/walk.mjs?v=20261019-stream';
+const WALK = '/assets/graph-walk/walk.mjs?v=20261022-play';
 const STREAM = '/assets/graph-walk/stage-three-stream.mjs?v=20261020-interactions';
 const lesson = {data: null, actor: null, part: -1, engine: null, opened: false};
 let streamMount = null, streamTransport = null, streamIdentity = '', streamTicket = 0, partTicket = 0;
@@ -516,30 +516,56 @@ function lessonLost() {
   showNote(LOST);
 }
 
-/* practice.css styles bare elements, so it joins the page only once the walk opens. */
-function addPracticeStyles() {
+/* practice.css styles bare elements, so it downloads inert (media=print) and applies only once the walk opens. */
+function loadPracticeStyles() {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
+  link.media = 'print';
   link.href = '/assets/practice/practice.css';
+  const loaded = new Promise(resolve => { link.onload = link.onerror = resolve; });
   $('#pq-walk-css').before(link);
+  return loaded.then(() => link);
+}
+
+const GRAPH_FOLDED_KEY = 'search-walk:graph-folded';
+
+function graphFolded() {
+  try { return localStorage.getItem(GRAPH_FOLDED_KEY) === '1'; } catch { return false; }
+}
+
+function foldGraph(folded) {
+  document.body.toggleAttribute('data-graph-folded', folded);
+  const button = $('#pq-graph-toggle');
+  button.textContent = folded ? '展开图谱' : '收起图谱';
+  button.setAttribute('aria-expanded', String(!folded));
 }
 
 async function enterWalk(actor) {
   if (lesson.opened) return;
   lesson.actor = actor;
   lesson.opened = true;
-  addPracticeStyles();
-  document.body.classList.add('gw-page');
-  document.body.dataset.actor = actor;
-  const card = $('.pq-card');
-  card.classList.add('problem-card');
-  $('.gw-lesson').prepend(card);
-  $('#gw-main').insertBefore($('#pq-parts'), $('#gw-ready'));
-  $('#main').hidden = true;
-  $('#gw-main').hidden = false;
-  $('#gw-ready').hidden = false;
-  window.scrollTo(0, 0);
-  lesson.engine = await import(WALK);
+  // Switch only with styles and engine in hand, so the first walk frame already has its final layout.
+  const [engine, styles] = await Promise.all([import(WALK), loadPracticeStyles()]);
+  lesson.engine = engine;
+  const swap = () => {
+    styles.media = 'all';
+    document.body.classList.add('gw-page');
+    document.body.dataset.actor = actor;
+    // revealGraph opens the graph column once a step is confirmed; until then the steps stay centred.
+    document.body.dataset.graph = 'hidden';
+    const card = $('.pq-card');
+    card.classList.add('problem-card');
+    $('.gw-lesson').prepend(card);
+    $('#gw-main').insertBefore($('#pq-parts'), $('#gw-ready'));
+    $('#main').hidden = true;
+    $('#gw-main').hidden = false;
+    $('#gw-ready').hidden = false;
+    foldGraph(graphFolded());
+    window.scrollTo(0, 0);
+  };
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    await document.startViewTransition(swap).updateCallbackDone;
+  } else swap();
   if (lesson.data) openPart(lesson.part);
   else showNote($('#pq-start-note').hidden ? noteHtml(null) : WAITING);
 }
@@ -779,6 +805,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (button) enterWalk(button.dataset.actor);
   });
   $('#pq-stream-action').addEventListener('click', continueCalculation);
+  $('#pq-graph-toggle').addEventListener('click', () => {
+    const folded = !document.body.hasAttribute('data-graph-folded');
+    foldGraph(folded);
+    try { localStorage.setItem(GRAPH_FOLDED_KEY, folded ? '1' : '0'); } catch {}
+  });
   document.addEventListener('click', event => {
     if (event.target.closest('[data-retry]')) retry();
     if (event.target.closest('[data-lesson-retry]')) retryLesson();

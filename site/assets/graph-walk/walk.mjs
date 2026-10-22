@@ -1,4 +1,4 @@
-import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft} from './walk-state.mjs';
+import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft, CALL_LANE} from './walk-state.mjs';
 import {createWalkGraph, nodeHref} from './walk-graph.mjs?v=20261015-view-tabs';
 import {createMathCard, attachMathQA, createMathContext, createRouteCompletion} from './stream-math-dom.mjs';
 
@@ -46,7 +46,7 @@ async function createGraph() {
       console.warn('三维图谱不可用，已改用平面图。', error);
     }
   }
-  return createWalkGraph(host, graphView, {onSelect: selectNode, onSwitch: webglFailed ? null : onSwitch});
+  return createWalkGraph(host, graphView, {onSelect: selectNode, onSwitch: webglFailed ? null : onSwitch, usedOnlyLane: CALL_LANE});
 }
 
 async function switchGraphMode() {
@@ -72,15 +72,43 @@ function template(id, uid) {
   return html.replace(/\{\{uid\}\}/g, escapeHTML(uid));
 }
 
+// A redraw rebuilds the explorer, so its axis position is kept per picture uid.
+const axisPositions = new Map();
+
+function mountAxisExplorer(host) {
+  const spec = JSON.parse(host.dataset.graph);
+  const {uid, params} = spec, {min, max, step} = params.axis;
+  const explorer = {...params, uid};
+  const input = host.querySelector('[data-axis-input]'), svg = host.querySelector('svg');
+  const move = value => {
+    const h = Number(Math.min(max, Math.max(min, min + Math.round((value - min) / step) * step)).toFixed(6));
+    axisPositions.set(uid, h);
+    host.querySelector('[data-axis-layer]').innerHTML = PracticeComponents.axisExplorerLayer(explorer, h);
+    input.value = h;
+  };
+  const fromPointer = event => {
+    const box = svg.getBoundingClientRect(), [xmin, xmax] = params.bounds;
+    move(xmin + ((event.clientX - box.left) / box.width * 360 - 48) / 270 * (xmax - xmin));
+  };
+  if (axisPositions.has(uid)) move(axisPositions.get(uid));
+  input.addEventListener('input', () => move(Number(input.value)));
+  svg.addEventListener('pointerdown', event => { fromPointer(event); svg.setPointerCapture(event.pointerId); });
+  svg.addEventListener('pointermove', event => { if (svg.hasPointerCapture(event.pointerId)) fromPointer(event); });
+}
+
 function hydrate(root) {
   const draw = host => {
     const svg = host.dataset.graph !== undefined
       ? PracticeComponents.graph(JSON.parse(host.dataset.graph))
       : PracticeComponents.quadraticGraph(JSON.parse(host.dataset.quadraticGraph));
-    if (typeof svg !== 'string' || !/^\s*<svg\b/.test(svg)) throw new Error('graph_unavailable');
+    if (typeof svg !== 'string' || !/^\s*<(?:svg\b|div class="axis-explorer")/.test(svg)) throw new Error('graph_unavailable');
     return svg;
   };
-  const mount = (host, svg) => { host.innerHTML = svg; host.dataset.graphRendered = 'true'; };
+  const mount = (host, svg) => {
+    host.innerHTML = svg;
+    host.dataset.graphRendered = 'true';
+    if (/^\s*<div class="axis-explorer"/.test(svg)) mountAxisExplorer(host);
+  };
   // Finish the entire option group before mounting any picture. A renderer failure
   // restores every original label without changing the verified decision or draft.
   for (const group of root.querySelectorAll('[data-graph-fallback]:not([data-graph-rendered])')) {
@@ -108,6 +136,21 @@ function figureHTML(graph, uid, kind) {
   if (!PracticeComponents.validateGraph(graph)) return '';
   const caption = graph.caption ? `<figcaption data-math-text>${escapeHTML(graph.caption)}</figcaption>` : '';
   return `<figure class="gw-figure gw-${kind}-graph"><span class="gw-figure-plot" data-graph="${escapeHTML(JSON.stringify({...graph, uid}))}"></span>${caption}</figure>`;
+}
+
+// Case pictures come as a set: drawn side by side when every one is valid, otherwise not at all.
+const caseGraphs = decision => decision?.source === 'stream' && Array.isArray(decision.completion_graphs) &&
+  decision.completion_graphs.length > 1 && decision.completion_graphs.every(PracticeComponents.validateGraph)
+  ? decision.completion_graphs : null;
+
+function caseFiguresHTML(decision, uid) {
+  const graphs = caseGraphs(decision);
+  return graphs ? `<div class="gw-case-figures">${graphs.map((graph, index) => figureHTML(graph, `${uid}-case-${index}`, 'completion')).join('')}</div>` : '';
+}
+
+// A server board states what the question works from, in place of the card's own premises.
+function boardHTML(board) {
+  return `<div class="visual-board gw-question-board"><div class="board-caption">${escapeHTML(board.caption)}</div><div class="formula case-lines">${board.lines.map(line => `<p class="case-line" data-math-text>${escapeHTML(line)}</p>`).join('')}</div></div>`;
 }
 
 const activeRunId = () => state.run?.id || 'intro';
@@ -275,8 +318,55 @@ function completedHTML(record, number, runId, route) {
     : decision.interaction.type === 'plane' ? planeHTML(decision, record.answer, false)
     : `<p class="gw-answer" data-math-text>${escapeHTML(answerSummary(decision, record.answer))}</p>`;
   const results = decision.source !== 'stream' && !decision.display ? (record.results || []).map(resultText).filter(Boolean).map(text => `<p class="gw-result" data-math-text>${escapeHTML(text)}</p>`).join('') : '';
-  const figure = decision.source === 'stream' && decision.completion_graph ? figureHTML(decision.completion_graph, `${uid}-done`, 'completion') : '';
+  const figure = (decision.source === 'stream' && decision.completion_graph ? figureHTML(decision.completion_graph, `${uid}-done`, 'completion') : '') +
+    caseFiguresHTML(decision, `${uid}-done`);
   return `<details class="gw-completed" data-completed-decision="${escapeHTML(decision.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(decision.title || decision.question)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${figure}${body}${results}</div></details>`;
+}
+
+/* The parts of one streamed interaction are one step: they share a card and a step number,
+   and the card guides through them in order. State still records each part as its own decision. */
+const groupOf = decision => decision?.source === 'stream' && decision.stream_part_count > 1 ? decision.stream_interaction_id : null;
+
+function stepUnits() {
+  const route = state.run?.route, units = [];
+  for (const record of state.run?.completed || []) {
+    const group = groupOf(decisionById(record.decision, route)), last = units.at(-1);
+    if (group && last?.group === group) last.records.push(record);
+    else units.push({group, records: [record]});
+  }
+  const last = units.at(-1);
+  const open = last?.group && !decisionById(last.records.at(-1).decision, route).stream_last_part ? units.pop() : null;
+  return {units, open};
+}
+
+const groupParts = decision => bundle.routes[state.run.route].steps.filter(item => item.stream_interaction_id === decision.stream_interaction_id);
+
+function partAnswerHTML(decision, answer) {
+  return decision.interaction.type === 'checklist' ? checklistAnswerHTML(decision, answer)
+    : `<p class="gw-answer" data-math-text>${escapeHTML(answerSummary(decision, answer))}</p>`;
+}
+
+function partRowsHTML(records) {
+  return records.map(record => {
+    const decision = decisionById(record.decision, state.run.route);
+    return `<div class="gw-part-row"><p class="gw-part-label"><span aria-hidden="true">✓</span>${escapeHTML(decision.title || '')}</p>${partAnswerHTML(decision, record.answer)}</div>`;
+  }).join('');
+}
+
+function groupCompletedHTML(unit, number) {
+  const decisions = unit.records.map(record => decisionById(record.decision, state.run.route)), last = decisions.at(-1);
+  const figures = decisions.map(item => (item.completion_graph ? figureHTML(item.completion_graph, `gw-${activeRunId()}-${item.id}-done`, 'completion') : '') +
+    caseFiguresHTML(item, `gw-${activeRunId()}-${item.id}-done`)).join('');
+  return `<details class="gw-completed" data-completed-decision="${escapeHTML(last.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(last.stream_group_title || last.title)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${figures}<div data-stream-completed="${escapeHTML(last.id)}"></div></div></details>`;
+}
+
+/* Within the card: every part as a numbered stop, the answered ones folded into rows above the current one. */
+function partStepperHTML(decision) {
+  const parts = groupParts(decision);
+  return `<ol class="gw-part-stepper" aria-label="这一步的小问">${parts.map((part, index) => {
+    const status = index < decision.stream_part_index ? 'done' : index === decision.stream_part_index ? 'current' : 'todo';
+    return `<li data-state="${status}"${status === 'current' ? ' aria-current="step"' : ''}><span aria-hidden="true">${status === 'done' ? '✓' : index + 1}</span>${escapeHTML(part.title || '')}</li>`;
+  }).join('')}</ol>`;
 }
 
 // Graph options carry no visible formula unless they set a name: the student has to read the picture.
@@ -346,13 +436,15 @@ function feedbackHTML() {
 
 /* The previous step carried into the active card: its results, or its answer when it produced none. */
 function carryHTML() {
-  const records = [...(state.introCompleted || []), ...(state.run?.completed || [])];
+  const {units, open} = stepUnits(), held = new Set(open?.records || []);
+  const records = [...(state.introCompleted || []), ...(state.run?.completed || [])].filter(record => !held.has(record));
   const record = records.at(-1), decision = record && anyDecision(record.decision);
   if (!decision) return '';
   const results = (record.results || []).map(resultText).filter(Boolean);
   const lines = results.length ? results : [carrySummary(decision, record.answer)].filter(Boolean);
   if (!lines.length) return '';
-  return `<div class="gw-carry"><p class="gw-carry-label">接第 ${records.length} 步 · ${escapeHTML(decision.title || '')}</p>${lines.map(text => `<p data-math-text>${escapeHTML(text)}</p>`).join('')}</div>`;
+  const number = (state.introCompleted?.length || 0) + units.length;
+  return `<div class="gw-carry"><p class="gw-carry-label">接第 ${number} 步 · ${escapeHTML(decision.stream_group_title || decision.title || '')}</p>${lines.map(text => `<p data-math-text>${escapeHTML(text)}</p>`).join('')}</div>`;
 }
 
 function carrySummary(decision, answer) {
@@ -361,19 +453,28 @@ function carrySummary(decision, answer) {
   return method ? `选用${method.label}（${[optionX?.note, optionY?.note].filter(Boolean).join('；')}）` : '';
 }
 
-function renderInteraction(decision, {focus} = {}) {
+/* `pending` replaces the current part while the AI has not answered it yet; only a part card uses it. */
+function renderInteraction(decision, {focus, pending = null} = {}) {
   const host = $('#gw-active');
   if (!host) return;
   host.dataset.decisionId = decision.id;
   ensureDraft(decision);
   const disabled = actor === 'replay';
-  const number = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0) + 1;
-  host.innerHTML = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(decision.title || '当前判断')}</h2><span class="status">进行中</span></header>${carryHTML()}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' && decision.graph ? figureHTML(decision.graph, `gw-${activeRunId()}-${decision.id}-stem`, 'stem') : ''}${decision.source === 'stream' ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`;
-  if (decision.source === 'stream') {
-    const context = host.querySelector('[data-stream-context]'), steps = decisionMathSteps(decision);
+  const {units, open} = stepUnits(), grouped = Boolean(groupOf(decision));
+  const number = (state.introCompleted?.length || 0) + units.length + 1;
+  const title = grouped ? decision.stream_group_title || decision.title : decision.title || '当前判断';
+  const head = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(title)}</h2><span class="status">进行中</span></header>${carryHTML()}`;
+  const parts = grouped ? partStepperHTML(decision) + (open ? `<div class="gw-part-done">${partRowsHTML(open.records)}</div>` : '') : '';
+  const label = grouped ? `<p class="gw-part-current" id="gw-part-title" tabindex="-1">第 ${decision.stream_part_index + 1} 问 · ${escapeHTML(decision.title || '')}</p>` : '';
+  host.innerHTML = head + parts + (pending ?? `${label}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' && decision.graph ? figureHTML(decision.graph, `gw-${activeRunId()}-${decision.id}-stem`, 'stem') : ''}${decision.source === 'stream' && decision.stem_board ? boardHTML(decision.stem_board) : decision.source === 'stream' && !(decision.stream_part_index > 0) ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`);
+  // Later parts build on the answered rows above them, so only the first part shows the card's premise.
+  const context = pending == null && host.querySelector('[data-stream-context]');
+  if (context) {
+    const folded = new Set(decision.stream_folded || []);
+    const steps = decisionMathSteps(decision).filter(step => !folded.has(step.step_id));
     if (decision.interaction.type === 'read') for (const step of steps) context.append(createMathCard(document, step, {renderMath: renderStreamMath}).node);
     // A later merged card's before is usually the earlier card's conclusion.
-    else context.append(createMathContext(document, steps.slice(0, 1), {renderMath: renderStreamMath}));
+    else context.append(createMathContext(document, steps.slice(0, 1), {renderMath: renderStreamMath, question: decision.question}));
   }
   for (const button of host.querySelectorAll('[data-slot]')) {
     const expanded = Number(button.dataset.slot) === selectedSlot;
@@ -627,9 +728,24 @@ function togglePlay() {
   step();
 }
 
+/* The step-card numbers, as the cards show them, of the completed steps that lit each node. */
+function stepMarks(shown, view) {
+  const route = shown.run?.route, numbers = new Map();
+  let number = shown.introCompleted?.length || 0, group = null;
+  for (const record of shown.run?.completed || []) {
+    const next = groupOf(decisionById(record.decision, route));
+    if (!next || next !== group) number++;
+    group = next;
+    numbers.set(record.decision, number);
+  }
+  return Object.fromEntries(Object.entries(view.stepNodes || {}).map(([id, decisions]) =>
+    [id, [...new Set(decisions.map(decision => numbers.get(decision)).filter(Boolean))].sort((left, right) => left - right)]));
+}
+
 function renderGraph() {
   const shown = preview?.state || state;
   const view = viewFor(shown);
+  view.stepMarks = stepMarks(shown, view);
   renderStory(shown, view);
   graph?.render(view);
   const logs = (view.logs || []).map(log => typeof log === 'string' ? log : log.text || log.message || log.log || '');
@@ -656,19 +772,24 @@ function render({focus = false, scroll = focus} = {}) {
   const current = currentDecision(bundle, state);
   const introCount = state.introCompleted?.length || 0;
   const intro = (state.introCompleted || []).map((record, index) => completedHTML(record, index + 1, 'intro', null)).join('');
-  const completed = (state.run?.completed || []).map((record, index) => completedHTML(record, introCount + index + 1, activeRunId(), state.run.route)).join('');
+  const {units, open: openPart} = stepUnits();
+  const completed = units.map((unit, index) => unit.group ? groupCompletedHTML(unit, introCount + index + 1)
+    : completedHTML(unit.records[0], introCount + index + 1, activeRunId(), state.run.route)).join('');
   // The AI's cards appear only as it submits: a step it has not reached yet stays a one-line placeholder.
+  // A card it is partway through stays open, with that line in place of the next part.
   const shown = current && (actor === 'student' || submitted?.decision === current.id);
+  const partway = !shown && openPart && current && groupOf(current) === openPart.group;
   const pending = actor === 'replay' && !shown ? replayPendingHTML(current) : '';
-  const waiting = !current && !state.done
-    ? waitingHTML(introCount + (state.run?.completed?.length || 0) + 1) : '';
-  $('#gw-steps').innerHTML = streamRouteTabsHTML() + intro + completed + (shown ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending || waiting);
+  const waiting = !current && !state.done ? waitingHTML(introCount + units.length + 1) : '';
+  $('#gw-steps').innerHTML = streamRouteTabsHTML() + intro + completed + (shown || partway ? '<section id="gw-active" class="gw-active" aria-labelledby="gw-current-title"></section>' : pending || waiting);
   revealGraph();
   const lastCompleted = [...(state.introCompleted || []), ...(state.run?.completed || [])].at(-1)?.decision;
-  $('#gw-steps').querySelectorAll('details[data-completed-decision]').forEach(item => { item.open = open.has(item.dataset.completedDecision) || item.dataset.completedDecision === lastCompleted; });
+  // Watching the AI reads the whole solution, so every card it has completed stays open.
+  $('#gw-steps').querySelectorAll('details[data-completed-decision]').forEach(item => { item.open = actor === 'replay' || open.has(item.dataset.completedDecision) || item.dataset.completedDecision === lastCompleted; });
   mountCompletedMath();
   mountRetainedMath();
   if (shown) renderInteraction(current);
+  else if (partway) renderInteraction(current, {pending});
   const archives = state.archives?.filter(run => run.route) || [];
   $('#gw-completion').innerHTML = state.done ? completionHTML(archives) : '';
   const completionHost = $('#gw-completion [data-stream-completion]');
@@ -680,18 +801,19 @@ function render({focus = false, scroll = focus} = {}) {
   const routeOnly = bundle.stream && state.run?.route && state.introCompleted.length >= bundle.intro.length;
   $('#gw-undo').disabled = actor !== 'student' || busy || !(routeOnly ? state.run.completed.length
     : state.introCompleted?.length || state.run?.completed?.length || state.run?.route);
-  const completedCount = (state.introCompleted?.length || 0) + (state.run?.completed?.length || 0);
+  const completedCount = introCount + units.length;
   $('#gw-progress').textContent = `${completedCount} 个步骤已确认${actor === 'replay' ? ` · AI 回放 ${replayPosition} / ${replay?.actions.length || 0}` : ''}`;
   hydrate($('#gw-steps')); hydrate($('#gw-completion'));
   renderGraph();
-  const target = $('#gw-current-title') || $('#gw-completion h2');
+  const target = (openPart && $('#gw-part-title')) || $('#gw-current-title') || $('#gw-completion h2');
   if (target && focus) { target.tabIndex = -1; target.focus({preventScroll: true}); }
   if (scroll) revealStep();
   if (options.stream) { park(); options.onState?.(walkView()); }
 }
 
 function revealStep(behavior = reduced.matches ? 'auto' : 'smooth') {
-  const anchor = $('#gw-active') || $('#gw-completion .gw-completion') || [...$('#gw-steps').querySelectorAll('details[data-completed-decision]')].at(-1);
+  // Partway through a card, start from its part stepper so the answered parts stay above the next one.
+  const anchor = ($('#gw-active .gw-part-done') && $('#gw-active .gw-part-stepper')) || $('#gw-active') || $('#gw-completion .gw-completion') || [...$('#gw-steps').querySelectorAll('details[data-completed-decision]')].at(-1);
   if (!anchor) return;
   // A column that just narrowed rewraps the bar before its ResizeObserver reports; scroll with the new height.
   measureProblemBar();
@@ -771,8 +893,9 @@ function revealGraph() {
 function replayPendingHTML(current) {
   if (replayNotice) return `<p class="gw-ai-status" role="status">${escapeHTML(replayNotice.text)}${replayNotice.retry ? ' <button type="button" id="gw-replay-retry">重新读取</button>' : ''}</p>`;
   if (!replay || !current) return '';
-  const text = replayPlaying ? `AI 正在看：${current.title}` : `下一步：${current.title} · 点图谱下方 ▶ 继续`;
-  return `<p class="gw-ai-status${replayPlaying ? ' is-thinking' : ''}" role="status"><span class="gw-ai-dot" aria-hidden="true"></span>${escapeHTML(text)}</p>`;
+  const text = replayPlaying ? `AI 正在看：${current.title}` : `下一步：${current.title}`;
+  const control = `<button type="button" data-replay-play aria-label="${replayPlaying ? '暂停播放' : '继续播放'}">${replayPlaying ? '❚❚ 暂停' : '▶ 继续播放'}</button>`;
+  return `<p class="gw-ai-status${replayPlaying ? ' is-thinking' : ''}" role="status"><span class="gw-ai-dot" aria-hidden="true"></span>${escapeHTML(text)}${control}</p>`;
 }
 
 function notifyReplay(text, retry = false) {
@@ -953,7 +1076,8 @@ function ensureReplay(autoplay = true) {
   else void loadReplayIndex(autoplay);
 }
 
-function chooseActor(next, {autoplay = true} = {}) {
+/* A route the AI has not shown yet plays from `from` (the start by default); a seen one resumes paused where it stopped. */
+function chooseActor(next, {autoplay = true, from = 0} = {}) {
   rememberStreamDraft(); rememberReplayRoute();
   if (bundle.stream && next === 'replay' && !replayRoute) replayRoute = state?.run?.route || null;
   stopReplay(); ++replayTicket; actor = next;
@@ -965,12 +1089,13 @@ function chooseActor(next, {autoplay = true} = {}) {
   state = next === 'student' ? studentState : createState(bundle);
   if (options.stream && next === 'replay') {
     replay = streamReplay();
-    const remembered = replayRoutes[replay.routes[0]];
-    replayPosition = remembered == null ? autoplay ? replay.actions.length : Math.min(replayPosition, replay.actions.length)
-      : Math.min(remembered, replay.actions.length);
+    const remembered = replayRoutes[replay.routes[0] || ''];
+    replayPosition = Math.min(remembered ?? from, replay.actions.length);
     replayRoute = replay.routes[0] || null;
     state = replayState(bundle, replay, replayPosition);
-    render(); return;
+    render();
+    if (remembered == null && autoplay) playReplay();
+    return;
   }
   if (next === 'replay' && replay) {
     try { applyReplayPosition(replayPosition); } catch (error) { notifyReplay(error.message); return; }
@@ -1023,9 +1148,8 @@ function rememberStreamDraft() {
 function rememberReplayRoute() {
   if (!bundle?.stream || actor !== 'replay' || !replay) return;
   const route = replay.routes?.[0];
-  if (!route) return;
-  replayRoute = route;
-  replayRoutes[route] = replayPosition;
+  if (route) replayRoute = route;
+  replayRoutes[route || ''] = replayPosition;
 }
 
 const progressKey = value => value.stream ? JSON.stringify([value.problemId, value.bundleVersion]) : value.problemId;
@@ -1075,6 +1199,8 @@ function mountCompletedMath() {
   for (const host of $('#gw-steps').querySelectorAll('[data-stream-completed]')) {
     const decision = decisionById(host.dataset.streamCompleted, state.run.route);
     if (!decision?.stream_last_part) continue;
+    const folded = new Set(decision.stream_folded || []);
+    let fold = null;
     for (const step of decisionMathSteps(decision)) {
       const key = streamCardKey(step);
       let card = streamCards.get(key);
@@ -1082,7 +1208,18 @@ function mountCompletedMath() {
       const qa = availableQA(step);
       if (qa) mountCardQA(card, qa);
       else card.qa.hidden = true;
-      host.append(card.node); visibleStreamCards.add(key);
+      if (folded.has(step.step_id)) {
+        if (!fold) {
+          const summary = document.createElement('summary');
+          summary.textContent = '各情况的推导';
+          fold = document.createElement('details');
+          fold.className = 'gw-folded';
+          fold.append(summary);
+          host.append(fold);
+        }
+        fold.append(card.node);
+      } else host.append(card.node);
+      visibleStreamCards.add(key);
     }
   }
 }
@@ -1160,7 +1297,8 @@ async function load() {
     if (ticket !== loadTicket) return;
     mountCaption(); mountPlayer();
     // A phone opens on the AI player, paused at the start; the visitor presses ▶ to watch.
-    if (options.stream && kept?.actor) chooseActor(kept.actor, {autoplay: migrated && replayWasFollowing});
+    if (options.stream && kept?.actor) chooseActor(kept.actor, {autoplay: !migrated || replayWasFollowing,
+      from: migrated ? replayPosition : 0});
     else if (options.actor) chooseActor(options.actor);
     else if (narrow.matches) chooseActor('replay', {autoplay: false}); else render();
   } catch (error) {
@@ -1179,6 +1317,7 @@ function bind() {
   $('#gw-steps').addEventListener('click', event => {
     const button = event.target.closest('button');
     if (button?.id === 'gw-replay-retry') { ensureReplay(); return; }
+    if (button?.hasAttribute('data-replay-play')) { togglePlay(); return; }
     if (button?.dataset.streamRoute && !busy) { chooseStreamRoute(button.dataset.streamRoute); return; }
     if (!button || actor !== 'student' || busy) return;
     if (button.id === 'gw-submit') { submit(); return; }
@@ -1276,12 +1415,11 @@ export const walkActor = () => actor;
 
 function streamReplay() {
   const actions = structuredClone(options.replay?.actions || []);
-  const plane = bundle.intro.find(item => item.id === 'D3'), routes = bundle.intro.find(item => item.id === 'D4');
+  const plane = bundle.intro.find(item => item.id === 'D3');
   const route = [replayRoute, state?.run?.route].find(id => bundle.routes[id]?.route_plan === 'planned' && bundle.routes[id]?.available !== false)
     || Object.keys(bundle.routes).find(id => bundle.routes[id].route_plan === 'planned' && bundle.routes[id].available !== false);
   const method = route && plane?.interaction.methods.find(item => item.route === route);
   if (method) actions.push({decision: 'D3', answer: [...plane.expected_answer.cell, method.value]});
-  if (routes && method) actions.push({decision: 'D4', answer: route});
   if (method) for (const decision of bundle.routes[route].steps || []) {
     const expected = decision.expected_answer || {};
     const answer = decision.interaction.type === 'read' ? 'read'
@@ -1297,7 +1435,7 @@ function streamReplay() {
 
 export function walkView() {
   return {actor, route: state?.run?.route || null, target_ref: options.stream?.target_ref,
-    intro_complete: Boolean(bundle?.intro.some(item => item.id === 'D4') && state?.introCompleted.length === bundle.intro.length),
+    intro_complete: Boolean(bundle?.intro.some(item => item.id === 'D3') && state?.introCompleted.length === bundle.intro.length),
     intro_completed: state?.introCompleted.map(item => item.decision) || []};
 }
 
@@ -1333,6 +1471,7 @@ async function applyStreamSelection(view) {
   studentState = refreshStreamState(bundle, studentState);
   if (actor === 'replay') {
     const followedEnd = replay && replayPosition === replay.actions.length;
+    const following = followedEnd || replayPlaying;
     const nextReplay = streamReplay();
     const samePath = replay && JSON.stringify(replay.routes) === JSON.stringify(nextReplay.routes) &&
       replay.actions.every((action, index) => JSON.stringify(action) === JSON.stringify(nextReplay.actions[index]));
@@ -1343,8 +1482,9 @@ async function applyStreamSelection(view) {
       clearTimeout(replayTimer); replayTimer = null; replayPlaying = false; ++replayTicket;
     }
     replay = nextReplay;
-    replayPosition = followedEnd ? replay.actions.length : Math.min(replayPosition, replay.actions.length);
+    replayPosition = followedEnd && !samePath ? replay.actions.length : Math.min(replayPosition, replay.actions.length);
     state = replayState(bundle, replay, replayPosition);
+    if (samePath && following && !replayTimer) playReplay();
   } else state = studentState;
   if (decisionsChanged) render();
   else { renderGraph(); options.onState?.(walkView()); }

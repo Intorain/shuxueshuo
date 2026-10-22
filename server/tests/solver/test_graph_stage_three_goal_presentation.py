@@ -44,7 +44,7 @@ def state_with_boundary(feasible, method="method-separation"):
     ("find_maximum", sp.S.Reals, "unbounded_above", "没有上界"),
     ("find_minimum", sp.S.EmptySet, "empty_feasible_set", "没有满足题设的参数"),
     ("find_maximum", sp.S.EmptySet, "empty_feasible_set", "没有满足题设的参数"),
-    ("find_maximum", sp.FiniteSet(-1, sp.sqrt(2)), "attained", "能够取得"),
+    ("find_maximum", sp.FiniteSet(-1, sp.sqrt(2)), "attained", r"最大值为 $\sqrt{2}$"),
 ])
 def test_typed_goal_card_keeps_complete_set_exact_value_and_actual_finalization_source(kind, feasible, status, expected):
     state = state_with_boundary(feasible)
@@ -59,6 +59,11 @@ def test_typed_goal_card_keeps_complete_set_exact_value_and_actual_finalization_
     assert card["display_unit"] == "goal_finalization"
     assert card["title"] == ("确定最小值" if kind == "find_minimum" else "确定最大值")
     assert expected in card["explanation"]
+    assert card["highlight"]["conclusion_only"] is True
+    assert card["highlight"]["caption"] == card["title"] and len(card["highlight"]["items"]) == 1
+    assert card["highlight"]["items"][0]["math"]
+    boundary = state["fragments"][-1]["highlight"]
+    assert boundary["caption"] == "检查边界" and boundary["conclusion_only"] is True
     assert card["before"][0]["exact"] == encode_value(feasible)
     assert card["math_step_sha256"] == math_step_hash(card)
     index = len(updated["finalization"]) - 1

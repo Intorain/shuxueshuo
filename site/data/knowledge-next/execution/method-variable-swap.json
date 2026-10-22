@@ -154,10 +154,14 @@
             "policy": "$policy",
             "x": "$x",
             "parameter_expression": "$zero",
-            "function": "$collected"
+            "function": "$collected",
+            "domain": "$domain",
+            "function_name": "",
+            "define_name": false
           },
           "depends_on": [
             "collected",
+            "domain",
             "policy",
             "x",
             "zero"

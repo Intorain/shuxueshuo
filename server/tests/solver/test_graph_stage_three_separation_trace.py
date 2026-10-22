@@ -14,7 +14,7 @@ from tests.solver.test_graph_stage_three_methods import Q01, candidate, finish, 
 @pytest.mark.parametrize("value,unit,source", [
     (Q01, "separated", 0),
     (candidate("∀x∈[1,2]:x^2+a*x+4<0"), "divided", 1),
-    (candidate("∀x∈ℝ:2*a+x^2>0"), "moved", 1),
+    (candidate("∀x∈ℝ:2*a+x^2>0"), "constant_divided", 1),
 ])
 def test_separation_card_is_committed_by_its_checked_producer_before_any_skip(value, unit, source):
     state = start(value, method="method-separation")
@@ -30,7 +30,9 @@ def test_separation_card_is_committed_by_its_checked_producer_before_any_skip(va
     values = decode_value(state["frames"][0]["bindings"])
     output = "separation_candidate" if source == 0 else "applied_separation"
     assert state["frames"][0]["binding_sources"][output] == f"/steps/0/calls/{source}"
-    assert card["after"][0]["expression"] == sp.sstr(values[output]["separated_relation"])
+    assert card["after"][-1]["expression"] == sp.sstr(values[output]["separated_relation"])
+    if unit in ("divided", "negative_divided"):
+        assert card["after"][0]["expression"] == sp.sstr(values[output]["moved_relation"])
     if source:
         assert trace["calls"][source]["public_ref"] == "skill-inequality-transform"
         assert trace["calls"][source]["source_refs"] == ["/steps/0/calls/0"]
@@ -67,6 +69,9 @@ def test_public_transform_consumes_prepared_candidate_without_rederiving_it(monk
                        separated_relation=capabilities.relation(a, operator, rhs))
         with pytest.raises(capabilities.LocalCheckFailed):
             capabilities.separation_division(relation, a, x, domain, prepared=altered)
+    for moved in (capabilities.relation(a*x, "<", x*x + 4), capabilities.relation(a*x, ">", -x*x - 4)):
+        with pytest.raises(capabilities.LocalCheckFailed):
+            capabilities.separation_division(relation, a, x, domain, prepared={**prepared, "moved_relation": moved})
 
 
 def test_failed_public_transform_never_publishes_its_prepared_math(monkeypatch):

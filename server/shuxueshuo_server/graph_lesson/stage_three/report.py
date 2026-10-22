@@ -69,7 +69,7 @@ def _goal_answer(answer, feasible_set):
         explanation = name + "：" + formula if formula else None
     elif status == "not_attained":
         formula = _answer_math(answer.get("bound"))
-        explanation = name + "不存在；" + direction + "确界为 " + formula + "，该界不属于可行集。" if formula else None
+        explanation = name + "不存在；只能趋近 " + formula + "。" if formula else None
     elif status == ("unbounded_below" if minimum else "unbounded_above"):
         explanation = name + "不存在：可行集没有" + direction + "界。"
     elif status == "empty_feasible_set":

@@ -178,7 +178,8 @@ def test_reciprocal_graph_cannot_mark_a_point_at_its_pole():
 
 
 def test_invalid_generated_stem_keeps_identical_text_question(monkeypatch):
-    registry = interaction.load_registry()
+    registry = deepcopy(interaction.load_registry())
+    registry["templates"]["policy"]["parts"][0]["graphs"] = {"stem": "function_sample"}
     seed = _policy_seed(x*x + a*x + 1, sp.Interval.Lopen(0, sp.Rational(1, 2)), "∀", "<=")
     original, _ = interaction.build_chunk([seed], registry, {"previous": 0})
     assert original["status"] == "interactive" and "graph" in original["parts"][0]

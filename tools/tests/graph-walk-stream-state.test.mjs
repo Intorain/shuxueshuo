@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   createState, currentDecision, submitAnswer, switchRoute, undo, graphState,
-  extendStreamBundle, streamGraphState, streamStepGraph, replayState, migrateStageTwoState,
+  extendStreamBundle, streamGraphState, streamStepGraph, replayState, migrateStageTwoState, refreshStreamState,
 } from '../../site/assets/graph-walk/walk-state.mjs';
 import {createEventConsumer} from '../../site/assets/graph-walk/stage-three-stream.mjs';
 
@@ -63,10 +63,11 @@ function selected(bundle, route = 'discriminant') {
   let state = createState(bundle);
   state = answer(bundle, state);
   state = answer(bundle, state);
-  const method = currentDecision(bundle, state).interaction.methods.find(item => item.route === route);
-  state = answer(bundle, state, [...currentDecision(bundle, state).expected_answer.cell, method.value]);
-  return answer(bundle, state, route);
+  const plane = currentDecision(bundle, state);
+  const method = plane.interaction.methods.find(item => item.route === route || item.target === methodOf[route]);
+  return answer(bundle, state, [...plane.expected_answer.cell, method.value]);
 }
+const methodOf = {discriminant: 'method-discriminant', extremum: 'method-separation'};
 
 test('identity is fixed before selection arrives and D1/D2 answers survive append-only expansion', () => {
   const waiting = extendStreamBundle(original.bundle, identity, target, graph);
@@ -109,15 +110,16 @@ test('stage-two answers migrate once into the same base lesson without losing un
   assert.throws(() => migrateStageTwoState({...base, problemId: 'different'}, stream, state), /invalid_stage_two_progress/);
 });
 
-test('both Q01 methods pass D3 and D4 without pretending mathematics is completed', () => {
+test('choosing a Q01 method in D3 starts its route without asking for the route again', () => {
   const bundle = extendStreamBundle(original.bundle, view, target, graph);
+  assert.deepEqual(bundle.intro.map(item => item.id), ['D1', 'D2', 'D3']);
   for (const route of ['discriminant', 'extremum']) {
     const state = selected(bundle, route);
     assert.equal(state.lastFeedback.status, 'passed');
     assert.equal(state.run.route, route);
     assert.equal(state.done, false);
     assert.equal(currentDecision(bundle, state), null);
-    assert.deepEqual(state.introCompleted.map(item => item.decision), ['D1', 'D2', 'D3', 'D4']);
+    assert.deepEqual(state.introCompleted.map(item => item.decision), ['D1', 'D2', 'D3']);
     assert.deepEqual(state.run.completed, []);
     const replay = {...original.replay, bundleVersion: bundle.bundleVersion, routes: [route], status: 'partial',
       actions: state.events.map(event => event.action)};
@@ -125,21 +127,91 @@ test('both Q01 methods pass D3 and D4 without pretending mathematics is complete
   }
 });
 
-test('a mathematically fit method with a capability gap reaches D4 but cannot start reading', () => {
+test('a mathematically fit method with a capability gap is explained in D3 and cannot start reading', () => {
   const gapView = structuredClone(view);
   gapView.selection_chunks[1].chunk.options[1].route_plan = 'capability_gap';
   gapView.selection_chunks[1].chunk.options[1].message = '详细步骤暂不支持';
   const bundle = extendStreamBundle(original.bundle, gapView, target, graph);
   const state = selected(bundle, 'extremum');
   assert.equal(state.lastFeedback.status, 'uncovered');
-  assert.equal(currentDecision(bundle, state).id, 'D4');
-  assert.equal(state.introCompleted.length, 3);
+  assert.equal(state.lastFeedback.message, '详细步骤暂不支持');
+  assert.equal(currentDecision(bundle, state).id, 'D3');
+  assert.equal(state.introCompleted.length, 2);
+  assert.equal(state.run.route, null);
   assert.equal(state.done, false);
   assert.equal(evidenceView(bundle, state, {steps: [first], route: 'extremum'}).calls.length, 0);
-  const usable = answer(bundle, state, 'discriminant');
+  const usable = selected(bundle, 'discriminant');
   assert.equal(usable.lastFeedback.status, 'passed');
   assert.equal(usable.run.route, 'discriminant');
   assert.throws(() => switchRoute(bundle, usable, 'extremum'), /暂不支持/);
+});
+
+test('progress saved with the former D4 route question resumes from D3 alone', () => {
+  const bundle = extendStreamBundle(original.bundle, withMath, target, graph);
+  const current = selected(bundle);
+  const legacy = structuredClone(current);
+  const d4 = {decision: 'D4', answer: 'discriminant', reason: '', results: [], calls: [], runId: current.run.id};
+  legacy.introCompleted.push(d4);
+  legacy.events.push({kind: 'answer', action: {decision: 'D4', answer: 'discriminant'}, status: 'passed', runId: current.run.id});
+  legacy.streamIntroEvents.push(structuredClone(legacy.events.at(-1)));
+  legacy.lastFeedback = {status: 'passed', decision: 'D4'};
+  const restored = refreshStreamState(bundle, legacy);
+  assert.deepEqual(restored.introCompleted, current.introCompleted);
+  assert.deepEqual(restored.events, current.events);
+  assert.deepEqual(restored.streamIntroEvents, current.streamIntroEvents);
+  assert.equal(restored.lastFeedback, null);
+  assert.equal(currentDecision(bundle, restored).id, bundle.routes.discriminant.steps[0].id);
+});
+
+test('legacy D4 overriding D3 migrates the actual selected route and preserves wrong attempts and progress', () => {
+  const routeCard = {...first, route_id: 'extremum', method_ref: 'method-separation#separate'};
+  const bundle = extendStreamBundle(original.bundle, {...view, math_steps: [routeCard]}, target, graph);
+  // Exercise the former four-question flow through the real grader and state writer. Disabling stream migration
+  // while authoring this legacy record lets D4 be answered after D3, as it was before the format change.
+  const legacyBundle = {...bundle, stream: null, intro: [...bundle.intro, {id: 'D4', source: 'authored',
+    interaction: {type: 'choice', field: 'route', options: d4.options.map(option => ({value: option.route_id, label: option.route_id}))},
+    expected_answer: {one_of: d4.options.map(option => option.route_id)},
+    route_by_answer: Object.fromEntries(d4.options.map(option => [option.route_id, option.route_id])),
+    effects: {results: [], calls: []}}]};
+  let legacy = selected(legacyBundle, 'discriminant');
+  legacy = answer(legacyBundle, legacy, 'not-a-route');
+  assert.equal(legacy.lastFeedback.status, 'wrong');
+  legacy = answer(legacyBundle, legacy, 'extremum');
+  assert.equal(legacy.lastFeedback.status, 'passed');
+  legacy = answer(legacyBundle, legacy, 'read');
+  assert.equal(legacy.lastFeedback.status, 'passed');
+  assert.equal(legacy.run.route, 'extremum');
+  assert.equal(legacy.introCompleted.find(entry => entry.decision === 'D3').answer[2], 'discriminant');
+  legacy.streamIntroEvents = structuredClone(legacy.events.filter(event => ['D1', 'D2', 'D3', 'D4'].includes(event.action.decision)));
+  const wrongD3 = {kind: 'answer', action: {decision: 'D3', answer: ['interval', 'free', 'discriminant']}, status: 'wrong', runId: legacy.run.id};
+  legacy.events.splice(2, 0, wrongD3);
+  legacy.streamIntroEvents.splice(2, 0, structuredClone(wrongD3));
+  const before = structuredClone(legacy);
+  for (const waitingFirst of [false, true]) {
+    let restored = JSON.parse(JSON.stringify(legacy));
+    if (waitingFirst) {
+      const waiting = extendStreamBundle(original.bundle, identity, target, graph);
+      restored = refreshStreamState(waiting, restored);
+      assert.ok(restored.introCompleted.some(entry => entry.decision === 'D4'), 'defer migration until the route mapping arrives');
+    }
+    restored = refreshStreamState(bundle, restored);
+    assert.deepEqual(restored.run, before.run);
+    assert.deepEqual(restored.introCompleted.slice(0, 2), before.introCompleted.slice(0, 2));
+    assert.deepEqual(restored.introCompleted.find(entry => entry.decision === 'D3').answer,
+      [...bundle.intro.find(item => item.id === 'D3').expected_answer.cell, 'separation']);
+    for (const events of [restored.events, restored.streamIntroEvents]) {
+      assert.equal(events.some(event => event.action.decision === 'D4'), false);
+      assert.deepEqual(events.find(event => event.action.decision === 'D3' && event.status === 'wrong'), wrongD3);
+      assert.equal(events.find(event => event.action.decision === 'D3' && event.status === 'passed').action.answer[2], 'separation');
+    }
+    assert.equal(graphState(bundle, restored).nodes['method-separation'], 'confirmed');
+    assert.deepEqual(refreshStreamState(bundle, restored), restored, 'migration is idempotent');
+    const undone = undo(bundle, restored);
+    assert.equal(currentDecision(bundle, undone).id, routeCard.step_id);
+    assert.equal(undone.run.route, 'extremum');
+    assert.deepEqual(switchRoute(bundle, switchRoute(bundle, restored, 'discriminant'), 'extremum').run, restored.run);
+  }
+  assert.deepEqual(legacy, before, 'migration does not mutate the stored source record');
 });
 
 test('route changes preserve target decisions and undo stays on the current route after refresh', () => {
@@ -148,7 +220,6 @@ test('route changes preserve target decisions and undo stays on the current rout
   const changed = switchRoute(bundle, prior, 'extremum');
   assert.deepEqual(changed.introCompleted.slice(0, 2), prior.introCompleted.slice(0, 2));
   assert.equal(changed.introCompleted[2].answer[2], 'separation');
-  assert.equal(changed.introCompleted[3].answer, 'extremum');
   assert.equal(changed.run.route, 'extremum');
   const restored = JSON.parse(JSON.stringify(changed));
   assert.equal(graphState(bundle, restored).nodes['method-separation'], 'confirmed');
@@ -171,7 +242,7 @@ test('new calculation data does not illuminate unread skills or future mathemati
   assert.equal(reached.calls.length, 1);
   assert.equal(reached.calls[0].decision, first.step_id);
   assert.equal(reached.calls[0].ref, 'skill-inequality-transform');
-  assert.equal(state.events.length, 4); // Reading is not an invented graded answer.
+  assert.equal(state.events.length, 3); // Reading is not an invented graded answer.
 });
 
 test('graph evidence is scoped by run, target, route, step identity and mathematical hash', () => {

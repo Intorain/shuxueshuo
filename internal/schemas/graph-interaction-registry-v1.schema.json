@@ -126,7 +126,16 @@
         "min_options": {"type": "integer", "minimum": 2},
         "max_options": {"type": "integer", "minimum": 2},
         "submit_label": {"$ref": "#/$defs/text"},
-        "graphs": {"$ref": "#/$defs/graphs"}
+        "graphs": {"$ref": "#/$defs/graphs"},
+        "board": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["caption", "lines"],
+          "properties": {
+            "caption": {"$ref": "#/$defs/text"},
+            "lines": {"type": "string", "pattern": "^[a-z][a-z_]*$"}
+          }
+        }
       },
       "if": {"properties": {"component": {"const": "checklist"}}},
       "then": {"required": ["rows"], "not": {"anyOf": [{"required": ["answer"]}, {"required": ["distractors"]}]}},
@@ -137,6 +146,7 @@
       "required": ["repeat", "parts"],
       "properties": {
         "repeat": {"$ref": "#/$defs/repeat"},
+        "fold": {"const": true},
         "parts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/part"}}
       }
     },
@@ -147,12 +157,14 @@
       "minProperties": 1,
       "properties": {
         "repeat": {"$ref": "#/$defs/repeat"},
+        "fold": {"const": true},
         "parts": {
           "type": "array",
           "items": {
             "type": "object",
             "propertyNames": {"enum": ["component", "title", "question", "answer", "distractors", "rows",
-                                       "feedback", "min_options", "max_options", "submit_label", "graphs"]}
+                                       "feedback", "min_options", "max_options", "submit_label", "graphs",
+                                       "board"]}
           }
         }
       }

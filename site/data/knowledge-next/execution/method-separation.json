@@ -30,6 +30,9 @@
     },
     "relation_kind": {
       "role": "relation_kind"
+    },
+    "function_name": {
+      "role": "function_name"
     }
   },
   "steps": [
@@ -124,17 +127,61 @@
               "$relation"
             ],
             "after": [
+              "$applied_separation.moved_relation",
               "$applied_separation.separated_relation"
             ],
-            "divisor": "$applied_separation.divisor"
+            "divisor": "$applied_separation.divisor",
+            "moved": "$applied_separation.moved_relation",
+            "separated": "$applied_separation.separated_relation",
+            "function": "$applied_separation.function",
+            "parameter_expression": "$applied_separation.parameter_expression",
+            "operator": "$applied_separation.operator",
+            "x": "$x",
+            "domain": "$domain",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "applied_separation",
-            "relation"
+            "domain",
+            "function_name",
+            "relation",
+            "x"
           ],
           "guard": {
             "ref": "applied_separation.transformation",
             "equals": "positive_division"
+          }
+        },
+        {
+          "id": "constant_divided",
+          "after": "inequality",
+          "template": "constant_divided",
+          "bindings": {
+            "before": [
+              "$relation"
+            ],
+            "after": [
+              "$applied_separation.moved_relation",
+              "$applied_separation.separated_relation"
+            ],
+            "divisor": "$applied_separation.divisor",
+            "moved": "$applied_separation.moved_relation",
+            "separated": "$applied_separation.separated_relation",
+            "function": "$applied_separation.function",
+            "parameter_expression": "$applied_separation.parameter_expression",
+            "operator": "$applied_separation.operator",
+            "x": "$x",
+            "function_name": "$function_name"
+          },
+          "depends_on": [
+            "applied_separation",
+            "function_name",
+            "relation",
+            "x"
+          ],
+          "guard": {
+            "ref": "applied_separation.transformation",
+            "equals": "constant_division"
           }
         },
         {
@@ -147,11 +194,21 @@
             ],
             "after": [
               "$applied_separation.separated_relation"
-            ]
+            ],
+            "relation": "$relation",
+            "moved": "$applied_separation.moved_relation",
+            "separated": "$applied_separation.separated_relation",
+            "function": "$applied_separation.function",
+            "parameter_expression": "$applied_separation.parameter_expression",
+            "operator": "$applied_separation.operator",
+            "x": "$x",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "applied_separation",
-            "relation"
+            "function_name",
+            "relation",
+            "x"
           ],
           "guard": {
             "ref": "applied_separation.transformation",
@@ -167,13 +224,25 @@
               "$relation"
             ],
             "after": [
+              "$applied_separation.moved_relation",
               "$applied_separation.separated_relation"
             ],
-            "divisor": "$applied_separation.divisor"
+            "divisor": "$applied_separation.divisor",
+            "moved": "$applied_separation.moved_relation",
+            "separated": "$applied_separation.separated_relation",
+            "function": "$applied_separation.function",
+            "parameter_expression": "$applied_separation.parameter_expression",
+            "operator": "$applied_separation.operator",
+            "x": "$x",
+            "domain": "$domain",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "applied_separation",
-            "relation"
+            "domain",
+            "function_name",
+            "relation",
+            "x"
           ],
           "guard": {
             "ref": "applied_separation.transformation",
@@ -244,10 +313,15 @@
             "policy": "$policy",
             "x": "$x",
             "parameter_expression": "$parameter_expression",
-            "function": "$function"
+            "function": "$function",
+            "domain": "$domain",
+            "function_name": "$function_name",
+            "define_name": false
           },
           "depends_on": [
+            "domain",
             "function",
+            "function_name",
             "parameter_expression",
             "policy",
             "x"
@@ -308,7 +382,9 @@
           "outputs": {
             "reciprocal_range": "range",
             "reciprocal_points": "critical_points",
-            "reciprocal_endpoints": "endpoint_values"
+            "reciprocal_endpoints": "endpoint_values",
+            "reciprocal_shape": "shape",
+            "reciprocal_turn": "turning_point"
           },
           "guard": {
             "ref": "range_choice",
@@ -434,10 +510,12 @@
             "square": "$square_square",
             "x": "$x",
             "vertex": "$square_vertex",
-            "extremum": "$square_extremum"
+            "extremum": "$square_extremum",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "function",
+            "function_name",
             "square_extremum",
             "square_square",
             "square_vertex",
@@ -462,11 +540,13 @@
             "range": "$interval_range",
             "domain": "$domain",
             "function": "$function",
-            "x": "$x"
+            "x": "$x",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "domain",
             "function",
+            "function_name",
             "interval_range",
             "x"
           ],
@@ -477,6 +557,47 @@
         },
         {
           "id": "reciprocal_range",
+          "after": "reciprocal",
+          "template": "hook_range",
+          "bindings": {
+            "before": [
+              "$function"
+            ],
+            "after": [
+              "$reciprocal_range.set"
+            ],
+            "range": "$reciprocal_range",
+            "domain": "$domain",
+            "function": "$function",
+            "x": "$x",
+            "turn": "$reciprocal_turn",
+            "endpoints": "$reciprocal_endpoints",
+            "function_name": "$function_name"
+          },
+          "depends_on": [
+            "domain",
+            "function",
+            "function_name",
+            "reciprocal_endpoints",
+            "reciprocal_range",
+            "reciprocal_turn",
+            "x"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "range_choice",
+                "equals": "reciprocal"
+              },
+              {
+                "ref": "reciprocal_shape",
+                "equals": "hook"
+              }
+            ]
+          }
+        },
+        {
+          "id": "reciprocal_monotone_range",
           "after": "reciprocal",
           "template": "range_evidence",
           "bindings": {
@@ -491,19 +612,29 @@
             "function": "$function",
             "x": "$x",
             "points": "$reciprocal_points",
-            "endpoints": "$reciprocal_endpoints"
+            "endpoints": "$reciprocal_endpoints",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "domain",
             "function",
+            "function_name",
             "reciprocal_endpoints",
             "reciprocal_points",
             "reciprocal_range",
             "x"
           ],
           "guard": {
-            "ref": "range_choice",
-            "equals": "reciprocal"
+            "all": [
+              {
+                "ref": "range_choice",
+                "equals": "reciprocal"
+              },
+              {
+                "ref": "reciprocal_shape",
+                "equals": "monotone"
+              }
+            ]
           }
         },
         {
@@ -520,11 +651,13 @@
             "range": "$linear_range",
             "domain": "$domain",
             "function": "$function",
-            "x": "$x"
+            "x": "$x",
+            "function_name": "$function_name"
           },
           "depends_on": [
             "domain",
             "function",
+            "function_name",
             "linear_range",
             "x"
           ],
@@ -549,7 +682,8 @@
             "function": "$denominator",
             "x": "$x",
             "points": "$denominator_points",
-            "endpoints": "$denominator_endpoints"
+            "endpoints": "$denominator_endpoints",
+            "function_name": ""
           },
           "depends_on": [
             "denominator",
@@ -757,6 +891,9 @@
       },
       "relation_kind": {
         "constant": "inequality"
+      },
+      "function_name": {
+        "constant": "h"
       }
     },
     "checks": [

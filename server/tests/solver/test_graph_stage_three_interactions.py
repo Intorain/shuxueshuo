@@ -178,17 +178,18 @@ def test_q13_interval_route_matches_the_designed_table(q13, registry):
     results = _compiled(q13, registry, "interval")
     chunks = [chunk for chunk, _ in results]
     assert [len(chunk["steps"]) for chunk in chunks] == [1] * 9 + [2]
-    assert [chunk["status"] for chunk in chunks] == [
-        "interactive", "interactive", "interactive", "interactive", "readonly", "readonly",
-        "interactive", "readonly", "interactive", "interactive"]
-    assert {chunks[index]["reason"] for index in (4, 5, 7)} == {"repeat"}
+    assert [chunk["status"] for chunk in chunks] == ["interactive", "interactive", *["readonly"] * 6,
+                                                     "interactive", "interactive"]
+    # The case card already states every extreme and the merge asks the union: per-case cards fold away.
+    assert {chunks[index]["reason"] for index in range(2, 8)} == {"folded"}
 
     policy, diagnostics = results[0]
     part, = policy["parts"]
     assert part["interaction"]["type"] == "choice" and len(part["interaction"]["options"]) == 3
-    assert _correct(part) == [r"$a x + x^{2} + 1$ 在 $\left(0, \frac{1}{2}\right]$ 上的下确界 $\geq 0$"]
-    assert any("上确界" in label for label in _labels(part))
-    assert any("最小值存在" in label for label in _labels(part))
+    assert part["question"].startswith(r"记 $g(x)=x^{2} + a x + 1$，对所有 $x \in")
+    assert _correct(part) == [r"$x \in \left(0, \frac{1}{2}\right]$ 时，$g(x)_{\text{下端}} \geq 0$"]
+    assert any(r"g(x)_{\text{上端}}" in label for label in _labels(part))
+    assert any(r"$g(x)_{\min}$ 存在" in label for label in _labels(part))
     assert _diagnostic(diagnostics, "swap_bound")[0]["result"] == "witness"
     assert _diagnostic(diagnostics, "require_attained")[0] == {**_diagnostic(diagnostics, "require_attained")[0],
                                                                "result": "witness", "witness": "1"}
@@ -197,35 +198,42 @@ def test_q13_interval_route_matches_the_designed_table(q13, registry):
     assert _diagnostic(diagnostics, "flip_strictness")[0]["result"] == "unproven"
 
     cases, diagnostics = results[1]
-    basis, breakpoints = cases["parts"]
+    basis, locations = cases["parts"]
+    assert basis["question"].startswith(r"求 $g(x)$ 在 $\left(0, \frac{1}{2}\right]$ 上的值域下端时")
     assert "对称轴" in _correct(basis)[0]
     assert {label for label in _labels(basis)} - set(_correct(basis)) == {
         r"判别式 $\Delta=a^{2} - 4$ 的正负", "参数 $a$ 的正负"}
     sign_feedback = next(option["feedback"] for option in basis["interaction"]["options"]
                          if option["label"] == "参数 $a$ 的正负")
     assert "$0$" in sign_feedback and "$-1$" in sign_feedback
-    fill = breakpoints["interaction"]
-    assert fill["type"] == "fill"
-    assert [fill["term_labels"][term] for term in fill["terms"]] == [
-        "$-1$", r"$- \frac{1}{2}$", "$0$", r"$\frac{1}{2}$"]
-    assert [fill["term_labels"][term] for term in breakpoints["expected_answer"]["terms"]] == ["$-1$", "$0$"]
 
-    first_range = chunks[2]["parts"][0]
-    assert _correct(first_range) == [r"在右端点 $x=\frac{1}{2}$ 处取到"]
-    assert set(_labels(first_range)) == {r"在右端点 $x=\frac{1}{2}$ 处取到", r"在顶点 $x=- \frac{a}{2}$ 处取到",
-                                         r"当 $x\to 0^{+}$ 时趋近，取不到"}
-    unattained = chunks[6]["parts"][0]
-    assert _correct(unattained) == [r"当 $x\to 0^{+}$ 时趋近，取不到"]
-    assert "在左端点 $x=0$ 处取到" in _labels(unattained)
-
-    conditions = chunks[3]["parts"][0]
-    assert _correct(conditions) == [r"$\left[- \frac{5}{2}, -1\right]$"]
-    assert {r"$\left[- \frac{5}{2}, \infty\right)$", r"$\left(-\infty, -1\right]$",
-            r"$\left(- \frac{5}{2}, -1\right]$"} <= set(_labels(conditions))
+    checklist = locations["interaction"]
+    assert checklist["type"] == "checklist" and locations["title"] == "判断各情况的最值位置"
+    rows = [(slot["label"], {option["value"]: option["label"] for option in slot["options"]})
+            for slot in checklist["slots"]]
+    chosen = [options[term] for (_, options), term in zip(rows, locations["expected_answer"]["terms"], strict=True)]
+    assert [label for label, _ in rows] == [
+        r"对称轴在区间右侧（$a \leq -1$）时，最小值", r"对称轴在区间内（$-1 < a < 0$）时，最小值",
+        r"对称轴在区间左侧（$a \geq 0$）时，值域下端"]
+    assert chosen == [r"在右端点 $x=\frac{1}{2}$ 处取到", r"在顶点 $x=- \frac{a}{2}$ 处取到",
+                      r"当 $x\to 0^{+}$ 时趋近，取不到"]
+    assert set(rows[0][1].values()) == {r"在右端点 $x=\frac{1}{2}$ 处取到", r"在顶点 $x=- \frac{a}{2}$ 处取到",
+                                        r"当 $x\to 0^{+}$ 时趋近，取不到"}
+    # The hollow end is the whole lesson: the same end drawn as attained is the distractor.
+    assert "在左端点 $x=0$ 处取到" in rows[2][1].values()
 
     merged = chunks[8]["parts"][0]
-    assert _correct(merged) == [r"$\left[- \frac{5}{2}, \infty\right)$"]
+    assert merged["title"] == "求参数范围"
+    assert merged["question"] == r"三种情况下，都要求区间上的值域下端不小于 $0$。$a$ 的取值范围是什么？"
+    assert merged["stem_board"] == {"caption": "各情况各自要满足", "lines": [
+        r"① $a \leq -1$：$g(x)_{\min}=g\left(\frac{1}{2}\right)=\frac{a}{2} + \frac{5}{4} \geq 0$",
+        r"② $-1 < a < 0$：$g(x)_{\min}=g\left(- \frac{a}{2}\right)=1 - \frac{a^{2}}{4} \geq 0$",
+        r"③ $a \geq 0$：$g(x) > g\left(0\right)=1 \geq 0$"]}
+    assert _correct(merged) == [r"$a \geq - \frac{5}{2}$"]
     assert len(merged["interaction"]["options"]) == 4
+    assert not any("graph" in option for option in merged["interaction"]["options"])
+    # Solving 1-a^2/4>=0 over every a instead of only -1<a<0 swallows the whole line.
+    assert r"$a \in \mathbb{R}$" in _labels(merged)
 
     closing = chunks[9]
     assert [step["step_id"] for step in closing["steps"]] == [
@@ -243,7 +251,7 @@ def test_q13_separation_route_merges_boundary_and_goal(q13, registry):
     chunks = [chunk for chunk, _ in _compiled(q13, registry, "extremum")]
     assert [len(chunk["steps"]) for chunk in chunks] == [1, 1, 1, 1, 2]
     assert chunks[1]["status"] == "interactive"
-    assert "上确界" in _correct(chunks[1]["parts"][0])[0]
+    assert r"h(x)_{\text{上端}}" in _correct(chunks[1]["parts"][0])[0]
     assert chunks[-1]["status"] == "interactive"
     assert chunks[-1]["parts"][0]["interaction"]["type"] == "checklist"
 
@@ -255,40 +263,35 @@ def _option_graphs(part):
 
 def test_q13_interval_route_draws_stems_options_and_the_closing_picture(q13, registry):
     chunks = [chunk for chunk, _ in _compiled(q13, registry, "interval")]
-    stem = chunks[0]["parts"][0]["graph"]
-    assert stem["kind"] == "quadratic" and stem["caption"] == "示意图：取 $a=0$"
-    assert stem["params"]["interval"] == [0.0, 0.5] and stem["params"]["interval_closed"] == [False, True]
-    assert stem["params"]["points"] == [{"x": 0.0, "open": True}, {"x": 0.5}]
+    assert "graph" not in chunks[0]["parts"][0]
 
-    basis, breakpoints = chunks[1]["parts"]
-    assert basis["graph"]["caption"] == r"示意图：取 $a=- \frac{1}{2}$，此时对称轴在区间内"
-    assert basis["graph"]["params"]["vertex"] == [0.25, 0.9375] and basis["graph"]["params"]["showVertex"]
-    assert "graph" not in breakpoints and all("graph" not in option for option in breakpoints["interaction"].get(
-        "options", []))
+    basis, locations = chunks[1]["parts"]
+    explorer = basis["graph"]
+    assert explorer == locations["graph"]
+    assert explorer["kind"] == "axis_explorer"
+    assert explorer["caption"] == r"拖动对称轴 $x=- \frac{a}{2}$，观察区间上的最低点在哪里"
+    params = explorer["params"]
+    # x^2+ax+1 = (x-h)^2 + 1 - h^2 with h=-a/2: the parameter only moves the axis.
+    assert (params["coefficient"], params["constant"], params["target"]) == (1.0, 1.0, "min")
+    assert params["interval"] == [0.0, 0.5] and params["interval_closed"] == [False, True]
+    assert params["xTicks"] == [[0.0, "0"], [0.5, "1/2"]]
+    axis = params["axis"]
+    # The track crosses both case boundaries (a=0 and a=-1) and starts with the axis inside the interval.
+    assert axis["min"] < 0 and axis["max"] > 0.5 and axis["value"] == 0.25
 
-    right = chunks[2]["parts"][0]
-    assert right["question"].endswith("图中取 $a=-2$。")
-    marks = {label: graph["params"]["points"] for _, label, graph in _option_graphs(right)}
-    assert marks[r"在右端点 $x=\frac{1}{2}$ 处取到"] == [{"x": 0.5}]
-    assert marks[r"在顶点 $x=- \frac{a}{2}$ 处取到"] == [{"x": 1.0}]
-    assert marks[r"当 $x\to 0^{+}$ 时趋近，取不到"] == [{"x": 0.0, "open": True}]
-    assert len({json_key(graph["params"]["bounds"]) for _, _, graph in _option_graphs(right)}) == 1
-
-    unattained = chunks[6]["parts"][0]
-    assert unattained["question"].endswith("图中取 $a=1$。")
-    marks = {label: graph["params"]["points"] for _, label, graph in _option_graphs(unattained)}
-    # The hollow point is the whole lesson: the same place drawn solid is the distractor.
-    assert marks[r"当 $x\to 0^{+}$ 时趋近，取不到"] == [{"x": 0.0, "open": True}]
-    assert marks["在左端点 $x=0$ 处取到"] == [{"x": 0.0}]
-
-    for index in (3, 8):
-        options = _option_graphs(chunks[index]["parts"][0])
-        assert {graph["kind"] for _, _, graph in options} == {"number_line"}
-        assert len({json_key(graph["params"]["ticks"]) for _, _, graph in options}) == 1
-    pieces = {label: graph["params"]["pieces"] for _, label, graph in _option_graphs(chunks[3]["parts"][0])}
-    assert pieces[r"$\left[- \frac{5}{2}, -1\right]$"] == [
-        {"from": -2.5, "to": -1.0, "left_closed": True, "right_closed": True}]
-    assert pieces[r"$\left(- \frac{5}{2}, -1\right]$"][0]["left_closed"] is False
+    # The finished step shows each case in the same window, its axis held inside that case.
+    cases = locations["completion_graphs"]
+    assert [graph["caption"] for graph in cases] == [
+        r"情况①：$a \leq -1$，最小值在右端点 $x=\frac{1}{2}$ 处取到",
+        r"情况②：$-1 < a < 0$，最小值在顶点 $x=- \frac{a}{2}$ 处取到",
+        r"情况③：$a \geq 0$，当 $x\to 0^{+}$ 时趋近，最小值不存在"]
+    assert "最小值不存在" in cases[-1]["params"]["description"]
+    assert {json_key(graph["params"]["bounds"]) for graph in cases} == {json_key(params["bounds"])}
+    tracks = [(graph["params"]["axis"]["min"], graph["params"]["axis"]["max"]) for graph in cases]
+    # a=-1 (axis 1/2) belongs to case 1, a=0 (axis 0) to case 3; the open case 2 stops one step short.
+    assert tracks[0][0] == 0.5 and tracks[2][1] == 0.0
+    assert 0 < tracks[1][0] < tracks[1][1] < 0.5
+    assert all(low <= graph["params"]["axis"]["value"] <= high for graph, (low, high) in zip(cases, tracks, strict=True))
 
     closing = chunks[9]["parts"][0]["completion_graph"]
     params = closing["params"]
@@ -307,15 +310,50 @@ def json_key(value):
     return repr(value)
 
 
-def test_q13_separation_route_draws_the_hook_curve_and_closing_picture(q13, registry):
+def test_q13_interval_cards_read_as_case_derivations(q13):
+    cards = {(card["display_unit"], tuple(card["case_path"])): card for card in q13["cards"]["interval"]}
+    cases = cards[("interval_cases", ())]
+    assert cases["explanation"].startswith(r"$g(x)$ 的图像开口向上，对称轴为 $x=- \frac{a}{2}$，")
+    assert cases["title"] == "分类讨论最值"
+    assert (r"① 当 $- \frac{a}{2} \geq \frac{1}{2}$，即 $a \leq -1$ 时，"
+            r"$g(x)_{\min}=g\left(\frac{1}{2}\right)=\frac{a}{2} + \frac{5}{4}$；" in cases["explanation"])
+    assert cases["explanation"].endswith(r"即 $a \geq 0$ 时，$g(x) > g\left(0\right)=1$，最小值不存在，只能趋近上述值。")
+    # Case pictures are the conclusion; this card only carries the open derivation.
+    assert "highlight" not in cases and cases["derivation"] is True
+    right = cards[("classified_range", ("interval-case-1",))]["explanation"]
+    assert right == ("$\\because\\ a \\leq -1$，$\\therefore\\ - \\frac{a}{2} \\geq \\frac{1}{2}$，\n"
+                     "$g(x)$ 在 $\\left(0, \\frac{1}{2}\\right]$ 上单调递减，\n"
+                     "$\\therefore\\ g(x)_{\\min}=g\\left(\\frac{1}{2}\\right)=\\frac{a}{2} + \\frac{5}{4}$。")
+    left = cards[("classified_range", ("interval-case-3",))]
+    assert left["explanation"].endswith(r"$\therefore\ g(x) > g\left(0\right)=1$，最小值不存在，只能趋近上述值。")
+    solved = cards[("conditions", ("interval-case-1",))]["explanation"]
+    assert solved == (r"由 $\begin{cases}a \leq -1,\\ \frac{a}{2} + \frac{5}{4} \geq 0\end{cases}$ "
+                      r"得 $- \frac{5}{2} \leq a \leq -1$。")
+    merged = cards[("interval_merge", ())]
+    assert merged["title"] == "求参数范围"
+    assert merged["explanation"] == (
+        r"① 由 $\begin{cases}a \leq -1,\\ \frac{a}{2} + \frac{5}{4} \geq 0\end{cases}$ 得 $- \frac{5}{2} \leq a \leq -1$；" "\n"
+        r"② 由 $\begin{cases}-1 < a < 0,\\ 1 - \frac{a^{2}}{4} \geq 0\end{cases}$ 得 $-1 < a < 0$；" "\n"
+        r"③ 由 $\begin{cases}a \geq 0,\\ 1 \geq 0\end{cases}$ 得 $a \geq 0$。" "\n"
+        r"综上，取并集得 $a \geq - \frac{5}{2}$。")
+    assert merged["highlight"] == {"caption": "取并集", "layout": "merge", "result": r"$a \geq - \frac{5}{2}$", "items": [
+        {"label": r"情况①（$a \leq -1$）", "math": r"- \frac{5}{2} \leq a \leq -1"},
+        {"label": r"情况②（$-1 < a < 0$）", "math": r"-1 < a < 0"},
+        {"label": r"情况③（$a \geq 0$）", "math": r"a \geq 0"}]}
+
+
+def test_q13_separation_route_states_the_policy_without_a_picture_and_draws_the_closing_one(q13, registry):
     chunks = [chunk for chunk, _ in _compiled(q13, registry, "extremum")]
-    stem = chunks[1]["parts"][0]["graph"]
-    assert stem["kind"] == "reciprocal_sum"
-    assert (stem["params"]["a"], stem["params"]["b"], stem["params"]["negative"]) == (-1.0, -1.0, False)
-    # The left end is a pole: no point is drawn there, only the included right end.
-    assert stem["params"]["points"] == [{"x": 0.5}]
-    # The window reaches below f(1/2) = -5/2 so the climb out of the pole shows.
-    assert stem["params"]["bounds"][2] <= -4.25
+    policy = chunks[1]["parts"][0]
+    assert policy["title"] == "转化为最值条件" and "graph" not in policy
+    assert "h(x)$ 成立" in policy["question"]
+    assert any(r"h(x)_{\text{上端}}" in label for label in _labels(policy))
+    named = q13["cards"]["extremum"][0]["highlight"]["result"]
+    assert "h(x)$，其中 $h(x)=" in named
+    assert r"h(x)_{\text{上端}}" in q13["cards"]["extremum"][1]["highlight"]["result"]
+    ranges = q13["cards"]["extremum"][2]
+    assert "h(x)" in ranges["explanation"]
+    assert "h(x)" in chunks[2]["parts"][0]["question"]
     assert chunks[-1]["parts"][0]["completion_graph"]["params"]["vertex"] == [1.25, -0.5625]
 
 
@@ -326,12 +364,14 @@ def test_pictures_fall_back_to_the_same_text_question(q13, registry, monkeypatch
         raise interaction.GraphUnavailable("family_unknown")
     monkeypatch.setattr(interaction.drawing, "family", unknown)
     monkeypatch.setattr(interaction.drawing, "number_lines", unknown)
+    monkeypatch.setattr(interaction.drawing, "axis_explorer", unknown)
     plain = interaction.compile_route(q13["seeds"]["interval"], registry)[0]
 
     def strip(part):
         part = deepcopy(part)
         part.pop("graph", None)
         part.pop("completion_graph", None)
+        part.pop("completion_graphs", None)
         part["question"] = part["question"].split("图中取")[0]
         for option in part["interaction"].get("options", []):
             option.pop("graph", None)
@@ -341,7 +381,7 @@ def test_pictures_fall_back_to_the_same_text_question(q13, registry, monkeypatch
         assert not any("graph" in option for part in without["parts"]
                        for option in part["interaction"].get("options", []))
         if with_graphs["status"] == "interactive" and any(
-                "graph" in part or "completion_graph" in part or any(
+                "graph" in part or "completion_graph" in part or "completion_graphs" in part or any(
                     "graph" in option for option in part["interaction"].get("options", []))
                 for part in with_graphs["parts"]):
             assert any(row.get("result") == "graph_fallback" for row in diagnostics)
@@ -372,7 +412,9 @@ def test_function_families_and_representatives():
     assert quadratic["kind"] == "quadratic"
     assert quadratic["vertex"] == (sp.Rational(5, 4), -sp.Rational(9, 16))
     assert drawing.family((-x**2 - 1) / x, x) | {"function": None} == {
-        "kind": "reciprocal_sum", "function": None, "a": -1, "b": -1}
+        "kind": "reciprocal_sum", "function": None, "a": -1, "b": -1, "c": 0}
+    assert drawing.family(x + 3 + 4 / x, x) | {"function": None} == {
+        "kind": "reciprocal_sum", "function": None, "a": 1, "b": 4, "c": 3}
     assert drawing.family(3 * x - 2, x)["kind"] == "linear"
     for unsupported in (1 / (x + 1), sp.sqrt(x), x**3, a * x):
         with pytest.raises(drawing.GraphUnavailable):
@@ -413,13 +455,17 @@ def test_first_card_compiles_from_its_own_seed_only(q13, registry):
     route = interaction.compile_route(seeds, registry)[0][0]
     assert alone == route
     values = interaction.decode_value(seeds[0]["values"])
-    assert not any(isinstance(value, sp.Set) for value in values.values())
+    context = interaction.decode_value(seeds[0]["context"])
+    assert values["domain"] == context["domain"]
+    assert not any(isinstance(value, sp.Set) for key, value in values.items() if key != "domain")
 
 
 def test_known_conditions_restrict_witnesses_and_set_comparisons(q13, registry):
     known = _known("∀x∈(0,1/2]:x^2+a*x+1>=0", "a>=0")
     seeds = [{**seed, "constraint_context": known} for seed in q13["seeds"]["interval"]]
-    results = interaction.compile_route(seeds, registry)[0]
+    unfolded = deepcopy(registry)
+    del unfolded["overrides"]["method-interval-extremum#conditions"]
+    results = interaction.compile_route(seeds, unfolded)[0]
     diagnostics = results[0][1]
     assert _diagnostic(diagnostics, "swap_bound")[0]["result"] != "witness"
     witnesses = [row["witness"] for row in diagnostics if row.get("result") == "witness"]
@@ -449,7 +495,7 @@ def test_strict_relation_distractors_are_checked_as_displayed(registry):
     chunk, diagnostics = interaction.build_chunk([seed], registry, {"previous": 0})
     swap, = _diagnostic(diagnostics, "swap_bound")
     assert swap["result"] != "witness"
-    assert not any("上确界" in label for part in chunk["parts"] for label in _labels(part))
+    assert not any(r"_{\text{上端}}" in label for part in chunk["parts"] for label in _labels(part))
     strictness, = _diagnostic(diagnostics, "flip_strictness")
     assert strictness == {**strictness, "result": "witness", "witness": "0"}
 
@@ -461,12 +507,12 @@ def test_existential_policy_words_attainment_instead_of_claiming_universality(re
     part, = chunk["parts"]
     assert "至少存在一个" in part["question"]
     assert "恒成立" not in part["question"]
-    assert "等号成立时上确界必须能取到" in _correct(part)[0]
+    assert "等号成立时值域上端必须能取到" in _correct(part)[0]
 
 
 @pytest.mark.parametrize("quantifier,operator,goal,swapped,feedback", [
-    ("∃", "<", "至少有一个", "对所有 $x \\in \\left(0, 2\\right)$，$a + x^{2} > 0$ 都成立", "不要求每个"),
-    ("∀", "<=", "对所有", "存在 $x \\in \\left(0, 2\\right)$，使 $a + x^{2} \\geq 0$", "不是找到一个就行"),
+    ("∃", "<", "至少有一个", "对所有 $x \\in \\left(0, 2\\right)$，$x^{2} + a > 0$ 都成立", "不要求每个"),
+    ("∀", "<=", "对所有", "存在 $x \\in \\left(0, 2\\right)$，使 $x^{2} + a \\geq 0$", "不是找到一个就行"),
 ])
 def test_policy_feedback_follows_the_question_quantifier(registry, quantifier, operator, goal, swapped, feedback):
     seed = _policy_seed(x**2 + a, sp.Interval.open(0, 2), quantifier, operator)
@@ -483,7 +529,7 @@ def test_extensions_see_only_the_reviewed_api():
         "decode_value", "known_set", "representatives", "range_at", "exact_set_equal",
         "latex", "math", "cmp", "finite", "attempt", "set_candidate", "set_check", "case_solution_answer",
         "flip_endpoint", "drop_piece", "skip_intersection", "flip_keep", "conditions_facts", "merge_facts",
-        "goal_facts", "boundary_facts", "boundary_answer", "function_stem", "set_options"}
+        "goal_facts", "boundary_facts", "boundary_answer", "function_stem", "set_options", "named_function"}
 
 
 def test_checklist_rows_respect_the_option_limit(monkeypatch):
@@ -555,8 +601,43 @@ def test_discriminant_is_not_called_wrong_when_it_is_a_sufficient_basis(registry
     chunk, diagnostics = interaction.build_chunk([seed], registry, {"previous": 0})
     discriminant, = _diagnostic(diagnostics, "case_basis_alternatives", "判别式")
     assert discriminant["result"] == "unproven"
-    assert not any("判别式" in label for part in chunk["parts"] for label in _labels(part)
-                   if part["interaction"]["type"] == "choice")
+    assert not any("判别式" in label for part in chunk["parts"] if part["interaction"]["type"] == "choice"
+                   for label in _labels(part))
+
+
+def test_case_checklist_names_the_opening_when_the_parameter_flips_it(registry):
+    function, domain = a * x**2 - a * x - 1, sp.Interval(1, 3)
+    cases = _cases(function, domain)
+    seed = _seed("interval_cases", {"before": [function], "after": [], "cases": cases, "parameter": a},
+                 {"x": x, "domain": domain, "parameter": a})
+    chunk, _ = interaction.build_chunk([seed], registry, {"previous": 0})
+    locations = chunk["parts"][-1]
+    slots = locations["interaction"]["slots"]
+    # The constant case a=0 has no place to find; the axis x=1/2 does not move, so only the opening is named.
+    assert [slot["label"] for slot in slots] == ["开口向下（$a < 0$）时，最小值", "开口向上（$a > 0$）时，最小值"]
+    chosen = [next(option["label"] for option in slot["options"] if option["value"] == term)
+              for slot, term in zip(slots, locations["expected_answer"]["terms"], strict=True)]
+    assert chosen == ["在右端点 $x=3$ 处取到", "在左端点 $x=1$ 处取到"]
+    # Dragging the axis cannot show a parabola that turns over: the picture stays a sample.
+    assert locations.get("graph", {}).get("kind") != "axis_explorer"
+    interaction.validate_chunk(chunk)
+
+
+def test_axis_explorer_only_draws_a_parameter_that_moves_the_axis():
+    drawing = interaction.drawing
+    domain = sp.Interval(1, 2)
+    common = {"breakpoints": [sp.Integer(-3)], "start": sp.Integer(-2), "target": "max", "title": "t",
+              "description": "d"}
+    graph = drawing.axis_explorer(x**2 + a * x + 4, x, a, domain, **common)
+    params = graph["params"]
+    assert (params["coefficient"], params["constant"]) == (1.0, 4.0)
+    assert params["marks"] == [{"x": 1.5, "label": "3/2"}] and params["axis"]["value"] == 1.0
+    for moving in (a * x**2 + x, x**2 + x + a, x**2 + a**2 * x):
+        with pytest.raises(interaction.GraphUnavailable, match="axis_not_movable"):
+            drawing.axis_explorer(moving, x, a, domain, **common)
+    # Only parameters the problem allows: a > -4 keeps the axis left of x=2.
+    limited = drawing.axis_explorer(x**2 + a * x + 4, x, a, domain, **common, allowed=sp.Interval.open(-4, sp.oo))
+    assert limited["params"]["axis"]["max"] <= 2
 
 
 def _tie_seed():
@@ -569,8 +650,16 @@ def _tie_seed():
     return _seed("classified_range", values, {"x": x, "domain": domain, "parameter": a})
 
 
+def _asking(registry):
+    """The registry with the per-case location question enabled (the case checklist normally asks it)."""
+    asking = deepcopy(registry)
+    asking["templates"]["classified_range"]["repeat"] = "first"
+    return asking
+
+
 def test_tied_bound_positions_never_offer_a_correct_position_as_wrong(registry):
     seed = _tie_seed()
+    registry = _asking(registry)
     chunk, diagnostics = interaction.build_chunk([seed], registry, {"previous": 0})
     right, = _diagnostic(diagnostics, "location_alternatives", "右端点")
     assert right["result"] == "also_correct"
@@ -589,6 +678,7 @@ def test_tied_bound_positions_never_offer_a_correct_position_as_wrong(registry):
 
 def test_insufficient_options_and_repeat_fall_back_to_readonly(registry):
     seed = _tie_seed()
+    registry = _asking(registry)
     chunk, _ = interaction.build_chunk([seed], registry, {"previous": 0})
     assert chunk["status"] == "readonly" and chunk["reason"] == "insufficient_options" and chunk["parts"] == []
     chunk, _ = interaction.build_chunk([seed], registry, {"previous": 1})
@@ -605,7 +695,7 @@ def test_insufficient_options_and_repeat_fall_back_to_readonly(registry):
 def test_compiler_errors_become_readonly_results(registry):
     seed = _tie_seed()
     broken = {**seed, "values": encode_value({"before": [x]})}
-    chunk, diagnostics = interaction.build_chunk([broken], registry, {"previous": 0})
+    chunk, diagnostics = interaction.build_chunk([broken], _asking(registry), {"previous": 0})
     assert chunk["status"] == "readonly" and chunk["reason"] == "compile_error"
     assert diagnostics[0]["result"] == "compile_error"
 

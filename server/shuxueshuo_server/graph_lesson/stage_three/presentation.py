@@ -6,8 +6,13 @@ import sympy as sp
 
 from ...problem_understanding.identity import revision
 from .execution_contracts import read
-from .math_values import math_value
-from .presentation_templates import prepare_values, render_case_prefix, render_template
+from .math_values import latex, math_value
+from .presentation_templates import (
+    prepare_values,
+    render_case_prefix,
+    render_highlight,
+    render_template,
+)
 from .presentation_templates import validate_registry as _validate_registry
 from .revision_manifest import math_step_hash, revision_ref
 from .trajectory import decode_value, encode_value
@@ -68,6 +73,7 @@ def make_fragment(
     explanation=None,
     case_path=(),
     premise_refs=(),
+    highlight=None,
 ):
     settings = read("presentation-registry")["templates"][template]
     ordinal = len(state["fragments"]) + 1
@@ -93,6 +99,11 @@ def make_fragment(
         "revisions_ref": revision_ref(state),
         "display_unit": unit_id,
     }
+    if highlight:
+        value["highlight"] = highlight
+    # Conclusion lives elsewhere (e.g. case pictures); the card only carries the derivation.
+    if settings.get("derivation") is True:
+        value["derivation"] = True
     value["math_step_sha256"] = math_step_hash(value)
     return value
 
@@ -104,8 +115,9 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis, pre
     specification = registry["templates"][unit["template"]]
     values = prepare_values(specification, bindings, has_case=bool(case_path))
     before, after, explanation = render_template(specification, bindings, has_case=bool(case_path))
+    highlight = render_highlight(specification, bindings, has_case=bool(case_path))
     case = decode_value(frame["bindings"]).get("case") if case_path else None
-    if case and isinstance(case.get("condition"), sp.Basic):
+    if case and isinstance(case.get("condition"), sp.Basic) and specification.get("case_prefix", True):
         explanation = render_case_prefix(registry, case["condition"]) + explanation
     if case:
         values["case"] = case
@@ -113,8 +125,15 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis, pre
         state, unit_id=unit["id"], method_ref=frame["method"] + "#" + step["id"],
         template=unit["template"], before=before, after=after, source_refs=source_refs,
         used_basis=used_basis, explanation=explanation, case_path=case_path, premise_refs=premise_refs,
+        highlight=highlight,
     )
     return fragment, values
+
+
+def _parameter(state):
+    """The route's parameter symbol for the closing cards, or None when the method has none."""
+    parameter = decode_value(state.get("input_values", {})).get("parameter")
+    return parameter if isinstance(parameter, sp.Symbol) else None
 
 
 def append_boundary(state, evidence, *, feasible_set=None):
@@ -139,10 +158,10 @@ def append_boundary(state, evidence, *, feasible_set=None):
     index = len(records)
     records.append(operation)
     updated["trajectory"]["finalization"] = deepcopy(records)
-    _, _, description = render_template(
-        read("presentation-registry")["templates"]["boundary"],
-        {"before": [], "after": [], "checks": checks},
-    )
+    specification = read("presentation-registry")["templates"]["boundary"]
+    bindings = {"before": [], "after": [], "checks": checks, "parameter": _parameter(updated),
+                "feasible": feasible_set}
+    _, _, description = render_template(specification, bindings)
     fragment = make_fragment(
         updated,
         unit_id="boundary",
@@ -154,6 +173,7 @@ def append_boundary(state, evidence, *, feasible_set=None):
         source_refs=[f"/finalization/{index}"],
         used_basis=operation["used_basis"],
         explanation=description,
+        highlight=render_highlight(specification, bindings),
     )
     updated["fragments"].append(fragment)
     updated["trajectory"]["math_steps"].append(
@@ -181,7 +201,7 @@ def _goal_math(value, *, set_value=False):
     decoded = decode_value(value["exact"])
     if not isinstance(decoded, sp.Set if set_value else sp.Expr):
         raise TypeError("presentation.goal_math_type")
-    if value.get("expression") != sp.sstr(decoded) or value.get("latex") != sp.latex(decoded):
+    if value.get("expression") != sp.sstr(decoded) or value.get("latex") != latex(decoded):
         raise ValueError("presentation.goal_display_mismatch")
     return decoded
 
@@ -254,8 +274,10 @@ def append_goal_finalization(state, answer, evidence):
     if not valid:
         raise ValueError("presentation.goal_answer_evidence_mismatch")
     template = "goal_minimum" if minimum else "goal_maximum"
-    _, _, explanation = render_template(read("presentation-registry")["templates"][template],
-                                        {"before": [feasible], "after": after, "status": status, "bound": bound})
+    specification = read("presentation-registry")["templates"][template]
+    bindings = {"before": [feasible], "after": after, "status": status, "bound": bound,
+                "parameter": _parameter(updated), "feasible": feasible}
+    _, _, explanation = render_template(specification, bindings)
     used_basis = ["function-range-extrema#attainability"]
     operation = {
         "capability": "finalize_goal", "public_ref": None,
@@ -271,6 +293,7 @@ def append_goal_finalization(state, answer, evidence):
         method_ref=updated["method"] + "#" + read("presentation-registry")["boundary_steps"][updated["method"]],
         template="goal_minimum" if minimum else "goal_maximum", before=[feasible], after=after,
         source_refs=[f"/finalization/{index}"], used_basis=used_basis, explanation=explanation,
+        highlight=render_highlight(specification, bindings),
     )
     fragment["before"][0]["exact"] = deepcopy(evidence["feasible_set"]["exact"])
     if displayed is not None:

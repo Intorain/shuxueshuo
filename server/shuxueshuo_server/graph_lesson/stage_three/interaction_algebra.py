@@ -86,6 +86,22 @@ def register(api):
                           sp.Rel(relation.lhs - change, relation.rhs, relation.rel_op, evaluate=False))
                 for change in changes]
 
+    def boundary_neighbors(relation, parameter, variable, x):
+        """Parameter values one unit either side of where a linear relation switches truth at ``x``."""
+        if not isinstance(relation, sp.Rel):
+            return []
+        difference = relation.lhs - relation.rhs
+        if variable is not None and x is not None:
+            difference = difference.subs(variable, x)
+        difference = sp.cancel(difference)
+        if not difference.is_polynomial(parameter) or difference.free_symbols - {parameter}:
+            return []
+        polynomial = sp.Poly(difference, parameter)
+        if polynomial.degree() != 1:
+            return []
+        root = -polynomial.nth(0) / polynomial.nth(1)
+        return [root - 1, root + 1] if root.is_finite else []
+
     def relation_check(facts, values, context, item, candidates):
         relation = item["answer"].value
         parameter, variable = facts["parameter"], facts["x"]
@@ -108,6 +124,15 @@ def register(api):
             if variable is not None and x is not None:
                 substitutions[variable] = x
             points.append(substitutions)
+        # Grid parameters can all lie on one side of every boundary (e.g. h(x) > 4 on (1, 2)),
+        # so also sample just beside each relation's own parameter boundary at every x.
+        # Appended last, these only separate candidates; earlier witnesses are unchanged.
+        if parameter is not None:
+            for x, candidate in product(variable_values if needs_x else [None], [item["answer"], *candidates]):
+                for p in api.attempt(boundary_neighbors, candidate.value, parameter, variable, x) or []:
+                    point = {parameter: p, **({variable: x} if variable is not None and x is not None else {})}
+                    if point not in points and known.contains(p) is sp.true and opening_holds(facts, p):
+                        points.append(point)
 
         def truth(expression, point):
             substituted = expression.subs(point)
@@ -225,9 +250,11 @@ def register(api):
                 or context["domain"].contains(vertex) is not sp.true):
             raise NotInteractive("square_evidence_unverified")
         sign = api.cmp(poly.nth(2), 0)
+        name = api.named_function(values, function, variable)
         return {"function": function, "x": variable, "parameter": context.get("parameter"),
                 "domain": context["domain"], "vertex": vertex, "bound": bound,
-                "display": {"function": function, "x": variable, "domain": context["domain"],
+                "display": {"function": f"{name}={api.latex(function)}" if name else function,
+                            "x": variable, "domain": context["domain"],
                             "extremum_name": "最小值" if sign > 0 else "最大值"}}
 
     def square_candidate(facts, vertex, bound):
@@ -310,6 +337,59 @@ def register(api):
             records.append((candidate, "witness", api.latex(point)))
         return kept, records, []
 
+    def separation_facts(values, context, key):
+        relation, moved = values.get(key), values.get("moved")
+        if not all(isinstance(item, sp.Rel) and item.rel_op in api.MIRROR for item in (relation, moved)):
+            raise NotInteractive("separation_evidence_missing")
+        variable, domain = context.get("x"), context.get("domain", sp.S.Reals)
+        reverse = moved.rel_op != values.get("separated", moved).rel_op
+        return {"relation": relation, "moved": moved, "x": variable, "parameter": context.get("parameter"),
+                "domain": domain, "case": values.get("case", {}), "divisor": values.get("divisor", sp.S.One),
+                "reverse": reverse,
+                "display": {"relation": values["before"][0], "moved": moved, "parameter": context.get("parameter"),
+                            "divisor": values.get("divisor", sp.S.One), "x": variable, "domain": domain,
+                            "divisor_kind": "负数" if reverse else "正数"}}
+
+    def candidate(relation, variant="default"):
+        return Candidate("relation:" + sp.srepr(relation), api.math(relation), relation, variant)
+
+    def rel(lhs, rhs, operator):
+        return sp.Rel(lhs, rhs, operator, evaluate=False)
+
+    def ordered_terms(expression, variable):
+        terms = list(sp.Add.make_args(sp.expand(expression)))
+        if variable is not None and expression.is_polynomial(variable):
+            terms.sort(key=lambda term: -sp.degree(term, variable))
+        return terms
+
+    def move_sign_error(facts, item):
+        relation = item["answer"].value
+        return [candidate(rel(relation.lhs, -relation.rhs, relation.rel_op))] if relation.rhs != 0 else []
+
+    def move_partial_sign(facts, item):
+        relation = item["answer"].value
+        terms = ordered_terms(relation.rhs, facts["x"])
+        if len(terms) < 2:
+            return []
+        return [candidate(rel(relation.lhs, relation.rhs - 2 * terms[-1], relation.rel_op))]
+
+    def flipped_direction(facts, item):
+        relation = item["answer"].value
+        return [candidate(rel(relation.lhs, relation.rhs, api.MIRROR[relation.rel_op]),
+                          "negative" if facts["reverse"] else "positive")]
+
+    def partial_division(facts, item):
+        relation, moved, divisor = item["answer"].value, facts["moved"], facts["divisor"]
+        terms = ordered_terms(moved.rhs, facts["x"])
+        if len(terms) < 2 or divisor == 1:
+            return []
+        partial = sp.Add(*(sp.cancel(term / divisor) for term in terms[:-1]), terms[-1])
+        return [candidate(rel(relation.lhs, partial, relation.rel_op))]
+
+    def division_sign_error(facts, item):
+        relation = item["answer"].value
+        return [candidate(rel(relation.lhs, -relation.rhs, relation.rel_op))] if relation.rhs != 0 else []
+
     relation_source = {"kind": "validated", "requires_known": True, "answer": relation_answer,
                        "validate": relation_check,
                        "generators": {"relation_variants": changed_relations, "move_constant_wrong": moved_constants}}
@@ -321,6 +401,14 @@ def register(api):
             "discriminant_condition": {**relation_source, "facts": discriminant_facts},
             "zero_coefficient": {**relation_source, "facts": degree_facts,
                                  "generators": {"relation_variants": changed_relations}},
+            "moved_relation": {**relation_source, "facts": lambda values, context: separation_facts(
+                values, context, "moved"), "generators": {
+                    "move_sign_error": move_sign_error, "move_partial_sign": move_partial_sign,
+                    "move_direction_error": flipped_direction}},
+            "separated_relation": {**relation_source, "facts": lambda values, context: separation_facts(
+                values, context, "separated"), "generators": {
+                    "division_direction_error": flipped_direction, "partial_division": partial_division,
+                    "division_sign_error": division_sign_error}},
             "opening_positions": {"kind": "validated", "facts": opening_facts, "answer": opening_answer,
                                   "validate": opening_check, "generators": {"opening_variants": opening_variants}},
             "degenerate_decision": {"kind": "fixed", "facts": degenerate_facts, "answer": degenerate_answer,

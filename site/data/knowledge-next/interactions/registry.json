@@ -35,8 +35,18 @@
     "swap_combiner",
     "swap_symbol_roles",
     "reverse_division",
+    "other_divisor_signs",
+    "turn_alternatives",
+    "other_hook_sides",
+    "move_sign_error",
+    "move_partial_sign",
+    "move_direction_error",
+    "division_direction_error",
+    "partial_division",
+    "division_sign_error",
     "range_alternatives",
-    "omit_endpoint"
+    "omit_endpoint",
+    "skip_case_intersection"
   ],
   "templates": {
     "policy": {
@@ -45,7 +55,7 @@
         {
           "component": "choice",
           "title": "转化为最值条件",
-          "question": "{quantifier_text} ${x} \\in {domain}$，${relation}$ 成立，等价于什么？",
+          "question": "{definition}{quantifier_text} ${x} \\in {domain}$，${relation}$ 成立，等价于什么？{bound_explanation}",
           "answer": {"from": "policy_statement"},
           "distractors": [
             {"generator": "swap_bound", "feedback": {
@@ -61,16 +71,15 @@
               "existential": "只检查一个端点，会漏掉区间里其他可能满足条件的 ${x}$。"
             }},
             {"generator": "require_attained", "feedback": {
-              "universal": "{bound_name}可能取不到（例如开区间端点处只能无限接近），这时没有{extremum_name}，但每个函数值仍可能都满足条件。",
-              "existential": "{bound_name}可能取不到，这时没有{extremum_name}；但只要{bound_name}严格满足条件，仍能找到满足条件的 ${x}$。"
+              "universal": "最值可能取不到（例如开区间端点处只能无限接近），这时没有{extremum_name}，但每个函数值仍可能都满足条件。",
+              "existential": "最值可能取不到，这时没有{extremum_name}；但只要边界严格满足条件，仍能找到满足条件的 ${x}$。"
             }},
             {"generator": "flip_strictness", "feedback": "注意原题是否允许等号。"}
           ],
           "feedback": "把“{quantifier_goal}”转化为比较函数在区间上的{bound_name}。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认判断",
-          "graphs": {"stem": "function_sample"}
+          "submit_label": "确认判断"
         }
       ]
     },
@@ -80,7 +89,7 @@
         {
           "component": "choice",
           "title": "选择分类依据",
-          "question": "求 ${function}$ 在 ${domain}$ 上的{bound_name}时，按什么分类，才能在每一类里确定{bound_name}的位置？",
+          "question": "求 ${function}$ 在 ${domain}$ 上的{bound_name}时，按什么分类，才能确定它在哪个位置取到或趋近？",
           "answer": {"from": "case_basis"},
           "distractors": [
             {"generator": "case_basis_alternatives", "feedback": {
@@ -90,25 +99,27 @@
               "default": "这样分类后，同一类里{bound_name}的位置仍不确定。例如 {witness}。"
             }}
           ],
-          "feedback": "{bound_name}在哪里取得，要看对称轴相对区间端点的位置。",
+          "feedback": "{bound_name}在哪里取到或趋近，要看对称轴相对区间端点的位置。",
           "min_options": 3,
           "max_options": 3,
           "submit_label": "确认依据",
-          "graphs": {"stem": "case_sample"}
+          "graphs": {"stem": "axis_explorer"}
         },
         {
-          "component": "fill",
-          "title": "找出分界点",
-          "question": "按上一问的依据，${parameter}$ 的分界点是哪些？按从小到大填入。",
-          "answer": {"from": "case_breakpoints"},
-          "distractors": [
-            {"generator": "boundary_scale", "limit": 1},
-            {"generator": "domain_endpoints"}
+          "component": "checklist",
+          "title": "判断各情况的最值位置",
+          "question": "拖动对称轴观察：每种情况下，${function}$ 在 ${domain}$ 上的{bound_name}在哪里取到或趋近？",
+          "rows": [
+            {"seed": 0, "answer": {"from": "case_locations"}, "distractors": [
+              {"generator": "flip_attained"},
+              {"generator": "location_alternatives"}
+            ]}
           ],
-          "feedback": "对称轴 ${x}={vertex}$ 恰好落在区间端点时，就是参数的分界点。逐个令对称轴等于端点解出 ${parameter}$。",
-          "min_options": 3,
-          "max_options": 4,
-          "submit_label": "确认分界点"
+          "feedback": "对称轴在区间外时，函数在区间上单调，{bound_name}在端点；对称轴在区间内时，再看顶点。区间不含的端点处取不到，只能趋近。",
+          "min_options": 2,
+          "max_options": 3,
+          "submit_label": "确认最值位置",
+          "graphs": {"stem": "axis_explorer", "completion": "case_explorers"}
         }
       ]
     },
@@ -117,14 +128,14 @@
       "parts": [
         {
           "component": "choice",
-          "title": "判断确界的位置",
-          "question": "当 ${condition}$ 时，${function}$ 在 ${domain}$ 上的{bound_name}在哪里取得？",
+          "title": "判断最值的位置",
+          "question": "当 ${condition}$ 时，${function}$ 在 ${domain}$ 上的{bound_name}在哪里取到或趋近？",
           "answer": {"from": "bound_location"},
           "distractors": [
             {"generator": "flip_attained", "feedback": "${x}={point}$ 不在区间内，函数在这里只能无限接近{bound_name}，取不到。"},
             {"generator": "location_alternatives", "feedback": "例如 {witness}。"}
           ],
-          "feedback": "比较两个端点（或端点处的极限）与区间内顶点的函数值。",
+          "feedback": "对称轴在区间外，函数在区间上单调，{bound_name}在端点；对称轴在区间内，再比较顶点与两端。",
           "min_options": 3,
           "max_options": 4,
           "submit_label": "确认位置",
@@ -142,10 +153,10 @@
           "answer": {"from": "case_solution"},
           "distractors": [
             {"generator": "skip_intersection", "feedback": "解出的集合还要与本情况的范围 ${condition}$ 取交集。"},
-            {"generator": "case_only", "feedback": "本情况的范围只是前提，还要满足由确界得到的条件。"},
+            {"generator": "case_only", "feedback": "本情况的范围只是前提，还要满足由最值得到的条件。"},
             {"generator": "flip_endpoint", "feedback": "再检查端点处能否取等号。"}
           ],
-          "feedback": "先解出条件，再与本情况的范围取交集。",
+          "feedback": "解出条件后，与本情况的范围取交集。",
           "min_options": 3,
           "max_options": 4,
           "submit_label": "确认范围",
@@ -158,19 +169,20 @@
       "parts": [
         {
           "component": "choice",
-          "title": "合并各情况",
-          "question": "各情况得到的 ${parameter}$ 的范围依次为 {pieces}，合并后是？",
+          "title": "求参数范围",
+          "question": "{requirement}。${parameter}$ 的取值范围是什么？",
+          "board": {"caption": "各情况各自要满足", "lines": "case_requirements"},
           "answer": {"from": "merged_set"},
           "distractors": [
+            {"generator": "skip_case_intersection", "feedback": "每种情况解出的范围，要先与这种情况本身的范围取交集，再合并。"},
             {"generator": "drop_piece", "limit": 1, "feedback": "合并时漏掉了某一种情况的结果。"},
-            {"generator": "flip_endpoint", "feedback": "再检查端点是否属于某一种情况的结果。"},
+            {"generator": "flip_endpoint", "feedback": "再检查端点：它属于哪种情况，在那种情况下条件是否成立。"},
             {"generator": "seam_puncture", "feedback": "相邻两段在衔接点处恰好有一段包含这个点，合并后它仍在范围内。"}
           ],
-          "feedback": "各情况互不重叠、覆盖全部参数，把每段结果取并集。",
+          "feedback": "每种情况内解出条件并与本情况取交集，各情况互不重叠，最后把结果取并集。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认合并",
-          "graphs": {"options": "parameter_sets"}
+          "submit_label": "确认范围"
         }
       ]
     },
@@ -289,18 +301,17 @@
         {
           "component": "choice",
           "title": "求参数范围",
-          "question": "结合本路线此前已确定的条件，求解 {conditions} {case_note}，得到 ${parameter}$ 的范围是？",
+          "question": "由 {conditions}{case_note}，${parameter}$ 的取值范围是？",
           "answer": {"from": "algebra_solution"},
           "distractors": [
             {"generator": "set_complement", "feedback": "先在根分隔的区间检查符号，不要把满足条件的部分与不满足的部分交换。"},
             {"generator": "flip_endpoint", "feedback": "将边界代回条件，确定不等式是否允许等号。"},
             {"generator": "drop_piece", "limit": 1, "feedback": "若多个区间都满足条件，不能漏掉其中一段。"}
           ],
-          "feedback": "分区判断符号，按严格性保留或排除根，并与当前情况的条件求交。",
+          "feedback": "看清边界能否取等。",
           "min_options": 3,
           "max_options": 4,
-          "submit_label": "确认范围",
-          "graphs": {"options": "algebra_sets"}
+          "submit_label": "确认范围"
         }
       ]
     },
@@ -516,7 +527,7 @@
           "rows": [
             {"seed": 0, "answer": {"from": "goal_conclusion"}, "distractors": [{"generator": "goal_status_errors"}]}
           ],
-          "feedback": "先看可行集是否为空、所求方向是否有界，再检查确界是否属于可行集。",
+          "feedback": "先看可行集是否为空、所求方向是否有界，再看边界点是否属于可行集。",
           "min_options": 2
         }
       ]
@@ -531,7 +542,7 @@
           "rows": [
             {"seed": 0, "answer": {"from": "goal_conclusion"}, "distractors": [{"generator": "goal_status_errors"}]}
           ],
-          "feedback": "先看可行集是否为空、所求方向是否有界，再检查确界是否属于可行集。",
+          "feedback": "先看可行集是否为空、所求方向是否有界，再看边界点是否属于可行集。",
           "min_options": 2
         }
       ]
@@ -540,15 +551,91 @@
       "repeat": "first",
       "parts": [
         {
-          "component": "checklist",
-          "title": "判断不等号方向",
-          "question": "在 ${x}\\in {domain}$ 上，两边同除以 ${divisor}$，不等号方向如何变化？",
-          "min_options": 2,
+          "component": "choice",
+          "title": "移项",
+          "question": "从 ${relation}$ 出发，把含 ${parameter}$ 的项留在左边、其余项移到右边，得到哪个不等式？",
+          "min_options": 3,
           "max_options": 4,
+          "feedback": "移到另一边的每一项都要变号；移项不改变不等号方向。",
+          "submit_label": "确认判断",
+          "answer": {
+            "from": "moved_relation"
+          },
+          "distractors": [
+            {
+              "generator": "move_sign_error",
+              "feedback": "把一项移到不等号另一边时要变号。"
+            },
+            {
+              "generator": "move_partial_sign",
+              "feedback": "移过去的每一项都要变号，不能只改其中一项。"
+            },
+            {
+              "generator": "move_direction_error",
+              "feedback": "移项相当于两边同时加减同一个式子，不等号方向不变。"
+            }
+          ]
+        },
+        {
+          "component": "checklist",
+          "title": "判断除数符号与不等号方向",
+          "question": "移项得 ${moved}$。要把 ${parameter}$ 单独留下，需要两边同除以 ${divisor}$。在 ${x}\\in {domain}$ 上逐项判断：",
+          "min_options": 2,
+          "max_options": 3,
           "feedback": "先确定除数在整个给定区间上的严格符号：除以正数方向不变，除以负数方向反向。",
           "submit_label": "确认判断",
           "rows": [
-            {"seed": 0, "answer": {"from": "division_direction"}, "distractors": [{"generator": "reverse_division"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "divisor_sign"
+              },
+              "distractors": [
+                {
+                  "generator": "other_divisor_signs"
+                }
+              ]
+            },
+            {
+              "seed": 0,
+              "answer": {
+                "from": "division_direction"
+              },
+              "distractors": [
+                {
+                  "generator": "reverse_division"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "component": "choice",
+          "title": "分离参数",
+          "question": "移项得 ${moved}$，两边同除以 ${divisor}$，得到哪个不等式？",
+          "min_options": 3,
+          "max_options": 4,
+          "feedback": "右边每一项都要除以 ${divisor}$，再按除数的符号决定不等号方向。",
+          "submit_label": "确认判断",
+          "answer": {
+            "from": "separated_relation"
+          },
+          "distractors": [
+            {
+              "generator": "division_direction_error",
+              "feedback": {
+                "positive": "除数 ${divisor}$ 为正，两边同除时不等号方向不变。",
+                "negative": "除数 ${divisor}$ 为负，两边同除时不等号方向要改变。"
+              }
+            },
+            {
+              "generator": "partial_division",
+              "feedback": "右边每一项都要除以 ${divisor}$，不能漏掉。"
+            },
+            {
+              "generator": "division_sign_error",
+              "feedback": "右边每一项都要除以 ${divisor}$。除以负数时，各项的正负与不等号方向都要改变。"
+            }
           ]
         }
       ]
@@ -557,15 +644,151 @@
       "repeat": "first",
       "parts": [
         {
-          "component": "checklist",
-          "title": "判断不等号方向",
-          "question": "在 ${x}\\in {domain}$ 上，两边同除以 ${divisor}$，不等号方向如何变化？",
-          "min_options": 2,
+          "component": "choice",
+          "title": "移项",
+          "question": "从 ${relation}$ 出发，把含 ${parameter}$ 的项留在左边、其余项移到右边，得到哪个不等式？",
+          "min_options": 3,
           "max_options": 4,
+          "feedback": "移到另一边的每一项都要变号；移项不改变不等号方向。",
+          "submit_label": "确认判断",
+          "answer": {
+            "from": "moved_relation"
+          },
+          "distractors": [
+            {
+              "generator": "move_sign_error",
+              "feedback": "把一项移到不等号另一边时要变号。"
+            },
+            {
+              "generator": "move_partial_sign",
+              "feedback": "移过去的每一项都要变号，不能只改其中一项。"
+            },
+            {
+              "generator": "move_direction_error",
+              "feedback": "移项相当于两边同时加减同一个式子，不等号方向不变。"
+            }
+          ]
+        },
+        {
+          "component": "checklist",
+          "title": "判断除数符号与不等号方向",
+          "question": "移项得 ${moved}$。要把 ${parameter}$ 单独留下，需要两边同除以 ${divisor}$。在 ${x}\\in {domain}$ 上逐项判断：",
+          "min_options": 2,
+          "max_options": 3,
           "feedback": "先确定除数在整个给定区间上的严格符号：除以正数方向不变，除以负数方向反向。",
           "submit_label": "确认判断",
           "rows": [
-            {"seed": 0, "answer": {"from": "division_direction"}, "distractors": [{"generator": "reverse_division"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "divisor_sign"
+              },
+              "distractors": [
+                {
+                  "generator": "other_divisor_signs"
+                }
+              ]
+            },
+            {
+              "seed": 0,
+              "answer": {
+                "from": "division_direction"
+              },
+              "distractors": [
+                {
+                  "generator": "reverse_division"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "component": "choice",
+          "title": "分离参数",
+          "question": "移项得 ${moved}$，两边同除以 ${divisor}$，得到哪个不等式？",
+          "min_options": 3,
+          "max_options": 4,
+          "feedback": "右边每一项都要除以 ${divisor}$，再按除数的符号决定不等号方向。",
+          "submit_label": "确认判断",
+          "answer": {
+            "from": "separated_relation"
+          },
+          "distractors": [
+            {
+              "generator": "division_direction_error",
+              "feedback": {
+                "positive": "除数 ${divisor}$ 为正，两边同除时不等号方向不变。",
+                "negative": "除数 ${divisor}$ 为负，两边同除时不等号方向要改变。"
+              }
+            },
+            {
+              "generator": "partial_division",
+              "feedback": "右边每一项都要除以 ${divisor}$，不能漏掉。"
+            },
+            {
+              "generator": "division_sign_error",
+              "feedback": "右边每一项都要除以 ${divisor}$。除以负数时，各项的正负与不等号方向都要改变。"
+            }
+          ]
+        }
+      ]
+    },
+    "constant_divided": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "移项",
+          "question": "从 ${relation}$ 出发，把含 ${parameter}$ 的项留在左边、其余项移到右边，得到哪个不等式？",
+          "min_options": 3,
+          "max_options": 4,
+          "feedback": "移到另一边的每一项都要变号；移项不改变不等号方向。",
+          "submit_label": "确认判断",
+          "answer": {
+            "from": "moved_relation"
+          },
+          "distractors": [
+            {
+              "generator": "move_sign_error",
+              "feedback": "把一项移到不等号另一边时要变号。"
+            },
+            {
+              "generator": "move_partial_sign",
+              "feedback": "移过去的每一项都要变号，不能只改其中一项。"
+            },
+            {
+              "generator": "move_direction_error",
+              "feedback": "移项相当于两边同时加减同一个式子，不等号方向不变。"
+            }
+          ]
+        },
+        {
+          "component": "choice",
+          "title": "分离参数",
+          "question": "移项得 ${moved}$，两边同除以{divisor_kind} ${divisor}$，得到哪个不等式？",
+          "min_options": 3,
+          "max_options": 4,
+          "feedback": "右边每一项都要除以 ${divisor}$，再按除数的符号决定不等号方向。",
+          "submit_label": "确认判断",
+          "answer": {
+            "from": "separated_relation"
+          },
+          "distractors": [
+            {
+              "generator": "division_direction_error",
+              "feedback": {
+                "positive": "除数 ${divisor}$ 为正，两边同除时不等号方向不变。",
+                "negative": "除数 ${divisor}$ 为负，两边同除时不等号方向要改变。"
+              }
+            },
+            {
+              "generator": "partial_division",
+              "feedback": "右边每一项都要除以 ${divisor}$，不能漏掉。"
+            },
+            {
+              "generator": "division_sign_error",
+              "feedback": "右边每一项都要除以 ${divisor}$。除以负数时，各项的正负与不等号方向都要改变。"
+            }
           ]
         }
       ]
@@ -574,15 +797,29 @@
       "repeat": "first",
       "parts": [
         {
-          "component": "checklist",
-          "title": "移项时的方向",
-          "question": "对 {before} 单独移项（不交换两边），不等号方向如何变化？",
-          "min_options": 2,
+          "component": "choice",
+          "title": "移项分离参数",
+          "question": "从 ${relation}$ 出发，把含 ${parameter}$ 的项留在左边、其余项移到右边，得到哪个不等式？",
+          "min_options": 3,
           "max_options": 4,
-          "feedback": "移项相当于两边加减同一个式子，不改变不等号方向。",
+          "feedback": "移到另一边的每一项都要变号；移项不改变不等号方向。",
           "submit_label": "确认判断",
-          "rows": [
-            {"seed": 0, "answer": {"from": "movement_direction"}, "distractors": [{"generator": "reverse_division"}]}
+          "answer": {
+            "from": "moved_relation"
+          },
+          "distractors": [
+            {
+              "generator": "move_sign_error",
+              "feedback": "把一项移到不等号另一边时要变号。"
+            },
+            {
+              "generator": "move_partial_sign",
+              "feedback": "移过去的每一项都要变号，不能只改其中一项。"
+            },
+            {
+              "generator": "move_direction_error",
+              "feedback": "移项相当于两边同时加减同一个式子，不等号方向不变。"
+            }
           ]
         }
       ]
@@ -610,10 +847,10 @@
         {
           "component": "choice",
           "title": "确定函数值的范围",
-          "question": "由本步的函数与区间条件，可得到哪个值域？",
+          "question": "{subject}在 ${domain}$ 上的值域是？",
           "min_options": 3,
           "max_options": 4,
-          "feedback": "同时核对上下确界及其可达性；无穷不是可以取得的端点。",
+          "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
           "answer": {"from": "certified_range"},
           "distractors": [
@@ -629,16 +866,49 @@
         {
           "component": "choice",
           "title": "确定函数值的范围",
-          "question": "由本步的函数与区间条件，可得到哪个值域？",
+          "question": "{subject}在 ${domain}$ 上的值域是？",
           "min_options": 3,
           "max_options": 4,
-          "feedback": "同时核对上下确界及其可达性；无穷不是可以取得的端点。",
+          "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
           "answer": {"from": "certified_range"},
           "distractors": [
             {"generator": "range_alternatives"}
           ],
           "graphs": {"options": "range_sets", "stem": "range_function"}
+        }
+      ]
+    },
+    "hook_range": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "认出对勾函数的拐点",
+          "question": "${formula}$（${relation}$）的图像如图，它的拐点是？",
+          "min_options": 3,
+          "max_options": 4,
+          "feedback": "由 ${balance}$（${relation}$）求出拐点横坐标，代回 ${label}$ 得纵坐标；曲线在拐点处由升转降是最高点，由降转升是最低点。",
+          "submit_label": "确认拐点",
+          "answer": {"from": "hook_turn"},
+          "distractors": [
+            {"generator": "turn_alternatives"}
+          ],
+          "graphs": {"stem": "hook_shape"}
+        },
+        {
+          "component": "checklist",
+          "title": "看区间落在拐点哪一侧",
+          "question": "拐点 ${x}={turn_x}$ 把这一支分成两段单调区间。题目区间 ${domain}$ 落在哪里？由此得到值域。",
+          "rows": [
+            {"seed": 0, "answer": {"from": "hook_side"}, "distractors": [{"generator": "other_hook_sides"}]},
+            {"seed": 0, "answer": {"from": "hook_range"}, "distractors": [{"generator": "range_alternatives"}]}
+          ],
+          "feedback": "区间在拐点一侧时函数单调，值域由两端决定；跨过拐点时最值在拐点处取得。开端点和趋于无穷的一端都取不到。",
+          "min_options": 2,
+          "max_options": 4,
+          "submit_label": "确认值域",
+          "graphs": {"stem": "hook_interval", "completion": "hook_completion"}
         }
       ]
     },
@@ -651,7 +921,7 @@
           "question": "由本步的函数与区间条件，可得到哪个值域？",
           "min_options": 3,
           "max_options": 4,
-          "feedback": "同时核对上下确界及其可达性；无穷不是可以取得的端点。",
+          "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
           "answer": {"from": "certified_range"},
           "distractors": [
@@ -670,7 +940,7 @@
           "question": "由本步的函数与区间条件，可得到哪个值域？",
           "min_options": 3,
           "max_options": 4,
-          "feedback": "同时核对上下确界及其可达性；无穷不是可以取得的端点。",
+          "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
           "answer": {"from": "certified_range"},
           "distractors": [
@@ -685,7 +955,7 @@
       "parts": [
         {
           "component": "checklist",
-          "title": "选择确界候选",
+          "title": "选择最值候选",
           "question": "对 ${function}$ 在 ${domain}$ 上求{bound_name}并判断能否取到，需要保留哪些候选位置？",
           "min_options": 2,
           "max_options": 4,
@@ -700,14 +970,21 @@
     }
   },
   "overrides": {
+    "method-interval-extremum#select": {
+      "classified_range": {"fold": true},
+      "case_linear_range": {"fold": true}
+    },
+    "method-interval-extremum#conditions": {
+      "interval_conditions": {"fold": true}
+    },
     "method-separation#quantifier": {
       "policy": {
         "parts": [
           {
             "distractors": [
-              {"generator": "swap_bound", "feedback": "由量词和不等号方向决定比较上确界还是下确界。"},
+              {"generator": "swap_bound", "feedback": "由量词和不等号方向决定看值域上端还是下端；能取到时才称最大值或最小值。"},
               {"generator": "flip_direction", "feedback": "比较的方向要与原关系 ${relation}$ 一致。"},
-              {"generator": "require_attained", "feedback": "确界不一定取得，不能把界值存在与最值存在混为一谈；是否需要取得还取决于量词和等号。"},
+              {"generator": "require_attained", "feedback": "最值可能取不到；是否要求取到，取决于量词和等号。"},
               {"generator": "swap_quantifier", "feedback": "核对原题量词：全称要求所有值成立，存在只要求至少一个值成立。"},
               {"generator": "flip_strictness", "feedback": "注意原题是否允许等号。"}
             ]

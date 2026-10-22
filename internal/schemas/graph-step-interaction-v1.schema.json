@@ -65,6 +65,17 @@
         },
         "open": {
           "type": "boolean"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "place": {
+          "enum": [
+            "above-right",
+            "above-left",
+            "below-right",
+            "below-left"
+          ]
         }
       }
     },
@@ -242,8 +253,86 @@
             "const": 0
           }
         },
+        "c": {
+          "type": "number"
+        },
         "negative": {
           "type": "boolean"
+        }
+      }
+    },
+    "axisExplorerParams": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/functionGraphParams"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "coefficient",
+        "constant",
+        "axis",
+        "target"
+      ],
+      "properties": {
+        "coefficient": {
+          "type": "number",
+          "not": {
+            "const": 0
+          }
+        },
+        "constant": {
+          "type": "number"
+        },
+        "axis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max",
+            "step",
+            "value"
+          ],
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "step": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "label"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "label": {
+                "$ref": "#/$defs/text"
+              }
+            }
+          }
+        },
+        "target": {
+          "enum": [
+            "min",
+            "max"
+          ]
         }
       }
     },
@@ -340,7 +429,8 @@
             "quadratic",
             "linear",
             "reciprocal_sum",
-            "number_line"
+            "number_line",
+            "axis_explorer"
           ]
         },
         "params": {
@@ -390,6 +480,16 @@
               "$ref": "#/$defs/numberLineParams"
             }
           }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "axis_explorer"
+            },
+            "params": {
+              "$ref": "#/$defs/axisExplorerParams"
+            }
+          }
         }
       ]
     },
@@ -404,6 +504,16 @@
         "submit_label": {"$ref": "#/$defs/text"},
         "graph": {"$ref": "#/$defs/graph"},
         "completion_graph": {"$ref": "#/$defs/graph"},
+        "completion_graphs": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/graph"}},
+        "stem_board": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["caption", "lines"],
+          "properties": {
+            "caption": {"$ref": "#/$defs/text"},
+            "lines": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}}
+          }
+        },
         "feedback": {
           "type": "object",
           "additionalProperties": false,

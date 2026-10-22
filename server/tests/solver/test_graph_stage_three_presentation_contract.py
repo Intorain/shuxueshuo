@@ -55,6 +55,16 @@ def test_math_value_representation_is_shared_by_trace_verification_and_card(valu
         Draft202012Validator(schemas[0]).validate(invalid)
 
 
+def test_polynomials_in_x_display_from_the_highest_power_down():
+    a, x = sp.symbols('a x')
+    assert math_value(a * x + x**2 + 1)['latex'] == 'x^{2} + a x + 1'
+    assert math_value(sp.Le(0, a * x**2 + a - 2 * x))['latex'] == r'a x^{2} - 2 x + a \geq 0'
+    assert math_value(sp.And(-1 < a, a <= 0))['latex'] == r'-1 < a \leq 0'
+    assert math_value((a * x + x**2 + 1) / (x + a))['latex'] == r'\frac{x^{2} + a x + 1}{x + a}'
+    assert math_value(a + x + 1 / x)['latex'] == sp.latex(a + x + 1 / x)
+    assert math_value(a * x)['expression'] == 'a*x'
+
+
 def test_explicit_legacy_read_adapter_keeps_saved_identity_and_decision_templates():
     saved = {'before': [{'expression': 'a', 'display': 'a'}], 'math_step_sha256': 'old-hash',
              'decision': {'display': '<p>{expression}</p>', 'expression': 'a'}}
@@ -103,7 +113,7 @@ def test_case_cards_depend_on_own_inputs_and_ancestor_cases_not_sibling_judgment
             assert 'source_refs' in judgment
     # The merge really uses every solved case, so its dependency closure must
     # retain those relevant judgments instead of filtering all case judgments.
-    merge = next(card for card in state['fragments'] if card['title'] == '合并各情况')
+    merge = next(card for card in state['fragments'] if card['title'] == '求参数范围')
     assert {tuple(pointer(state['trajectory'], ref)['case_path']) for ref in merge['premise_refs']} >= {
         tuple(card['case_path']) for card in cards
     }

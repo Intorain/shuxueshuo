@@ -88,6 +88,60 @@
     "explanation": {
       "type": "string"
     },
+    "derivation": {
+      "const": true
+    },
+    "highlight": {
+      "type": "object",
+      "required": [
+        "caption",
+        "items"
+      ],
+      "properties": {
+        "caption": {
+          "type": "string"
+        },
+        "connector": {
+          "type": "string",
+          "minLength": 1
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "math"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "math": {
+                "type": "string",
+                "minLength": 1
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "conclusion_only": {
+          "const": true
+        },
+        "layout": {
+          "const": "merge"
+        },
+        "result": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
     "premise_refs": {
       "type": "array",
       "items": {

@@ -51,8 +51,7 @@ function selected(bundle, route = 'discriminant') {
   let state = createState(bundle);
   state = answer(bundle, state); state = answer(bundle, state);
   const decision = currentDecision(bundle, state), method = decision.interaction.methods.find(item => item.route === route);
-  state = answer(bundle, state, [...decision.expected_answer.cell, method.value]);
-  return answer(bundle, state, route);
+  return answer(bundle, state, [...decision.expected_answer.cell, method.value]);
 }
 const finished = route => ({checkpoints: [{target_ref: target, route_id: route, status: 'verified'}]});
 const evidence = (ref = 'skill-inequality-transform') => ({trajectories: [{target_ref: target, route_id: 'discriminant', steps: [{
@@ -85,11 +84,73 @@ test('a first pending math event cannot become a legacy read before protocol met
   assert.equal(resolved.routes.discriminant.steps[0].interaction.type, 'choice');
 });
 
+test('folded cards arriving before their follower stay pending and never publish a temporary read', () => {
+  const cards = [card(1), card(2), card(3)];
+  const folded = cards.slice(0, 2).map(item => ({...chunk([item], []), reason: 'folded'}));
+  let bundle = bundleFor(cards.slice(0, 1), folded.slice(0, 1));
+  let state = selected(bundle);
+  assert.deepEqual(bundle.routes.discriminant.steps, []);
+  assert.equal(bundle.routes.discriminant.pending_count, 1);
+  assert.equal(bundle.routes.discriminant.interactions_complete, false);
+  assert.equal(currentDecision(bundle, state), null);
+  assert.equal(state.done, false);
+  bundle = extendStreamBundle(bundle, view(cards.slice(0, 2), folded), target, graph);
+  assert.deepEqual(bundle.routes.discriminant.steps, []);
+  assert.equal(bundle.routes.discriminant.pending_count, 2);
+  // Even after all mathematics finishes, wait for the follower's interaction result.
+  bundle = extendStreamBundle(bundle, view(cards, folded, finished('discriminant')), target, graph);
+  assert.deepEqual(bundle.routes.discriminant.steps, []);
+  assert.equal(bundle.routes.discriminant.pending_count, 3);
+  assert.equal(refreshStreamState(bundle, state).done, false);
+  const follower = chunk([cards[2]]);
+  bundle = extendStreamBundle(bundle, view(cards, [...folded, follower], finished('discriminant')), target, graph);
+  assert.deepEqual(bundle.routes.discriminant.steps.map(item => item.id), [follower.parts[0].id]);
+  assert.deepEqual(bundle.routes.discriminant.steps[0].stream_folded, cards.slice(0, 2).map(item => item.step_id));
+  state = refreshStreamState(bundle, state);
+  state = answer(bundle, state);
+  assert.equal(state.done, true);
+  assert.equal(bundle.routes.discriminant.pending_count, 0);
+  assert.deepEqual(extendStreamBundle(bundle, view(cards, [...folded, follower], finished('discriminant')), target, graph)
+    .routes.discriminant.steps, bundle.routes.discriminant.steps);
+});
+
+for (const status of ['running', 'interrupted']) test(`a folded tail stays pending while its route is ${status}`, () => {
+  const cards = [card(1)], folded = [{...chunk(cards, []), reason: 'folded'}];
+  const bundle = bundleFor(cards, folded, {checkpoints: [{target_ref: target, route_id: 'discriminant', status}]});
+  assert.deepEqual(bundle.routes.discriminant.steps, []);
+  assert.equal(bundle.routes.discriminant.pending_count, 1);
+  assert.equal(refreshStreamState(bundle, selected(bundle)).done, false);
+});
+
+for (const terminal of [
+  finished('discriminant'),
+  {completions: [{identity: [target, 'discriminant'], status: 'verified', available: true}]},
+  {route_statuses: [[JSON.stringify([target, 'discriminant']), {status: 'math_failed'}]]},
+]) test(`a genuinely terminal folded tail becomes a stable read: ${JSON.stringify(terminal)}`, () => {
+  const cards = [card(1), card(2)], first = chunk([cards[0]]);
+  const groups = [first, {...chunk([cards[1]], []), reason: 'folded'}];
+  const running = bundleFor(cards, groups);
+  const state = answer(running, selected(running));
+  assert.equal(currentDecision(running, state), null);
+  assert.equal(state.done, false);
+  const ended = extendStreamBundle(running, view(cards, groups, terminal), target, graph);
+  assert.deepEqual(ended.routes.discriminant.steps.map(item => item.interaction.type), ['choice', 'read']);
+  assert.deepEqual(ended.routes.discriminant.steps[0], running.routes.discriminant.steps[0]);
+  assert.equal(ended.routes.discriminant.interactions_complete, true);
+  assert.deepEqual(extendStreamBundle(ended, view(cards, groups, terminal), target, graph).routes.discriminant.steps,
+    ended.routes.discriminant.steps);
+  const restored = refreshStreamState(ended, state);
+  if (ended.routes.discriminant.available) assert.equal(answer(ended, restored).done, true);
+  else assert.equal(currentDecision(ended, restored), null);
+});
+
 test('a merged multi-part group expands both cards only on its final part', () => {
   const cards = [card(1), card(2)], merged = chunk(cards, [part('first-question'), part('last-question')]);
   const bundle = bundleFor(cards, [merged], {...finished('discriminant'), ...evidence(null)});
   const decisions = bundle.routes.discriminant.steps;
   assert.deepEqual(decisions.map(item => item.stream_last_part), [false, true]);
+  assert.deepEqual(decisions.map(item => [item.stream_part_index, item.stream_part_count]), [[0, 2], [1, 2]]);
+  assert.deepEqual(new Set(decisions.map(item => item.stream_group_title)), new Set([cards.map(item => item.title).join(' · ')]));
   assert.deepEqual(decisions.map(item => item.stream_steps), [merged.steps, merged.steps]);
   assert.ok(decisions.every(item => item.source === 'stream' && !item.effects.calls.length && !item.effects.nodes.length));
   let state = selected(bundle);
@@ -104,6 +165,14 @@ test('a merged multi-part group expands both cards only on its final part', () =
   assert.equal(currentDecision(bundle, undone).id, 'last-question');
   assert.equal(undone.done, false);
   assert.ok(!streamGraphState(bundle, undone).usedBasis.includes('inequality-properties#addition'));
+});
+
+test('a card result is carried by its last part and by a read card', () => {
+  const highlight = result => ({caption: '结论', items: [{label: '结果', math: 'a'}], result});
+  const cards = [{...card(1), highlight: highlight('$a \\geq h(x)$')}, {...card(2), highlight: highlight('$a \\geq \\sup h(x)$')}];
+  const bundle = bundleFor(cards, [chunk([cards[0]], [part('first-question'), part('last-question')]), chunk([cards[1]], [])]);
+  assert.deepEqual(bundle.routes.discriminant.steps.map(item => item.effects.results),
+    [[], ['$a \\geq h(x)$'], ['$a \\geq \\sup h(x)$']]);
 });
 
 test('readonly merged fallback remains two independently completed read decisions', () => {

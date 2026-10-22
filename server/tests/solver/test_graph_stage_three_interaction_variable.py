@@ -14,6 +14,7 @@ from shuxueshuo_server.graph_lesson.stage_three.capabilities.variable_swap impor
     parameter_linear_range,
     variable_case_plan,
 )
+from shuxueshuo_server.graph_lesson.stage_three.math_values import latex
 from tests.solver.test_graph_stage_three_batch_five import _finish_swap
 from tests.solver.test_graph_stage_three_execution import simple
 from tests.solver.test_graph_stage_three_interactions import _known, _seed
@@ -213,6 +214,8 @@ def test_actual_open_interval_case_merge_unions_isolated_point_and_draws_it(regi
     state = _finish_swap(simple("∀a∈(-1,1):a*x^2-(a+1)*x+1>0", symbol="x"))
     assert state["status"] == "method_complete"
     seed, = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_case_merge"]
+    # Linear-case seeds deliberately have no quadratic result/axis presentation bindings.
+    assert "results" not in interaction.decode_value(seed["values"])
     # The real driver produces [-1,0), {0}, (0,1), and two empty cases.
     # The union includes -1 and the isolated constant-case value 0, but not 1.
     chunk, diagnostics = compile_seed(seed, registry)
@@ -238,14 +241,17 @@ def test_actual_classified_affine_questions_include_their_frozen_case_condition(
     assert state["status"] == "method_complete"
     seeds = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_case_range"]
     assert len(seeds) == 5
+    questions = []
     for seed in seeds:
         # Compile each real frozen card by itself: the question must not rely on
         # earlier/later cards, or on the mathematical explanation shown after answering.
         values = interaction.decode_value(seed["values"])
         chunk, diagnostics = compile_seed(seed, registry)
         assert chunk["status"] == "interactive", diagnostics
-        condition = f"${sp.latex(values['case']['condition'])}$"
+        condition = f"${latex(values['case']['condition'])}$"
         assert all(condition in part["question"] for part in chunk["parts"])
+        questions.extend(part["question"] for part in chunk["parts"])
+    assert any("$0 < x < 1$" in question for question in questions)
 
     first, _ = compile_seed(seeds[0], registry)
     assert [part["title"] for part in first["parts"]] == ["计算候选值", "判断候选值能否取得"]

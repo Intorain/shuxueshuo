@@ -118,8 +118,8 @@ def test_invalid_json_still_has_an_offline_failure_report(tmp_path):
 @pytest.mark.parametrize("kind,status,field,text", [
     ("find_minimum", "attained", "value", "最小值："),
     ("find_maximum", "attained", "value", "最大值："),
-    ("find_minimum", "not_attained", "bound", "最小值不存在；下确界为"),
-    ("find_maximum", "not_attained", "bound", "最大值不存在；上确界为"),
+    ("find_minimum", "not_attained", "bound", "最小值不存在；只能趋近"),
+    ("find_maximum", "not_attained", "bound", "最大值不存在；只能趋近"),
     ("find_minimum", "unbounded_below", None, "最小值不存在：可行集没有下界。"),
     ("find_maximum", "unbounded_above", None, "最大值不存在：可行集没有上界。"),
     ("find_minimum", "empty_feasible_set", None, "没有满足题设的参数，最小值不存在。"),

@@ -9,6 +9,8 @@ from .ranges import quadratic_interval_range
 
 
 def _divisor_sign(divisor, variable, domain):
+    if divisor.is_number:
+        return "positive" if divisor.is_positive else "negative"
     if domain is None:
         if divisor.is_positive is True:
             return "positive"
@@ -23,6 +25,15 @@ def _divisor_sign(divisor, variable, domain):
     raise CapabilityGap("strict_divisor_sign_required")
 
 
+def _readable(function, variable):
+    """Split off the polynomial part over a linear denominator, as in -x - 1/x."""
+    denominator = sp.fraction(function)[1]
+    if function.free_symbols - {variable} or not denominator.is_polynomial(variable) \
+            or sp.degree(denominator, variable) != 1:
+        return function
+    return sp.apart(function, variable)
+
+
 def _reverse(operator):
     return {"<": ">", "<=": ">=", ">": "<", ">=": "<="}[operator]
 
@@ -30,6 +41,7 @@ def _reverse(operator):
 def inspect_separation(relation, parameter, variable, domain=None):
     """Pure admission/role inspection; this neither invokes nor records a call."""
     lhs, rhs = relation.lhs, relation.rhs
+    moved = None
     if not lhs.has(variable) and not rhs.has(parameter):
         h, g, op = lhs, rhs, relation.rel_op
         divisor, already, sign = sp.S.One, True, "positive"
@@ -38,35 +50,42 @@ def inspect_separation(relation, parameter, variable, domain=None):
         op = _reverse(relation.rel_op)
         divisor, already, sign = sp.S.One, True, "positive"
     else:
-        expression = bounded_expand(lhs - rhs)
+        # Read 0 <= x^2 + a x + 2 as x^2 + a x + 2 >= 0, so the parameter term keeps its written sign.
+        if rhs.has(parameter) and not lhs.has(parameter):
+            relation = make_relation(rhs, _reverse(relation.rel_op), lhs)
+        expression = bounded_expand(relation.lhs - relation.rhs)
         coefficients = polynomial(expression, parameter, maximum=48)
         powers = [power for power in range(1, int(coefficients.degree()) + 1)
                   if coefficients.nth(power) != 0] if coefficients.degree() > 0 else []
         if not powers:
             raise CapabilityGap("parameter_separation_required")
-        source = polynomial(coefficients.nth(powers[-1]), variable)
-        divisor = source.monic().as_expr()
+        # The whole leading coefficient, constant and sign included, so the parameter stands alone.
+        divisor = polynomial(coefficients.nth(powers[-1]), variable).as_expr()
         h = sp.S.Zero
         for power in powers:
             ratio = sp.cancel(coefficients.nth(power) / divisor)
             if ratio.free_symbols or ratio.is_real is not True:
                 raise CapabilityGap("parameter_coefficients_not_proportional")
             h += ratio * parameter**power
-        g = sp.cancel(-coefficients.nth(0) / divisor)
+        g = _readable(sp.cancel(-coefficients.nth(0) / divisor), variable)
         if g.has(parameter) or h.has(variable):
             raise CapabilityGap("separated_symbol_roles_required")
         sign = _divisor_sign(divisor, variable, domain)
         op = relation.rel_op if sign == "positive" else _reverse(relation.rel_op)
         already = False
+        # Moving terms keeps the direction; only the later division may flip it.
+        moved = make_relation(sp.Mul(h, divisor), relation.rel_op, bounded_expand(-coefficients.nth(0)))
     separated = make_relation(h, op, g)
+    moved = separated if moved is None else moved
     scale = divisor if sign == "positive" else -divisor
     identity = sp.cancel(residual(separated) * scale - residual(relation))
     return {
         "outputs": {"parameter_expression": h, "function": g, "operator": op,
-         "already_separated": already, "separated_relation": separated,
+         "already_separated": already, "separated_relation": separated, "moved_relation": moved,
          "divisor": divisor, "divisor_sign": sign},
         "checks": [
             {"kind": "separated_symbol_roles", "passed": not h.has(variable) and not g.has(parameter)},
+            {"kind": "moved_residual", "passed": bounded_expand(residual(moved) - residual(relation)) == 0},
             {"kind": "direction_residual" if already else "positive_scaled_residual",
              "passed": bounded_expand(identity) == 0, "divisor": divisor, "positive_scale": scale},
             *([] if already else [{"kind": f"strict_{sign}_divisor", "passed": True,
@@ -86,10 +105,14 @@ def separation_division(relation, parameter, variable, domain, prepared=None):
     values = (inspect_separation(relation, parameter, variable, domain)["outputs"]
               if prepared is None else dict(prepared))
     h, g, divisor = (values[key] for key in ("parameter_expression", "function", "divisor"))
-    separated = values["separated_relation"]
+    separated, moved = values["separated_relation"], values["moved_relation"]
     sign = _divisor_sign(divisor, variable, domain)
     scale = divisor if sign == "positive" else -divisor
     checks = [
+        {"kind": "moved_residual", "passed": (
+            (moved.rel_op in ("<", ">")) == (relation.rel_op in ("<", ">"))
+            and bounded_expand(residual(moved) - residual(relation)) == 0
+            and not bounded_expand(moved.rhs).has(parameter))},
         {"kind": "separated_symbol_roles", "passed": (
             not h.has(variable) and not g.has(parameter)
             and separated.lhs == h and separated.rhs == g and separated.rel_op == values["operator"]
@@ -101,6 +124,7 @@ def separation_division(relation, parameter, variable, domain, prepared=None):
          "divisor": divisor, "positive_scale": scale},
         {"kind": f"strict_{sign}_divisor", "passed": True, "divisor": divisor, "domain": domain},
     ]
-    values["transformation"] = "move_terms" if divisor == 1 else f"{sign}_division"
+    values["transformation"] = ("move_terms" if divisor == 1 else "constant_division" if divisor.is_number
+                                else f"{sign}_division")
     operations = ["add_both_sides"] + ([] if divisor == 1 else [f"multiply_{sign}"])
     return result({**values, "candidate": values}, operations, checks)

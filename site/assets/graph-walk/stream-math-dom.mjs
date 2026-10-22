@@ -22,13 +22,74 @@ export function routeAnswerSummary(answer = {}) {
     const formula = expressionText(value);
     if (!formula || ['Infinity', 'NegativeInfinity'].includes(value?.exact?.$math)) return null;
     return {label: answer.status === 'attained' ? `${name}：`
-      : `${name}不存在；${minimum ? '下确界' : '上确界'}为：`, formula};
+      : `${name}不存在，只能趋近：`, formula};
   }
   if (answer.status === (minimum ? 'unbounded_below' : 'unbounded_above')) {
     return {label: `${name}不存在：可行集没有${minimum ? '下' : '上'}界。`, formula: ''};
   }
   if (answer.status === 'empty_feasible_set') return {label: `没有满足题设的参数，${name}不存在。`, formula: ''};
   return null;
+}
+
+/* The conclusion first: a caption over labelled formulas joined by arrows, as in the authored lessons. */
+function highlightBoard(document, highlight) {
+  if (highlight.layout === 'merge') return mergeBoard(document, highlight);
+  const board = document.createElement('div');
+  board.className = 'visual-board completed-visual stage-three-highlight';
+  board.append(text(document, 'div', highlight.caption, 'board-caption'));
+  const row = document.createElement('div');
+  row.className = 'function-conversion';
+  highlight.items.forEach((item, index) => {
+    if (index) {
+      const arrow = text(document, 'span', highlight.connector || '→', 'conversion-arrow');
+      arrow.setAttribute('aria-hidden', 'true'); row.append(arrow);
+    }
+    const cell = document.createElement('div');
+    const label = text(document, 'span', item.label, 'conversion-label');
+    const formula = text(document, 'div', `\\displaystyle ${item.math}`, 'math');
+    label.dataset.mathText = 'true'; formula.dataset.mathFormula = 'true';
+    cell.append(label, formula);
+    if (item.note) {
+      const note = text(document, 'span', item.note, 'conversion-label');
+      note.dataset.mathText = 'true'; cell.append(note);
+    }
+    row.append(cell);
+  });
+  board.append(row);
+  return board;
+}
+
+/* Each case's result in its own cell, then the union of all cells on one line. */
+function mergeBoard(document, highlight) {
+  const board = document.createElement('div'), group = document.createElement('div');
+  board.className = 'case-merge stage-three-highlight';
+  group.className = 'case-merge-group';
+  for (const item of highlight.items) {
+    const cell = document.createElement('span');
+    cell.className = 'case-merge-cell';
+    const label = text(document, 'span', item.label, 'case-merge-name');
+    const value = text(document, 'span', `$${item.math}$`, 'case-merge-value');
+    label.dataset.mathText = 'true'; value.dataset.mathText = 'true';
+    cell.append(label, value);
+    group.append(cell);
+  }
+  const total = text(document, 'span', `${highlight.caption}：${highlight.result}`, 'case-merge-total');
+  total.dataset.mathText = 'true';
+  group.append(total);
+  board.append(group);
+  return board;
+}
+
+/* The full derivation follows, one sentence per line; a newline also starts a line (a ∵/∴ step). */
+function derivationDetails(document, explanation) {
+  const details = document.createElement('details');
+  details.className = 'details stage-three-derivation'; details.open = true;
+  details.append(text(document, 'summary', '完整推导'));
+  for (const sentence of explanation.split(/(?<=。)|\n/).filter(part => part.trim())) {
+    const line = text(document, 'p', sentence, 'stage-three-explanation');
+    line.dataset.mathText = 'true'; details.append(line);
+  }
+  return details;
 }
 
 /** Return a detached card; renderer failure cannot publish a partially built card. */
@@ -38,12 +99,20 @@ export function createMathCard(document, step, options = {}) {
   Object.assign(node.dataset, {stepId: step.step_id, mathStepSha256: step.math_step_sha256,
     targetRef: step.target_ref, routeId: step.route_id, ordinal: String(step.ordinal)});
   node.append(text(document, 'h3', step.title));
-  for (const field of ['before', 'after']) for (const value of step[field] || []) {
-    const formula = text(document, 'p', expressionText(value), `stage-three-${field}`);
-    formula.dataset.mathFormula = 'true'; node.append(formula);
+  if (step.highlight) {
+    node.append(highlightBoard(document, step.highlight));
+    if (!step.highlight.conclusion_only) node.append(derivationDetails(document, step.explanation || ''));
+  } else if (step.derivation) {
+    // Conclusion is the step's pictures or another board; this card is only the prose.
+    node.append(derivationDetails(document, step.explanation || ''));
+  } else {
+    for (const field of ['before', 'after']) for (const value of step[field] || []) {
+      const formula = text(document, 'p', expressionText(value), `stage-three-${field}`);
+      formula.dataset.mathFormula = 'true'; node.append(formula);
+    }
+    const explanation = text(document, 'p', step.explanation || '', 'stage-three-explanation');
+    explanation.dataset.mathText = 'true'; node.append(explanation);
   }
-  const explanation = text(document, 'p', step.explanation || '', 'stage-three-explanation');
-  explanation.dataset.mathText = 'true'; node.append(explanation);
   const qa = document.createElement('aside');
   qa.className = 'stage-three-qa'; qa.hidden = true; node.append(qa);
   options.renderMath?.(node);
@@ -52,11 +121,12 @@ export function createMathCard(document, step, options = {}) {
   return card;
 }
 
-/** Question context deliberately excludes conclusions, explanation and QA. */
+/** Question context deliberately excludes conclusions, explanation and QA, and formulas the question already states. */
 export function createMathContext(document, steps, options = {}) {
   const node = document.createElement('div');
   node.className = 'stage-three-context';
   for (const step of steps) for (const value of step.before || []) {
+    if (options.question?.includes(expressionText(value))) continue;
     const formula = text(document, 'p', expressionText(value), 'stage-three-before');
     formula.dataset.mathFormula = 'true'; node.append(formula);
   }

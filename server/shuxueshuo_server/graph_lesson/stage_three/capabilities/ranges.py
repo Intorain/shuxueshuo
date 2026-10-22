@@ -149,16 +149,19 @@ def reciprocal_range(expression, variable, domain):
             endpoints.append(_finite_endpoint(expression, variable, point, closed))
             continue
         endpoints.append({"point": point, "value": value, "attained": False})
-    critical = []
+    critical, turn = [], None
     if a != 0 and _sign(b / a) > 0:
         point = domain_sign * sp.sqrt(b / a)
+        turn = {"point": point, "value": sp.simplify(expression.subs(variable, point)),
+                "minimum": _sign(a) * domain_sign > 0}
         if _contains(domain, point):
             critical.append(_finite_endpoint(expression, variable, point, True))
     derivative = a - b / variable**2
     return result(
         {"range": _bounds([*endpoints, *critical]), "endpoint_values": endpoints,
          "critical_points": critical, "derivative": derivative,
-         "domain_sign": "positive" if domain_sign > 0 else "negative"},
+         "domain_sign": "positive" if domain_sign > 0 else "negative",
+         "shape": "hook" if turn else "monotone", "turning_point": turn},
         ["reciprocal_extrema"],
         [{"kind": "reciprocal_identity", "passed": sp.cancel(
             expression - (a * variable + b / variable + c)) == 0},

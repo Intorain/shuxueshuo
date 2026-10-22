@@ -56,6 +56,32 @@ def test_detached_question_number_is_still_a_row_head():
     assert head_candidates(boxes, median_h=30, text_regions=[(70, 80, 820, 220)]) == [0]
 
 
+@pytest.mark.parametrize("top", [10, 110, 300])
+def test_broad_aligned_rows_share_the_column_of_a_detected_paragraph(top):
+    # A slightly inset paragraph region anchors the entire printed column,
+    # including sibling questions above and below the detected paragraph.
+    boxes = [(20, top, 63, top + 30), (80, top, 800, top + 30)]
+    assert head_candidates(boxes, median_h=30, text_regions=[(85, 100, 820, 220)]) == [0, 1]
+    assert head_candidates(boxes, median_h=30) == [0]
+
+
+@pytest.mark.parametrize("row", [
+    (120, 300, 800, 330),  # Starts too far inside the column.
+    (80, 300, 190, 330),   # A short fragment is not a sibling paragraph row.
+    (80, 300, 700, 330),   # Right edge does not match the column.
+])
+def test_paragraph_column_does_not_unblock_short_or_misaligned_continuations(row):
+    boxes = [(20, 300, 63, 330), row]
+    assert head_candidates(boxes, median_h=30, text_regions=[(85, 100, 820, 220)]) == [0]
+
+
+def test_real_preceding_text_in_the_same_column_still_blocks_a_broad_row():
+    # Even a broad aligned row remains a continuation if preceding content
+    # reaches into this column instead of belonging to a neighbouring sheet.
+    boxes = [(20, 300, 88, 330), (80, 300, 800, 330)]
+    assert head_candidates(boxes, median_h=40, text_regions=[(85, 100, 820, 220)]) == [0]
+
+
 def _line(x, y, head, *, right=.88):
     return {"box": [x, y, right, y + .02], "head": head}
 
@@ -71,6 +97,30 @@ def test_layout_row_heads_feed_segmentation_not_only_head_recognition():
     layout = [{"label": "text", "box": [.075, .08, .90, .35]}]
 
     assert _numbers(lines, layout) == [9, 10]
+
+
+@pytest.mark.parametrize("head", ["7x+1", "0.11", "(1) 若", "（1）设"])
+def test_aligned_broad_formula_or_subquestion_never_becomes_a_numbered_question(head):
+    lines = [_line(.08, .10, "6. 已知"), _line(.02, .30, "x<0", right=.063),
+             _line(.08, .30, head), _line(.08, .50, "8. 已知")]
+    layout = [{"label": "text", "box": [.085, .08, .90, .18]}]
+    wanted = page_head_candidates(lines, layout, 1000, 1000)
+    assert 2 in wanted, "recognition may read a broad row, but only numbering syntax may start a question"
+    assert _numbers(lines, layout) == [6, 8]
+
+
+def test_recorded_paragraph_layout_keeps_unrecognized_sibling_heads_available_to_ocr():
+    path = Path(__file__).parent / "fixtures/segment-book-orientation.ocr.json"
+    ocr = json.loads(path.read_text())
+    wanted = set(page_head_candidates(ocr["lines"], ocr["layout"], ocr["width"], ocr["height"]))
+    # These are detected full question lines whose original head recognition
+    # was skipped. Preserve that raw evidence; do not manufacture OCR text.
+    missed = [i for i, line in enumerate(ocr["lines"])
+              if not line["head"] and .11 < line["box"][0] < .13 and line["box"][2] > .7]
+    assert len(missed) == 2
+    assert set(missed) <= wanted
+    without_layout = page_head_candidates(ocr["lines"], [], ocr["width"], ocr["height"])
+    assert not set(missed) & set(without_layout)
 
 
 @pytest.mark.parametrize("head", ["10.2026上海", "10．2026上海"])

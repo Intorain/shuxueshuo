@@ -23,6 +23,14 @@ let detection = null;
 let boxes = [];
 let selected = 0;
 let crop = null;
+let generation = 0;
+let readyGeneration = null;
+let loading = false;
+let submission = null;
+let currentResult = null;
+let retryAction = null;
+let pendingResult = null;
+let rotationLimitedPageId = null;
 const MIN = .08;
 
 const load = src => new Promise((resolve, reject) => {
@@ -117,48 +125,226 @@ async function fromFile(file) {
   openPick(URL.createObjectURL(file), file, MOCK_BANDS);
 }
 
-/* Real boxes from OCR segmentation; mocked ones only when the local API is unavailable. */
-async function detect(blob, fallback) {
+/* A result and its image are installed together; coordinates always refer to that image. */
+function pageResult(result) {
+  const seconds = Object.values(result.latency_ms || {}).reduce((a, b) => a + b, 0) / 1000;
+  const rect = ([x0, y0, x1, y1]) => ({x: x0, y: y0, w: x1 - x0, h: y1 - y0});
+  const found = result.regions.map(r => ({...rect(r.box), number: r.number, crop: rect(r.crop || r.box)}));
+  const note = `OCR 切题 ${seconds.toFixed(1)} 秒 · ${found.length} 道` + (result.mode === 'whole_content' ? ' · 没找到题号，整块作为一题' : '');
+  return {pageId: result.page_id, url: result.preview_url || result.image_url || `/api/search/pages/${result.page_id}/image`,
+    found, note, orientation: result.orientation, offline: false};
+}
+
+class PageDetectionError extends Error {}
+
+function uploadErrorMessage(status, detail) {
+  if (status === 413) return '照片太大，请压缩后重试。';
+  if (detail === 'page.not_an_image') return '图片格式不受支持或文件已损坏，请改用 JPEG、PNG 或 WebP。';
+  if (detail === 'page.size') return '照片内容为空，请重新选择照片。';
+  if (detail.startsWith('ocr.unavailable')) return '识别服务暂不可用，请稍后重试。';
+  return `照片处理失败（HTTP ${status}${detail ? `：${detail}` : ''}），请重试。`;
+}
+
+/* Only a rejected network request enters the explicit offline prototype.
+   HTTP errors, invalid responses and preview decode errors retain the real failure. */
+async function detect(blob, fallback, url) {
+  let response;
   try {
-    const response = await fetch('/api/search/pages', {method: 'POST', body: blob, headers: {'Content-Type': blob.type || 'image/jpeg'}});
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const result = await response.json();
-    pageId = result.page_id;
-    const seconds = Object.values(result.latency_ms).reduce((a, b) => a + b, 0) / 1000;
-    const rect = ([x0, y0, x1, y1]) => ({x: x0, y: y0, w: x1 - x0, h: y1 - y0});
-    /* box: non-overlapping tap area drawn on the photo; crop: what is sent, may reach into a neighbour. */
-    const found = result.regions.map(r => ({...rect(r.box), number: r.number, crop: rect(r.crop || r.box)}));
-    const note = `OCR 切题 ${seconds.toFixed(1)} 秒 · ${found.length} 道` + (result.mode === 'whole_content' ? ' · 没找到题号，整块作为一题' : '');
-    return {found, note};
+    response = await fetch('/api/search/pages', {method: 'POST', body: blob, headers: {'Content-Type': blob.type || 'image/jpeg'}});
   } catch {
-    pageId = null;
-    return {found: fallback, note: '离线原型：题目框为模拟（本地切题接口不可用）'};
+    return {pageId: null, url, found: fallback, offline: true,
+      note: '离线原型：题目框和后续结果均为模拟，不识别这张照片，暂不支持旋转（本地切题接口不可用）'};
   }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new PageDetectionError(uploadErrorMessage(response.status, typeof body?.detail === 'string' ? body.detail : ''));
+  }
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new PageDetectionError('识别服务返回了无效数据，请重试。');
+  }
+  return pageResult(result);
 }
 
 /* ---------- 选题 ---------- */
-async function openPick(url, blob, fallback) {
-  stopCamera();
-  const photo = $('#cm-photo');
-  photo.src = url;
-  const started = performance.now();
-  /* Set before the pick view (and its "whole image" button) appears; go() waits on it. */
-  detection = Promise.all([detect(blob, fallback), photo.decode().catch(() => {})]).then(([result]) => result);
+function syncControls() {
+  const disabled = loading || !!submission || readyGeneration !== generation;
+  for (const id of ['#cm-go', '#cm-crop-go', '#cm-whole', '#cm-manual', '#cm-crop-cancel']) $(id).disabled = disabled;
+  $('#cm-rotate').disabled = disabled || !pageId || !!pendingResult || pageId === rotationLimitedPageId;
+  for (const id of ['#cm-go', '#cm-crop-go']) $(id).innerHTML = `${currentResult?.offline ? '查看模拟流程' : '学这道题'} <span aria-hidden="true">→</span>`;
+  $('#cm-whole').textContent = currentResult?.offline ? '整图查看模拟流程' : '使用整张图';
+  $('#cm-retry').disabled = loading || !!submission;
+  $('#cm-pick').setAttribute('aria-busy', String(loading || !!submission));
+}
+
+function beginDetection() {
+  const token = ++generation;
+  clearTimeout(toast.timer);
+  $('#sq-toast').hidden = true;
+  loading = true;
+  submission = null;
+  readyGeneration = null;
+  pageId = null;
+  boxes = [];
+  crop = null;
+  selected = 0;
+  retryAction = null;
+  pendingResult = null;
+  $('#cm-boxes').innerHTML = '';
+  $('#cm-boxes').classList.remove('is-cropping');
+  $('#cm-chips').innerHTML = '';
+  $('#cm-chosen-img').removeAttribute('src');
+  for (const id of ['#cm-crop', '#cm-choose', '#cm-cropping', '#cm-proto-note', '#cm-orientation-note', '#cm-retry']) $(id).hidden = true;
+  $('#cm-title').textContent = '正在处理照片';
+  $('#cm-finding').hidden = false;
+  $('#cm-finding-text').hidden = false;
   document.body.dataset.state = 'pick';
   $('#cm-shoot').hidden = true;
   $('#cm-pick').hidden = false;
-  const {found, note} = await detection;
-  await new Promise(resolve => setTimeout(resolve, Math.max(0, 700 - (performance.now() - started))));
-  Object.assign($('#cm-proto-note'), {textContent: note, hidden: false});
+  syncControls();
+  return token;
+}
+
+async function decodedPhoto(url) {
+  const image = Object.assign(document.createElement('img'), {id: 'cm-photo', alt: '拍到的照片', draggable: false, src: url});
+  await image.decode();
+  if (!image.naturalWidth || !image.naturalHeight) throw new Error('Empty image');
+  return image;
+}
+
+function installPage(result, image, token, previous = null, announceOrientation = false) {
+  if (token !== generation) return;
+  const photo = $('#cm-photo');
+  if (photo !== image) photo.replaceWith(image);
+  image.hidden = false;
+  currentResult = result;
+  pendingResult = null;
+  retryAction = null;
+  $('#cm-retry').hidden = true;
+  pageId = result.pageId;
+  boxes = result.found;
+  readyGeneration = token;
+  loading = false;
+  Object.assign($('#cm-proto-note'), {textContent: result.note, hidden: false});
+  Object.assign($('#cm-orientation-note'), {textContent: '方向未确定，请检查文字朝向；可点「顺时针 90°」调整。', hidden: result.orientation?.status !== 'uncertain'});
   $('#cm-finding').hidden = true;
   $('#cm-finding-text').hidden = true;
-  boxes = found;
-  if (!boxes.length) { toast('没找到题目，手动框一下吧'); return startCrop(); }
+  syncControls();
+  if (announceOrientation && result.orientation?.status === 'corrected') toast('已自动转正');
+  if (!boxes.length) { startCrop(previous?.crop, true); return; }
   renderBoxes();
   $('#cm-choose').hidden = false;
   /* Students aim at the question they want, so preselect the box nearest the middle of the shot. */
   const dist = box => Math.abs(box.y + box.h / 2 - .5);
-  select(boxes.reduce((best, box, i) => dist(box) < dist(boxes[best]) ? i : best, 0));
+  select(previous?.selected ?? boxes.reduce((best, box, i) => dist(box) < dist(boxes[best]) ? i : best, 0), true);
+  if (previous?.crop) startCrop(previous.crop, true);
+}
+
+function pageSelection() {
+  if (readyGeneration !== generation || !currentResult) return null;
+  return {result: currentResult, image: $('#cm-photo'), selected, crop: crop && {...crop}};
+}
+
+async function loadResult(result, token, previous = null) {
+  if (token !== generation) return;
+  pendingResult = result;
+  try {
+    const image = await decodedPhoto(result.url);
+    installPage(result, image, token, null, true);
+  } catch {
+    if (token !== generation) return;
+    if (previous) {
+      installPage(previous.result, previous.image, token, previous);
+      toast('旋转后的照片加载失败，已保留原图和选区，请重试加载');
+    } else {
+      loading = false;
+      readyGeneration = null;
+      pageId = null;
+      currentResult = null;
+      boxes = [];
+      crop = null;
+      $('#cm-boxes').innerHTML = '';
+      for (const id of ['#cm-finding', '#cm-finding-text', '#cm-crop', '#cm-choose', '#cm-cropping']) $(id).hidden = true;
+      $('#cm-title').textContent = '照片预览加载失败';
+      Object.assign($('#cm-proto-note'), {textContent: '处理后的照片未能加载，请重试加载预览。', hidden: false});
+    }
+    /* Keep the completed OCR/rotation result. Retrying downloads only its existing preview. */
+    pendingResult = result;
+    retryAction = () => retryResult(result, token);
+    Object.assign($('#cm-retry'), {textContent: previous ? '重试加载旋转照片' : '重试加载照片', hidden: false});
+    syncControls();
+  }
+}
+
+function retryResult(result, expectedGeneration) {
+  if (loading || submission || expectedGeneration !== generation || pendingResult !== result) return;
+  const previous = pageSelection();
+  const token = beginDetection();
+  detection = loadResult(result, token, previous);
+  return detection;
+}
+
+async function openPick(url, blob, fallback) {
+  stopCamera();
+  currentResult = null;
+  const token = beginDetection();
+  $('#cm-photo').hidden = true;
+  /* Show a local preview while OCR runs, without attaching coordinates or enabling actions. */
+  decodedPhoto(url).then(image => {
+    if (token !== generation || readyGeneration === token) return;
+    $('#cm-photo').replaceWith(image);
+    image.hidden = false;
+  }).catch(() => {});
+  detection = (async () => {
+    try {
+      const result = await detect(blob, fallback, url);
+      if (token !== generation) return;
+      await loadResult(result, token);
+    } catch (error) {
+      if (token !== generation) return;
+      loading = false;
+      $('#cm-finding').hidden = true;
+      $('#cm-finding-text').hidden = true;
+      $('#cm-title').textContent = '照片识别失败';
+      Object.assign($('#cm-proto-note'), {
+        textContent: error instanceof PageDetectionError ? error.message : '识别服务返回了无效数据，请重试或重新选择照片。', hidden: false,
+      });
+      retryAction = () => openPick(url, blob, fallback);
+      Object.assign($('#cm-retry'), {textContent: '重试识别', hidden: false});
+      syncControls();
+    }
+  })();
+  return detection;
+}
+
+async function rotatePage() {
+  if (loading || submission || pendingResult || readyGeneration !== generation || !pageId || pageId === rotationLimitedPageId) return;
+  const previous = pageSelection();
+  const sourcePageId = pageId;
+  const token = beginDetection();
+  detection = (async () => {
+    try {
+      const response = await fetch(`/api/search/pages/${sourcePageId}/rotate`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({degrees: 90}),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(String(body.detail || `HTTP ${response.status}`));
+      const result = pageResult(body);
+      if (token !== generation) return;
+      await loadResult(result, token, previous);
+    } catch (error) {
+      if (token !== generation) return;
+      const limited = error.message === 'page.rotation_limit';
+      if (limited) rotationLimitedPageId = sourcePageId;
+      installPage(previous.result, previous.image, token, previous);
+      const message = limited ? '已达到连续旋转次数上限，请重新选择照片' : '旋转失败，已保留原图和选区，请重试';
+      if (limited) Object.assign($('#cm-proto-note'), {textContent: message, hidden: false});
+      toast(message);
+    }
+  })();
+  return detection;
 }
 
 const label = i => boxes[i].number ?? i + 1;
@@ -178,7 +364,8 @@ function cropUrl(rect, max) {
   return canvas.toDataURL('image/jpeg', .9);
 }
 
-function select(i) {
+function select(i, restoring = false) {
+  if (loading || (!restoring && submission) || readyGeneration !== generation || !boxes[i]) return;
   selected = i;
   for (const el of document.querySelectorAll('.cm-box')) el.setAttribute('aria-pressed', String(Number(el.dataset.box) === i));
   for (const el of $('#cm-chips').children) el.setAttribute('aria-selected', String(Number(el.dataset.box) === i));
@@ -187,30 +374,36 @@ function select(i) {
   $('#cm-title').textContent = `第 ${label(i)} 题`;
 }
 
-/* Live: the server crops the full-resolution page and starts stage one. Offline (the upload
-   failed, not merely pending): mocked run. */
-async function go(rect) {
-  const buttons = [$('#cm-go'), $('#cm-crop-go'), $('#cm-whole')];
-  for (const button of buttons) button.disabled = true;
+/* Live: the server crops the full-resolution page and starts stage one.
+   Offline (only after a network failure): mocked run. */
+async function go(rect, expectedGeneration = readyGeneration) {
+  if (loading || submission || readyGeneration !== generation || expectedGeneration !== generation) return;
+  const pending = {generation: expectedGeneration};
+  submission = pending;
+  const requestedRect = {...rect};
+  syncControls();
   try {
     await detection;
+    if (submission !== pending || expectedGeneration !== generation || readyGeneration !== generation || !currentResult) return;
     if (!pageId) {
-      try { sessionStorage.setItem('sq-image', cropUrl(rect, 1600)); } catch { sessionStorage.removeItem('sq-image'); }
-      location.href = `problem.html?demo=${rect.demo || 'ok'}&fresh=1`;
+      if (!currentResult.offline) return;
+      try { sessionStorage.setItem('sq-image', cropUrl(requestedRect, 1600)); } catch { sessionStorage.removeItem('sq-image'); }
+      location.href = `problem.html?demo=${requestedRect.demo || 'ok'}&fresh=1`;
       return;
     }
     const response = await fetch('/api/search/problems', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({page_id: pageId, box: [rect.x, rect.y, rect.x + rect.w, rect.y + rect.h]}),
+      body: JSON.stringify({page_id: pageId, box: [requestedRect.x, requestedRect.y, requestedRect.x + requestedRect.w, requestedRect.y + requestedRect.h]}),
     });
     const body = await response.json().catch(() => ({}));
+    if (submission !== pending || expectedGeneration !== generation) return;
     if (response.ok) { location.href = `problem.html?search=${body.search_id}`; return; }
     const detail = String(body.detail || response.status);
     toast(detail.startsWith('stage_one.disabled') ? '本地没开启阶段①：用 RUN_LLM_INTEGRATION=1 启动 run_site.py' : `提交失败：${detail}`);
   } catch {
-    toast('提交失败，请检查连接后重试');
+    if (submission === pending && expectedGeneration === generation) toast('提交失败，请检查连接后重试');
   } finally {
-    for (const button of buttons) button.disabled = false;
+    if (submission === pending) { submission = null; syncControls(); }
   }
 }
 
@@ -219,8 +412,9 @@ function placeCrop() {
   Object.assign($('#cm-crop').style, {left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.w * 100}%`, height: `${crop.h * 100}%`});
 }
 
-function startCrop() {
-  const base = boxes[selected]?.crop || boxes[selected] || {x: .08, y: .3, w: .84, h: .3};
+function startCrop(previous = null, restoring = false) {
+  if (loading || (!restoring && submission) || readyGeneration !== generation) return;
+  const base = previous?.w ? previous : boxes[selected]?.crop || boxes[selected] || {x: .08, y: .3, w: .84, h: .3};
   crop = {x: base.x, y: base.y, w: base.w, h: base.h};
   placeCrop();
   $('#cm-crop').hidden = false;
@@ -231,7 +425,9 @@ function startCrop() {
 }
 
 function endCrop() {
+  if (loading || submission || readyGeneration !== generation) return;
   if (!boxes.length) return reshoot();
+  crop = null;
   $('#cm-crop').hidden = true;
   $('#cm-boxes').classList.remove('is-cropping');
   $('#cm-cropping').hidden = true;
@@ -243,13 +439,14 @@ function bindCrop() {
   const stage = $('#cm-stage');
   let drag = null;
   stage.addEventListener('pointerdown', event => {
-    if (!event.target.closest('#cm-crop')) return;
+    if (loading || submission || readyGeneration !== generation || !crop || !event.target.closest('#cm-crop')) return;
     event.preventDefault();
     stage.setPointerCapture(event.pointerId);
-    drag = {handle: event.target.dataset.handle || 'move', start: {...crop}, x: event.clientX, y: event.clientY, rect: stage.getBoundingClientRect()};
+    drag = {generation, handle: event.target.dataset.handle || 'move', start: {...crop}, x: event.clientX, y: event.clientY, rect: stage.getBoundingClientRect()};
   });
   stage.addEventListener('pointermove', event => {
     if (!drag) return;
+    if (drag.generation !== generation || loading || submission) { drag = null; return; }
     const dx = (event.clientX - drag.x) / drag.rect.width, dy = (event.clientY - drag.y) / drag.rect.height;
     const s = drag.start, clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     if (drag.handle === 'move') {
@@ -270,6 +467,9 @@ function bindCrop() {
 }
 
 function reshoot() {
+  generation++;
+  readyGeneration = null;
+  submission = null;
   location.href = sim ? `camera.html?sim=${sim}` : 'camera.html';
 }
 
@@ -277,15 +477,17 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#cm-shutter').addEventListener('click', shoot);
   for (const id of ['#cm-album', '#cm-system']) $(id).addEventListener('change', event => fromFile(event.target.files[0]));
   $('#cm-retake').addEventListener('click', reshoot);
+  $('#cm-rotate').addEventListener('click', rotatePage);
+  $('#cm-retry').addEventListener('click', () => retryAction?.());
   $('#cm-whole').addEventListener('click', () => go({x: 0, y: 0, w: 1, h: 1, demo: 'ok'}));
   document.addEventListener('click', event => {
     const target = event.target.closest('[data-box]');
     if (target) select(Number(target.dataset.box));
   });
-  $('#cm-go').addEventListener('click', () => go({...boxes[selected].crop || boxes[selected], demo: boxes[selected].demo}));
-  $('#cm-manual').addEventListener('click', startCrop);
+  $('#cm-go').addEventListener('click', () => { if (boxes[selected]) go({...boxes[selected].crop || boxes[selected], demo: boxes[selected].demo}); });
+  $('#cm-manual').addEventListener('click', () => startCrop());
   $('#cm-crop-cancel').addEventListener('click', endCrop);
-  $('#cm-crop-go').addEventListener('click', () => go({...crop, demo: boxes[selected]?.demo}));
+  $('#cm-crop-go').addEventListener('click', () => { if (crop) go({...crop, demo: boxes[selected]?.demo}); });
   bindCrop();
 
   const handoff = params.get('from') === 'album' && sessionStorage.getItem('sq-page');

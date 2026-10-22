@@ -5,13 +5,14 @@ the recorded and live development workflow end to end. Everything a run
 produces stays under ``root`` for inspection; stage-three HTTP/WS reads share
 the runner's authoritative SQLite stream:
 
-    <root>/<page_id>/page.png, ocr.json, segments.json
+    <root>/<page_id>/source.png, page.png, preview.jpg, ocr.json, segments.json
     <root>/<page_id>/problems/<search_id>/question.png, crop.json, result.json, workflow/
     <root>/<page_id>/problems/<search_id>/stage-two-<n>/stage-three/
 """
 
 import asyncio
 import json
+import math
 import os
 import re
 import secrets
@@ -19,6 +20,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
@@ -32,6 +34,7 @@ from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from . import stage_three
 from .lesson import present_lesson, run_stage_two
 from .ocr_client import OcrClient, OcrWorkerError
+from .page_orientation import rotate_clockwise
 from .question_image import question_png
 from .segmentation import segment
 from .stage_one import (
@@ -42,6 +45,8 @@ from .stage_one import (
 )
 
 MAX_UPLOAD = 20 * 1024 * 1024
+PREVIEW_SIDE = 1600
+MAX_PAGE_ROTATIONS = 8
 ID = re.compile(r"^[0-9a-f]{12}$")
 FAILURES = {"missing_figure": "figure", "unreadable": "unclear", "ambiguous": "unclear"}
 
@@ -49,6 +54,52 @@ FAILURES = {"missing_figure": "figure", "unreadable": "unclear", "ambiguous": "u
 class ProblemRequest(BaseModel):
     page_id: str
     box: list[float] = Field(min_length=4, max_length=4)
+
+
+class RotatePageRequest(BaseModel):
+    degrees: int = Field(strict=True, gt=0, le=270, multiple_of=90)
+
+
+def _save_preview(page, path):
+    """Publish a bounded preview atomically, also for legacy pages on first read."""
+    preview = page.copy()
+    preview.thumbnail((PREVIEW_SIDE, PREVIEW_SIDE), Image.Resampling.LANCZOS)
+    temporary = None
+    try:
+        with NamedTemporaryFile(dir=path.parent, suffix=".jpg", delete=False) as output:
+            temporary = Path(output.name)
+            preview.save(output, format="JPEG", quality=85, optimize=True)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def _observed_orientation(observed, *, manual=False):
+    """Reject inconsistent worker metadata before publishing an image/box pair."""
+    if "orientation" not in observed:
+        # Old recorded observations and worker stubs describe the original frame.
+        return {"status": "upright", "rotation_degrees": 0,
+                "predicted_degrees": None, "confidence": None}
+    orientation = observed["orientation"]
+    if not isinstance(orientation, dict):
+        raise OcrWorkerError("orientation.invalid")
+    status = orientation.get("status")
+    rotation = orientation.get("rotation_degrees")
+    predicted = orientation.get("predicted_degrees")
+    confidence = orientation.get("confidence")
+    statuses = {"upright", "corrected", "uncertain", "manual"} if manual else {"upright", "corrected", "uncertain"}
+    if (type(status) is not str or status not in statuses
+            or type(rotation) is not int or rotation not in {0, 90, 180, 270}
+            or (predicted is not None and (type(predicted) is not int or predicted not in {0, 90, 180, 270}))
+            or (confidence is not None and (type(confidence) not in {int, float}
+                                           or not 0 <= confidence <= 1 or not math.isfinite(confidence)))
+            or ((status == "corrected") != (rotation != 0))):
+        raise OcrWorkerError("orientation.invalid")
+    return {"status": status, "rotation_degrees": rotation,
+            "predicted_degrees": predicted, "confidence": confidence}
 
 
 def create_search_router(root, *, stage_three_hooks=None):
@@ -61,9 +112,13 @@ def create_search_router(root, *, stage_three_hooks=None):
     router = APIRouter(prefix="/api/search")
 
     def page_dir(page_id):
-        if not ID.match(page_id) or not (root / page_id / "page.png").is_file():
+        directory = root / page_id
+        # Successful legacy pages already have this manifest. New pages publish
+        # it atomically only after both images are complete; partial saves stay private.
+        if (not ID.match(page_id) or not (directory / "page.png").is_file()
+                or not (directory / "segments.json").is_file()):
             raise HTTPException(404, "page.not_found")
-        return root / page_id
+        return directory
 
     def problem_dir(search_id):
         if ID.match(search_id):
@@ -71,35 +126,90 @@ def create_search_router(root, *, stage_three_hooks=None):
                 return match
         raise HTTPException(404, "search.not_found")
 
-    @router.post("/pages")
-    async def upload_page(request: Request):
-        body = await request.body()
-        if not body or len(body) > MAX_UPLOAD:
-            raise HTTPException(413 if body else 400, "page.size")
+    def prepare_page(source, *, parent_page_id=None, manual_degrees=None, rotation_count=0):
+        """Run the complete image/OCR/artifact pipeline on one worker thread.
+
+        source.png is EXIF-normalized upload input, or an already manually
+        rotated parent page. Worker angles always refer to that source; public
+        manual angles instead refer to the immutable parent page.png.
+        """
+        page_id = secrets.token_hex(6)
+        directory = root / page_id
+        directory.mkdir()
+        source.save(directory / "source.png")
+        try:
+            if manual_degrees is None:
+                observed = ocr.observe(directory / "source.png")
+            else:
+                observed = ocr.observe(directory / "source.png", auto_orient=False)
+            orientation = _observed_orientation(observed, manual=manual_degrees is not None)
+            save(directory / "ocr.json", observed)
+            if manual_degrees is not None:
+                if orientation["rotation_degrees"]:
+                    raise OcrWorkerError("orientation.manual_auto_rotation")
+                page = source
+                orientation = {"status": "manual", "rotation_degrees": manual_degrees,
+                               "predicted_degrees": None, "confidence": None}
+            else:
+                page = rotate_clockwise(source, orientation["rotation_degrees"])
+        except OcrWorkerError as exc:
+            raise HTTPException(503, f"ocr.unavailable: {exc}") from exc
+        result = segment(observed)
+        payload = {"page_id": page_id, "image_url": f"/api/search/pages/{page_id}/image",
+                   "preview_url": f"/api/search/pages/{page_id}/preview",
+                   "width": page.width, "height": page.height, "orientation": orientation,
+                   "rotation_reference": "parent_page" if manual_degrees is not None else "upload_after_exif",
+                   "rotation_count": rotation_count,
+                   "mode": result.mode, "regions": result.regions, "diagnostics": result.diagnostics,
+                   "latency_ms": observed["latency_ms"]}
+        if parent_page_id is not None:
+            payload["parent_page_id"] = parent_page_id
+        page.save(directory / "page.png")
+        _save_preview(page, directory / "preview.jpg")
+        # save() fsyncs and atomically replaces the final manifest. Its presence
+        # is the publication boundary for image reads, rotations and crops.
+        save(directory / "segments.json", payload)
+        return payload
+
+    def prepare_upload(body):
         try:
             with Image.open(BytesIO(body)) as image:
                 page = ImageOps.exif_transpose(image).convert("RGB")
         except (UnidentifiedImageError, OSError) as exc:
             raise HTTPException(400, "page.not_an_image") from exc
-        page_id = secrets.token_hex(6)
-        directory = root / page_id
-        directory.mkdir()
-        page.save(directory / "page.png")
-        try:
-            observed = await run_in_threadpool(ocr.observe, directory / "page.png")
-        except OcrWorkerError as exc:
-            raise HTTPException(503, f"ocr.unavailable: {exc}") from exc
-        save(directory / "ocr.json", observed)
-        result = segment(observed)
-        payload = {"page_id": page_id, "width": page.width, "height": page.height, "mode": result.mode,
-                   "regions": result.regions, "diagnostics": result.diagnostics,
-                   "latency_ms": observed["latency_ms"]}
-        save(directory / "segments.json", payload)
-        return payload
+        return prepare_page(page)
+
+    @router.post("/pages")
+    async def upload_page(request: Request):
+        body = await request.body()
+        if not body or len(body) > MAX_UPLOAD:
+            raise HTTPException(413 if body else 400, "page.size")
+        return await run_in_threadpool(prepare_upload, body)
+
+    @router.post("/pages/{page_id}/rotate")
+    def rotate_page(page_id: str, body: RotatePageRequest):
+        directory = page_dir(page_id)
+        manifest = json.loads((directory / "segments.json").read_text(encoding="utf-8"))
+        count = manifest.get("rotation_count", 0)
+        if type(count) is not int or count < 0:
+            raise HTTPException(409, "page.rotation_metadata_invalid")
+        if count >= MAX_PAGE_ROTATIONS:
+            raise HTTPException(409, "page.rotation_limit")
+        with Image.open(directory / "page.png") as page:
+            source = rotate_clockwise(page.convert("RGB"), body.degrees)
+        return prepare_page(source, parent_page_id=page_id, manual_degrees=body.degrees, rotation_count=count + 1)
 
     @router.get("/pages/{page_id}/image")
     def page_image(page_id: str):
         return FileResponse(page_dir(page_id) / "page.png", media_type="image/png")
+
+    @router.get("/pages/{page_id}/preview")
+    def page_preview(page_id: str):
+        directory = page_dir(page_id)
+        if not (directory / "preview.jpg").is_file():
+            with Image.open(directory / "page.png") as page:
+                _save_preview(page.convert("RGB"), directory / "preview.jpg")
+        return FileResponse(directory / "preview.jpg", media_type="image/jpeg")
 
     @router.post("/problems")
     def start_problem(body: ProblemRequest):

@@ -99,9 +99,17 @@ def head_candidates(boxes, median_h=None, *, text_regions=()):
     bodies = [Item(*b) for b in text_regions if b[2] - b[0] >= 4 * mh and b[3] - b[1] >= 3 * mh]
 
     def separate_body(item, other):
-        return any(body.x0 <= (item.x0 + item.x1) / 2 <= body.x1
-                   and body.y0 <= item.cy <= body.y1
-                   and other.x1 < body.x0 <= item.x0 for body in bodies)
+        for body in bodies:
+            inside = (body.x0 <= (item.x0 + item.x1) / 2 <= body.x1
+                      and body.y0 <= item.cy <= body.y1 and body.x0 <= item.x0)
+            # Layout may find only one paragraph on a curved photographed
+            # page. Its column edges also identify aligned, similarly wide
+            # sibling rows. A neighbouring sheet must not hide their heads.
+            aligned = (abs(item.x0 - body.x0) <= 0.5 * mh and item.x1 - item.x0 >= 4 * mh
+                       and abs(item.x1 - body.x1) <= 2 * mh)
+            if other.x1 < min(body.x0, item.x0) and (inside or aligned):
+                return True
+        return False
 
     keep = []
     for i, item in enumerate(items):

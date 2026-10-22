@@ -39,11 +39,13 @@ class OcrClient:
             raise OcrWorkerError("ocr.worker_exited")
         return line
 
-    def observe(self, image_path):
+    def observe(self, image_path, *, auto_orient=True):
+        if type(auto_orient) is not bool:
+            raise ValueError("orientation.invalid_auto_orient")
         with self._lock:
             if self._process is None or self._process.poll() is not None:
                 self._start()
-            self._process.stdin.write(json.dumps({"image": str(image_path)}) + "\n")
+            self._process.stdin.write(json.dumps({"image": str(image_path), "auto_orient": auto_orient}) + "\n")
             self._process.stdin.flush()
             reply = json.loads(self._read())
         if not reply.get("ok"):

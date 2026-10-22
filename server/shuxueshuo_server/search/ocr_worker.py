@@ -1,6 +1,6 @@
 """Long-lived page OCR worker for question segmentation, run by the isolated OCR interpreter.
 
-Protocol: one JSON object per stdin line ``{"image": "/abs/path"}``; one JSON
+Protocol: one JSON object per stdin line ``{"image": "/abs/path", "auto_orient": true}``; one JSON
 object per stdout line. Models load once, so only the first request pays the
 start-up cost.
 
@@ -18,6 +18,11 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from shuxueshuo_server.search.ocr_crops import head_crop
+from shuxueshuo_server.search.page_orientation import (
+    orientation_from_prediction,
+    rotate_clockwise,
+    uncertain_orientation,
+)
 from shuxueshuo_server.search.segmentation import page_head_candidates
 
 MAX_SIDE = 1600
@@ -28,9 +33,15 @@ ENGINE = {"run_mode": "paddle", "device_type": "cpu", "cpu_threads": 8, "enable_
 def load_models():
     from paddlex import create_model
 
-    return {name: create_model(model, engine="paddle_static", engine_config=ENGINE)
-            for name, model in (("layout", "PP-DocLayout-S"), ("det", "PP-OCRv6_medium_det"),
-                                ("rec", "PP-OCRv6_medium_rec"))}
+    models = {name: create_model(model, engine="paddle_static", engine_config=ENGINE)
+              for name, model in (("layout", "PP-DocLayout-S"), ("det", "PP-OCRv6_medium_det"),
+                                  ("rec", "PP-OCRv6_medium_rec"))}
+    try:
+        models["orientation"] = create_model("PP-LCNet_x1_0_doc_ori", engine="paddle_static", engine_config=ENGINE)
+    except Exception as exc:  # noqa: BLE001 - optional model failure must leave manual correction usable
+        print(f"Page orientation unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
+        models["orientation"] = None
+    return models
 
 
 def _bounds(points):
@@ -38,14 +49,31 @@ def _bounds(points):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def observe(models, path):
-    image = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+def observe(models, path, *, auto_orient=True):
+    if type(auto_orient) is not bool:
+        raise ValueError("orientation.invalid_auto_orient")
+    with Image.open(path) as source:
+        image = ImageOps.exif_transpose(source).convert("RGB")
     scale = min(1.0, MAX_SIDE / max(image.size))
     if scale < 1:
         image = image.resize((round(image.width * scale), round(image.height * scale)), Image.LANCZOS)
+    timings = {}
+
+    started = monotonic()
+    orientation = {"status": "manual", "rotation_degrees": 0, "predicted_degrees": None, "confidence": None}
+    if auto_orient:
+        orientation = uncertain_orientation("model_unavailable")
+        if models.get("orientation") is not None:
+            try:
+                prediction = next(iter(models["orientation"].predict(np.asarray(image)))).json["res"]
+                orientation = orientation_from_prediction(prediction)
+            except Exception as exc:  # noqa: BLE001 - third-party inference failure falls back to manual rotation
+                print(f"Page orientation failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+                orientation = uncertain_orientation("prediction_failed")
+        image = rotate_clockwise(image, orientation["rotation_degrees"])
+    timings["orientation"] = round((monotonic() - started) * 1000)
     pixels = np.asarray(image)
     w, h = image.size
-    timings = {}
 
     started = monotonic()
     layout = next(iter(models["layout"].predict(pixels))).json["res"]
@@ -74,6 +102,7 @@ def observe(models, path):
     return {
         "width": w,
         "height": h,
+        "orientation": orientation,
         "lines": [
             {**line,
              "head": heads.get(i, {}).get("rec_text", ""),
@@ -94,7 +123,8 @@ def main():
         if not line.strip():
             continue
         try:
-            reply = {"ok": True, **observe(models, json.loads(line)["image"])}
+            request = json.loads(line)
+            reply = {"ok": True, **observe(models, request["image"], auto_orient=request.get("auto_orient", True))}
         except Exception as exc:  # noqa: BLE001 - one bad image must not kill the worker
             reply = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(reply, ensure_ascii=False), file=replies, flush=True)

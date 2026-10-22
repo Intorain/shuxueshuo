@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#000000">
   <title>拍题学 · 数学说</title>
   <link rel="stylesheet" href="search.css">
-  <link rel="stylesheet" href="camera.css">
-  <script src="camera.js" defer></script>
+  <link rel="stylesheet" href="camera.css?v=20261022-preview2">
+  <script src="camera.js?v=20261022-errors2" defer></script>
 </head>
 <body class="sq-page cm-page" data-state="shoot">
   <!-- 取景 -->
@@ -44,10 +44,13 @@
 
   <!-- 选题 / 手动框选 -->
   <section class="cm-pick" id="cm-pick" aria-label="选择题目" hidden>
-    <header class="cm-top">
+    <header class="cm-top cm-pick-top">
       <button type="button" class="cm-round" id="cm-retake" aria-label="重拍">‹</button>
       <strong class="cm-title" id="cm-title">点一下要学的题</strong>
-      <button type="button" class="cm-pill" id="cm-whole">使用整张图</button>
+      <div class="cm-pick-actions">
+        <button type="button" class="cm-pill" id="cm-rotate" aria-label="将照片顺时针旋转 90 度" disabled>↻ 顺时针 90°</button>
+        <button type="button" class="cm-pill" id="cm-whole" disabled>使用整张图</button>
+      </div>
     </header>
 
     <div class="cm-stage-wrap" id="cm-stage-wrap">
@@ -62,7 +65,9 @@
     </div>
 
     <div class="cm-sheet" id="cm-sheet">
+      <p class="cm-orientation-note" id="cm-orientation-note" role="status" hidden></p>
       <p class="cm-finding-text" id="cm-finding-text"><span class="cm-spin" aria-hidden="true"></span>正在找题目…</p>
+      <button type="button" class="sq-primary cm-retry" id="cm-retry" hidden>重试加载照片</button>
 
       <div id="cm-choose" hidden>
         <div class="cm-chips" id="cm-chips" role="tablist" aria-label="题目"></div>

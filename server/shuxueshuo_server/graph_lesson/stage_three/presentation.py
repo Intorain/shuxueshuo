@@ -5,6 +5,7 @@ from copy import deepcopy
 import sympy as sp
 
 from ...problem_understanding.identity import revision
+from .discriminant_display import constant_true_condition
 from .execution_contracts import read
 from .math_values import latex, math_value
 from .presentation_templates import (
@@ -12,6 +13,7 @@ from .presentation_templates import (
     render_case_prefix,
     render_highlight,
     render_template,
+    render_title,
 )
 from .presentation_templates import validate_registry as _validate_registry
 from .revision_manifest import math_step_hash, revision_ref
@@ -24,6 +26,20 @@ _SEED_OMITTED = frozenset({"cells"})
 
 def validate_registry(registry=None):
     return _validate_registry(read("presentation-registry") if registry is None else registry)
+
+
+def omit_unchanged_unit(unit, bindings):
+    """Hide an opted-in identity transformation, retaining its execution trace.
+
+    Structural equality is deliberate: algebraically equivalent but differently
+    written relations still need a visible transformation step.
+    """
+    specification = read("presentation-registry")["templates"][unit["template"]]
+    before, after = bindings.get("before"), bindings.get("after")
+    return (specification.get("omit_if_unchanged") is True
+            and isinstance(before, (list, tuple)) and bool(before)
+            and isinstance(after, (list, tuple)) and len(before) == len(after)
+            and all(left == right for left, right in zip(before, after)))
 
 
 def _seed_values(value):
@@ -49,6 +65,9 @@ def record_seed(state, fragment, *, template, values):
             "step_id", "math_step_sha256", "ordinal", "display_unit", "method_ref", "case_path")},
         "template": template,
     }
+    for key in ("branch_id", "branch_condition"):
+        if key in fragment:
+            seed[key] = deepcopy(fragment[key])
     try:
         context = {key: value for key, value in decode_value(state.get("input_values", {})).items()
                    if isinstance(value, (sp.Basic, str))}
@@ -72,8 +91,12 @@ def make_fragment(
     used_basis=(),
     explanation=None,
     case_path=(),
+    case_condition=None,
+    branch_id=None,
+    branch_condition=None,
     premise_refs=(),
     highlight=None,
+    title=None,
 ):
     settings = read("presentation-registry")["templates"][template]
     ordinal = len(state["fragments"]) + 1
@@ -89,7 +112,7 @@ def make_fragment(
         "method_ref": method_ref,
         "source_refs": list(source_refs),
         "case_path": list(case_path),
-        "title": settings["title"],
+        "title": title or settings["title"],
         "before": [math_value(v) for v in before],
         "after": [math_value(v) for v in after],
         "explanation": explanation or settings["explanation"],
@@ -101,6 +124,12 @@ def make_fragment(
     }
     if highlight:
         value["highlight"] = highlight
+    if case_condition is not None:
+        value["case_condition"] = math_value(case_condition)
+    if branch_id is not None:
+        value["branch_id"] = branch_id
+    if branch_condition is not None:
+        value["branch_condition"] = math_value(branch_condition)
     # Conclusion lives elsewhere (e.g. case pictures); the card only carries the derivation.
     if settings.get("derivation") is True:
         value["derivation"] = True
@@ -121,11 +150,24 @@ def render_unit(state, frame, step, unit, bindings, source_refs, used_basis, pre
         explanation = render_case_prefix(registry, case["condition"]) + explanation
     if case:
         values["case"] = case
+    branch = bindings.get("branch")
+    if branch:
+        # Opening scope is presentation metadata, not an execution case path.
+        # Keep the exact branch domain for checked interaction answers.
+        values["case"] = {"condition": branch["condition"], "domain": branch["domain"], "kind": "opening"}
+    # A multi-step source scope adds evidence without changing the card's own
+    # method step. The legacy single-step scope explicitly re-anchors it.
+    method_step = unit.get("source_scope", {}).get("step", step["id"])
     fragment = make_fragment(
-        state, unit_id=unit["id"], method_ref=frame["method"] + "#" + step["id"],
+        state, unit_id=unit["id"], method_ref=frame["method"] + "#" + method_step,
         template=unit["template"], before=before, after=after, source_refs=source_refs,
         used_basis=used_basis, explanation=explanation, case_path=case_path, premise_refs=premise_refs,
+        case_condition=case.get("condition") if case else None,
+        branch_id=branch["id"] if branch else None,
+        branch_condition=(branch["condition"] if branch and not
+                          constant_true_condition(branch["condition"]) else None),
         highlight=highlight,
+        title=render_title(specification, bindings, has_case=bool(case_path)),
     )
     return fragment, values
 

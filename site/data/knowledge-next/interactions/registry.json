@@ -21,6 +21,7 @@
     "relation_variants",
     "move_constant_wrong",
     "opening_variants",
+    "reverse_opening",
     "flip_degenerate",
     "square_variants",
     "set_complement",
@@ -46,7 +47,10 @@
     "division_sign_error",
     "range_alternatives",
     "omit_endpoint",
-    "skip_case_intersection"
+    "skip_case_intersection",
+    "other_slope_signs",
+    "other_affine_locations",
+    "affine_condition_errors"
   ],
   "templates": {
     "affine_substitution": {
@@ -64,25 +68,42 @@
           "component": "choice",
           "title": "转化为最值条件",
           "question": "{definition}{quantifier_text} ${x} \\in {domain}$，${relation}$ 成立，等价于什么？{bound_explanation}",
-          "answer": {"from": "policy_statement"},
+          "answer": {
+            "from": "policy_statement"
+          },
           "distractors": [
-            {"generator": "swap_bound", "feedback": {
-              "universal": "要让每个函数值都满足 ${relation}$，最该担心的是{bound_name}附近的那些值。",
-              "existential": "只要有一个函数值满足 ${relation}$ 就行，该看最容易满足条件的那一侧，也就是{bound_name}。"
-            }},
-            {"generator": "swap_quantifier", "feedback": {
-              "universal": "“对所有”要求每个 ${x}$ 都成立，不是找到一个就行。",
-              "existential": "“至少存在一个”只要找到一个 ${x}$ 成立就行，不要求每个 ${x}$ 都成立。"
-            }},
-            {"generator": "endpoint_only", "feedback": {
-              "universal": "只代入一个端点，不能代表整个区间上的情况。",
-              "existential": "只检查一个端点，会漏掉区间里其他可能满足条件的 ${x}$。"
-            }},
-            {"generator": "require_attained", "feedback": {
-              "universal": "最值可能取不到（例如开区间端点处只能无限接近），这时没有{extremum_name}，但每个函数值仍可能都满足条件。",
-              "existential": "最值可能取不到，这时没有{extremum_name}；但只要边界严格满足条件，仍能找到满足条件的 ${x}$。"
-            }},
-            {"generator": "flip_strictness", "feedback": "注意原题是否允许等号。"}
+            {
+              "generator": "swap_bound",
+              "feedback": {
+                "universal": "要让每个函数值都满足 ${relation}$，最该担心的是{bound_name}附近的那些值。",
+                "existential": "只要有一个函数值满足 ${relation}$ 就行，该看最容易满足条件的那一侧，也就是{bound_name}。"
+              }
+            },
+            {
+              "generator": "swap_quantifier",
+              "feedback": {
+                "universal": "“对所有”要求每个 ${x}$ 都成立，不是找到一个就行。",
+                "existential": "“至少存在一个”只要找到一个 ${x}$ 成立就行，不要求每个 ${x}$ 都成立。"
+              }
+            },
+            {
+              "generator": "endpoint_only",
+              "feedback": {
+                "universal": "只代入一个端点，不能代表整个区间上的情况。",
+                "existential": "只检查一个端点，会漏掉区间里其他可能满足条件的 ${x}$。"
+              }
+            },
+            {
+              "generator": "require_attained",
+              "feedback": {
+                "universal": "最值可能取不到（例如开区间端点处只能无限接近），这时没有{extremum_name}，但每个函数值仍可能都满足条件。",
+                "existential": "最值可能取不到，这时没有{extremum_name}；但只要边界严格满足条件，仍能找到满足条件的 ${x}$。"
+              }
+            },
+            {
+              "generator": "flip_strictness",
+              "feedback": "注意原题是否允许等号。"
+            }
           ],
           "feedback": "把“{quantifier_goal}”转化为比较函数在区间上的{bound_name}。",
           "min_options": 3,
@@ -98,56 +119,91 @@
           "component": "choice",
           "title": "选择分类依据",
           "question": "求 ${function}$ 在 ${domain}$ 上的{bound_name}时，按什么分类，才能确定它在哪个位置取到或趋近？",
-          "answer": {"from": "case_basis"},
+          "answer": {
+            "from": "case_basis"
+          },
           "distractors": [
-            {"generator": "case_basis_alternatives", "feedback": {
-              "discriminant": "判别式决定的是方程有没有实根，不决定{bound_name}在区间的哪个位置取得。例如 {witness}。",
-              "parameter_sign": "按 ${parameter}$ 的正负分类只能分出 {covered}，还缺 {missing}：这个分界来自对称轴到达区间端点。例如 {witness}。",
-              "leading_sign": "开口方向在本题里不随参数改变，不能区分{bound_name}的位置。例如 {witness}。",
-              "default": "这样分类后，同一类里{bound_name}的位置仍不确定。例如 {witness}。"
-            }}
+            {
+              "generator": "case_basis_alternatives",
+              "feedback": {
+                "discriminant": "判别式决定的是方程有没有实根，不决定{bound_name}在区间的哪个位置取得。例如 {witness}。",
+                "parameter_sign": "按 ${parameter}$ 的正负分类只能分出 {covered}，还缺 {missing}：这个分界来自对称轴到达区间端点。例如 {witness}。",
+                "leading_sign": "开口方向在本题里不随参数改变，不能区分{bound_name}的位置。例如 {witness}。",
+                "default": "这样分类后，同一类里{bound_name}的位置仍不确定。例如 {witness}。"
+              }
+            }
           ],
           "feedback": "{bound_name}在哪里取到或趋近，要看对称轴相对区间端点的位置。",
           "min_options": 3,
           "max_options": 3,
           "submit_label": "确认依据",
-          "graphs": {"stem": "axis_explorer"}
+          "graphs": {
+            "stem": "axis_explorer"
+          }
         },
         {
           "component": "checklist",
           "title": "判断各情况的最值位置",
           "question": "拖动对称轴观察：每种情况下，${function}$ 在 ${domain}$ 上的{bound_name}在哪里取到或趋近？",
           "rows": [
-            {"seed": 0, "answer": {"from": "case_locations"}, "distractors": [
-              {"generator": "flip_attained"},
-              {"generator": "location_alternatives"}
-            ]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "case_locations"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_attained"
+                },
+                {
+                  "generator": "location_alternatives"
+                }
+              ]
+            }
           ],
           "feedback": "对称轴在区间外时，函数在区间上单调，{bound_name}在端点；对称轴在区间内时，再看顶点。区间不含的端点处取不到，只能趋近。",
           "min_options": 2,
           "max_options": 3,
           "submit_label": "确认最值位置",
-          "graphs": {"stem": "axis_explorer", "completion": "case_explorers"}
+          "graphs": {
+            "stem": "axis_explorer",
+            "completion": "case_explorers"
+          }
         }
       ]
     },
     "classified_range": {
-      "repeat": {"first_or": {"binding": "bound_attained", "equals": false}},
+      "repeat": {
+        "first_or": {
+          "binding": "bound_attained",
+          "equals": false
+        }
+      },
       "parts": [
         {
           "component": "choice",
           "title": "判断最值的位置",
           "question": "当 ${condition}$ 时，${function}$ 在 ${domain}$ 上的{bound_name}在哪里取到或趋近？",
-          "answer": {"from": "bound_location"},
+          "answer": {
+            "from": "bound_location"
+          },
           "distractors": [
-            {"generator": "flip_attained", "feedback": "${x}={point}$ 不在区间内，函数在这里只能无限接近{bound_name}，取不到。"},
-            {"generator": "location_alternatives", "feedback": "例如 {witness}。"}
+            {
+              "generator": "flip_attained",
+              "feedback": "${x}={point}$ 不在区间内，函数在这里只能无限接近{bound_name}，取不到。"
+            },
+            {
+              "generator": "location_alternatives",
+              "feedback": "例如 {witness}。"
+            }
           ],
           "feedback": "对称轴在区间外，函数在区间上单调，{bound_name}在端点；对称轴在区间内，再比较顶点与两端。",
           "min_options": 3,
           "max_options": 4,
           "submit_label": "确认位置",
-          "graphs": {"options": "location_marks"}
+          "graphs": {
+            "options": "location_marks"
+          }
         }
       ]
     },
@@ -158,17 +214,30 @@
           "component": "choice",
           "title": "求本情况的参数范围",
           "question": "当 ${condition}$ 时，由 {conditions} 得到的 ${parameter}$ 的范围是？",
-          "answer": {"from": "case_solution"},
+          "answer": {
+            "from": "case_solution"
+          },
           "distractors": [
-            {"generator": "skip_intersection", "feedback": "解出的集合还要与本情况的范围 ${condition}$ 取交集。"},
-            {"generator": "case_only", "feedback": "本情况的范围只是前提，还要满足由最值得到的条件。"},
-            {"generator": "flip_endpoint", "feedback": "再检查端点处能否取等号。"}
+            {
+              "generator": "skip_intersection",
+              "feedback": "解出的集合还要与本情况的范围 ${condition}$ 取交集。"
+            },
+            {
+              "generator": "case_only",
+              "feedback": "本情况的范围只是前提，还要满足由最值得到的条件。"
+            },
+            {
+              "generator": "flip_endpoint",
+              "feedback": "再检查端点处能否取等号。"
+            }
           ],
           "feedback": "解出条件后，与本情况的范围取交集。",
           "min_options": 3,
           "max_options": 4,
           "submit_label": "确认范围",
-          "graphs": {"options": "parameter_sets"}
+          "graphs": {
+            "options": "parameter_sets"
+          }
         }
       ]
     },
@@ -179,13 +248,31 @@
           "component": "choice",
           "title": "求参数范围",
           "question": "{requirement}。${parameter}$ 的取值范围是什么？",
-          "board": {"caption": "各情况各自要满足", "lines": "case_requirements"},
-          "answer": {"from": "merged_set"},
+          "board": {
+            "caption": "各情况各自要满足",
+            "lines": "case_requirements"
+          },
+          "answer": {
+            "from": "merged_set"
+          },
           "distractors": [
-            {"generator": "skip_case_intersection", "feedback": "每种情况解出的范围，要先与这种情况本身的范围取交集，再合并。"},
-            {"generator": "drop_piece", "limit": 1, "feedback": "合并时漏掉了某一种情况的结果。"},
-            {"generator": "flip_endpoint", "feedback": "再检查端点：它属于哪种情况，在那种情况下条件是否成立。"},
-            {"generator": "seam_puncture", "feedback": "相邻两段在衔接点处恰好有一段包含这个点，合并后它仍在范围内。"}
+            {
+              "generator": "skip_case_intersection",
+              "feedback": "每种情况解出的范围，要先与这种情况本身的范围取交集，再合并。"
+            },
+            {
+              "generator": "drop_piece",
+              "limit": 1,
+              "feedback": "合并时漏掉了某一种情况的结果。"
+            },
+            {
+              "generator": "flip_endpoint",
+              "feedback": "再检查端点：它属于哪种情况，在那种情况下条件是否成立。"
+            },
+            {
+              "generator": "seam_puncture",
+              "feedback": "相邻两段在衔接点处恰好有一段包含这个点，合并后它仍在范围内。"
+            }
           ],
           "feedback": "每种情况内解出条件并与本情况取交集，各情况互不重叠，最后把结果取并集。",
           "min_options": 3,
@@ -201,10 +288,18 @@
           "component": "choice",
           "title": "整理不等式",
           "question": "哪一个与零比较的式子与 {before} 等价？",
-          "answer": {"from": "equivalent_relation"},
+          "answer": {
+            "from": "equivalent_relation"
+          },
           "distractors": [
-            {"generator": "relation_variants", "feedback": "移项时保持等价；乘除负数才改变不等号方向，严格性不能随意改变。"},
-            {"generator": "move_constant_wrong", "feedback": "移到另一边的每一项都要改变符号，包括常数项。"}
+            {
+              "generator": "relation_variants",
+              "feedback": "移项时保持等价；乘除负数才改变不等号方向，严格性不能随意改变。"
+            },
+            {
+              "generator": "move_constant_wrong",
+              "feedback": "移到另一边的每一项都要改变符号，包括常数项。"
+            }
           ],
           "feedback": "逐项移到同一边，再按实际乘除数的符号确定不等号方向。",
           "min_options": 3,
@@ -217,18 +312,88 @@
       "repeat": "first",
       "parts": [
         {
-          "component": "multi",
-          "title": "判断图像位置",
-          "question": "按关系方向写成 ${relation}$。在二次项系数大于零的情况下，哪些图像位置能使关系对所有实数成立？选出全部。",
-          "answer": {"from": "opening_positions"},
+          "component": "choice",
+          "title": "判断开口向上的情况",
+          "completion_group": "开口向上",
+          "question": "研究关系 ${relation}$。{opening_question}",
+          "feedback": "{opening_feedback}",
+          "answer": {
+            "from": "opening_up_unavailable"
+          },
           "distractors": [
-            {"generator": "opening_variants", "feedback": "开口向上的抛物线在顶点取得最小值；检查顶点在横轴的哪一侧，以及原关系是否允许等号。"}
+            {
+              "generator": "reverse_opening",
+              "feedback": "{opening_feedback}"
+            }
           ],
-          "feedback": "顶点是最低点。非严格关系允许顶点落在横轴上，严格关系要求整个图像都在横轴上方。",
+          "min_options": 2,
+          "max_options": 2,
+          "submit_label": "确认判断"
+        },
+        {
+          "component": "multi",
+          "title": "判断开口向上的情况",
+          "completion_group": "开口向上",
+          "question": "研究关系 ${relation}$。{opening_question}选出全部。",
+          "feedback": "{opening_feedback}",
+          "answer": {
+            "from": "opening_up_positions"
+          },
+          "distractors": [
+            {
+              "generator": "opening_variants",
+              "feedback": "{opening_feedback}"
+            }
+          ],
           "min_options": 3,
           "max_options": 3,
           "submit_label": "确认位置",
-          "graphs": {"options": "opening_positions"}
+          "graphs": {
+            "options": "opening_positions",
+            "completion": "opening_up_positions"
+          }
+        },
+        {
+          "component": "choice",
+          "title": "判断开口向下的情况",
+          "completion_group": "开口向下",
+          "question": "研究关系 ${relation}$。{opening_question}",
+          "feedback": "{opening_feedback}",
+          "answer": {
+            "from": "opening_down_unavailable"
+          },
+          "distractors": [
+            {
+              "generator": "reverse_opening",
+              "feedback": "{opening_feedback}"
+            }
+          ],
+          "min_options": 2,
+          "max_options": 2,
+          "submit_label": "确认判断"
+        },
+        {
+          "component": "multi",
+          "title": "判断开口向下的情况",
+          "completion_group": "开口向下",
+          "question": "研究关系 ${relation}$。{opening_question}选出全部。",
+          "feedback": "{opening_feedback}",
+          "answer": {
+            "from": "opening_down_positions"
+          },
+          "distractors": [
+            {
+              "generator": "opening_variants",
+              "feedback": "{opening_feedback}"
+            }
+          ],
+          "min_options": 3,
+          "max_options": 3,
+          "submit_label": "确认位置",
+          "graphs": {
+            "options": "opening_positions",
+            "completion": "opening_down_positions"
+          }
         }
       ]
     },
@@ -237,16 +402,86 @@
       "parts": [
         {
           "component": "choice",
-          "title": "建立判别式条件",
-          "question": "本步判别式为 $\\Delta={delta}$。满足已确定的开口条件后，应对判别式施加哪个条件？",
-          "answer": {"from": "discriminant_condition"},
+          "title": "开口{delta_opening}：建立判别式条件",
+          "question": "本步判别式为 $\\Delta={delta}$。{scope_note}，应对判别式施加哪个条件？",
+          "answer": {
+            "from": "discriminant_condition"
+          },
           "distractors": [
-            {"generator": "relation_variants", "feedback": "判别式控制与横轴交点的个数；先分清原式是否允许取到零，再确定是否允许相切。"}
+            {
+              "generator": "relation_variants",
+              "feedback": "判别式控制与横轴交点的个数；先分清原式是否允许取到零，再确定是否允许相切。"
+            }
           ],
-          "feedback": "图像不能穿过横轴；是否允许相切取决于原不等式的严格性。",
+          "feedback": "{delta_feedback}",
           "min_options": 2,
           "max_options": 3,
           "submit_label": "确认条件"
+        }
+      ]
+    },
+    "opening_branch_solution": {
+      "repeat": "always",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "开口{direction}：求参数范围",
+          "question": "{automatic_note}{condition_prompt}${parameter}$ 的取值范围是？",
+          "answer": {
+            "from": "opening_branch_set"
+          },
+          "distractors": [
+            {
+              "generator": "set_complement",
+              "feedback": "本步只保留当前开口方向中满足条件的参数。"
+            },
+            {
+              "generator": "flip_endpoint",
+              "feedback": "把边界代入开口条件和原不等式，判断能否保留。"
+            },
+            {
+              "generator": "drop_piece",
+              "feedback": "同一开口方向也可能对应多个参数区间，不能漏解。"
+            }
+          ],
+          "feedback": "{branch_feedback}",
+          "min_options": 2,
+          "max_options": 4,
+          "submit_label": "确认范围"
+        }
+      ]
+    },
+    "opening_branch_merge": {
+      "repeat": "always",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "合并开口向上和向下的情况",
+          "question": "{pieces}。两种开口的参数范围取并集，得到什么？",
+          "answer": {
+            "from": "opening_union_set"
+          },
+          "distractors": [
+            {
+              "generator": "drop_piece",
+              "feedback": "两种开口都可能满足原题，应保留各分支的结果。"
+            },
+            {
+              "generator": "flip_endpoint",
+              "feedback": "检查边界是否在任一分支中保留。"
+            },
+            {
+              "generator": "set_complement",
+              "feedback": "至少满足一种开口情况的参数都要保留，取并集。"
+            }
+          ],
+          "feedback": "两种开口的参数范围取并集。",
+          "min_options": 2,
+          "max_options": 4,
+          "submit_label": "确认合并",
+          "graphs": {
+            "options": "opening_branch_sets"
+          }
         }
       ]
     },
@@ -255,11 +490,16 @@
       "parts": [
         {
           "component": "choice",
-          "title": "找出退化条件",
+          "title": "判断二次项系数是否为 0",
           "question": "二次项系数为 ${coefficient}$。要使二次项消失，参数必须满足哪个条件？",
-          "answer": {"from": "zero_coefficient"},
+          "answer": {
+            "from": "zero_coefficient"
+          },
           "distractors": [
-            {"generator": "relation_variants", "feedback": "退化指二次项消失，系数必须等于零；正负只决定开口方向。"}
+            {
+              "generator": "relation_variants",
+              "feedback": "退化指二次项消失，系数必须等于零；正负只决定开口方向。"
+            }
           ],
           "feedback": "令二次项系数为零，再分别检查这些参数值对应的一次式或常数。",
           "min_options": 2,
@@ -273,10 +513,20 @@
       "parts": [
         {
           "component": "checklist",
-          "title": "检查退化情况",
+          "title": "检查二次项系数为 0 的情况",
           "question": "将 ${parameter}={value}$ 代入后得到 ${relation}$。这一情况能保留吗？",
           "rows": [
-            {"seed": 0, "answer": {"from": "degenerate_decision"}, "distractors": [{"generator": "flip_degenerate"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "degenerate_decision"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_degenerate"
+                }
+              ]
+            }
           ],
           "feedback": "一次项系数非零时，一次式在全体实数上既无上界也无下界；退化为常数时直接判断常数关系。",
           "min_options": 2,
@@ -291,15 +541,22 @@
           "component": "choice",
           "title": "配方求最值",
           "question": "将 ${function}$ 配方后，它在 ${domain}$ 上的{extremum_name}及取等位置是？",
-          "answer": {"from": "square_extremum"},
+          "answer": {
+            "from": "square_extremum"
+          },
           "distractors": [
-            {"generator": "square_variants", "feedback": "配方后先令平方项等于零，得到取等位置，再代入原函数求最值。"}
+            {
+              "generator": "square_variants",
+              "feedback": "配方后先令平方项等于零，得到取等位置，再代入原函数求最值。"
+            }
           ],
           "feedback": "平方项的符号确定最大或最小值；平方项为零时取得这个值。",
           "min_options": 3,
           "max_options": 4,
           "submit_label": "确认最值",
-          "graphs": {"stem": "square_function"}
+          "graphs": {
+            "stem": "square_function"
+          }
         }
       ]
     },
@@ -310,11 +567,23 @@
           "component": "choice",
           "title": "求参数范围",
           "question": "由 {conditions}{case_note}，${parameter}$ 的取值范围是？",
-          "answer": {"from": "algebra_solution"},
+          "answer": {
+            "from": "algebra_solution"
+          },
           "distractors": [
-            {"generator": "set_complement", "feedback": "先在根分隔的区间检查符号，不要把满足条件的部分与不满足的部分交换。"},
-            {"generator": "flip_endpoint", "feedback": "将边界代回条件，确定不等式是否允许等号。"},
-            {"generator": "drop_piece", "limit": 1, "feedback": "若多个区间都满足条件，不能漏掉其中一段。"}
+            {
+              "generator": "set_complement",
+              "feedback": "先在根分隔的区间检查符号，不要把满足条件的部分与不满足的部分交换。"
+            },
+            {
+              "generator": "flip_endpoint",
+              "feedback": "将边界代回条件，确定不等式是否允许等号。"
+            },
+            {
+              "generator": "drop_piece",
+              "limit": 1,
+              "feedback": "若多个区间都满足条件，不能漏掉其中一段。"
+            }
           ],
           "feedback": "看清边界能否取等。",
           "min_options": 3,
@@ -328,19 +597,32 @@
       "parts": [
         {
           "component": "choice",
-          "title": "合并退化与二次情况",
+          "title": "合并二次项系数为 0 和不为 0 的情况",
           "question": "各情况已得到 ${parameter}$ 的范围 {pieces}。合并后是？",
-          "answer": {"from": "degree_merged_set"},
+          "answer": {
+            "from": "degree_merged_set"
+          },
           "distractors": [
-            {"generator": "drop_piece", "feedback": "每种情况都属于原题，合并时不能遗漏某一情况。"},
-            {"generator": "flip_endpoint", "feedback": "检查边界是否已在某一种情况中保留。"},
-            {"generator": "set_complement", "feedback": "各情况的结果取并集，保留满足至少一种情况的参数。"}
+            {
+              "generator": "drop_piece",
+              "feedback": "每种情况都属于原题，合并时不能遗漏某一情况。"
+            },
+            {
+              "generator": "flip_endpoint",
+              "feedback": "检查边界是否已在某一种情况中保留。"
+            },
+            {
+              "generator": "set_complement",
+              "feedback": "各情况的结果取并集，保留满足至少一种情况的参数。"
+            }
           ],
           "feedback": "分类覆盖全部参数，各情况的解集取并集。",
           "min_options": 2,
           "max_options": 4,
           "submit_label": "确认合并",
-          "graphs": {"options": "algebra_sets"}
+          "graphs": {
+            "options": "algebra_sets"
+          }
         }
       ]
     },
@@ -352,7 +634,17 @@
           "title": "区分字母角色",
           "question": "题设要求一个字母在 ${domain}$ 内变化，先分清它与所求字母的角色。",
           "rows": [
-            {"seed": 0, "answer": {"from": "variable_roles"}, "distractors": [{"generator": "swap_symbol_roles"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "variable_roles"
+              },
+              "distractors": [
+                {
+                  "generator": "swap_symbol_roles"
+                }
+              ]
+            }
           ],
           "feedback": "量词约束的字母在给定区间内变化；所求字母先固定，最后求它的取值范围。",
           "min_options": 2
@@ -367,10 +659,66 @@
           "title": "按变化的字母合并同类项",
           "question": "将 ${function}$ 看成关于 ${x}$ 的一次式，分别选出两个系数。",
           "rows": [
-            {"seed": 0, "answer": {"from": "affine_coefficients"}, "distractors": [{"generator": "coefficient_errors"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_coefficients"
+              },
+              "distractors": [
+                {
+                  "generator": "coefficient_errors"
+                }
+              ]
+            }
           ],
           "feedback": "一次项系数乘变化的字母，余下不含该字母的项是常数项。",
           "min_options": 2
+        }
+      ]
+    },
+    "variable_swap": {
+      "repeat": "first",
+      "parts": [
+        {
+          "component": "checklist",
+          "title": "选择新的主元",
+          "question": "题设要求一个字母在 ${domain}$ 内变化，先分清它与所求字母的角色。",
+          "rows": [
+            {
+              "seed": 0,
+              "answer": {
+                "from": "variable_roles"
+              },
+              "distractors": [
+                {
+                  "generator": "swap_symbol_roles"
+                }
+              ]
+            }
+          ],
+          "feedback": "量词约束的字母在给定区间内变化；所求字母先固定，最后求它的取值范围。",
+          "min_options": 2
+        },
+        {
+          "component": "checklist",
+          "title": "定义新函数",
+          "question": "把原式 ${function}$ 记为关于 ${x}$ 的函数，按一次项系数与常数项填写 ${function_name}({x})=A\\cdot {x}+B$。",
+          "rows": [
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_coefficients"
+              },
+              "distractors": [
+                {
+                  "generator": "coefficient_errors"
+                }
+              ]
+            }
+          ],
+          "feedback": "一次项系数乘变化的字母，余下不含该字母的项是常数项。",
+          "min_options": 2,
+          "submit_label": "确认更换主元"
         }
       ]
     },
@@ -382,7 +730,17 @@
           "title": "计算候选值",
           "question": "计算 ${function}$ 在候选位置的函数值或极限。",
           "rows": [
-            {"seed": 0, "answer": {"from": "affine_endpoint_values"}, "distractors": [{"generator": "endpoint_substitution_errors"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_endpoint_values"
+              },
+              "distractors": [
+                {
+                  "generator": "endpoint_substitution_errors"
+                }
+              ]
+            }
           ],
           "feedback": "代入候选位置，保留关于所求字母的表达式；不能混淆一次项系数和常数项。",
           "min_options": 2
@@ -392,23 +750,50 @@
           "title": "判断候选值能否取得",
           "question": "结合区间 ${domain}$，判断本步保留的各候选值是否在区间内取得。",
           "rows": [
-            {"seed": 0, "answer": {"from": "affine_attainment"}, "distractors": [{"generator": "flip_candidate_attainment"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_attainment"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_candidate_attainment"
+                }
+              ]
+            }
           ],
           "feedback": "闭端点属于区间，开端点只给出极限；常数函数在区间内部也能取得同一个值。",
           "min_options": 2,
-          "graphs": {"completion": "variable_function"}
+          "graphs": {
+            "completion": "variable_function"
+          }
         }
       ]
     },
     "variable_case_range": {
-      "repeat": {"first_or": {"binding": "slope_sign", "equals": "zero"}},
+      "repeat": {
+        "first_or": {
+          "binding": "slope_sign",
+          "equals": "zero"
+        }
+      },
       "parts": [
         {
           "component": "checklist",
           "title": "计算候选值",
           "question": "在 ${condition}$ 的情况下，计算 ${function}$ 在候选位置的函数值或极限。",
           "rows": [
-            {"seed": 0, "answer": {"from": "affine_endpoint_values"}, "distractors": [{"generator": "endpoint_substitution_errors"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_endpoint_values"
+              },
+              "distractors": [
+                {
+                  "generator": "endpoint_substitution_errors"
+                }
+              ]
+            }
           ],
           "feedback": "代入候选位置，保留关于所求字母的表达式；不能混淆一次项系数和常数项。",
           "min_options": 2
@@ -418,11 +803,23 @@
           "title": "判断候选值能否取得",
           "question": "在 ${condition}$ 的情况下，结合区间 ${domain}$，判断本步保留的各候选值是否在区间内取得。",
           "rows": [
-            {"seed": 0, "answer": {"from": "affine_attainment"}, "distractors": [{"generator": "flip_candidate_attainment"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_attainment"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_candidate_attainment"
+                }
+              ]
+            }
           ],
           "feedback": "闭端点属于区间，开端点只给出极限；常数函数在区间内部也能取得同一个值。",
           "min_options": 2,
-          "graphs": {"completion": "variable_function"}
+          "graphs": {
+            "completion": "variable_function"
+          }
         }
       ]
     },
@@ -433,18 +830,32 @@
           "component": "choice",
           "title": "组合端点条件",
           "question": "{case_note}由条件 {conditions} 得到的 ${parameter}$ 的范围是？",
-          "answer": {"from": "variable_solution"},
+          "answer": {
+            "from": "variable_solution"
+          },
           "distractors": [
-            {"generator": "swap_combiner"},
-            {"generator": "drop_condition"},
-            {"generator": "skip_intersection"},
-            {"generator": "flip_endpoint"},
-            {"generator": "complement_set"}
+            {
+              "generator": "swap_combiner"
+            },
+            {
+              "generator": "drop_condition"
+            },
+            {
+              "generator": "skip_intersection"
+            },
+            {
+              "generator": "flip_endpoint"
+            },
+            {
+              "generator": "complement_set"
+            }
           ],
           "feedback": "全称要求每个条件成立，取交集；存在只需其中一个成立，取并集。分类时再与本情况范围取交集。",
           "min_options": 2,
           "max_options": 4,
-          "graphs": {"options": "variable_parameter_sets"}
+          "graphs": {
+            "options": "variable_parameter_sets"
+          }
         }
       ]
     },
@@ -455,39 +866,65 @@
           "component": "choice",
           "title": "组合端点条件",
           "question": "{case_note}由条件 {conditions} 得到的 ${parameter}$ 的范围是？",
-          "answer": {"from": "variable_solution"},
+          "answer": {
+            "from": "variable_solution"
+          },
           "distractors": [
-            {"generator": "swap_combiner"},
-            {"generator": "drop_condition"},
-            {"generator": "skip_intersection"},
-            {"generator": "flip_endpoint"},
-            {"generator": "complement_set"}
+            {
+              "generator": "swap_combiner"
+            },
+            {
+              "generator": "drop_condition"
+            },
+            {
+              "generator": "skip_intersection"
+            },
+            {
+              "generator": "flip_endpoint"
+            },
+            {
+              "generator": "complement_set"
+            }
           ],
           "feedback": "全称要求每个条件成立，取交集；存在只需其中一个成立，取并集。分类时再与本情况范围取交集。",
           "min_options": 2,
           "max_options": 4,
-          "graphs": {"options": "variable_parameter_sets"}
+          "graphs": {
+            "options": "variable_parameter_sets"
+          }
         }
       ]
     },
     "variable_case_merge": {
-      "repeat": "first",
+      "repeat": "always",
       "parts": [
         {
           "component": "choice",
           "title": "合并各情况",
           "question": "各情况得到 ${parameter}$ 的范围依次为 {pieces}，总范围是？",
-          "answer": {"from": "variable_merged_set"},
+          "answer": {
+            "from": "variable_merged_set"
+          },
           "distractors": [
-            {"generator": "intersect_cases"},
-            {"generator": "drop_piece"},
-            {"generator": "flip_endpoint"},
-            {"generator": "complement_set"}
+            {
+              "generator": "intersect_cases"
+            },
+            {
+              "generator": "drop_piece"
+            },
+            {
+              "generator": "flip_endpoint"
+            },
+            {
+              "generator": "complement_set"
+            }
           ],
           "feedback": "满足任意一种情况即可，把各情况的结果取并集。",
           "min_options": 2,
           "max_options": 4,
-          "graphs": {"options": "variable_parameter_sets"}
+          "graphs": {
+            "options": "variable_parameter_sets"
+          }
         }
       ]
     },
@@ -498,15 +935,23 @@
           "component": "choice",
           "title": "找出常数情形",
           "question": "关于变化字母的一次项系数为 ${slope}$。哪些 ${parameter}$ 值会让它成为常数函数？",
-          "answer": {"from": "variable_constant_cases"},
+          "answer": {
+            "from": "variable_constant_cases"
+          },
           "distractors": [
-            {"generator": "complement_set"},
-            {"generator": "all_or_none"}
+            {
+              "generator": "complement_set"
+            },
+            {
+              "generator": "all_or_none"
+            }
           ],
           "feedback": "一次项系数等于零时成为常数，必须把这些参数值单独检查。",
           "min_options": 2,
           "max_options": 4,
-          "graphs": {"options": "variable_parameter_sets"}
+          "graphs": {
+            "options": "variable_parameter_sets"
+          }
         }
       ]
     },
@@ -518,7 +963,17 @@
           "title": "复核边界",
           "question": "把可行集 ${feasible_set}$ 的有限边界代回原题，判断是否保留。",
           "rows": [
-            {"seed": 0, "answer": {"from": "boundary_rows"}, "distractors": [{"generator": "flip_keep"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "boundary_rows"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_keep"
+                }
+              ]
+            }
           ],
           "feedback": "边界是否保留取决于它是否满足原题的全部条件。",
           "min_options": 2
@@ -533,7 +988,17 @@
           "title": "确定最值结论",
           "question": "完整可行集为 ${feasible_set}$，它说明什么？",
           "rows": [
-            {"seed": 0, "answer": {"from": "goal_conclusion"}, "distractors": [{"generator": "goal_status_errors"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "goal_conclusion"
+              },
+              "distractors": [
+                {
+                  "generator": "goal_status_errors"
+                }
+              ]
+            }
           ],
           "feedback": "先看可行集是否为空、所求方向是否有界，再看边界点是否属于可行集。",
           "min_options": 2
@@ -548,7 +1013,17 @@
           "title": "确定最值结论",
           "question": "完整可行集为 ${feasible_set}$，它说明什么？",
           "rows": [
-            {"seed": 0, "answer": {"from": "goal_conclusion"}, "distractors": [{"generator": "goal_status_errors"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "goal_conclusion"
+              },
+              "distractors": [
+                {
+                  "generator": "goal_status_errors"
+                }
+              ]
+            }
           ],
           "feedback": "先看可行集是否为空、所求方向是否有界，再看边界点是否属于可行集。",
           "min_options": 2
@@ -844,7 +1319,17 @@
           "feedback": "移项相当于两边加减同一个式子，不改变不等号方向。",
           "submit_label": "确认判断",
           "rows": [
-            {"seed": 0, "answer": {"from": "movement_direction"}, "distractors": [{"generator": "reverse_division"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "movement_direction"
+              },
+              "distractors": [
+                {
+                  "generator": "reverse_division"
+                }
+              ]
+            }
           ]
         }
       ]
@@ -860,11 +1345,18 @@
           "max_options": 4,
           "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
-          "answer": {"from": "certified_range"},
+          "answer": {
+            "from": "certified_range"
+          },
           "distractors": [
-            {"generator": "range_alternatives"}
+            {
+              "generator": "range_alternatives"
+            }
           ],
-          "graphs": {"options": "range_sets", "stem": "range_function"}
+          "graphs": {
+            "options": "range_sets",
+            "stem": "range_function"
+          }
         }
       ]
     },
@@ -879,11 +1371,18 @@
           "max_options": 4,
           "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
-          "answer": {"from": "certified_range"},
+          "answer": {
+            "from": "certified_range"
+          },
           "distractors": [
-            {"generator": "range_alternatives"}
+            {
+              "generator": "range_alternatives"
+            }
           ],
-          "graphs": {"options": "range_sets", "stem": "range_function"}
+          "graphs": {
+            "options": "range_sets",
+            "stem": "range_function"
+          }
         }
       ]
     },
@@ -898,25 +1397,54 @@
           "max_options": 4,
           "feedback": "由 ${balance}$（${relation}$）求出拐点横坐标，代回 ${label}$ 得纵坐标；曲线在拐点处由升转降是最高点，由降转升是最低点。",
           "submit_label": "确认拐点",
-          "answer": {"from": "hook_turn"},
+          "answer": {
+            "from": "hook_turn"
+          },
           "distractors": [
-            {"generator": "turn_alternatives"}
+            {
+              "generator": "turn_alternatives"
+            }
           ],
-          "graphs": {"stem": "hook_shape"}
+          "graphs": {
+            "stem": "hook_shape"
+          }
         },
         {
           "component": "checklist",
           "title": "看区间落在拐点哪一侧",
           "question": "拐点 ${x}={turn_x}$ 把这一支分成两段单调区间。题目区间 ${domain}$ 落在哪里？由此得到值域。",
           "rows": [
-            {"seed": 0, "answer": {"from": "hook_side"}, "distractors": [{"generator": "other_hook_sides"}]},
-            {"seed": 0, "answer": {"from": "hook_range"}, "distractors": [{"generator": "range_alternatives"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "hook_side"
+              },
+              "distractors": [
+                {
+                  "generator": "other_hook_sides"
+                }
+              ]
+            },
+            {
+              "seed": 0,
+              "answer": {
+                "from": "hook_range"
+              },
+              "distractors": [
+                {
+                  "generator": "range_alternatives"
+                }
+              ]
+            }
           ],
           "feedback": "区间在拐点一侧时函数单调，值域由两端决定；跨过拐点时最值在拐点处取得。开端点和趋于无穷的一端都取不到。",
           "min_options": 2,
           "max_options": 4,
           "submit_label": "确认值域",
-          "graphs": {"stem": "hook_interval", "completion": "hook_completion"}
+          "graphs": {
+            "stem": "hook_interval",
+            "completion": "hook_completion"
+          }
         }
       ]
     },
@@ -931,11 +1459,18 @@
           "max_options": 4,
           "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
-          "answer": {"from": "certified_range"},
+          "answer": {
+            "from": "certified_range"
+          },
           "distractors": [
-            {"generator": "range_alternatives"}
+            {
+              "generator": "range_alternatives"
+            }
           ],
-          "graphs": {"options": "range_sets", "stem": "range_function"}
+          "graphs": {
+            "options": "range_sets",
+            "stem": "range_function"
+          }
         }
       ]
     },
@@ -950,11 +1485,17 @@
           "max_options": 4,
           "feedback": "同时核对最值及其能否取到；无穷不是可以取得的端点。",
           "submit_label": "确认判断",
-          "answer": {"from": "certified_range"},
+          "answer": {
+            "from": "certified_range"
+          },
           "distractors": [
-            {"generator": "range_alternatives"}
+            {
+              "generator": "range_alternatives"
+            }
           ],
-          "graphs": {"options": "range_sets"}
+          "graphs": {
+            "options": "range_sets"
+          }
         }
       ]
     },
@@ -970,31 +1511,212 @@
           "feedback": "对照本步给出的条件与计算依据。",
           "submit_label": "确认判断",
           "rows": [
-            {"seed": 0, "answer": {"from": "endpoint_candidates"}, "distractors": [{"generator": "omit_endpoint"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "endpoint_candidates"
+              },
+              "distractors": [
+                {
+                  "generator": "omit_endpoint"
+                }
+              ]
+            }
           ],
-          "graphs": {"completion": "range_evidence_function"}
+          "graphs": {
+            "completion": "range_evidence_function"
+          }
+        }
+      ]
+    },
+    "variable_slope": {
+      "repeat": "always",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "判断一次项系数的符号",
+          "question": "一次项系数为 ${slope}$。随着 ${parameter}$ 变化，它的符号属于哪一种情况？",
+          "answer": {
+            "from": "affine_slope_sign"
+          },
+          "distractors": [
+            {
+              "generator": "other_slope_signs"
+            }
+          ],
+          "feedback": "先判断一次项系数的符号；符号不固定时，分别讨论大于零、等于零、小于零中可能出现的情况。",
+          "min_options": 2,
+          "max_options": 4,
+          "submit_label": "确认符号"
+        }
+      ]
+    },
+    "variable_sign_case": {
+      "repeat": "always",
+      "parts": [
+        {
+          "component": "choice",
+          "title": "看图确定位置",
+          "question": "{case_note}${function_label}={function}$，${x}\\in {domain}$。根据直线走势，哪个位置决定{neutral_bound_name}？",
+          "answer": {
+            "from": "affine_bound_location"
+          },
+          "distractors": [
+            {
+              "generator": "other_affine_locations"
+            }
+          ],
+          "feedback": "一次项系数为正时递增，为负时递减；按题意选择决定值域上端或下端的位置。",
+          "min_options": 2,
+          "max_options": 3,
+          "graphs": {
+            "stem": "affine_function"
+          }
+        },
+        {
+          "component": "checklist",
+          "title": "计算函数值",
+          "question": "{case_note}由 ${function_label}={function}$ 计算下面位置对应的函数值或极限。",
+          "rows": [
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_endpoint_values"
+              },
+              "distractors": [
+                {
+                  "generator": "endpoint_substitution_errors"
+                }
+              ]
+            }
+          ],
+          "feedback": "把所选端点代入函数；一次项系数为零时，函数在整个区间上取同一个值。",
+          "min_options": 2,
+          "graphs": {
+            "stem": "affine_function",
+            "completion": "variable_function"
+          }
+        },
+        {
+          "component": "checklist",
+          "title": "判断能否取得",
+          "question": "{case_note}结合区间 ${domain}$，这个值能否取到？",
+          "rows": [
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_open_attainment"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_candidate_attainment"
+                }
+              ]
+            }
+          ],
+          "feedback": "开端点不属于区间；常数函数的值在区间内部也能取得。",
+          "min_options": 2,
+          "graphs": {
+            "stem": "affine_function"
+          }
+        },
+        {
+          "component": "checklist",
+          "title": "写出本情况的条件",
+          "question": "{case_note}结合已经求出的{bound_name}及能否取得的结论，原题要求哪个条件成立？",
+          "rows": [
+            {
+              "seed": 0,
+              "answer": {
+                "from": "affine_bound_condition"
+              },
+              "distractors": [
+                {
+                  "generator": "affine_condition_errors"
+                }
+              ]
+            }
+          ],
+          "feedback": "比较方向来自原题；是否保留等号，还要结合值域端点能否取得。",
+          "min_options": 2,
+          "graphs": {
+            "stem": "affine_function"
+          }
+        },
+        {
+          "component": "choice",
+          "title": "求本情况的范围",
+          "question": "{case_note}由条件 {conditions} 得到的 ${parameter}$ 的范围是？",
+          "answer": {
+            "from": "variable_solution"
+          },
+          "distractors": [
+            {
+              "generator": "swap_combiner"
+            },
+            {
+              "generator": "drop_condition"
+            },
+            {
+              "generator": "skip_intersection"
+            },
+            {
+              "generator": "flip_endpoint"
+            },
+            {
+              "generator": "complement_set"
+            }
+          ],
+          "feedback": "解出条件后，与本情况的参数范围取交集。",
+          "min_options": 2,
+          "max_options": 4,
+          "graphs": {
+            "options": "variable_parameter_sets"
+          },
+          "submit_label": "确认本情况"
         }
       ]
     }
   },
   "overrides": {
     "method-interval-extremum#select": {
-      "classified_range": {"fold": true},
-      "case_linear_range": {"fold": true}
+      "classified_range": {
+        "fold": true
+      },
+      "case_linear_range": {
+        "fold": true
+      }
     },
     "method-interval-extremum#conditions": {
-      "interval_conditions": {"fold": true}
+      "interval_conditions": {
+        "fold": true
+      }
     },
     "method-separation#quantifier": {
       "policy": {
         "parts": [
           {
             "distractors": [
-              {"generator": "swap_bound", "feedback": "由量词和不等号方向决定看值域上端还是下端；能取到时才称最大值或最小值。"},
-              {"generator": "flip_direction", "feedback": "比较的方向要与原关系 ${relation}$ 一致。"},
-              {"generator": "require_attained", "feedback": "最值可能取不到；是否要求取到，取决于量词和等号。"},
-              {"generator": "swap_quantifier", "feedback": "核对原题量词：全称要求所有值成立，存在只要求至少一个值成立。"},
-              {"generator": "flip_strictness", "feedback": "注意原题是否允许等号。"}
+              {
+                "generator": "swap_bound",
+                "feedback": "由量词和不等号方向决定看值域上端还是下端；能取到时才称最大值或最小值。"
+              },
+              {
+                "generator": "flip_direction",
+                "feedback": "比较的方向要与原关系 ${relation}$ 一致。"
+              },
+              {
+                "generator": "require_attained",
+                "feedback": "最值可能取不到；是否要求取到，取决于量词和等号。"
+              },
+              {
+                "generator": "swap_quantifier",
+                "feedback": "核对原题量词：全称要求所有值成立，存在只要求至少一个值成立。"
+              },
+              {
+                "generator": "flip_strictness",
+                "feedback": "注意原题是否允许等号。"
+              }
             ]
           }
         ]
@@ -1004,7 +1726,10 @@
   "merges": [
     {
       "id": "boundary-goal",
-      "display_units": ["boundary", "goal_finalization"],
+      "display_units": [
+        "boundary",
+        "goal_finalization"
+      ],
       "title": "检查边界并得出最值",
       "repeat": "always",
       "parts": [
@@ -1013,13 +1738,35 @@
           "title": "检查边界并得出最值",
           "question": "把候选集合 ${feasible_set}$ 的有限边界代回原题检查，再读出答案。",
           "rows": [
-            {"seed": 0, "answer": {"from": "boundary_decisions"}, "distractors": [{"generator": "flip_keep"}]},
-            {"seed": 1, "answer": {"from": "goal_value"}, "distractors": [{"generator": "flip_attained"}]}
+            {
+              "seed": 0,
+              "answer": {
+                "from": "boundary_decisions"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_keep"
+                }
+              ]
+            },
+            {
+              "seed": 1,
+              "answer": {
+                "from": "goal_value"
+              },
+              "distractors": [
+                {
+                  "generator": "flip_attained"
+                }
+              ]
+            }
           ],
           "feedback": "边界点代回原题看是否成立；可行集包含{goal_bound_name}时{goal_name}存在，否则只能趋近。",
           "min_options": 2,
           "submit_label": "确认结论",
-          "graphs": {"completion": "boundary_function"}
+          "graphs": {
+            "completion": "boundary_function"
+          }
         }
       ]
     }

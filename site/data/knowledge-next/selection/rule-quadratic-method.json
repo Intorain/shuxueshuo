@@ -9,7 +9,10 @@
       "trigger": [
         {
           "feature": "quantifier",
-          "equals": "∀"
+          "in": [
+            "∀",
+            "∃"
+          ]
         },
         {
           "feature": "domain_kind",
@@ -37,9 +40,9 @@
         ]
       ],
       "messages": {
-        "fit": "对所有实数 ${bound}$ 成立，原关系关于 ${bound}$ 的二次项系数为 ${original_coefficient}$，确定非零。",
-        "degenerate": "对所有实数 ${bound}$ 成立；二次项系数为零的参数集合为 ${zero_set}$，需要单独讨论退化情况。",
-        "not_triggered": "本选法分支未触发：判别式法要求全实数上的全称二次关系。",
+        "fit": "{quantified_requirement}，原关系关于 ${bound}$ 的二次项系数为 ${original_coefficient}$，确定非零。",
+        "degenerate": "{quantified_requirement}；二次项系数为零的参数集合为 ${zero_set}$，需要单独讨论退化情况。",
+        "not_triggered": "本选法分支未触发：判别式法要求在全实数范围内判断二次不等式的恒成立或有解条件。",
         "fails": {}
       }
     },
@@ -78,7 +81,7 @@
         ]
       ],
       "messages": {
-        "superseded": "$\\mathbb R$ 也是区间，区间最值法在数学上可行；本题全实数上的全称关系优先采用判别式法。",
+        "superseded": "$\\mathbb R$ 也是区间，区间最值法在数学上可行；本题全实数上的{quantifier_kind}关系优先采用判别式法。",
         "not_triggered": "本选法分支未触发：给定范围的字母不是二次式主元。",
         "fails": {},
         "leading_coefficient_requires_cases": "规范化后的二次项系数为 ${coefficient}$，其符号尚不能统一确定，需要分类讨论开口方向与退化情况。",
@@ -190,22 +193,22 @@
   "plane_axes": {
     "x": {
       "feature": "domain_kind",
-      "label": "${bound}$ 取全体实数吗？",
+      "label": "${principal}$ 取全体实数吗？",
       "options": [
         {
           "value": "interval",
           "label": "否",
-          "note": "${bound}$ 在某个区间内"
+          "note": "${principal}$ 在给定范围内"
         },
         {
           "value": "real",
           "label": "是",
-          "note": "${bound}\\in\\mathbb R$"
+          "note": "${principal}\\in\\mathbb R$"
         }
       ],
       "feedback": {
-        "real": "再看横轴：${bound}$ 取遍全体实数。",
-        "interval": "再看横轴：${bound}$ 只在题目给定区间内变化。"
+        "real": "再看横轴：${principal}$ 取遍全体实数。",
+        "interval": "再看横轴：${principal}$ 的给定范围不是全体实数。"
       },
       "values": {
         "real": "real",
@@ -215,22 +218,22 @@
     },
     "y": {
       "feature": "range_var_is_principal",
-      "label": "参数有给定范围吗？",
+      "label": "参数 ${coefficient_parameter}$ 有给定范围吗？",
       "options": [
         {
           "value": "given",
           "label": "有",
-          "note": "给定参数范围，求主元的范围"
+          "note": "给定 ${coefficient_parameter}$ 的范围，求 ${principal}$ 的范围"
         },
         {
           "value": "free",
           "label": "没有",
-          "note": "要求的就是参数"
+          "note": "要求的就是参数 ${coefficient_parameter}$"
         }
       ],
       "feedback": {
-        "free": "再看纵轴：${parameter}$ 是所求参数。",
-        "given": "再看纵轴：给出范围的是 ${bound}$，要求的是 ${parameter}$。"
+        "free": "再看纵轴：${coefficient_parameter}$ 是所求参数。",
+        "given": "再看纵轴：给出范围的是 ${coefficient_parameter}$，要求的是 ${principal}$。"
       }
     }
   },

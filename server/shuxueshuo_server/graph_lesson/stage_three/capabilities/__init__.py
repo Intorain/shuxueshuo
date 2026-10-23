@@ -108,8 +108,8 @@ def quadratic_sign_condition(relation, variable, domain, quantifier, case_domain
         raise CapabilityGap("ordered_relation_required")
     expression = residual(relation)
     poly = polynomial(expression, variable)
-    if domain != sp.S.Reals or quantifier != "∀" or poly.degree() != 2:
-        raise CapabilityGap("all_real_universal_quadratic_required")
+    if domain != sp.S.Reals or quantifier not in ("∀", "∃") or poly.degree() != 2:
+        raise CapabilityGap("all_real_quantified_quadratic_required")
     a, b, c = poly.all_coeffs()
     symbols = parameter_symbols(expression, variable)
     zeros = coefficient_zeros(a, next(iter(symbols)) if symbols else None)
@@ -117,25 +117,33 @@ def quadratic_sign_condition(relation, variable, domain, quantifier, case_domain
         raise CapabilityGap("nondegenerate_case_required")
     strict = relation.rel_op in (">", "<")
     delta = bounded_expand(b * b - 4 * a * c)
+    combiner = "all" if quantifier == "∀" else "any"
+    delta_operator = ("<" if strict else "<=") if quantifier == "∀" else (">" if strict else ">=")
+    condition = globals()["relation"](delta, delta_operator)
     checks = [
         {"kind": "nonzero_leading_coefficient_on_case", "passed": True,
          "coefficient": a, "case_domain": case_domain, "zero_set": zeros},
         {"kind": "direction_and_strictness", "passed": True,
          "relation": relation, "residual": expression, "strict": strict},
+        {"kind": "quadratic_square_identity", "passed": bounded_expand(
+            4 * a * expression - ((2 * a * variable + b)**2 - delta)) == 0},
+        {"kind": "quantified_quadratic_sign_rule", "passed": True,
+         "quantifier": quantifier, "combiner": combiner, "delta_condition": condition,
+         "positive_leading_is_sufficient": quantifier == "∃"},
     ]
     if mode == "opening":
         return result(
             {"opening": sp.Gt(a, 0, evaluate=False), "delta": delta,
-             "coefficient": a, "basis_expression": expression},
+             "coefficient": a, "basis_expression": expression,
+             "quantifier": quantifier, "condition_combiner": combiner},
             ["quadratic_zeros", "all_real_sign"],
             checks,
         )
     if mode != "delta":
         raise CapabilityGap("unknown_quadratic_condition_mode")
-    condition = globals()["relation"](delta, "<" if strict else "<=")
     return result(
         {"condition": condition, "delta": delta, "coefficient": a,
-         "basis_expression": expression},
+         "basis_expression": expression, "quantifier": quantifier, "condition_combiner": combiner},
         ["discriminant_condition", "all_real_sign"],
         checks,
     )
@@ -308,11 +316,12 @@ def square_extremum(expression, variable, domain, square, coefficient, vertex, v
 
 
 from .cases import (
+    combine_condition_solutions,
     degenerate_case_check,
-    intersect_conditions,
     merge_cases,
     solve_parameter_relation,
 )
+from .openings import quadratic_opening_solutions
 from .parametric import (
     merge_interval_cases,
     parametric_interval_extremum,
@@ -352,6 +361,7 @@ REGISTRY = {
         normalize_to_zero,
         simplify_expression,
         quadratic_sign_condition,
+        quadratic_opening_solutions,
         transform_param_inequality,
         solve_quadratic,
         quadratic_sign_pattern,
@@ -374,7 +384,7 @@ REGISTRY = {
         complete_square,
         square_extremum,
         degenerate_case_check,
-        intersect_conditions,
+        combine_condition_solutions,
         merge_cases,
         solve_parameter_relation,
         reorder_by_variable,

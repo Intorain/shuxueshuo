@@ -210,7 +210,9 @@ def merge_prefix(registry, seed):
 
 def merge_match(registry, first, second):
     if (first["route_id"] != second["route_id"] or first["target_ref"] != second["target_ref"]
-            or first["case_path"] != second["case_path"] or second["ordinal"] != first["ordinal"] + 1):
+            or first["case_path"] != second["case_path"]
+            or first.get("branch_id") != second.get("branch_id")
+            or second["ordinal"] != first["ordinal"] + 1):
         return None
     units = [first["display_unit"], second["display_unit"]]
     return next((merge for merge in registry["merges"] if merge["display_units"] == units), None)
@@ -1667,7 +1669,9 @@ def compile_interaction(seeds, rule, repeat_context, *, interaction_id):
             picture = _picture(COMPLETION_GRAPHS[completion], diagnostics, number, seeds)
             if picture is not None:
                 body["completion_graphs" if isinstance(picture, list) else "completion_graph"] = picture
-        parts.append({"id": part_id, "title": part["title"], "question": question,
+        if group := part.get("completion_group"):
+            body["completion_group"] = _render_text(group, display)
+        parts.append({"id": part_id, "title": _render_text(part["title"], display), "question": question,
                       **body, "submit_label": part.get("submit_label", "确认判断")})
     if not parts:
         raise NotInteractive(failures[0] if len(set(failures)) == 1 else "insufficient_options", diagnostics)
@@ -1766,9 +1770,14 @@ EXTENSION_API = SimpleNamespace(
 
 
 def _register_extensions():
-    from . import interaction_algebra, interaction_ranges, interaction_variable
+    from . import (
+        interaction_algebra,
+        interaction_opening_branches,
+        interaction_ranges,
+        interaction_variable,
+    )
 
-    modules = (interaction_algebra, interaction_ranges, interaction_variable)
+    modules = (interaction_algebra, interaction_opening_branches, interaction_ranges, interaction_variable)
     tables = {"answers": ANSWERS, "stem_graphs": STEM_GRAPHS, "option_graphs": OPTION_GRAPHS,
               "completion_graphs": COMPLETION_GRAPHS}
     for module in modules:

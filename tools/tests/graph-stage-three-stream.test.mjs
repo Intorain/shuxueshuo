@@ -27,6 +27,54 @@ const qa = (value = step()) => ({...identity, target_ref: value.target_ref, rout
 const qaEvent = (seq, chunk = qa()) => event(seq, 'lesson.chunk_ready', {kind: 'step_qa', step_id: chunk.step_id,
   math_step_sha256: chunk.math_step_sha256, verified_route_sha256: chunk.verified_route_sha256, chunk}, chunk.target_ref);
 
+test('snapshot recovery retains the same original-choice answer as the live completion event', () => {
+  const original_choice = {status: 'matched', kind: 'single_choice', target_ref: target,
+    options: [{label: 'A', text: '$a\\ge0$'}, {label: 'B', text: '$a<0$'}], correct_labels: ['A']};
+  const live = createEventConsumer(identity), completion = doneEvent(1);
+  completion.payload.original_choice = original_choice;
+  live.accept(completion);
+  const refreshed = createEventConsumer(identity);
+  refreshed.hydrate({...identity, last_seq: 1, math_steps: [], goals: {}, handoffs: [{
+    target_ref: target, route_id: route, available: true, status: 'pending',
+    answer: completion.payload.answer, feasible_set: completion.payload.feasible_set,
+    verified_route_sha256: completion.payload.verified_route_sha256, original_choice}]});
+  assert.deepEqual(refreshed.view().completions[0].original_choice, live.view().completions[0].original_choice);
+  assert.deepEqual(refreshed.view().completions[0].answer, live.view().completions[0].answer);
+});
+
+test('frozen case conditions survive live delivery and snapshot recovery and cannot be rewritten', () => {
+  const value = {...step(), contract: 'graph-math-step/v2', case_path: ['quadratic'],
+    case_condition: {expression: 'Ne(c, 1/3)', latex: 'c\\ne\\frac{1}{3}'}};
+  const live = createEventConsumer(identity), refreshed = createEventConsumer(identity);
+  live.accept(mathEvent(1, value));
+  refreshed.hydrate({...identity, last_seq: 1, math_steps: [value], goals: {}});
+  for (const consumer of [live, refreshed]) {
+    assert.deepEqual(consumer.view().math_steps[0].case_condition, value.case_condition);
+    assert.deepEqual(consumer.view().math_steps[0].case_path, value.case_path);
+    const changed = {...value, case_condition: {...value.case_condition, latex: 'c=0'}};
+    assert.throws(() => consumer.accept(mathEvent(2, changed)), /stream.immutable_math_step/);
+    assert.deepEqual(consumer.view().math_steps[0].case_condition, value.case_condition);
+  }
+});
+
+for (const delivery of ['live', 'snapshot']) test(`opening branch metadata is frozen separately from the execution path after ${delivery} delivery`, () => {
+  const value = {...step(), contract: 'graph-math-step/v2', case_path: ['nondegenerate'],
+    case_condition: {expression: 'Ne(k, 0)', latex: 'k\\ne0'}, branch_id: 'opening-up',
+    branch_condition: {expression: 'Gt(k, 0)', latex: 'k>0'}};
+  const snapshot = math => ({...identity, last_seq: 1, math_steps: [math], goals: {}});
+  for (const field of ['branch_id', 'branch_condition']) {
+    const consumer = createEventConsumer(identity);
+    if (delivery === 'live') consumer.accept(mathEvent(1, value));
+    else consumer.hydrate(snapshot(value));
+    assert.deepEqual(consumer.view().math_steps[0], value);
+    const changed = {...value, [field]: field === 'branch_id' ? 'opening-down'
+      : {expression: 'Lt(k, 0)', latex: 'k<0'}};
+    assert.throws(() => consumer.accept(mathEvent(2, changed)), /stream.immutable_math_step/);
+    assert.throws(() => consumer.hydrate(snapshot(changed)), /stream.snapshot_math_changed/);
+    assert.deepEqual(consumer.view().math_steps[0], value);
+  }
+});
+
 test('subscription forwards committed data without creating DOM or reading progress', () => {
   const seen = [];
   const view = mountStageThreeStream(identity, {

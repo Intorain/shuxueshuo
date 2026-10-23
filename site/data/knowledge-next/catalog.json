@@ -154,8 +154,8 @@
       "module": "/assets/explain/method/method-discriminant.js",
       "part": "figure",
       "scope": "method-discriminant",
-      "title": "抛物线与横轴的三种位置：开口方向加判别式",
-      "note": "二次式对全体实数 $x$ 恒成立、且二次项系数确定非零时使用。开口向上要 $f(x)\\ge0$，图像不能到横轴下方，即 $\\Delta\\le0$；不带等号时只取 $\\Delta<0$。",
+      "title": "全实数上的恒成立与有解：开口方向和判别式",
+      "note": "先确认二次项系数非零，再区分全称与存在。全称看整条图像，存在看能否找到一个符合关系的点；开口已保证能找到所需正值或负值时，不必再限制判别式。相切能满足非严格存在关系，但不能满足相应的严格关系。",
       "after": "conditions"
     },
     "separation-horizontal-line": {

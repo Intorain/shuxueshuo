@@ -202,6 +202,15 @@ def validate_contract(contract, nodes=None, *, available_methods=None):
         _atoms(step.get("guard"))
         _require(guard_references(step.get("guard")), env)
         for unit in step["display_units"]:
+            if scope := unit.get("source_scope"):
+                names = scope.get("steps", [scope.get("step")])
+                source_steps = [item for item in contract["steps"] if item["id"] in names]
+                if (len(source_steps) != len(names)
+                        or any(contract["steps"].index(item) > contract["steps"].index(step)
+                               for item in source_steps)
+                        or set(scope.get("actions", [])) - {
+                            action["id"] for item in source_steps for action in actions(item)}):
+                    raise ValueError("execution.invalid_display_source_scope")
             if not isinstance(unit.get("after"), str) or not unit["after"]:
                 raise ValueError("execution.display_trigger")
             if unit["id"] in display_ids:

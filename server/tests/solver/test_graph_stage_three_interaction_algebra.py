@@ -53,6 +53,7 @@ def test_relation_witness_respects_known_parameter_and_current_case(sources):
     source = sources["discriminant_condition"]
     relation = sp.Le(-a**2, 0, evaluate=False)
     values = {"before": [relation], "after": [sp.Ge(a**2, 0, evaluate=False)],
+              "relation": CONTEXT["relation"],
               "case": {"domain": sp.Interval(1, 3)}}
     data = facts(source, values, CONTEXT, known=sp.Interval(-2, 2))
     item, = source["answer"](data)
@@ -64,7 +65,7 @@ def test_relation_witness_respects_known_parameter_and_current_case(sources):
 def test_undefined_relation_sample_is_unknown_not_a_false_witness(sources):
     source = sources["discriminant_condition"]
     relation = sp.Ge(1/a, 0, evaluate=False)
-    values = {"before": [relation], "after": [relation]}
+    values = {"before": [relation], "after": [relation], "relation": CONTEXT["relation"]}
     data = facts(source, values, CONTEXT)
     item, = source["answer"](data)
     strict = interaction.Candidate("strict", "strict", sp.Gt(1/a, 0, evaluate=False))
@@ -80,6 +81,7 @@ def test_discriminant_does_not_use_a_counterexample_outside_prior_opening(source
     context = {**CONTEXT, "relation": relation, "expression": polynomial}
     delta = -4*a*(a+1)**2
     values = {"before": [sp.Le(delta, 0, evaluate=False)], "after": [sp.Ge(-delta, 0, evaluate=False)],
+              "relation": context["relation"],
               "case": {"domain": sp.Complement(sp.S.Reals, sp.FiniteSet(0)), "condition": sp.Ne(a, 0)}}
     data = facts(source, values, context)
     item, = source["answer"](data)
@@ -107,7 +109,8 @@ def test_algebra_solution_comparison_also_respects_prior_opening(sources):
 
 def test_missing_or_inconsistent_opening_evidence_is_readonly(sources):
     source = sources["discriminant_condition"]
-    values = {"before": [sp.Le(-4*a, 0, evaluate=False)], "after": [sp.Ge(a, 0, evaluate=False)]}
+    values = {"before": [sp.Le(-4*a, 0, evaluate=False)], "after": [sp.Ge(a, 0, evaluate=False)],
+              "relation": CONTEXT["relation"]}
     missing = {key: value for key, value in CONTEXT.items() if key != "expression"}
     with pytest.raises(interaction.NotInteractive, match="opening_evidence_missing"):
         source["facts"](values, missing)
@@ -127,32 +130,38 @@ def test_degree_basis_is_coefficient_zero_not_merely_positive_or_negative(source
 
 @pytest.mark.parametrize("strict,allowed", [(False, {0, 1}), (True, {1})])
 def test_opening_multi_uses_exact_vertex_values_and_matching_graphs(sources, strict, allowed):
-    source = sources["opening_positions"]
+    source = sources["opening_up_positions"]
     relation = (sp.Gt if strict else sp.Ge)(x**2+a, 0, evaluate=False)
-    values = {"strict": strict, "expression": x**2+a, "positive_relation": relation}
-    data = facts(source, values, CONTEXT)
+    values = {"strict": strict, "expression": x**2+a, "relation": relation}
+    context = {**CONTEXT, "relation": relation}
+    data = facts(source, values, context)
     item, = source["answer"](data)
-    kept, records, additional = source["validate"](data, values, CONTEXT, item, candidates(source, data, item))
+    kept, records, additional = source["validate"](data, values, context, item, candidates(source, data, item))
     correct = [item["answer"], *additional]
     assert {int(candidate.value) for candidate in correct} == allowed
     assert all(row[1] in ("witness", "also_correct") for row in records)
     builder = interaction_algebra.register(interaction.EXTENSION_API)["option_graphs"]["opening_positions"][1]
-    images, note = builder(data, values, CONTEXT,
+    images, note = builder(data, values, context,
                            [(candidate, True) for candidate in correct] + [(candidate, False) for candidate in kept])
     assert len(images) == 3 and "相对位置" in note
     for image in images:
         interaction.graph_contract.validate_graph(image)
         assert image["params"]["coefficient"] == 1
     with pytest.raises(interaction.GraphUnavailable, match="representative_unverified"):
-        builder(data, values, CONTEXT, [(item["answer"], False)])
+        builder(data, values, context, [(item["answer"], False)])
 
 
-def test_opening_rejects_finite_domain_and_existential_question(sources):
-    source = sources["opening_positions"]
-    values = {"strict": False, "expression": x**2+a, "positive_relation": sp.Ge(x**2+a, 0)}
-    for context in ({**CONTEXT, "domain": sp.Interval(0, 1)}, {**CONTEXT, "quantifier": "∃"}):
-        with pytest.raises(interaction.NotInteractive, match="opening_domain_unsupported"):
-            source["facts"](values, context)
+def test_opening_rejects_finite_domain_and_keeps_all_automatic_existential_positions(sources):
+    source = sources["opening_up_positions"]
+    values = {"strict": False, "expression": x**2+a, "relation": sp.Ge(x**2+a, 0)}
+    with pytest.raises(interaction.NotInteractive, match="opening_domain_unsupported"):
+        source["facts"](values, {**CONTEXT, "domain": sp.Interval(0, 1)})
+    context = {**CONTEXT, "quantifier": "∃"}
+    data = facts(source, values, context)
+    item, = source["answer"](data)
+    wrong, records, additional = source["validate"](data, values, context, item, candidates(source, data, item))
+    assert wrong == [] and {option.value for option in [item["answer"], *additional]} == {-1, 0, 1}
+    assert all(record[1:] == ("also_correct", "unbounded_target_direction") for record in records)
 
 
 @pytest.mark.parametrize("holds", [False, True])

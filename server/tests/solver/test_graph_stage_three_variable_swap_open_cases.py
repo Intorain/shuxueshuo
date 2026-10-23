@@ -1,4 +1,4 @@
-"""Slope-zero cases on open intervals: exact bounds, provenance and original proof."""
+"""Affine sign cases: exact bounds, grouping, provenance and original proof."""
 
 from copy import deepcopy
 from itertools import product
@@ -18,6 +18,7 @@ from shuxueshuo_server.graph_lesson.stage_three.trajectory import (
     encode_value,
 )
 from shuxueshuo_server.graph_lesson.stage_three.verification import verify
+from shuxueshuo_server.problem_understanding.review_contract import pointer
 from tests.solver.test_graph_stage_three_methods import finish
 
 T, A = sp.symbols("t a", real=True)
@@ -57,6 +58,19 @@ def notation(expression, domain, quantifier, operator, variable=T, parameter=A):
     return {"original_text": fact, "root": {"facts": [fact], "goals": [{"kind": "find_range", "symbol": str(parameter)}]}}
 
 
+def assert_case_card_sources(cards, trajectory, case_count):
+    assert any(card["display_unit"] == "slope" for card in cards)
+    case_cards = [card for card in cards if card["display_unit"] == "sign_case"]
+    assert len(case_cards) == case_count
+    assert len({tuple(card["case_path"]) for card in case_cards}) == case_count
+    for card in case_cards:
+        assert card["case_path"] and card["local_check"] == "passed"
+        sources = [pointer(trajectory, ref) for ref in card["source_refs"]]
+        assert {"parameter_linear_case_range", "intersect_variable_case_solution"} <= {
+            source.get("capability") for source in sources
+        }
+
+
 @pytest.mark.parametrize("quantifier,operator", product(("∀", "∃"), OPERATORS))
 def test_linear_zero_is_constant_and_never_borrowed_as_an_open_endpoint(quantifier, operator):
     expression = (A-1)*(T+1)
@@ -78,7 +92,7 @@ def test_linear_zero_is_constant_and_never_borrowed_as_an_open_endpoint(quantifi
 
 @pytest.mark.parametrize("quantifier,operator,domain", product(
     ("∀", "∃"), OPERATORS,
-    (sp.Interval.open(0, 1), sp.Interval.Lopen(0, 1), sp.Interval.Ropen(0, 1)),
+    (sp.Interval(0, 1), sp.Interval.open(0, 1), sp.Interval.Lopen(0, 1), sp.Interval.Ropen(0, 1)),
 ))
 @pytest.mark.parametrize("slope,zero_set,positive,negative", [
     (A, sp.FiniteSet(0), sp.Interval.open(0, sp.oo), sp.Interval.open(-sp.oo, 0)),
@@ -106,6 +120,63 @@ def test_all_quantifiers_relations_and_half_open_endpoints_with_authored_sign_se
     candidate = notation(expression, domain, quantifier, operator)
     result = verify(candidate, TARGET, build_context(candidate, TARGET), actual)
     assert result["status"] == "verified", result
+
+
+def test_closed_interval_keeps_all_three_successful_sign_cases_before_union():
+    actual, plan, ranges, records = solve_cases(A*T-1, sp.Interval(-1, 1), operator="<")
+    assert actual == sp.Interval.open(-1, 1)
+    assert plan["has_cases"] is True
+    assert [case["slope_sign"] for case in plan["cases"]] == ["positive", "zero", "negative"]
+    assert [case["domain"] for case in plan["cases"]] == [
+        sp.Interval.open(0, sp.oo), sp.FiniteSet(0), sp.Interval.open(-sp.oo, 0),
+    ]
+    assert [row["outputs"]["solution"] for row in records] == [
+        sp.Interval.open(0, 1), sp.FiniteSet(0), sp.Interval.open(-1, 0),
+    ]
+    assert [row["endpoint_mode"] for row in ranges] == ["right_endpoint", "constant", "left_endpoint"]
+    assert all(row["range"]["candidates"][0]["attained"] for row in ranges)
+
+
+@pytest.mark.parametrize("domain", [sp.Interval(-1, 1), sp.Interval.open(-1, 1)])
+def test_quadratic_slope_groups_disconnected_cells_and_all_zero_roots(domain):
+    actual, plan, _, records = solve_cases((A*A-1)*T-1, domain, operator="<")
+    expected = (sp.Union(sp.Interval.open(-sp.sqrt(2), 0), sp.Interval.open(0, sp.sqrt(2)))
+                if not domain.left_open else sp.Interval(-sp.sqrt(2), sp.sqrt(2)))
+    assert actual == expected
+    positive, zero, negative = plan["cases"]
+    assert [case["slope_sign"] for case in plan["cases"]] == ["positive", "zero", "negative"]
+    assert positive["domain"] == sp.Union(sp.Interval.open(-sp.oo, -1), sp.Interval.open(1, sp.oo))
+    assert zero["domain"] == sp.FiniteSet(-1, 1)
+    assert negative["domain"] == sp.Interval.open(-1, 1)
+    assert zero["value"] is None
+    assert len(positive["certificate"]["cells"]) == len(zero["certificate"]["cells"]) == 2
+    assert sp.Union(*(case["domain"] for case in plan["cases"])) == sp.S.Reals
+    assert all(first["domain"].intersect(second["domain"]) == sp.S.EmptySet
+               for i, first in enumerate(plan["cases"]) for second in plan["cases"][i+1:])
+    assert records[1]["outputs"]["solution"] == sp.FiniteSet(-1, 1)
+    for case in plan["cases"]:
+        assert sp.Union(*(cell["domain"] for cell in case["certificate"]["cells"])) == case["domain"]
+        assert all({1: "positive", 0: "zero", -1: "negative"}[cell["signs"]["slope"]] == case["slope_sign"]
+                   for cell in case["certificate"]["cells"])
+
+
+@pytest.mark.parametrize("slope,sign", [(A*A+1, "positive"), (-A*A-1, "negative"), (sp.S.Zero, "zero")])
+@pytest.mark.parametrize("domain", [sp.Interval(-1, 1), sp.Interval.open(-1, 1)])
+def test_globally_fixed_sign_uses_one_direct_case(slope, sign, domain):
+    _, plan, _, _ = solve_cases(slope*T+A, domain, operator="<")
+    assert plan["has_cases"] is False
+    case, = plan["cases"]
+    assert case["mode"] == "direct" and case["slope_sign"] == sign
+    assert case["domain"] == sp.S.Reals
+
+
+def test_grouped_sign_certificate_rejects_tampered_member_cells():
+    expression, domain = (A*A-1)*T, sp.Interval(-1, 1)
+    policy = checked(cap.select_quantifier_policy("∀", "<", domain))["policy"]
+    case = deepcopy(swap.variable_case_plan(expression, T, A, domain, policy)["cases"][0])
+    case["certificate"]["cells"].pop()
+    with pytest.raises(cap.LocalCheckFailed, match="variable_case_certificate_mismatch"):
+        swap.parameter_linear_case_range(expression, T, A, domain, policy, case)
 
 
 @pytest.mark.parametrize("quantifier,operator", product(("∀", "∃"), OPERATORS))
@@ -178,8 +249,8 @@ def test_classification_does_not_expand_other_unsupported_boundaries(expression,
 
 @pytest.mark.parametrize("expression,operator,expected,case_count", [
     ((A-1)*(T+1), ">", sp.Interval.open(1, sp.oo), 3),
-    ((A-1)**2*T, ">", sp.S.Reals-sp.FiniteSet(1), 3),
-    ((A*A-2)*T, ">=", sp.Union(sp.Interval(-sp.oo, -sp.sqrt(2)), sp.Interval(sp.sqrt(2), sp.oo)), 5),
+    ((A-1)**2*T, ">", sp.S.Reals-sp.FiniteSet(1), 2),
+    ((A*A-2)*T, ">=", sp.Union(sp.Interval(-sp.oo, -sp.sqrt(2)), sp.Interval(sp.sqrt(2), sp.oo)), 3),
 ])
 def test_full_contract_exposes_each_case_range_solution_and_checked_union(expression, operator, expected, case_count):
     candidate = notation(expression, sp.Interval.open(0, 1), "∀", operator)
@@ -192,9 +263,7 @@ def test_full_contract_exposes_each_case_range_solution_and_checked_union(expres
     assert result == expected
     assert verify(candidate, TARGET, context, result)["status"] == "verified"
     cards = state["fragments"]
-    assert any(card["display_unit"] == "variable_cases" for card in cards)
-    assert len([card for card in cards if card["display_unit"] == "case_range"]) == case_count
-    assert len([card for card in cards if card["display_unit"] == "case_solution"]) == case_count
+    assert_case_card_sources(cards, state["trajectory"], case_count)
     assert any(card["display_unit"] == "case_union" for card in cards)
     assert all(card["source_refs"] and card["local_check"] == "passed" for card in cards)
     for step in state["trajectory"]["steps"]:
@@ -254,6 +323,4 @@ def test_open_q09_runs_through_admission_worker_verification_and_delivery(tmp_pa
     assert snapshot["handoffs"] and not any(result["llm"].values())
     trajectory = read(output / route["trajectory"])
     cards = [read(output / row["file"]) for row in trajectory["math_steps"]]
-    assert len([card for card in cards if card["display_unit"] == "case_range"]) == 5
-    assert len([card for card in cards if card["display_unit"] == "case_solution"]) == 5
-    assert all(card["case_path"] for card in cards if card["display_unit"] in ("case_range", "case_solution"))
+    assert_case_card_sources(cards, trajectory, 3)

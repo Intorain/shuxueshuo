@@ -102,6 +102,9 @@
     "substitution_range_restore": [
       "method-substitution#range",
       "function-range-extrema#attainability"
+    ],
+    "union_case_conditions": [
+      "method-discriminant#solve"
     ]
   }
 }

@@ -30,7 +30,8 @@ def test_variable_case_presentation_uses_only_its_linear_case_bindings(fact, par
     assert state["status"] == "method_complete", state["diagnostics"]
     assert driver.export_values(state)["feasible_set"] == sp.Interval.Ropen(-1, 1)
     units = {card["display_unit"] for card in state["fragments"]}
-    assert {"variable_cases", "case_union"} <= units
+    assert {"slope", "sign_case", "case_union"} <= units
+    assert len([card for card in state["fragments"] if card["display_unit"] == "sign_case"]) == 3
 
 
 @pytest.mark.parametrize("fact,axis", [

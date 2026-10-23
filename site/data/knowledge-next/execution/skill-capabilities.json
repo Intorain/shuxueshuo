@@ -75,9 +75,6 @@
     "solve_parameter_relation": [
       "method-discriminant#solve"
     ],
-    "intersect_conditions": [
-      "method-discriminant#solve"
-    ],
     "merge_cases": [
       "method-discriminant#merge"
     ],
@@ -95,6 +92,10 @@
     ],
     "merge_variable_cases": [
       "method-variable-swap#merge"
+    ],
+    "quadratic_opening_solutions": ["method-discriminant#solve"],
+    "combine_condition_solutions": [
+      "method-discriminant#solve"
     ]
   }
 }

@@ -25,10 +25,14 @@ def test_public_quadratic_calls_are_guarded_real_submethods():
         assert call["capability"] == "submethod"
         assert call["guard"]["equals"] == "quadratic"
         assert call["guard"]["ref"] in ("first_kind", "second_kind")
-    extent = contract["steps"][3]["cases"]["entry"]
+    extent = next(step for step in contract["steps"] if step["id"] == "range")["cases"]["entry"]
     decision, = extent["judgments"]
     assert {option["id"] for option in decision["options"]} == {"positive", "negative", "zero", "unknown"}
-    assert extent["display_units"][0]["after"] == decision["id"]
+    assert not extent["display_units"]
+    card, = solve["display_units"]
+    assert card["template"] == "variable_sign_case"
+    assert card["after"] == "intersect"
+    assert card["source_scope"] == {"steps": ["range", "solve"]}
 
 
 @pytest.mark.parametrize("expression,kind", [(x*x-1, "quadratic"), (x-1, "affine"),

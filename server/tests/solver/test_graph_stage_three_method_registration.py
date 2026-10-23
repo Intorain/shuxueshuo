@@ -165,6 +165,17 @@ def test_declared_binding_resolvers_can_supply_new_input_names():
     assert method_admission.can_execute(contract, values)
 
 
+def test_discriminant_admission_uses_quantified_reals_without_retired_checks():
+    contract = execution_contracts.read("method-discriminant")
+    checks = {check["function"] for check in contract["admission"]["checks"]}
+    assert "quantified_reals" in checks
+    assert not {"universal_reals", "intersect_conditions"} & method_admission.CHECKS.keys()
+    quantified_reals = method_admission.CHECKS["quantified_reals"]
+    assert all(quantified_reals(quantifier, sp.S.Reals) for quantifier in ("∀", "∃"))
+    assert not quantified_reals("∀", sp.Interval(0, 1))
+    assert not quantified_reals("unknown", sp.S.Reals)
+
+
 def test_current_milestones_keep_their_existing_method_sets():
     base = {"method-discriminant", "method-separation"}
     interval = base | {"method-interval-extremum"}
@@ -189,7 +200,8 @@ def test_unregistered_method_is_configuration_failure_not_mathematical_gap():
 
 @pytest.mark.parametrize(("method", "fact", "expected"), [
     ("method-discriminant", "∀x∈ℝ:x^2+a>=0", True),
-    ("method-discriminant", "∃x∈ℝ:x^2+a>=0", False),
+    ("method-discriminant", "∃x∈ℝ:x^2+a>=0", True),
+    ("method-discriminant", "∃x∈[0,1]:x^2+a>=0", False),
     ("method-discriminant", "∀x∈[0,1]:x^2+a>=0", False),
     ("method-separation", "∀x∈ℝ:x^2+a>=0", True),
     ("method-interval-extremum", "∀x∈[0,1]:x^2+a>=0", True),

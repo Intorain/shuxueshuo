@@ -3,55 +3,94 @@
   "templates": {
     "normalize": {
       "title": "整理不等式",
+      "omit_if_unchanged": true,
       "explanation": "将原不等式移项整理为与零比较的形式，每一步保持两边关系等价。",
       "required_bindings": [
         "before",
         "after"
-      ]
+      ],
+      "prepare": "normalize_view",
+      "render": "${normalization_chain}$。",
+      "highlight": {
+        "caption": "等价整理",
+        "connector": "⇔",
+        "items": [
+          {
+            "for": "normalization_relations",
+            "as": "item",
+            "math": "{item.relation}",
+            "label": {
+              "select": "item.position",
+              "cases": {
+                "before": "整理前",
+                "after": "整理后",
+                "intermediate": "等价关系"
+              }
+            }
+          }
+        ]
+      }
     },
     "opening": {
       "title": "判断图像位置",
-      "explanation": "二次项系数确定为正且非零。要在全体实数上非负，图像不能穿过横轴；非严格不等式允许相切。",
+      "explanation": "按量词与不等式方向，判断开口方向和图像位置对条件成立的影响。",
       "required_bindings": [
         "before",
         "after",
         "strict",
         "relation",
-        "expression"
+        "expression",
+        "quantifier",
+        "condition_combiner"
       ],
-      "render": {
-        "if": "fixed_positive",
-        "then": {
-          "if": "strict",
-          "then": "二次项系数确定为正且非零。原式需恒严格大于零，$\\therefore$ 图像必须完全位于横轴上方，不能相切。",
-          "else": "二次项系数确定为正且非零。要在全体实数上非负，图像不能穿过横轴；非严格不等式允许相切。"
-        },
-        "else": [
-          "按不等号方向把当前关系写成 ${positive_relation}$。在二次项系数不为零的情况下，需要开口条件 ${opening}$，再与判别式条件联立；",
+      "render": "$y={display_expression}$，{opening_summary}",
+      "prepare": "opening",
+      "highlight": {
+        "caption": "图像结论",
+        "items": [
           {
-            "if": "strict",
-            "then": "严格不等式不允许图像碰到横轴",
-            "else": "非严格不等式允许图像与横轴相切"
+            "label": "研究的关系",
+            "math": "{relation}"
           },
-          "。"
-        ]
-      },
-      "prepare": "opening"
+          {
+            "label": "图像条件",
+            "math": "{opening_conclusion}"
+          }
+        ],
+        "replace_with_graph": "opening_determined"
+      }
     },
     "case_basis": {
-      "title": "确定分类条件",
+      "title": "判断二次项系数是否为 0",
       "explanation": "先求二次项系数为零的全部参数值，逐一检查退化情况；其余参数按二次式处理。",
       "required_bindings": [
         "before",
         "after",
         "coefficient",
-        "parameter"
+        "parameter",
+        "relation",
+        "cases"
       ],
-      "render": "按原不等号方向移项后，与零比较的差式中二次项系数为 ${coefficient}$。先找出使它为零的全部 ${parameter}$ 值，分别检验；剩余参数对应非退化二次式。这些情况互不重叠并覆盖全部实数参数。"
+      "prepare": "degree_cases",
+      "render": "二次项系数为 ${degree_coefficient}$，令其为零：${degree_zero_chain}$。",
+      "highlight": {
+        "caption": "按二次项是否消失分类",
+        "connector": "",
+        "items": [
+          {
+            "label": "二次项消失，代入检查",
+            "math": "{degree_zero_condition}"
+          },
+          {
+            "label": "二次项保留，按二次式求解",
+            "math": "{degree_other_condition}"
+          }
+        ]
+      }
     },
     "degenerate_case": {
-      "title": "检查退化情况",
-      "explanation": "将本情况的参数值代回原关系，判断一次式或常数能否对全部实数成立。",
+      "title": "检查二次项系数为 0 的情况",
+      "explanation": "代入使二次项消失的参数值，按原题量词检查一次式或常数关系。",
       "required_bindings": [
         "before",
         "after",
@@ -59,41 +98,216 @@
         "value",
         "holds",
         "linear_coefficient",
-        "constant"
+        "constant",
+        "quantifier"
       ],
       "render": [
-        "把 ${parameter}={value}$ 代回原不等式，二次项消失，得到下列一次式或常数关系。",
+        "${case_condition}$ 时，原不等式化为 ${substituted_relation}$。",
         {
-          "if": "constant",
-          "then": "一次项系数也为零，只需判断常数关系的真假",
-          "else": "一次项系数不为零，一次式在全体实数上无上界也无下界，$\\therefore$ 不可能始终满足同一方向的不等式"
+          "if": "is_constant",
+          "then": "",
+          "else": "一次式的值域为 $\\mathbb{{R}}$，"
         },
-        "：",
         {
           "if": "holds",
-          "then": "满足原题的全称条件，保留这个参数值",
-          "else": "不满足原题的全称条件，排除这个参数值"
+          "then": {
+            "select": "quantifier",
+            "cases": {
+              "∀": "对所有实数成立",
+              "∃": "存在实数解"
+            }
+          },
+          "else": {
+            "select": "quantifier",
+            "cases": {
+              "∀": "不能对所有实数成立",
+              "∃": "无实数解"
+            }
+          }
         },
         "。"
       ],
-      "prepare": "degenerate_case"
+      "prepare": "degenerate_case",
+      "case_prefix": false,
+      "highlight": {
+        "caption": "本情况的检验结果",
+        "show_result": true,
+        "connector": "→",
+        "items": [
+          {
+            "label": "代入参数值",
+            "math": "{case_condition}"
+          },
+          {
+            "label": "原不等式变为",
+            "math": "{substituted_relation}"
+          }
+        ],
+        "result": {
+          "if": "holds",
+          "then": "满足原题，保留 ${case_condition}$。",
+          "else": "不满足原题，排除 ${case_condition}$。"
+        }
+      }
     },
     "merge_cases": {
-      "title": "合并各情况",
-      "explanation": "每种情况的结果先与其分类条件取交集，再合并全部情况；检查分类无遗漏且条件彼此不重叠。",
+      "title": "合并二次项系数为 0 和不为 0 的情况",
+      "explanation": "${merge_equation}$。",
       "required_bindings": [
         "before",
         "after",
-        "case_results"
-      ]
+        "case_results",
+        "parameter"
+      ],
+      "prepare": "degree_case_merge",
+      "highlight": {
+        "caption": "取并集",
+        "layout": "merge",
+        "items": [
+          {
+            "for": "merge_rows",
+            "as": "item",
+            "label": "${item.condition}$",
+            "math": "{item.solution}"
+          }
+        ],
+        "result": "${merge_total}$"
+      }
     },
     "discriminant": {
-      "title": "建立判别式条件",
-      "explanation": "开口条件满足后，用判别式限制交点个数；按常数的符号变形得到等价参数条件。",
+      "title": "开口{delta_opening}：建立判别式条件",
+      "explanation": "根据量词、开口方向和不等式严格性确定判别式条件，化为等价参数关系。",
       "required_bindings": [
         "before",
-        "after"
-      ]
+        "after",
+        "quantifier",
+        "condition_combiner",
+        "opening",
+        "relation",
+        "delta",
+        "x",
+        "branch"
+      ],
+      "render": {
+        "select": "opening_mode",
+        "cases": {
+          "automatic": "上一图像结论已说明这个二次情况有实数解，因此判别式不再限制参数。",
+          "impossible": "上一图像结论已说明这个二次情况不能满足全称条件，判别式不能改变这一结论。",
+          "delta": "${delta_formula}$。",
+          "parameter": [
+            {
+              "select": "quantifier",
+              "cases": {
+                "∀": "在满足开口条件 ${display_opening}$ 的参数范围内，判别式必须{delta_condition_words}。",
+                "∃": "在图像开口{delta_opening}的参数范围内，判别式必须{delta_condition_words}；另一种开口已自动有解。"
+              }
+            },
+            "\n${delta_formula}$。"
+          ]
+        }
+      },
+      "prepare": "discriminant_view",
+      "highlight": {
+        "caption": "判别式判断",
+        "items": [
+          {
+            "for": "delta_requirements",
+            "as": "item",
+            "label": "判别式条件",
+            "math": "{item}"
+          },
+          {
+            "label": {
+              "select": "opening_mode",
+              "cases": {
+                "automatic": "无需额外条件",
+                "impossible": "当前情况",
+                "delta": "等价参数条件",
+                "parameter": "需判别式的分支条件"
+              }
+            },
+            "math": "{delta_conclusion}"
+          }
+        ],
+        "connector": "⇔"
+      }
+    },
+    "opening_branch_solution": {
+      "title": "开口{branch.direction}：求参数范围",
+      "explanation": "${branch_equation}$。",
+      "required_bindings": [
+        "before",
+        "after",
+        "branch",
+        "parameter",
+        "relation",
+        "delta",
+        "quantifier",
+        "opening_certificate"
+      ],
+      "prepare": "opening_branch_solution",
+      "case_prefix": false,
+      "highlight": {
+        "caption": "开口{branch.direction}",
+        "items": [
+          {
+            "label": "本分支的参数范围",
+            "math": "{parameter}\\in {branch_answer}",
+            "note": {
+              "if": "branch.automatic",
+              "then": "必有实数解，无需限制判别式。",
+              "else": ""
+            }
+          }
+        ]
+      }
+    },
+    "opening_branch_merge": {
+      "title": "合并开口向上和向下的情况",
+      "explanation": "${opening_union}$。",
+      "required_bindings": [
+        "before",
+        "after",
+        "branches",
+        "parameter",
+        "opening_certificate"
+      ],
+      "prepare": "opening_branch_merge",
+      "case_prefix": false,
+      "highlight": {
+        "caption": "取并集",
+        "layout": "merge",
+        "items": [
+          {
+            "for": "branches",
+            "as": "branch",
+            "label": "开口{branch.direction}：${branch.condition}$",
+            "math": "{branch.solution}"
+          }
+        ],
+        "result": "${parameter}\\in {opening_total}$"
+      }
+    },
+    "opening_excluded": {
+      "title": "本情况无解",
+      "explanation": "${opening_union}$。",
+      "required_bindings": [
+        "before",
+        "after",
+        "branches",
+        "parameter"
+      ],
+      "prepare": "opening_branch_merge",
+      "case_prefix": false,
+      "highlight": {
+        "caption": "图像不满足原题",
+        "items": [
+          {
+            "label": "本情况的参数范围",
+            "math": "{parameter}\\in {opening_total}"
+          }
+        ]
+      }
     },
     "solution": {
       "title": "求参数范围",
@@ -1465,6 +1679,34 @@
       ],
       "render": "按 ${x}$ 合并同类项，一次项系数为 ${slope}$，常数项为 ${intercept}$。这两个系数都不含变化的字母。"
     },
+    "variable_swap": {
+      "title": "更换主元",
+      "explanation": "固定所求字母，按题设中变化的字母定义函数。",
+      "required_bindings": [
+        "before",
+        "after",
+        "x",
+        "parameter",
+        "domain",
+        "quantifier",
+        "slope",
+        "intercept",
+        "function",
+        "function_name"
+      ],
+      "prepare": "variable_swap",
+      "render": "固定 ${parameter}$，以 ${x}$ 为主元。\n${swap_identity}$。",
+      "highlight": {
+        "caption": "定义新函数",
+        "items": [
+          {
+            "label": "固定 ${parameter}$，${x}\\in {domain}$",
+            "math": "{function_name}({x})={function}"
+          }
+        ],
+        "result": "${function_name}({x})={function}$"
+      }
+    },
     "variable_range": {
       "title": "确定区间端点条件",
       "explanation": "根据斜率符号和端点可达性确定候选。",
@@ -1730,8 +1972,8 @@
       }
     },
     "variable_case_merge": {
-      "title": "合并各情况",
-      "explanation": "各情况互不重叠并覆盖全部参数，把每个情况内求得的参数集取并集。",
+      "title": "合并正、零、负各情况",
+      "explanation": "${merge_equation}$。",
       "required_bindings": [
         "before",
         "after",
@@ -1739,16 +1981,23 @@
         "solutions",
         "parameter"
       ],
-      "render": [
-        {
-          "for": "case_solutions",
-          "as": "item",
-          "body": "${item.condition}$ 时得到 ${item.solution}$",
-          "separator": "；"
-        },
-        "。把各情况的参数集取并集，随后独立验证并检查边界。"
-      ],
-      "prepare": "variable_case_merge"
+      "render": "${merge_equation}$。",
+      "prepare": "variable_case_merge",
+      "case_prefix": false,
+      "derivation": true,
+      "highlight": {
+        "caption": "取并集",
+        "layout": "merge",
+        "items": [
+          {
+            "for": "case_solutions",
+            "as": "item",
+            "label": "${item.condition}$",
+            "math": "{item.solution}"
+          }
+        ],
+        "result": "${merge_answer}$"
+      }
     },
     "variable_cases": {
       "title": "按斜率确定完整分类",
@@ -1762,6 +2011,119 @@
       ],
       "render": "先求一次项系数 ${slope}$ 为零的参数值。在这些值上按常数关系判断；其余参数按斜率符号与开放端点规则判断。这些情况互不重叠并覆盖全部参数。",
       "prepare": "variable_cases"
+    },
+    "variable_slope": {
+      "title": "判断一次项系数的符号",
+      "explanation": "由一次项系数的符号确定需要讨论的情况。",
+      "required_bindings": [
+        "before",
+        "after",
+        "cases",
+        "parameter",
+        "slope",
+        "x",
+        "domain",
+        "function_name"
+      ],
+      "prepare": "variable_slope",
+      "derivation": true,
+      "render": {
+        "if": "single_sign",
+        "then": "${slope_chain}$。",
+        "else": {
+          "for": "slope_rows",
+          "as": "row",
+          "body": "${row.relation} \\Longleftrightarrow {row.condition}$",
+          "separator": "；"
+        }
+      },
+      "highlight": {
+        "caption": "一次项系数",
+        "items": [
+          {
+            "for": "slope_rows",
+            "as": "row",
+            "label": {
+              "select": "row.sign",
+              "cases": {
+                "positive": "大于零",
+                "zero": "等于零",
+                "negative": "小于零"
+              }
+            },
+            "math": {
+              "if": "single_sign",
+              "then": "{slope_chain}",
+              "else": "{row.condition}"
+            }
+          }
+        ]
+      }
+    },
+    "variable_sign_case": {
+      "title": {
+        "select": "slope_sign",
+        "cases": {
+          "positive": "一次项系数为正：求参数范围",
+          "zero": "一次项系数为零：检查常数条件",
+          "negative": "一次项系数为负：求参数范围"
+        }
+      },
+      "explanation": "由图像确定端点条件，求本情况内的参数范围。",
+      "required_bindings": [
+        "before",
+        "after",
+        "x",
+        "parameter",
+        "domain",
+        "slope",
+        "intercept",
+        "slope_sign",
+        "slope_certificate",
+        "endpoint_mode",
+        "range",
+        "policy",
+        "conditions",
+        "normalized",
+        "solutions",
+        "combiner",
+        "condition",
+        "case_domain",
+        "candidate_set",
+        "function_name"
+      ],
+      "prepare": "variable_sign_case",
+      "derivation": true,
+      "case_prefix": false,
+      "render": [
+        "${bound_identity}$。\n",
+        {
+          "for": "case_conditions",
+          "as": "item",
+          "body": "${item}$",
+          "separator": "，"
+        },
+        "。\n${case_chain}$。"
+      ],
+      "highlight": {
+        "caption": "本情况的结果",
+        "connector": "→",
+        "items": [
+          {
+            "label": {
+              "if": "case_constant",
+              "then": "常数函数",
+              "else": "{bound_name}"
+            },
+            "math": "{bound_identity}"
+          },
+          {
+            "label": "参数范围",
+            "math": "{case_answer}"
+          }
+        ],
+        "result": "${case_answer}$"
+      }
     }
   },
   "boundary_steps": {

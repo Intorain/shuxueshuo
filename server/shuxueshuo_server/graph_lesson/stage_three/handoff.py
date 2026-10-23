@@ -13,8 +13,36 @@ from shuxueshuo_server.problem_understanding.identity import revision
 from .events import _dump, goal_unavailable
 
 
+def validate_original_choice(choice, target):
+    if choice is None:
+        return
+    if not isinstance(choice, dict) or choice.get("target_ref") != target:
+        raise ValueError("handoff.invalid_original_choice")
+    if choice.get("status") == "unavailable":
+        if (set(choice) != {"status", "target_ref", "reason"}
+                or not isinstance(choice.get("reason"), str) or not choice["reason"].strip()):
+            raise ValueError("handoff.invalid_original_choice")
+        return
+    if set(choice) != {"status", "kind", "target_ref", "options", "correct_labels"}:
+        raise ValueError("handoff.invalid_original_choice")
+    options = choice.get("options")
+    labels = []
+    if isinstance(options, list):
+        for option in options:
+            if (not isinstance(option, dict) or set(option) != {"label", "text"}
+                    or not isinstance(option.get("label"), str) or not option["label"].strip()
+                    or not isinstance(option.get("text"), str) or not option["text"].strip()):
+                raise ValueError("handoff.invalid_original_choice")
+            labels.append(option["label"])
+    correct = choice.get("correct_labels")
+    if (choice.get("status") != "matched" or choice.get("kind") != "single_choice"
+            or len(labels) < 2 or len(set(labels)) != len(labels)
+            or not isinstance(correct, list) or len(correct) != 1 or correct[0] not in labels):
+        raise ValueError("handoff.invalid_original_choice")
+
+
 def complete_route(store, checkpoint, *, route, verification, feasible_set, answer, commit_id,
-                   consistency="consistent", before_commit=None, after_commit=None):
+                   consistency="consistent", original_choice=None, before_commit=None, after_commit=None):
     if verification.get("status") != "verified" or route.get("status") != "verified":
         raise ValueError("handoff.route_not_verified")
     if checkpoint["status"] != "verified" or answer is None or feasible_set is None:
@@ -22,11 +50,13 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
     if consistency not in {"consistent", "conflict", "unknown"}:
         raise ValueError("handoff.invalid_consistency")
     target, route_id = checkpoint["target_ref"], checkpoint["route_id"]
+    validate_original_choice(original_choice, target)
+    choice_fields = {"original_choice": deepcopy(original_choice)} if original_choice is not None else {}
     for key, expected in (("target_ref", target), ("route_id", route_id)):
         if route.get(key, expected) != expected:
             raise ValueError("handoff.route_identity_mismatch")
     request = {"checkpoint": checkpoint, "route": route, "verification": verification,
-               "feasible_set": feasible_set, "answer": answer, "consistency": consistency}
+               "feasible_set": feasible_set, "answer": answer, "consistency": consistency, **choice_fields}
 
     def mutate(db):
         current = store._goal(db, target)
@@ -35,7 +65,8 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
             raise ValueError("handoff.missing_committed_math")
         frozen_steps = [{key: step[key] for key in ("step_id", "ordinal", "math_step_sha256")} for step in steps]
         route_hash = revision({"route": route, "verification": verification, "feasible_set": feasible_set,
-                               "answer": answer, "math_steps": frozen_steps, "revisions": store.identity["revisions"]})
+                               "answer": answer, "math_steps": frozen_steps, "revisions": store.identity["revisions"],
+                               **choice_fields})
         saved = db.execute("SELECT value FROM handoffs WHERE target=? AND route=?", (target, route_id)).fetchone()
         if saved:
             previous = json.loads(saved[0])
@@ -46,7 +77,8 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
                                             "route_id": route_id, "payload": {"status": "verified"}})
         final_checkpoint = deepcopy(checkpoint)
         final_checkpoint["verified_route_sha256"] = route_hash
-        final_checkpoint["finalization"] = {"verification": verification, "feasible_set": feasible_set, "answer": answer}
+        final_checkpoint["finalization"] = {"verification": verification, "feasible_set": feasible_set,
+                                            "answer": answer, **choice_fields}
         if consistency != "consistent" or goal_unavailable(current):
             status = "conflict" if consistency == "conflict" or (current and current["status"] == "conflict") else "no_verified_route"
             reason = "route_conflict" if status == "conflict" else "route_consistency_undecidable"
@@ -60,6 +92,7 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
             "run_id": store.identity["run_id"], "target_ref": target, "route_id": route_id,
             "verified_route_sha256": route_hash, "math_steps": frozen_steps,
             "feasible_set": deepcopy(feasible_set), "answer": deepcopy(answer), "status": "pending", "available": True,
+            **choice_fields,
         }
         task["task_id"] = revision({key: task[key] for key in (
             "lesson_version", "run_id", "target_ref", "route_id", "verified_route_sha256",
@@ -71,7 +104,7 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
                                             "route_id": None, "payload": goal})
         store._append_event(db, commit_id, {"type": "lesson.chunk_ready", "target_ref": target,
             "route_id": route_id, "payload": {"kind": "route_completion", "verified_route_sha256": route_hash,
-                "answer": deepcopy(answer), "feasible_set": deepcopy(feasible_set), "status": "verified"}})
+                "answer": deepcopy(answer), "feasible_set": deepcopy(feasible_set), "status": "verified", **choice_fields}})
         store._append_event(db, commit_id, {"type": "lesson.enrichment_status", "target_ref": target,
                                             "route_id": route_id, "payload": {"status": "pending", "task_id": task["task_id"]}})
         return {"checkpoint": store._put_checkpoint(db, final_checkpoint, commit_id), "handoff": task}

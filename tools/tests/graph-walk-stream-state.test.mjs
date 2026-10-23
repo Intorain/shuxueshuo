@@ -33,6 +33,129 @@ const checkpoint = {target_ref: target, route_id: 'discriminant', driver_state: 
   ]},
 ]}}};
 const withMath = {...view, math_steps: [first, second], checkpoints: [checkpoint]};
+const completedRoute = () => ({...identity, identity: [target, 'discriminant'], status: 'verified', available: true,
+  verified_route_sha256: 'verified-current-route', answer: {kind: 'find_range', status: 'set', set: {latex: '[0,1]'}},
+  original_choice: {status: 'matched', kind: 'single_choice', target_ref: target,
+    options: [{label: 'A', text: '$[0,1]$'}, {label: 'B', text: '$(0,1)$'}], correct_labels: ['A']}});
+const handoffRoute = () => ({...completedRoute(), target_ref: target, route_id: 'discriminant', status: 'pending'});
+const routeView = extra => ({...view, math_steps: [first], ...extra});
+
+for (const text of ['A. $[0,1]$', 'A．$[0,1]$', 'Ａ． $[0,1]$', 'A、$[0,1]$', 'A： $[0,1]$', 'A) $[0,1]$', 'A）$[0,1]$',
+  '(A) $[0,1]$', '（Ａ）$[0,1]$', '[A] $[0,1]$', '【A】 $[0,1]$', ' \n A. $[0,1]$']) {
+  test(`original option marker is displayed once without changing frozen data: ${JSON.stringify(text)}`, () => {
+    const completion = completedRoute();
+    completion.original_choice.options[0].text = text;
+    const before = structuredClone(completion);
+    const bundle = extendStreamBundle(original.bundle, routeView({completions: [completion]}), target, graph);
+    const decision = bundle.routes.discriminant.steps.at(-1);
+    assert.equal(decision.interaction.options[0].label, text);
+    assert.equal(decision.interaction.options[0].value, 'A');
+    assert.equal(decision.interaction.options[1].label, 'B. $(0,1)$');
+    assert.deepEqual(completion, before);
+    assert.deepEqual(bundle.routes.discriminant.completion.original_choice, before.original_choice);
+    assert.equal(bundle.routes.discriminant.completion.verified_route_sha256, before.verified_route_sha256);
+  });
+}
+
+for (const text of ['$[0,1]$', '$A+B>0$', 'A+B>0', 'A = 1', '(A+B)>0', 'B. $[0,1]$']) {
+  test(`unmarked original options and leading math letters keep their complete content: ${JSON.stringify(text)}`, () => {
+    const completion = completedRoute();
+    completion.original_choice.options[0].text = text;
+    const bundle = extendStreamBundle(original.bundle, routeView({completions: [completion]}), target, graph);
+    assert.equal(bundle.routes.discriminant.steps.at(-1).interaction.options[0].label, `A. ${text}`);
+  });
+}
+
+test('prefixed multiple-choice source options remain frozen and cannot be mistaken for a single-choice question', () => {
+  const completion = completedRoute();
+  completion.original_choice = {...completion.original_choice, kind: 'multiple_choice', correct_labels: ['A', 'B'],
+    options: [{label: 'A', text: 'A. $[0,1]$'}, {label: 'B', text: '（B）$0\\le x\\le1$'}]};
+  const before = structuredClone(completion);
+  const bundle = extendStreamBundle(original.bundle, routeView({completions: [completion]}), target, graph);
+  assert.equal(bundle.routes.discriminant.math_complete, true);
+  assert.equal(bundle.routes.discriminant.steps.some(step => step.source === 'original_choice'), false);
+  assert.deepEqual(completion, before);
+  assert.deepEqual(bundle.routes.discriminant.completion.original_choice, before.original_choice);
+});
+
+for (const field of ['run_id', 'lesson_version']) for (const source of ['completions', 'handoffs']) {
+  test(`a ${source} record from another ${field} cannot complete the current route or add original options`, () => {
+    const record = {...(source === 'completions' ? completedRoute() : handoffRoute()), [field]: 'old'};
+    const bundle = extendStreamBundle(original.bundle, routeView({[source]: [record]}), target, graph);
+    assert.equal(bundle.routes.discriminant.math_complete, false);
+    assert.equal(bundle.routes.discriminant.completion, null);
+    assert.deepEqual(bundle.routes.discriminant.steps.map(step => step.source), ['stream']);
+  });
+}
+
+test('compact live completions and available snapshot handoffs preserve the same current-run original answer', () => {
+  const live = completedRoute(); delete live.run_id; delete live.lesson_version; delete live.stream_id;
+  const fromLive = extendStreamBundle(original.bundle, routeView({completions: [live]}), target, graph);
+  const fromSnapshot = extendStreamBundle(original.bundle, routeView({handoffs: [handoffRoute()]}), target, graph);
+  for (const bundle of [fromLive, fromSnapshot]) {
+    assert.equal(bundle.routes.discriminant.math_complete, true);
+    assert.equal(bundle.routes.discriminant.completion.run_id, identity.run_id);
+    assert.equal(bundle.routes.discriminant.completion.lesson_version, identity.lesson_version);
+    assert.equal(bundle.routes.discriminant.steps.at(-1).source, 'original_choice');
+    assert.deepEqual(bundle.routes.discriminant.steps.at(-1).expected_answer, {one_of: ['A']});
+    const partial = extendStreamBundle(bundle, {...identity}, target, graph);
+    assert.deepEqual(partial.routes.discriminant.steps, bundle.routes.discriminant.steps);
+    assert.equal(partial.routes.discriminant.math_complete, true);
+  }
+});
+
+for (const available of [false, undefined]) test(`a snapshot handoff with available=${available} cannot grant completion`, () => {
+  const initial = extendStreamBundle(original.bundle, routeView({completions: [completedRoute()]}), target, graph);
+  const handoff = {...handoffRoute(), available};
+  const revoked = extendStreamBundle(initial, routeView({handoffs: [handoff],
+    checkpoints: [{target_ref: target, route_id: 'discriminant', status: 'verified'}]}), target, graph);
+  assert.equal(revoked.routes.discriminant.available, false);
+  assert.equal(revoked.routes.discriminant.math_complete, false);
+  assert.equal(revoked.routes.discriminant.completion, null);
+  assert.deepEqual(revoked.routes.discriminant.steps.map(step => step.source), ['stream']);
+  const partial = extendStreamBundle(revoked, {...identity, goals: {}}, target, graph);
+  assert.equal(partial.routes.discriminant.available, false);
+  assert.equal(partial.routes.discriminant.completion, null);
+});
+
+test('handoffs need a verified route hash and cannot borrow one from the previous completion', () => {
+  const initial = extendStreamBundle(original.bundle, routeView({completions: [completedRoute()]}), target, graph);
+  const handoff = handoffRoute(); delete handoff.verified_route_sha256;
+  const current = extendStreamBundle(initial, routeView({handoffs: [handoff]}), target, graph);
+  assert.equal(current.routes.discriminant.math_complete, false);
+  assert.equal(current.routes.discriminant.completion, null);
+  assert.deepEqual(current.routes.discriminant.steps.map(step => step.source), ['stream']);
+});
+
+test('an inherited completion with an explicit foreign identity cannot leak saved original options', () => {
+  const initial = extendStreamBundle(original.bundle, routeView({completions: [completedRoute()]}), target, graph);
+  for (const field of ['run_id', 'lesson_version']) {
+    const damaged = structuredClone(initial);
+    damaged.routes.discriminant.completion[field] = 'old';
+    const current = extendStreamBundle(damaged, {...identity}, target, graph);
+    assert.equal(current.routes.discriminant.math_complete, false);
+    assert.equal(current.routes.discriminant.completion, null);
+    assert.deepEqual(current.routes.discriminant.steps.map(step => step.source), ['stream']);
+  }
+});
+
+test('a nonstream base cannot donate an old route completion to a new run', () => {
+  const old = extendStreamBundle(original.bundle, routeView({completions: [completedRoute()]}), target, graph);
+  const base = {...structuredClone(original.bundle), routes: structuredClone(old.routes)};
+  const current = extendStreamBundle(base, routeView({run_id: 'new-run', math_steps: [{...first, run_id: 'new-run'}]}), target, graph);
+  assert.equal(current.routes.discriminant.math_complete, false);
+  assert.equal(current.routes.discriminant.completion, null);
+  assert.deepEqual(current.routes.discriminant.steps.map(step => step.source), ['stream']);
+});
+
+test('an explicit running checkpoint clears completion while preserving committed mathematical steps', () => {
+  const initial = extendStreamBundle(original.bundle, routeView({completions: [completedRoute()]}), target, graph);
+  const current = extendStreamBundle(initial, routeView({completions: [],
+    checkpoints: [{target_ref: target, route_id: 'discriminant', status: 'running'}]}), target, graph);
+  assert.equal(current.routes.discriminant.math_complete, false);
+  assert.equal(current.routes.discriminant.completion, null);
+  assert.deepEqual(current.routes.discriminant.steps.map(step => step.id), ['math-1']);
+});
 
 // Card-level source/path probes exercise the extracted pure evidence function.
 // Actual answer-driven graph progression is covered in graph-walk-stream-interactions.

@@ -25,7 +25,7 @@ def evaluate_cases(relation):
     records = []
     for case in cases:
         if case["kind"] == "degenerate":
-            outputs = cap.degenerate_case_check(relation, x, a, case)["outputs"]
+            outputs = cap.degenerate_case_check(relation, x, a, case, "∀")["outputs"]
         else:
             inputs = {"relation": relation, "variable": x, "domain": sp.S.Reals,
                       "quantifier": "∀", "case_domain": case["domain"]}
@@ -34,7 +34,9 @@ def evaluate_cases(relation):
             conditions = [opening, delta]
             solutions = [cap.solve_parameter_relation(condition, a)["outputs"]["solution"]
                          for condition in conditions]
-            outputs = cap.intersect_conditions(conditions, solutions, a, case["domain"])["outputs"]
+            outputs = cap.combine_condition_solutions(
+                conditions, solutions, a, case["domain"], combiner="all", quantifier="∀",
+            )["outputs"]
         records.append({"case_id": case["id"], "case_path": [case["id"]],
                         "condition": case["condition"], "domain": case["domain"],
                         "outputs": outputs, "source_refs": [f"/cases/{case['id']}/calls/0"]})
@@ -82,7 +84,24 @@ def test_q03_degenerate_cases_have_independent_substitution_and_outcomes():
 def test_zero_constant_degenerate_case_respects_strict_relation(operator, expected):
     relation = cap.relation(a*x*x, operator)
     case = cases_for(relation)[0]
-    assert cap.degenerate_case_check(relation, x, a, case)["outputs"]["solution"] == expected
+    assert cap.degenerate_case_check(relation, x, a, case, "∀")["outputs"]["solution"] == expected
+
+
+def test_degenerate_check_requires_an_explicit_quantifier():
+    relation = cap.relation(a*x*x + x - 1, ">")
+    case = cases_for(relation)[0]
+    with pytest.raises(TypeError, match="quantifier"):
+        cap.degenerate_case_check(relation, x, a, case)
+    assert cap.degenerate_case_check(relation, x, a, case, "∀")["outputs"]["holds"] is False
+    assert cap.degenerate_case_check(relation, x, a, case, "∃")["outputs"]["holds"] is True
+
+
+@pytest.mark.parametrize("quantifier", [None, "", "forall", "exists", True])
+def test_degenerate_check_rejects_an_unknown_quantifier(quantifier):
+    relation = cap.relation(a*x*x + x - 1, ">")
+    case = cases_for(relation)[0]
+    with pytest.raises(cap.CapabilityGap, match="unsupported_quantifier"):
+        cap.degenerate_case_check(relation, x, a, case, quantifier)
 
 
 def test_normalization_negative_multiplier_preserves_residual_opening_and_delta():
@@ -147,13 +166,17 @@ def test_merge_rejects_invalid_or_untraceable_branch_result(mutation):
 def test_intersection_rechecks_each_condition_set_instead_of_trusting_branch_output():
     conditions = [cap.relation(1-a*a, ">"), cap.relation(5*a*a-2*a-3, "<")]
     true_solutions = [sp.Interval.open(-1, 1), sp.Interval.open(-sp.Rational(3, 5), 1)]
-    actual = cap.intersect_conditions(conditions, true_solutions, a, sp.S.Reals)
+    actual = cap.combine_condition_solutions(
+        conditions, true_solutions, a, sp.S.Reals, combiner="all", quantifier="∀",
+    )
     assert actual["outputs"]["solution"] == sp.Interval.open(-sp.Rational(3, 5), 1)
     wrong = [sp.Union(*true_solutions), sp.Union(*true_solutions)]
     with pytest.raises(cap.LocalCheckFailed, match="incorrect_condition_solution"):
-        cap.intersect_conditions(conditions, wrong, a, sp.S.Reals)
+        cap.combine_condition_solutions(conditions, wrong, a, sp.S.Reals, combiner="all", quantifier="∀")
     with pytest.raises(cap.LocalCheckFailed, match="incomplete_condition_solutions"):
-        cap.intersect_conditions(conditions, true_solutions[:1], a, sp.S.Reals)
+        cap.combine_condition_solutions(
+            conditions, true_solutions[:1], a, sp.S.Reals, combiner="all", quantifier="∀",
+        )
 
 
 @pytest.mark.parametrize("expression,operator,expected", [

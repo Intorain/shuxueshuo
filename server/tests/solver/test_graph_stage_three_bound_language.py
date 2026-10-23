@@ -78,12 +78,12 @@ def test_carried_policy_summary_uses_proven_attainment_or_keeps_the_caveat(fact,
         assert "下端" not in policy["explanation"]
 
 
-def test_unnamed_product_bound_groups_the_whole_function():
+def test_named_route_policy_keeps_its_function_and_unnamed_product_bound_is_grouped():
     state = finish(start(candidate("∀a∈[1,2]:a*x>=0", "x"), "method-variable-swap"))
     assert state["status"] == "method_complete", state["diagnostics"]
     assert driver.export_values(state)["feasible_set"] == sp.Interval(0, sp.oo)
     policy = next(card for card in state["fragments"] if card["display_unit"] == "policy")
-    assert r"\left(a x\right)_{\min}" in policy["highlight"]["result"]
+    assert r"f(a)_{\min}" in policy["highlight"]["result"]
     seed = _policy_seed(a*x, sp.Interval(1, 2), "∀", "<=")
     facts = interaction._policy_facts(decode_value(seed["values"]), decode_value(seed["context"]))
     assert r"\left(a x\right)_{\min}" in interaction._policy_answer(facts)[0]["answer"].label

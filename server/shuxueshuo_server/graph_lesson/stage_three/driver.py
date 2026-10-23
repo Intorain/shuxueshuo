@@ -7,7 +7,7 @@ from time import perf_counter
 from . import capabilities, execution_contracts, judgments, method_admission
 from .capabilities import CapabilityGap, LocalCheckFailed
 from .premises import UnknownPremise
-from .presentation import record_seed, render_unit
+from .presentation import omit_unchanged_unit, record_seed, render_unit
 from .revision_manifest import manifest_ref
 from .trajectory import decode_value, encode_value, trace_value
 
@@ -210,7 +210,28 @@ def _dependency_premises(state, sources):
     return sorted(found)
 
 
+def _display_sources(state, frame, *, start=0, scope=None, exclude=()):
+    source_steps = set(scope.get("steps", [scope.get("step")])) if scope else None
+    sources, basis = [], []
+    for trace_index, trace in enumerate(state["trajectory"]["steps"][start:], start):
+        if trace["case_path"] != frame["case_path"]:
+            continue
+        if scope and (trace["method"] != frame["method"] or trace["step"] not in source_steps):
+            continue
+        for category in ("calls", "skipped_calls", "judgments", "merges"):
+            for item_index, item in enumerate(trace[category]):
+                reference = f"/steps/{trace_index}/{category}/{item_index}"
+                if reference in exclude:
+                    continue
+                if scope and scope.get("actions") and item.get("action_id", item.get("id")) not in scope["actions"]:
+                    continue
+                sources.append(reference)
+                basis.extend(item.get("used_basis", []))
+    return sources, basis
+
+
 def _publish(state, frame, step, action, bindings):
+    action_trace = None
     for unit in step["display_units"]:
         if unit["after"] != action["id"] or not _guard(unit.get("guard"), bindings):
             continue
@@ -220,24 +241,44 @@ def _publish(state, frame, step, action, bindings):
             set(bindings),
         )
         display_bindings = _resolve(unit["bindings"], bindings)
-        index = frame["step_trace"]
+        if omit_unchanged_unit(unit, display_bindings):
+            # The computation remains auditable. Carry its calls to the next
+            # visible card in this frame instead of inventing an identity quiz.
+            frame.setdefault("pending_display_trace", frame["step_trace"])
+            sources, basis = _display_sources(
+                state, frame, start=0 if unit.get("source_scope") else frame["step_trace"],
+                scope=unit.get("source_scope"), exclude=set(frame.get("published_sources", [])),
+            )
+            # Freeze exact pointers now: a later scoped display must not lose
+            # them or absorb unrelated calls appended after this boundary.
+            pending = frame.setdefault("pending_display_evidence", {"sources": [], "basis": []})
+            pending["sources"] = list(dict.fromkeys([*pending["sources"], *sources]))
+            pending["basis"] = sorted(set(pending["basis"]) | set(basis))
+            continue
+        index = frame.pop("pending_display_trace", frame["step_trace"])
+        pending = frame.pop("pending_display_evidence", None)
         # Exact call pointers freeze the source boundary even when later calls
         # append to the same method step (opening and discriminant, for example).
-        published = set(frame.get("published_sources", []))
-        sources, basis = [], []
-        for trace_index, trace in enumerate(
-            state["trajectory"]["steps"][index:], index
-        ):
-            if trace["case_path"] != frame["case_path"]:
-                continue
-            for category in ("calls", "skipped_calls", "judgments", "merges"):
-                for item_index, item in enumerate(trace[category]):
-                    reference = f"/steps/{trace_index}/{category}/{item_index}"
-                    if reference in published:
-                        continue
-                    sources.append(reference)
-                    basis.extend(item.get("used_basis", []))
-        frame["published_sources"] = sorted(published | set(sources))
+        scope = unit.get("source_scope")
+        if scope:
+            sources, basis = _display_sources(state, frame, scope=scope)
+            if not sources:
+                raise ValueError("execution.display_source_unavailable")
+        elif action_trace is None:
+            sources, basis = _display_sources(
+                state, frame, start=index, exclude=set(frame.get("published_sources", [])),
+            )
+            action_trace = sources, basis
+        # A single certified operation may expose several branch cards. Each
+        # card retains that operation's evidence; the first must not drain it.
+        if not scope:
+            sources, basis = action_trace
+        if pending:
+            sources = list(dict.fromkeys([*pending["sources"], *sources]))
+            basis = [*pending["basis"], *basis]
+            if not scope:
+                action_trace = sources, basis
+        frame["published_sources"] = sorted(set(frame.get("published_sources", [])) | set(sources))
         dependencies = _binding_sources(
             frame, set(execution_contracts.references(unit["bindings"]))
             | execution_contracts.guard_references(unit.get("guard")),
@@ -537,6 +578,7 @@ def _advance(state, contracts):
         seq = state["next_call_seq"]
         state["next_call_seq"] += 1
         call = {
+            "action_id": action["id"],
             "seq": seq,
             "capability": action["capability"],
             "public_ref": action["public_ref"],

@@ -70,8 +70,8 @@ def _polynomial_degree(expression, variable, degree):
     return capabilities.polynomial(expression, variable).degree() == degree
 
 
-def _universal_reals(quantifier, domain):
-    return quantifier == "∀" and domain == sp.S.Reals
+def _quantified_reals(quantifier, domain):
+    return quantifier in ("∀", "∃") and domain == sp.S.Reals
 
 
 def _rational_parameter_coefficients(expression, variable, parameter):
@@ -107,7 +107,7 @@ def _linear_parameter_range(expression, variable, parameter, domain, quantifier,
 CHECKS = {
     "quantifier": _quantifier,
     "polynomial_degree": _polynomial_degree,
-    "universal_reals": _universal_reals,
+    "quantified_reals": _quantified_reals,
     "rational_parameter_coefficients": _rational_parameter_coefficients,
     "separable_range": _separable_range,
     "interval_cases": _interval_cases,

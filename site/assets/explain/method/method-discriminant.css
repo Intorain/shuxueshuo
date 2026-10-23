@@ -1,0 +1,11 @@
+.md-figure .md-meaning { margin: 0 0 12px; font-size: 14px; line-height: 1.7; }
+.md-figure .md-opening { margin: 14px 0 6px; color: var(--teal-dark); font-size: 14px; font-weight: 600; }
+.md-figure .md-table-wrap { overflow-x: auto; margin: 14px auto 0; }
+.md-figure .md-sign-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.md-figure .md-sign-table caption { padding: 0 0 8px; color: var(--ink-soft); font-size: 13px; }
+.md-figure .md-sign-table th, .md-figure .md-sign-table td { padding: 7px 8px; border: 1px solid #dbe8e4; text-align: center; white-space: nowrap; }
+.md-figure .md-sign-table thead th { background: #eaf5f1; color: var(--teal-dark); }
+.md-figure .md-sign-table tbody th { font-weight: 500; }
+.md-figure .md-sign-table tr:nth-child(5) > * { border-top: 2px solid #8dbfb3; }
+.md-figure .md-note { margin: 10px 0 0; text-align: left; font-size: 13px; line-height: 1.7; }
+.md-figure .method-pill { border-radius: 10px; font-size: 13px; }

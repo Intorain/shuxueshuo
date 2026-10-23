@@ -56,11 +56,94 @@ function fixture({parts = [part('first'), part('last')], merged = false, readonl
   return {bundle, state, view};
 }
 
+const originalChoice = () => ({status: 'matched', kind: 'single_choice', target_ref: target,
+  options: [{label: 'A', text: '$m\\le-2$ 或 $m\\ge2$'}, {label: 'B', text: '$-2<m<2$'}], correct_labels: ['A']});
+
+function choiceFixture() {
+  const value = fixture({readonly: true});
+  for (const completion of value.view.completions) completion.original_choice = originalChoice();
+  value.bundle = stateAPI.extendStreamBundle(value.bundle, value.view, target, graph);
+  return value;
+}
+
+test('an original single-choice question finishes only after matching the verified result to its option', () => {
+  const {bundle, state} = choiceFixture();
+  const math = stateAPI.currentDecision(bundle, state);
+  const afterMath = stateAPI.submitAnswer(bundle, state, {decision: math.id, answer: 'read'});
+  assert.equal(afterMath.done, false);
+  const decision = stateAPI.currentDecision(bundle, afterMath);
+  assert.equal(decision.title, '选择原题答案');
+  assert.equal(decision.source, 'original_choice');
+  assert.deepEqual(decision.stream_steps, []);
+  const wrong = stateAPI.submitAnswer(bundle, afterMath, {decision: decision.id, answer: 'B'});
+  assert.equal(wrong.lastFeedback.status, 'wrong');
+  assert.equal(wrong.done, false);
+  const correct = stateAPI.submitAnswer(bundle, wrong, {decision: decision.id, answer: 'A'});
+  assert.equal(correct.done, true);
+  const beforeGraph = stateAPI.streamGraphState(bundle, afterMath), afterGraph = stateAPI.streamGraphState(bundle, correct);
+  for (const field of ['nodes', 'edges', 'usedBasis', 'calls', 'stepNodes']) assert.deepEqual(afterGraph[field], beforeGraph[field]);
+  const refreshed = stateAPI.refreshStreamState(bundle, JSON.parse(JSON.stringify(correct)));
+  assert.equal(refreshed.done, true);
+  const other = stateAPI.switchRoute(bundle, refreshed, routes[1]);
+  assert.equal(other.done, false);
+  assert.equal(stateAPI.switchRoute(bundle, other, routes[0]).done, true);
+  assert.equal(stateAPI.undo(bundle, correct).done, false);
+});
+
+test('late verified choices add a final decision without discarding already completed math', () => {
+  const value = fixture({readonly: true});
+  const before = stateAPI.submitAnswer(value.bundle, value.state, {decision: 'math-1', answer: 'read'});
+  assert.equal(before.done, true);
+  value.view.completions[0].original_choice = originalChoice();
+  const bundle = stateAPI.extendStreamBundle(value.bundle, value.view, target, graph);
+  const state = stateAPI.refreshStreamState(bundle, before);
+  assert.equal(state.done, false);
+  assert.deepEqual(state.run.completed, before.run.completed);
+  assert.equal(stateAPI.currentDecision(bundle, state).source, 'original_choice');
+  const partial = {...value.view}; delete partial.completions;
+  const startup = stateAPI.extendStreamBundle(bundle, partial, target, graph);
+  assert.equal(startup.routes[routes[0]].steps.at(-1).id, bundle.routes[routes[0]].steps.at(-1).id);
+});
+
+test('revoking a verified route hides its original-choice decision and completion', () => {
+  const value = choiceFixture();
+  let state = stateAPI.submitAnswer(value.bundle, value.state, {decision: 'math-1', answer: 'read'});
+  const choice = stateAPI.currentDecision(value.bundle, state);
+  state = stateAPI.submitAnswer(value.bundle, state, {decision: choice.id, answer: 'A'});
+  value.view.goals[target] = {status: 'conflict', available: false};
+  const unavailable = stateAPI.extendStreamBundle(value.bundle, value.view, target, graph);
+  const refreshed = stateAPI.refreshStreamState(unavailable, state);
+  assert.equal(refreshed.done, false);
+  assert.equal(stateAPI.currentDecision(unavailable, refreshed), null);
+  assert.equal(unavailable.routes[routes[0]].steps.some(step => step.source === 'original_choice'), false);
+});
+
+test('unmatched or invalid original choices never invent a final question', () => {
+  for (const change of [choice => { choice.status = 'unmatched'; }, choice => { choice.correct_labels = ['A', 'B']; },
+    choice => { choice.correct_labels = ['C']; }, choice => { choice.options[1].label = 'A'; },
+    choice => { choice.target_ref = '/other'; }, choice => { choice.kind = 'multiple_choice'; }]) {
+    const value = fixture({readonly: true}), choice = originalChoice(); change(choice);
+    value.view.completions[0].original_choice = choice;
+    const bundle = stateAPI.extendStreamBundle(value.bundle, value.view, target, graph);
+    assert.deepEqual(bundle.routes[routes[0]].steps.map(step => step.id), ['math-1']);
+  }
+});
+
+test('original choices wait for pending mathematical interactions before being appended', () => {
+  const value = fixture({readonly: true});
+  value.view.completions[0].original_choice = originalChoice();
+  value.view.interaction_states[0].status = 'pending';
+  const bundle = stateAPI.extendStreamBundle(base, value.view, target, graph);
+  assert.deepEqual(bundle.routes[routes[0]].steps, []);
+});
+
 // A small DOM fixture with real parent/child ownership. The engine's authored HTML
-// stays opaque; only its mathematical mounting hosts need parsing in these tests.
+// stays opaque; only mathematical hosts and their completion pictures need parsing.
 function documentFixture() {
   const roots = new Map(), document = {body: {dataset: {}, classList: {contains: () => false, toggle() {}}}};
   const dataKey = name => name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+  const decode = value => value.replace(/&(quot|amp|lt|gt|#39);/g,
+    (_, entity) => ({quot: '"', amp: '&', lt: '<', gt: '>', '#39': "'"})[entity]);
   class Element {
     constructor(tag = 'div') { this.tagName = tag; this.ownerDocument = document; this.children = []; this.dataset = {}; this.hidden = false; this._text = ''; this._html = ''; this.classList = {contains: () => false}; }
     get childNodes() { return this.children; }
@@ -68,10 +151,25 @@ function documentFixture() {
     set textContent(value) { this._text = String(value ?? ''); this.children = []; }
     append(...nodes) { for (const node of nodes) { if (node.parentNode) node.parentNode.children.splice(node.parentNode.children.indexOf(node), 1); node.parentNode = this; this.children.push(node); } }
     replaceChildren(...nodes) { for (const child of this.children) child.parentNode = null; this.children = []; this.append(...nodes); }
+    remove() { if (this.parentNode) this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1); this.parentNode = null; }
+    closest(selector) { return selector.startsWith('.') && this.className?.split(/\s+/).includes(selector.slice(1)) ? this : this.parentNode?.closest(selector) || null; }
     setAttribute(name, value) { this[name] = value; }
     set innerHTML(value) {
       this._html = value; this.replaceChildren();
+      if (/^\s*<svg\b/.test(value)) this.append(new Element('svg'));
+      const completed = new Set();
+      for (const match of value.matchAll(/<div class="gw-completed-body">([\s\S]*?)<div data-stream-completed="([^"]*)"><\/div>/g)) {
+        const body = new Element(); body.className = 'gw-completed-body';
+        for (const picture of match[1].matchAll(/<figure class="gw-figure gw-completion-graph"><span[^>]*data-graph="([^"]*)"[^>]*><\/span>/g)) {
+          const figure = new Element('figure'), plot = new Element('span');
+          figure.className = 'gw-figure gw-completion-graph'; plot.dataset.graph = decode(picture[1]);
+          figure.append(plot); body.append(figure);
+        }
+        const host = new Element(); host.dataset.streamCompleted = match[2];
+        body.append(host); this.append(body); completed.add(match[2]);
+      }
       for (const match of value.matchAll(/<div[^>]*\bdata-stream-(context|completed|retained)(?:="([^"]*)")?[^>]*>/g)) {
+        if (match[1] === 'completed' && completed.has(match[2])) continue;
         const node = new Element(); node.dataset[dataKey(`stream-${match[1]}`)] = match[2] || ''; this.append(node);
       }
     }
@@ -82,6 +180,7 @@ function documentFixture() {
       for (const child of this.children) {
         if (attr && Object.hasOwn(child.dataset, dataKey(attr[1])) && (!attr[2] || !Object.hasOwn(child.dataset, dataKey(attr[2])))) found.push(child);
         else if (selector.startsWith('.') && child.className?.split(/\s+/).includes(selector.slice(1))) found.push(child);
+        else if (selector === child.tagName) found.push(child);
         found.push(...child.querySelectorAll(selector));
       }
       return found;
@@ -117,13 +216,240 @@ function engine(value = fixture()) {
   return {context, roots, run, storage, value};
 }
 
-test('interactive parts expose only before; only the last completed part mounts every merged math card', () => {
+function caseFixture({previousPath = ['constant-case'], currentPath = ['quadratic-case'], condition = 'c\\ne\\frac{1}{3}',
+  previousBranch, currentBranch, branchCondition} = {}) {
+  const value = fixture({merged: true, readonly: true});
+  for (const math of value.view.math_steps) {
+    math.case_path = math.ordinal === 1 ? previousPath : currentPath;
+    if (math.ordinal === 1) math.highlight = {caption: '情况结果', items: [{label: '结论', math: '\\mathrm{true}'}],
+      result: '对所有实数成立，保留本情况'};
+    else if (condition !== null) math.case_condition = {latex: condition};
+    const branch = math.ordinal === 1 ? previousBranch : currentBranch;
+    if (branch) math.branch_id = branch;
+    if (math.ordinal === 2 && branchCondition) math.branch_condition = {latex: branchCondition};
+  }
+  value.bundle = stateAPI.extendStreamBundle(base, value.view, target, graph);
+  value.state = stateAPI.submitAnswer(value.bundle, value.state, {decision: 'math-1', answer: 'read'});
+  return value;
+}
+
+function mergeFixture(history, {parent = [], folded = false, multipart = false} = {}) {
+  const value = fixture({readonly: true});
+  const cards = history.map((item, index) => ({...card(index + 1), ...item,
+    after: [{latex: item.result}], highlight: {result: `$${item.result}$`}}));
+  const active = {...card(cards.length + 1), case_path: parent,
+    highlight: {layout: 'merge', items: [{label: 'hidden-input', math: 'secret-current-input'}], result: 'secret-union'}};
+  cards.push(active);
+  const interactions = cards.map((math, index) => ({...identity, target_ref: target, route_id: routes[0],
+    interaction_id: `merge-fixture-${index}`, status: math === active ? 'interactive' : 'readonly',
+    ...(folded && index === history.length - 1 ? {reason: 'folded'} : {}),
+    steps: [{step_id: math.step_id, math_step_sha256: math.math_step_sha256}],
+    parts: math === active ? (multipart ? [part('merge-first'), part('merge-last')] : [part('merge-last')]) : []}));
+  value.view.math_steps = [...cards, ...value.view.math_steps.filter(math => math.route_id !== routes[0])];
+  value.view.interactions = [...interactions, ...value.view.interactions.filter(chunk => chunk.route_id !== routes[0])];
+  value.view.interaction_states = value.view.interactions.flatMap(chunk => chunk.steps.map(ref => ({...ref,
+    target_ref: target, route_id: chunk.route_id, interaction_id: chunk.interaction_id, status: chunk.status})));
+  value.bundle = stateAPI.extendStreamBundle(base, value.view, target, graph);
+  for (let i = 0; i < history.length - Number(folded); i++) {
+    value.state = stateAPI.submitAnswer(value.bundle, value.state, {decision: `math-${i + 1}`, answer: 'read'});
+  }
+  return value;
+}
+
+test('a merge question keeps each completed opening result visible without revealing the union', () => {
+  const {run, roots} = engine(mergeFixture([
+    {case_path: ['nondegenerate'], branch_id: 'opening-up', branch_condition: {latex: 'k>0'}, result: '(0,+\\infty)'},
+    {case_path: ['nondegenerate'], branch_id: 'opening-down', branch_condition: {latex: 'k<0'}, result: 'old-delta-condition'},
+    {case_path: ['nondegenerate'], branch_id: 'opening-down', branch_condition: {latex: 'k<0'}, result: '(-\\infty,-4)'},
+  ], {parent: ['nondegenerate'], multipart: true}));
+  const html = run('carryHTML()');
+  assert.match(html, /汇总各情况.*已得各情况结果/);
+  assert.match(html, /\$k&gt;0\$.*\$\(0,\+\\infty\)\$/);
+  assert.match(html, /\$k&lt;0\$.*\$\(-\\infty,-4\)\$/);
+  assert.doesNotMatch(html, /old-delta-condition|secret-|接第/);
+  run('renderInteraction(currentDecision(bundle,state),{})');
+  assert.match(roots.get('#gw-active').innerHTML, /已得各情况结果/);
+  assert.doesNotMatch(roots.get('#gw-active').innerHTML, /secret-/);
+  run(`state = submitAnswer(bundle,state,{decision:'merge-first',answer:'yes'});`);
+  assert.equal(run('carryHTML()'), html, 'a partial merge answer must not expose the active card result');
+  run('actor = "replay"; state = refreshStreamState(bundle,JSON.parse(JSON.stringify(state)));');
+  assert.equal(run('carryHTML()'), html, 'AI and refresh keep the same confirmed inputs');
+  run(`state = submitAnswer(bundle,state,{decision:'merge-last',answer:'yes'}); state = undo(bundle,state);`);
+  assert.equal(run('carryHTML()'), html, 'undo hides the merge result again');
+});
+
+test('an outer merge uses the latest result of each case, including its completed inner union', () => {
+  const {run} = engine(mergeFixture([
+    {case_path: ['zero'], case_condition: {latex: 'k=0'}, result: '\\varnothing'},
+    {case_path: ['nondegenerate'], branch_id: 'opening-up', branch_condition: {latex: 'k>0'}, result: 'old-up-result'},
+    {case_path: ['nondegenerate'], branch_id: 'opening-down', branch_condition: {latex: 'k<0'}, result: 'old-down-result'},
+    {case_path: ['nondegenerate'], case_condition: {latex: 'k\\ne0'}, result: '(-\\infty,-4)\\cup(0,+\\infty)'},
+  ]));
+  const html = run('carryHTML()');
+  assert.equal(html.match(/class="gw-merge-premise"/g).length, 2);
+  assert.match(html, /\$k=0\$.*\\varnothing/);
+  assert.match(html, /k\\ne0.*\(-\\infty,-4\)\\cup\(0,\+\\infty\)/);
+  assert.doesNotMatch(html, /old-up-result|old-down-result|secret-/);
+});
+
+test('three sign cases remain available even when a predecessor quiz was folded', () => {
+  const {run} = engine(mergeFixture([
+    {case_path: ['positive'], case_condition: {latex: 'x>0'}, result: '(0,2)'},
+    {case_path: ['zero'], case_condition: {latex: 'x=0'}, result: '\\{0\\}'},
+    {case_path: ['negative'], case_condition: {latex: 'x<0'}, result: '(-3,0)'},
+  ], {folded: true}));
+  const html = run('carryHTML()');
+  assert.equal(html.match(/class="gw-merge-premise"/g).length, 3);
+  for (const result of ['(0,2)', '\\{0\\}', '(-3,0)']) assert.ok(html.includes(result));
+  assert.doesNotMatch(html, /secret-/);
+});
+
+for (const nested of [true, false]) test(`an outer merge does not substitute an unfinished inner union (${nested ? 'case paths' : 'branch IDs'})`, () => {
+  const {run} = engine(mergeFixture([
+    {case_path: nested ? ['A', 'left'] : ['A'], ...(nested ? {} : {branch_id: 'left'}),
+      case_condition: {latex: 'a<0'}, result: 'left-result'},
+    {case_path: nested ? ['A', 'right'] : ['A'], ...(nested ? {} : {branch_id: 'right'}),
+      case_condition: {latex: 'a>0'}, result: 'right-result'},
+    {case_path: ['B'], case_condition: {latex: 'a=0'}, result: 'B-result'},
+  ]));
+  const html = run('carryHTML()');
+  assert.equal(html.match(/class="gw-merge-premise"/g).length, 1);
+  assert.match(html, /B-result/);
+  assert.doesNotMatch(html, /left-result|right-result|secret-/);
+});
+
+test('a merge never pulls a result from a sibling scope, another route, or a future card', () => {
+  const {run} = engine(mergeFixture([
+    {case_path: ['sibling'], case_condition: {latex: 'p=0'}, result: 'sibling-secret'},
+    {case_path: ['active', 'left'], case_condition: {latex: 'p<0'}, result: 'known-left'},
+    {case_path: ['active', 'right'], case_condition: {latex: 'p>0'}, result: 'known-right'},
+  ], {parent: ['active']}));
+  run(`bundle.stream.math_steps.push({...bundle.stream.math_steps[0], ordinal:999, step_id:'future-card',
+    case_path:['active','future'], highlight:{result:'future-secret'}});`);
+  const html = run('carryHTML()');
+  assert.match(html, /known-left.*known-right/);
+  assert.doesNotMatch(html, /sibling-secret|future-secret|secret-after/);
+});
+
+test('crossing a case boundary carries only the new frozen condition, never the previous case result', () => {
+  const {run} = engine(caseFixture());
+  const html = run('carryHTML()');
+  assert.match(html, /切换情况/);
+  assert.match(html, /当前条件：\$c\\ne\\frac\{1\}\{3\}\$/);
+  assert.doesNotMatch(html, /对所有实数成立|保留本情况|接第|constant-case|quadratic-case/);
+  run('actor = "replay"');
+  assert.equal(run('carryHTML()'), html, 'AI replay follows the same scope boundary');
+  run(`state = submitAnswer(bundle,state,{decision:'math-2',answer:'read'}); state = undo(bundle,state);`);
+  assert.equal(run('carryHTML()'), html, 'undo recomputes context from the current decision');
+});
+
+test('within the same case, the prior result continues to carry normally', () => {
+  const {run} = engine(caseFixture({previousPath: ['branch'], currentPath: ['branch']}));
+  const html = run('carryHTML()');
+  assert.match(html, /接第/);
+  assert.match(html, /对所有实数成立，保留本情况/);
+  assert.doesNotMatch(html, /切换情况/);
+});
+
+test('opening branches have separate carry scopes without changing their execution case path', () => {
+  const value = caseFixture({previousPath: ['nondegenerate'], currentPath: ['nondegenerate'],
+    previousBranch: 'opening-up', currentBranch: 'opening-down', condition: 'k\\ne0', branchCondition: 'k<0'});
+  const {run} = engine(value);
+  const html = run('carryHTML()');
+  assert.match(html, /切换情况.*当前条件：\$k\\ne0\$ 且 \$k&lt;0\$/);
+  assert.doesNotMatch(html, /对所有实数成立|保留本情况|接第|opening-up|opening-down/);
+  assert.deepEqual(value.bundle.stream.math_steps[0].case_path, ['nondegenerate']);
+  assert.deepEqual(value.bundle.stream.math_steps[1].case_path, ['nondegenerate']);
+  run('actor = "replay"');
+  assert.equal(run('carryHTML()'), html);
+  run(`state = refreshStreamState(bundle,JSON.parse(JSON.stringify(state)));`);
+  assert.equal(run('carryHTML()'), html, 'saved progress restores the same branch boundary');
+  run(`state = submitAnswer(bundle,state,{decision:'math-2',answer:'read'}); state = undo(bundle,state);`);
+  assert.equal(run('carryHTML()'), html);
+});
+
+test('within one opening branch its confirmed condition carries to its range question', () => {
+  const {run} = engine(caseFixture({previousPath: ['nondegenerate'], currentPath: ['nondegenerate'],
+    previousBranch: 'opening-down', currentBranch: 'opening-down', condition: 'k\\ne0', branchCondition: 'k<0'}));
+  assert.match(run('carryHTML()'), /接第.*对所有实数成立，保留本情况/);
+  assert.doesNotMatch(run('carryHTML()'), /切换情况|汇总各情况/);
+});
+
+test('merging openings inside the parent case does not carry the last opening result', () => {
+  const {run} = engine(caseFixture({previousPath: ['nondegenerate'], currentPath: ['nondegenerate'],
+    previousBranch: 'opening-down', condition: 'k\\ne0'}));
+  const html = run('carryHTML()');
+  assert.match(html, /data-case-transition="merge".*汇总各情况.*当前条件：\$k\\ne0\$/);
+  assert.doesNotMatch(html, /对所有实数成立|保留本情况|接第/);
+});
+
+test('opening metadata works outside execution cases and never invents a missing sign condition', () => {
+  const {run} = engine(caseFixture({previousPath: [], currentPath: [], condition: null,
+    currentBranch: 'opening-up', branchCondition: 'a>2'}));
+  assert.match(run('carryHTML()'), /当前情况.*当前条件：\$a&gt;2\$/);
+  const fixed = engine(caseFixture({previousPath: ['nondegenerate'], currentPath: ['nondegenerate'],
+    condition: null, currentBranch: 'opening-up'}));
+  assert.match(fixed.run('carryHTML()'), /切换情况/);
+  assert.doesNotMatch(fixed.run('carryHTML()'), /当前条件|1&gt;0|保留本情况/);
+});
+
+test('identical parent and opening conditions appear once without dropping independent premises', () => {
+  const {run} = engine(caseFixture({previousPath: [], currentPath: ['nondegenerate'],
+    condition: 'a>2', currentBranch: 'opening-up', branchCondition: 'a>2'}));
+  assert.equal(run('carryHTML()').split('$a&gt;2$').length - 1, 1);
+});
+
+test('leaving cases for a merge does not claim that the last branch is a global premise', () => {
+  const {run} = engine(caseFixture({currentPath: [], condition: null}));
+  const html = run('carryHTML()');
+  assert.match(html, /汇总各情况/);
+  assert.doesNotMatch(html, /当前条件|对所有实数成立|保留本情况|接第/);
+});
+
+test('nested cases return to the frozen parent condition and older cards never guess one', () => {
+  const nested = engine(caseFixture({previousPath: ['outer', 'inner'], currentPath: ['outer'], condition: 'b>2'}));
+  assert.match(nested.run('carryHTML()'), /返回上层情况.*当前条件：\$b&gt;2\$/);
+  const legacy = engine(caseFixture({condition: null}));
+  legacy.run(`bundle.stream.math_steps.find(card => card.step_id === 'math-2').explanation = '设 k=0，这不是可供推断的条件字段。';`);
+  const html = legacy.run('carryHTML()');
+  assert.match(html, /切换情况/);
+  assert.doesNotMatch(html, /k=0|当前条件|保留本情况/);
+});
+
+test('a first branch announces its current condition without treating classification results as its premise', () => {
+  const {run} = engine(caseFixture({previousPath: [], currentPath: ['quadratic'], condition: 'p<7'}));
+  assert.match(run('carryHTML()'), /当前情况.*当前条件：\$p&lt;7\$/);
+  assert.doesNotMatch(run('carryHTML()'), /保留本情况/);
+});
+
+test('folded evidence from another case does not override the actual preceding case', () => {
+  const {run} = engine(caseFixture({previousPath: ['other-case'], currentPath: ['active-case']}));
+  run(`bundle.stream.math_steps.push({...bundle.stream.math_steps[1],step_id:'math-3'});
+    beforeCase = {source:'stream',stream_steps:[{step_id:'math-2',math_step_sha256:'discriminant-2-hash'},
+      {step_id:'math-1',math_step_sha256:'discriminant-1-hash'}],stream_folded:['math-1']};
+    afterCase = {source:'stream',stream_steps:[{step_id:'math-3',math_step_sha256:'discriminant-2-hash'}]};`);
+  assert.equal(run('caseCarryHTML(beforeCase,afterCase)'), null);
+});
+
+test('AI replay answers the original choice using the shared decision engine', () => {
+  const value = choiceFixture(), {run} = engine(value);
+  const replay = JSON.parse(run('JSON.stringify(streamReplay())'));
+  const last = value.bundle.routes[routes[0]].steps.at(-1);
+  assert.deepEqual(replay.actions.at(-1), {decision: last.id, answer: 'A'});
+  let state = value.state;
+  for (const action of replay.actions.filter(action => action.decision !== 'D3')) {
+    state = stateAPI.submitAnswer(value.bundle, state, action);
+  }
+  assert.equal(state.done, true);
+});
+
+test('interactive parts hide frozen formulas; only the last completed part mounts every merged math card', () => {
   const {run, roots} = engine(fixture({merged: true}));
   run('renderInteraction(currentDecision(bundle,state))');
   const active = roots.get('#gw-active');
   assert.equal(active.dataset.decisionId, 'first');
-  assert.match(active.textContent, /before-1/);
-  assert.doesNotMatch(active.textContent, /before-2/, 'a later card\'s before can be the earlier card\'s conclusion');
+  assert.doesNotMatch(active.textContent, /before-1|before-2/, 'derivation inputs are not student-visible givens');
+  assert.doesNotMatch(active.innerHTML, /data-stream-context/);
   assert.doesNotMatch(active.textContent, /secret-/);
   assert.doesNotMatch(run(`completedHTML({decision:'first',answer:'yes'},5,1,'discriminant')`), /stream-completed|secret-/);
   run(`state = studentState = submitAnswer(bundle,state,{decision:'first',answer:'yes'}); renderInteraction(currentDecision(bundle,state));`);
@@ -135,6 +461,40 @@ test('interactive parts expose only before; only the last completed part mounts 
   const mounted = [...run('streamCards.values()')];
   assert.ok(mounted.every(card => card.node.className.includes('is-embedded')));
   assert.ok(mounted.every(card => !card.heading.hidden), 'distinct mathematical substeps retain their headings');
+});
+
+test('a discriminant condition is only an option until confirmed, including retry, restore and undo', () => {
+  const condition = 'm^2-4\\ge0';
+  const decision = {...part('delta'), title: '开口向上：建立判别式条件',
+    question: '本步判别式为 $\\Delta=m^2-4$，应对判别式施加哪个条件？'};
+  decision.interaction.options[0].label = `$${condition}$`;
+  decision.interaction.options[1].label = '$m^2-4<0$';
+  const value = fixture({parts: [decision]});
+  for (const step of value.bundle.stream.math_steps) {
+    step.before = [{latex: condition}];
+    step.after = [{latex: condition}];
+  }
+  const {run, roots} = engine(value);
+  const checkQuestion = () => {
+    run('renderInteraction(currentDecision(bundle,state))');
+    const active = roots.get('#gw-active');
+    assert.doesNotMatch(active.innerHTML, /data-stream-context|stage-three-before/);
+    assert.ok(active.innerHTML.includes(decision.question), 'the discriminant expression stays in the explicit question');
+    assert.equal(active.innerHTML.split(condition).length - 1, 1, 'the condition appears only in its option');
+    assert.ok(!active.textContent.includes(condition), 'no formula is mounted from before');
+  };
+  checkQuestion();
+  run("draft = 'yes'");
+  checkQuestion();
+  run("state = studentState = submitAnswer(bundle,state,{decision:'delta',answer:'no'});");
+  checkQuestion();
+  run('state = studentState = refreshStreamState(bundle, JSON.parse(JSON.stringify(state)));');
+  checkQuestion();
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'delta',answer:'yes'});
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),4,1,'discriminant'); mountCompletedMath();`);
+  assert.ok(roots.get('#gw-steps').textContent.includes(condition), 'confirmed conclusion remains visible');
+  run('state = studentState = undo(bundle,state);');
+  checkQuestion();
 });
 
 test('a named lesson step owns the title in both readonly and completed views', () => {
@@ -161,8 +521,7 @@ test('folded cards ask nothing, ride with the next step and mount collapsed afte
   const {run, roots} = engine(value);
   run('renderInteraction(currentDecision(bundle,state))');
   const active = roots.get('#gw-active');
-  assert.match(active.textContent, /before-2/);
-  assert.doesNotMatch(active.textContent, /before-1|secret-/);
+  assert.doesNotMatch(active.textContent, /before-1|before-2|secret-/);
   run(`state = studentState = submitAnswer(bundle,state,{decision:'first',answer:'yes'});
     state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
     document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),6,1,'discriminant'); mountCompletedMath();`);
@@ -372,7 +731,7 @@ test('mounted parameter explorers update values during drag and stay on their ca
   }
 });
 
-test('a server board replaces the card premises under the question', () => {
+test('explicit question boards remain visible without frozen derivation inputs', () => {
   const board = {caption: '各情况各自要满足', lines: ['① $a\\le-1$：$g(x)_{\\min}\\ge0$', '② $a>-1$：$1\\ge0$']};
   const {run, roots} = engine(fixture({parts: [{...part('first'), stem_board: board}]}));
   run('renderInteraction(currentDecision(bundle,state))');
@@ -411,6 +770,93 @@ test('case pictures are the conclusion; the math card mounts open under them; on
   const broken = finish([cases[0], {...cases[1], params: {...cases[1].params, axis: {min: 1, max: 0, step: 0.01, value: 0}}}]);
   assert.doesNotMatch(broken.html, /gw-case-figures/);
   assert.match(broken.host.textContent, /secret-after-1/);
+});
+
+test('completed opening parts keep their pictures under separate direction headings', () => {
+  const up = [1, 0, -1].map(height => ({...quadratic, params: {...quadratic.params, vertex: [0, height]}}));
+  const down = {...quadratic, params: {...quadratic.params, coefficient: -1}};
+  const value = fixture({parts: [
+    {...part('up'), completion_group: '开口向上', completion_graphs: up},
+    {...part('down'), completion_group: '开口向下', completion_graph: down},
+  ]});
+  assert.deepEqual(value.bundle.routes.discriminant.steps.map(part => part.completion_group), ['开口向上', '开口向下']);
+  const {run, roots} = engine(value);
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'up',answer:'yes'});
+    state = studentState = submitAnswer(bundle,state,{decision:'down',answer:'yes'});
+    renderStory = () => {}; revealStep = () => {}; realRender();`);
+  const steps = roots.get('#gw-steps');
+  const groups = [...steps.innerHTML.matchAll(/<section class="gw-completion-group" aria-labelledby="([^"]+)">([\s\S]*?)<\/section>/g)];
+  assert.equal(groups.length, 2);
+  assert.deepEqual(groups.map(group => /<h3[^>]+>([^<]*)<\/h3>/.exec(group[2])[1]), ['开口向上', '开口向下']);
+  assert.deepEqual(groups.map(group => (group[2].match(/class="gw-figure gw-completion-graph"/g) || []).length), [3, 1]);
+  assert.ok(groups.every(group => group[1] === /<h3 id="([^"]+)">/.exec(group[2])[1]));
+  assert.equal(steps.querySelectorAll('svg').length, 4, 'all grouped pictures still hydrate in the normal render');
+  assert.equal(steps.querySelectorAll('[data-stream-completed]').length, 1);
+});
+
+test('a rejected opening retains its answer under an escaped direction heading without a picture', () => {
+  const title = '开口向下 <img src=x onerror="bad()">';
+  const value = fixture({parts: [{...part('rejected'), completion_group: title}]});
+  value.bundle.routes.discriminant.steps[0].interaction.options[0].label = '此开口不适合';
+  const {run, roots} = engine(value);
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'rejected',answer:'yes'});
+    renderStory = () => {}; revealStep = () => {}; realRender();`);
+  const html = roots.get('#gw-steps').innerHTML;
+  assert.match(html, /<section class="gw-completion-group"[^>]*><h3[^>]*>开口向下 &lt;img src=x onerror=&quot;bad\(\)&quot;&gt;<\/h3>/);
+  assert.doesNotMatch(html, /<img\b|class="gw-figure/);
+  assert.match(html, /<p class="gw-answer" data-math-text>此开口不适合<\/p><\/section>/);
+});
+
+for (const count of [1, 2]) test(`${count} completion picture(s) replace only the opted-in board after successful drawing and recover on failure`, () => {
+  const pictures = Array.from({length: count}, (_, index) => ({...quadratic, caption: `图 ${index + 1}`}));
+  const pictured = {...part('last'), ...(count === 1 ? {completion_graph: pictures[0]} : {completion_graphs: pictures})};
+  const value = fixture({parts: [pictured], merged: true});
+  for (const step of value.bundle.stream.math_steps) step.highlight = {caption: `结论 ${step.ordinal}`,
+    ...(step.ordinal === 1 ? {replace_with_graph: true} : {}), items: [{label: '结论', math: step.after[0].latex}]};
+  const {context, run, roots} = engine(value);
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+    renderStory = () => {}; revealStep = () => {};
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),5,1,'discriminant'); mountCompletedMath();`);
+  const [opening, range] = [...run('streamCards.values()')];
+  assert.equal(opening.conclusion.hidden, false, 'a valid graph specification is not yet a rendered conclusion');
+  run('realRender()');
+  const graphs = () => roots.get('#gw-steps').querySelectorAll('.gw-completion-graph');
+  assert.equal(graphs().length, count);
+  assert.ok(graphs().every(figure => figure.querySelector('svg')));
+  assert.equal(opening.conclusion.hidden, true, 'the normal render cycle mounts cards after drawing');
+  assert.equal(range.conclusion.hidden, false, 'a separate range result stays beside the image');
+  assert.equal(opening.node.querySelector('.stage-three-derivation').open, true);
+  assert.match(opening.node.querySelector('.stage-three-derivation').textContent, /secret-explanation-1/);
+
+  graphs()[0].querySelector('[data-graph-rendered]').replaceChildren();
+  run('mountCompletedMath()');
+  assert.equal(opening.conclusion.hidden, false, 'a rendered flag without SVG cannot hide the fallback');
+
+  const draw = context.PracticeComponents.graph;
+  context.PracticeComponents.graph = spec => {
+    if (spec.caption === `图 ${count}`) throw new Error('drawing unavailable');
+    return draw(spec);
+  };
+  run('realRender()');
+  assert.equal(graphs().length, count - 1, 'failed picture is removed by hydration');
+  assert.equal(opening.conclusion.hidden, false, 'a partial set of case pictures does not replace the complete conclusion');
+  assert.equal(range.conclusion.hidden, false);
+  context.PracticeComponents.graph = draw;
+  run('realRender()');
+  assert.equal(opening.conclusion.hidden, true, 'a later redraw can replace the fallback without rebuilding the math card');
+  assert.equal([...run('streamCards.values()')][0], opening);
+});
+
+test('a folded earlier conclusion is not replaced by another step’s completion picture', () => {
+  const value = fixture({parts: [{...part('last'), completion_graph: quadratic}], folded: true});
+  for (const step of value.bundle.stream.math_steps) step.highlight = {caption: step.title,
+    replace_with_graph: true, items: [{label: '结论', math: step.after[0].latex}]};
+  const {run} = engine(value);
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+    renderStory = () => {}; revealStep = () => {}; realRender();`);
+  const cards = [...run('streamCards.values()')];
+  assert.equal(cards.find(card => card.step.step_id === 'math-2').conclusion.hidden, true);
+  assert.equal(cards.find(card => card.step.step_id === 'math-1').conclusion.hidden, false);
 });
 
 test('strict linear plots distinguish small nonzero values from a line lying on the axis', () => {
@@ -511,6 +957,34 @@ test('stream undo stays disabled until the chosen route has an answer to rewind'
   assert.equal(roots.get('#gw-undo').disabled, false);
 });
 
+test('undo after restoring a multipart card rewinds one question and persists across stream updates', async () => {
+  const value = fixture({parts: [part('location'), part('value'), part('condition'), part('range')]});
+  const first = engine(value);
+  first.run(`state = studentState = submitAnswer(bundle,state,{decision:'location',answer:'yes'}); render();`);
+  const persisted = [...first.storage.entries()].find(([key]) => key.startsWith('graph-walk:'));
+  assert.ok(persisted, 'park wrote the real progress serializer');
+  // Start a new engine, whose in-memory event history and saved map are empty.
+  const {run, storage} = engine(value);
+  storage.set(...persisted);
+  run(`restored = savedProgress(bundle);
+    state = studentState = refreshStreamState(bundle, restored.studentState);
+    keptDraft = restored.draft; draftKey = ''; submitted = null;
+    chooseActor(restored.actor, {autoplay:false});`);
+  assert.equal(run('currentDecision(bundle,state).id'), 'value');
+  // Exercise exactly the button handler, including draft reset and persistence.
+  const callback = source.match(/\$\('#gw-undo'\)\.addEventListener\('click', \(\) => \{([\s\S]*?)\n  \}\);/)[1];
+  run(`(() => {${callback}})()`);
+  assert.equal(run('currentDecision(bundle,state).id'), 'location');
+  assert.equal(run('state.run.completed.length'), 0);
+  assert.equal(run('studentState.run.completed.length'), 0);
+  assert.equal(run('draft'), null);
+  await run('updateStreamSelection(fixture.view)');
+  assert.equal(run('currentDecision(bundle,state).id'), 'location');
+  run(`state = studentState = refreshStreamState(bundle,
+    JSON.parse(localStorage.getItem('graph-walk:'+bundle.problemId+':'+bundle.bundleVersion)).studentState);`);
+  assert.equal(run('currentDecision(bundle,state).id'), 'location');
+});
+
 for (const field of ['target_ref', 'run_id', 'lesson_version']) test(`changing ${field} ${field === 'target_ref' ? 'keeps' : 'drops'} cached cards and QA`, async () => {
   const {run, context, value} = engine(fixture({parts: [part('last')]}));
   run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
@@ -548,6 +1022,66 @@ test('late QA is cached until completion, is idempotent, and preserves math DOM 
   run(`streamView.goals[bundle.stream.target_ref]={available:false}; mountCompletedMath()`);
   assert.equal(qaNode.hidden, true);
   assert.equal(run('renderCount'), 0, 'QA attachment never rerenders the walk');
+});
+
+for (const field of ['run_id', 'lesson_version']) test(`completion rendering and QA ignore raw completion from another ${field}`, () => {
+  const value = fixture({parts: [part('last')]});
+  value.view.completions = value.view.completions.map(completion => ({...completion, [field]: 'old'}));
+  value.bundle = stateAPI.extendStreamBundle(base, value.view, target, graph);
+  const {run, context, roots} = engine(value);
+  context.chunk = {...value.view.math_steps[0], verified_route_sha256: 'discriminant-verified',
+    qa: {questions: ['must stay hidden']}};
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),5,1,'discriminant');
+    mountCompletedMath(); attachStreamQA(chunk);`);
+  assert.equal(run('streamCompletion(state.run.route)'), null);
+  assert.equal(run('state.done'), false);
+  assert.equal(roots.get('#gw-steps').querySelector('.stage-three-qa').hidden, true);
+  assert.equal(run('availableQA(bundle.stream.math_steps[0])'), null);
+});
+
+test('a same-run partial update retains the normalized completion and its late QA', async () => {
+  const {run, context, roots, value} = engine(fixture({parts: [part('last')]}));
+  context.chunk = {...value.view.math_steps[0], verified_route_sha256: 'discriminant-verified',
+    qa: {questions: ['retained answer explanation']}};
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),5,1,'discriminant');
+    mountCompletedMath(); attachStreamQA(chunk);`);
+  const qa = roots.get('#gw-steps').querySelector('.stage-three-qa');
+  context.partial = {...value.view}; delete context.partial.completions;
+  await run('updateStreamSelection(partial)');
+  run('mountCompletedMath()');
+  assert.equal(run('streamCompletion(state.run.route).verified_route_sha256'), 'discriminant-verified');
+  assert.equal(run('state.done'), true);
+  assert.equal(qa.hidden, false);
+  assert.match(qa.textContent, /retained answer explanation/);
+  assert.equal(run('renderCount'), 0, 'omitted raw completion data does not replace the normalized result');
+});
+
+test('a late available handoff refreshes completion and already cached QA after a verified checkpoint', async () => {
+  const value = fixture({parts: [part('last')]});
+  const completion = value.view.completions[0];
+  delete value.view.completions;
+  value.view.checkpoints = [{target_ref: target, route_id: routes[0], status: 'verified'}];
+  value.bundle = stateAPI.extendStreamBundle(base, value.view, target, graph);
+  const {run, context, roots} = engine(value);
+  context.chunk = {...value.view.math_steps[0], verified_route_sha256: 'discriminant-verified',
+    qa: {questions: ['cached before handoff']}};
+  run(`state = studentState = submitAnswer(bundle,state,{decision:'last',answer:'yes'});
+    document.querySelector('#gw-steps').innerHTML=completedHTML(state.run.completed.at(-1),5,1,'discriminant');
+    mountCompletedMath(); attachStreamQA(chunk);
+    render = () => { renderCount++; mountCompletedMath(); };`);
+  const qa = roots.get('#gw-steps').querySelector('.stage-three-qa');
+  assert.equal(run('state.done'), true);
+  assert.equal(run('streamCompletion(state.run.route)'), null);
+  assert.equal(qa.hidden, true);
+  context.updated = {...value.view, handoffs: [{...identity, ...completion,
+    target_ref: target, route_id: routes[0], status: 'pending', available: true}]};
+  await run('updateStreamSelection(updated)');
+  assert.equal(run('renderCount'), 1, 'the normalized completion changed although steps and route status did not');
+  assert.equal(run('streamCompletion(state.run.route).verified_route_sha256'), 'discriminant-verified');
+  assert.equal(qa.hidden, false);
+  assert.match(qa.textContent, /cached before handoff/);
 });
 
 test('stream revisions refresh waiting/completion and retain an unchanged fill draft and selected slot', async () => {

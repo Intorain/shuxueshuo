@@ -1,5 +1,6 @@
 // One local decision engine for the student UI, model recorder and replay.
 import '../practice/context.js?v=15';
+import {matchedOriginalChoice} from './original-choice.mjs?v=20261022-original-choice';
 
 const copy = value => structuredClone(value);
 const nodeId = ref => ref.split('#')[0];
@@ -118,7 +119,7 @@ function completeDecision(bundle, next, decision, answer, reason) {
     reason: typeof reason === 'string' ? reason.slice(0, 6000) : '',
     results: copy(decision.effects?.results || []),
     calls: copy(decision.effects?.calls || []),
-    runId: ['page', 'stream'].includes(decision.source) ? next.run.id : null,
+    runId: ['page', 'stream', 'original_choice'].includes(decision.source) ? next.run.id : null,
     ...(decision.source === 'stream' ? {source: 'stream', stream_steps: copy(decision.stream_steps),
       stream_last_part: decision.stream_last_part} : {}),
   };
@@ -568,16 +569,59 @@ function streamDecisions(cards, states, chunks, enabled, final) {
 }
 
 function streamRouteState(view, target, route, previous = {}) {
-  const completion = view.completions?.find(item => item.identity?.[0] === target && item.identity?.[1] === route) ||
-    view.handoffs?.find(item => item.target_ref === target && item.route_id === route);
-  const routeStatus = view.route_statuses?.find(([key]) => key === JSON.stringify([target, route]))?.[1];
-  const checkpoint = view.checkpoints?.find(item => item.target_ref === target && item.route_id === route);
-  const status = routeStatus?.status || checkpoint?.status || previous.status || 'running';
-  const available = !unavailableStreamGoal(view.goals?.[target]) && completion?.available !== false && !failedStreamRoute(status) &&
-    (view.goals === undefined && !completion && !routeStatus && !checkpoint ? previous.available !== false : true);
+  // Compact live records inherit the enclosing stream identity. An explicit
+  // identity must still match, including when reusing a saved completion.
+  const scoped = value => value && ['run_id', 'lesson_version'].every(key =>
+    value[key] === undefined || value[key] === view[key]) &&
+    (value.target_ref === undefined || value.target_ref === target) &&
+    (value.route_id === undefined || value.route_id === route) &&
+    (value.identity === undefined || value.identity?.[0] === target && value.identity?.[1] === route);
+  const handoff = view.handoffs?.find(item => item.target_ref === target && item.route_id === route && scoped(item));
+  const live = view.completions?.find(item => item.identity?.[0] === target && item.identity?.[1] === route && scoped(item));
+  // Handoff status tracks the later QA job. Only an available, hashed route
+  // proves mathematical completion; an unavailable handoff revokes old data.
+  const verifiedHandoff = handoff?.available === true && typeof handoff.verified_route_sha256 === 'string' &&
+    handoff.verified_route_sha256 ? {...handoff, status: 'verified'} : null;
+  const routeStatus = view.route_statuses?.find(([key, value]) => key === JSON.stringify([target, route]) && scoped(value))?.[1];
+  const checkpoint = view.checkpoints?.find(item => item.target_ref === target && item.route_id === route && scoped(item));
+  const currentStatus = routeStatus?.status || checkpoint?.status;
+  const inherited = !live && !handoff && (!currentStatus || currentStatus === 'verified') &&
+    scoped(previous.completion) ? previous.completion : null;
+  const candidate = live || verifiedHandoff || inherited;
+  const completion = candidate?.status === 'verified' && candidate.available !== false ? candidate : null;
+  const previousComplete = previous.math_complete === true && (!previous.completion ||
+    scoped(previous.completion) && previous.completion.status === 'verified' && previous.completion.available !== false);
+  const status = currentStatus || previous.status || 'running';
+  const available = !unavailableStreamGoal(view.goals?.[target]) && live?.available !== false &&
+    (!handoff || handoff.available === true) && !failedStreamRoute(status) &&
+    (view.goals?.[target] === undefined && !live && !handoff && !routeStatus && !checkpoint ? previous.available !== false : true);
   return {status: available && (completion?.status === 'verified' || checkpoint?.status === 'verified') ? 'verified' : status,
     available, math_complete: available && (completion?.status === 'verified' || checkpoint?.status === 'verified' ||
-      (!completion && !checkpoint && previous.math_complete === true))};
+      (!live && !handoff && (!currentStatus || currentStatus === 'verified') && previousComplete)),
+    completion: available && completion ? {...copy(completion), run_id: view.run_id,
+      lesson_version: view.lesson_version, target_ref: target, route_id: route} : null};
+}
+
+function originalChoiceLabel(option) {
+  // Source text can already carry its option marker. Normalize only for
+  // detection; keep the frozen source text and route hash untouched.
+  const label = option.label.normalize('NFKC');
+  const text = option.text.normalize('NFKC').trimStart();
+  const marked = [`${label}.`, `${label}、`, `${label}:`, `${label})`, `(${label})`, `[${label}]`, `【${label}】`]
+    .some(prefix => text.startsWith(prefix));
+  return marked ? option.text : `${option.label}. ${option.text}`;
+}
+
+function originalChoiceDecision(completion, target, route) {
+  const choice = matchedOriginalChoice(completion, target);
+  if (!choice || typeof completion.verified_route_sha256 !== 'string' || !completion.verified_route_sha256) return null;
+  return {id: JSON.stringify(['original-choice', target, route, completion.verified_route_sha256]),
+    source: 'original_choice', title: '选择原题答案', question: '根据求得的结果，原题应选择哪一项？',
+    interaction: {type: 'choice', field: 'original_choice', options: choice.options.map(option => ({
+      value: option.label, label: originalChoiceLabel(option)}))},
+    expected_answer: {one_of: copy(choice.correct_labels)}, submit_label: '确认答案',
+    feedback: {answer: '请把求得的结果与原题各选项比较，注意边界是否包含。'},
+    stream_steps: [], effects: {nodes: [], edges: [], calls: [], results: [], log: '已确认原题选项答案。'}};
 }
 
 /** Add selection and graph evidence without changing the mathematical DOM.
@@ -671,14 +715,19 @@ export function extendStreamBundle(base, view, targetRef, fullGraph = base.graph
   }
   for (const [id, route] of Object.entries(bundle.routes)) if (route.streaming) {
     const cards = mathSteps.filter(card => card.route_id === id).sort((left, right) => left.ordinal - right.ordinal);
-    const previous = base.routes[id];
+    const previous = base.stream ? base.routes[id] : undefined;
     const routeState = streamRouteState(view, targetRef, id, previous);
     const final = routeState.status === 'verified' || failedStreamRoute(routeState.status);
     const decisions = streamDecisions(cards, interactionStates, interactions, interactionProtocol !== null, final);
+    const resolved = new Set(decisions.flatMap(decision => decision.stream_steps.map(ref => ref.step_id)));
+    if (routeState.math_complete && cards.length > 0 && resolved.size === cards.length) {
+      const choice = originalChoiceDecision(routeState.completion, targetRef, id);
+      if (choice) decisions.push(choice);
+    }
     for (let index = 0; index < (previous?.steps.length || 0); index++) {
+      if ((!routeState.available || !routeState.completion) && previous.steps[index].source === 'original_choice') continue;
       if (JSON.stringify(previous.steps[index]) !== JSON.stringify(decisions[index])) throw new Error('stream.immutable_decision');
     }
-    const resolved = new Set(decisions.flatMap(decision => decision.stream_steps.map(ref => ref.step_id)));
     Object.assign(route, routeState, {steps: decisions,
       interactions_complete: cards.length > 0 && resolved.size === cards.length,
       pending_count: cards.length - resolved.size});

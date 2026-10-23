@@ -524,6 +524,7 @@
         "graph": {"$ref": "#/$defs/graph"},
         "completion_graph": {"$ref": "#/$defs/graph"},
         "completion_graphs": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/graph"}},
+        "completion_group": {"$ref": "#/$defs/text"},
         "stem_board": {
           "type": "object",
           "additionalProperties": false,

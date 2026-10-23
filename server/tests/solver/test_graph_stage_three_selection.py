@@ -8,7 +8,7 @@ import pytest
 import sympy as sp
 
 from shuxueshuo_server.graph_lesson.stage_one.features import extract_features
-from shuxueshuo_server.graph_lesson.stage_three import premises
+from shuxueshuo_server.graph_lesson.stage_three import fragments, premises
 from shuxueshuo_server.graph_lesson.stage_three.premises import (
     check_premise,
     parse_expression,
@@ -17,6 +17,7 @@ from shuxueshuo_server.graph_lesson.stage_three.selection import (
     evaluate_goal,
     load_contract,
 )
+from shuxueshuo_server.graph_lesson.stage_three.verification import VerificationGap
 from shuxueshuo_server.graph_lesson.stage_two.recognition import evaluate_types
 from shuxueshuo_server.problem_understanding.notation_semantics import bounded_expand
 from tests.solver.test_graph_stage_one_features import assert_subset
@@ -126,19 +127,21 @@ def test_negative_domain_divisor_and_parameter_rank_failure():
     assert rank[0]["reason"] == "parameter_coefficients_not_proportional"
 
 
-def test_existential_full_real_uses_fallback_and_dynamic_coverage():
+def test_existential_full_real_prefers_discriminant_and_dynamic_coverage():
     result = evaluate(candidate("∃x∈ℝ:x^2-2*x+a>=0"))
-    assert result["selection"]["recommendation_rule"] == "priority-fallback"
-    assert branch(result, "discriminant")["trigger"] == "not_triggered"
-    assert branch(result, "interval")["recommendation"] == "preferred"
+    assert result["selection"]["recommendation_rule"] == "discriminant-first"
+    assert branch(result, "discriminant")["recommendation"] == "preferred"
+    assert branch(result, "interval")["recommendation"] == "superseded"
     coverage = result["d3"]["interaction"]["coverage"]
-    assert ["real", "free"] in coverage["interval"]
-    assert ["real", "free"] not in coverage["discriminant"]
+    assert ["real", "free"] not in coverage["interval"]
+    assert ["real", "free"] in coverage["discriminant"]
+    message = result["d3"]["verdicts"]["discriminant"]["message"]
+    assert "存在实数 $x$" in message and "对所有" not in message
 
 
 @pytest.mark.parametrize("fact,rule", [
     ("∀x∈[1,2]:(a^2-1)*x^2-(a-1)*x-1<0", "interval-with-cases"),
-    ("∃x∈ℝ:(a^2-1)*x^2-(a-1)*x-1<0", "single-applicable"),
+    ("∃x∈[1,2]:(a^2-1)*x^2-(a-1)*x-1<0", "interval-with-cases"),
 ])
 def test_recommendation_when_interval_is_only_applicable_method(fact, rule):
     result = evaluate(candidate(fact))
@@ -216,6 +219,86 @@ def test_swap_zero_slope_is_accepted_and_nonlinearity_refuted():
     assert check_premise("swap_linearity", indexed)["status"] == "fails"
 
 
+@pytest.mark.parametrize("principal,parameter", [("x", "m"), ("u", "b")])
+def test_swap_method_plane_keeps_original_letter_roles(principal, parameter):
+    value = candidate(
+        f"∀{parameter}∈[1,3]:{parameter}*{principal}^2-{parameter}*{principal}+{parameter}-6<0",
+        principal,
+    )
+    result = evaluate(value)
+    plane = result["d3"]
+    assert plane["interaction"]["x"]["label"] == f"${principal}$ 取全体实数吗？"
+    assert plane["interaction"]["y"]["label"] == f"参数 ${parameter}$ 有给定范围吗？"
+    assert plane["expected_answer"]["cell"] == ["real", "given"]
+    assert plane["feedback"]["x"] == f"再看横轴：${principal}$ 取遍全体实数。"
+    assert plane["feedback"]["y"] == (
+        f"再看纵轴：给出范围的是 ${parameter}$，要求的是 ${principal}$。"
+    )
+    coverage = plane["interaction"]["coverage"]
+    assert ["real", "given"] in coverage["swap"]
+    assert all(["real", "given"] not in coverage[name]
+               for name in ("discriminant", "interval", "separation"))
+    assert [item["branch"] for item in result["d4"]["options"]] == ["swap"]
+
+
+@pytest.mark.parametrize("restriction,cell", [
+    ("u∈ℝ", "real"),
+    ("u∈[0,2]", "interval"),
+    ("u>0", "interval"),
+])
+def test_swap_plane_uses_visible_original_principal_domain(restriction, cell):
+    value = candidate("∀b∈[1,3]:b*u^2-b*u+b-6<0", "u")
+    value["root"]["facts"].insert(0, restriction)
+    plane = evaluate(value)["d3"]
+    assert plane["expected_answer"]["cell"] == [cell, "given"]
+    assert plane["interaction"]["x"]["label"] == "$u$ 取全体实数吗？"
+
+
+def test_swap_plane_only_uses_current_target_visible_domain():
+    value = candidate("∀b∈[1,3]:b*u^2-b*u+b-6<0", "u")
+    goal = value["root"].pop("goals")[0]
+    value["root"]["children"] = [
+        {"facts": ["u∈[0,2]"], "goals": [deepcopy(goal)]},
+        {"goals": [deepcopy(goal)]},
+    ]
+    restricted = evaluate(value, "/root/children/0/goals/0")["d3"]
+    unrestricted = evaluate(value, "/root/children/1/goals/0")["d3"]
+    assert restricted["expected_answer"]["cell"] == ["interval", "given"]
+    assert unrestricted["expected_answer"]["cell"] == ["real", "given"]
+
+
+def test_swap_selection_survives_parameter_dependent_quantifier_endpoint():
+    value = candidate("∀m∈[1,x]:m*x^2-m*x+m-6<0", "x")
+    result = evaluate(value)
+    assert result["status"] == "no_verified_route"
+    assert result["d3"]["expected_answer"]["cell"] == ["interval", "given"]
+    assert result["d3"]["interaction"]["x"]["label"] == "$x$ 取全体实数吗？"
+    assert any(option["branch"] == "swap" for option in result["d4"]["options"])
+
+
+@pytest.mark.parametrize("reason", [
+    "route_constraints.single_quantifier_required",
+    "route_constraints.fixed_quantifier_domain_required",
+])
+def test_swap_selection_constraint_gap_falls_back_to_feature_domain(monkeypatch, reason):
+    def unsupported(*_args):
+        raise VerificationGap(reason)
+
+    monkeypatch.setattr(fragments, "apply_visible_constraints", unsupported)
+    result = evaluate(candidate("∀m∈[1,3]:m*x^2-m*x+m-6<0", "x"))
+    assert result["d3"]["expected_answer"]["cell"] == ["interval", "given"]
+    assert result["d4"]["options"]
+
+
+def test_swap_selection_does_not_hide_constraint_implementation_errors(monkeypatch):
+    def broken(*_args):
+        raise ValueError("unexpected implementation error")
+
+    monkeypatch.setattr(fragments, "apply_visible_constraints", broken)
+    with pytest.raises(ValueError, match="unexpected implementation error"):
+        evaluate(candidate("∀m∈[1,3]:m*x^2-m*x+m-6<0", "x"))
+
+
 def test_no_selection_contract_and_duplicate_feature_are_explicit():
     value = problem("q01")
     rows = extract_features(value)["features"]
@@ -268,8 +351,8 @@ def test_separation_message_states_the_proved_divisor_sign(case, sign, direction
 
 
 @pytest.mark.parametrize("fact,opening,bound_kind", [
-    ("∀x∈(1,2):x^2+a*x+4<0", "向下", "下界"),
-    ("∃x∈(1,2):x^2+a*x+4>0", "向上", "上界"),
+    ("∀x∈(1,2):x^2+a*x+4<0", "向下", "值域下端"),
+    ("∃x∈(1,2):x^2+a*x+4>0", "向上", "值域上端"),
 ])
 def test_endpoint_message_uses_normalized_direction_and_handles_open_endpoints(fact, opening, bound_kind):
     message = evaluate(candidate(fact))["d3"]["verdicts"]["interval"]["message"]
@@ -289,10 +372,9 @@ def test_full_real_existential_vertex_needs_no_parameter_location_cases():
     result = evaluate(candidate("∃x∈ℝ:-x^2+a*x+1>=0"))
     check = result["selection"]["recommendation_checks"][0]
     assert check["status"] == "fails" and check["reason"] == "no_parameter_cases"
-    assert result["selection"]["recommendation_rule"] == "single-applicable"
-    assert branch(result, "interval")["recommendation"] == "preferred"
-    message = result["d3"]["verdicts"]["interval"]["message"]
-    assert "开口向下" in message and "上界" in message and "无需按参数分类" in message
+    assert result["selection"]["recommendation_rule"] == "discriminant-first"
+    assert branch(result, "discriminant")["recommendation"] == "preferred"
+    assert branch(result, "interval")["recommendation"] == "superseded"
 
 
 def test_unknown_case_split_is_not_described_as_proved(monkeypatch):

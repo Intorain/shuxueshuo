@@ -1,6 +1,6 @@
-import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft, teachingContext, CALL_LANE} from './walk-state.mjs?v=20261022-proposition-2';
+import {createState, currentDecision, submitAnswer, undo, switchRoute, graphState, replayState, extendStreamBundle, streamGraphState, migrateStageTwoState, refreshStreamState, setStreamDraft, streamDraft, teachingContext, CALL_LANE} from './walk-state.mjs?v=20261022-original-choice';
 import {createWalkGraph, nodeHref} from './walk-graph.mjs?v=20261015-view-tabs';
-import {createMathCard, setMathCardLayout, attachMathQA, createMathContext, createRouteCompletion} from './stream-math-dom.mjs?v=20261022-proposition-2';
+import {createMathCard, setMathCardLayout, attachMathQA, createRouteCompletion} from './stream-math-dom.mjs?v=20261023-active-premises';
 
 const BUNDLE_URL = '/data/graph-walk/quadratic-always-q01.json';
 const REPLAY_INDEX_URL = '/data/graph-walk/replays/index.json';
@@ -146,6 +146,15 @@ const caseGraphs = decision => decision?.source === 'stream' && Array.isArray(de
 function caseFiguresHTML(decision, uid) {
   const graphs = caseGraphs(decision);
   return graphs ? `<div class="gw-case-figures">${graphs.map((graph, index) => figureHTML(graph, `${uid}-case-${index}`, 'completion')).join('')}</div>` : '';
+}
+
+function completionFiguresHTML(decision, uid, answer) {
+  if (decision.source !== 'stream') return '';
+  const figures = (decision.completion_graph ? figureHTML(decision.completion_graph, uid, 'completion') : '') +
+    caseFiguresHTML(decision, uid);
+  if (!decision.completion_group) return figures;
+  const heading = `${uid}-group`;
+  return `<section class="gw-completion-group" aria-labelledby="${escapeHTML(heading)}"><h3 id="${escapeHTML(heading)}">${escapeHTML(decision.completion_group)}</h3>${figures || partAnswerHTML(decision, answer)}</section>`;
 }
 
 // A server board states what the question works from, in place of the card's own premises.
@@ -318,8 +327,7 @@ function completedHTML(record, number, runId, route) {
     : decision.interaction.type === 'plane' ? planeHTML(decision, record.answer, false)
     : `<p class="gw-answer" data-math-text>${escapeHTML(answerSummary(decision, record.answer))}</p>`;
   const results = decision.source !== 'stream' && !decision.display ? (record.results || []).map(resultText).filter(Boolean).map(text => `<p class="gw-result" data-math-text>${escapeHTML(text)}</p>`).join('') : '';
-  const figure = (decision.source === 'stream' && decision.completion_graph ? figureHTML(decision.completion_graph, `${uid}-done`, 'completion') : '') +
-    caseFiguresHTML(decision, `${uid}-done`);
+  const figure = completionFiguresHTML(decision, `${uid}-done`, record.answer);
   return `<details class="gw-completed" data-completed-decision="${escapeHTML(decision.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(decision.title || decision.question)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${figure}${body}${results}</div></details>`;
 }
 
@@ -355,8 +363,7 @@ function partRowsHTML(records) {
 
 function groupCompletedHTML(unit, number) {
   const decisions = unit.records.map(record => decisionById(record.decision, state.run.route)), last = decisions.at(-1);
-  const figures = decisions.map(item => (item.completion_graph ? figureHTML(item.completion_graph, `gw-${activeRunId()}-${item.id}-done`, 'completion') : '') +
-    caseFiguresHTML(item, `gw-${activeRunId()}-${item.id}-done`)).join('');
+  const figures = decisions.map((item, index) => completionFiguresHTML(item, `gw-${activeRunId()}-${item.id}-done`, unit.records[index].answer)).join('');
   return `<details class="gw-completed" data-completed-decision="${escapeHTML(last.id)}"><summary class="step-heading"><span class="step-number" aria-label="第 ${number} 步">✓</span><span class="gw-step-title">${escapeHTML(last.stream_group_title || last.title)}</span><span class="status">已完成</span></summary><div class="gw-completed-body">${figures}<div data-stream-completed="${escapeHTML(last.id)}"></div></div></details>`;
 }
 
@@ -434,11 +441,75 @@ function feedbackHTML() {
   return `<div class="gw-feedback" data-status="${escapeHTML(feedback.status)}" role="status"><strong>${label}</strong><p data-math-text>${escapeHTML(feedback.message || '')}</p>${href}</div>`;
 }
 
+const ownMathSteps = decision => decisionMathSteps(decision).filter(card => !(decision.stream_folded || []).includes(card.step_id));
+
+/* Merge inputs come from completed branches, never the active card's answer. */
+function mergePremisesHTML(current) {
+  if (!bundle.stream || current?.source !== 'stream') return '';
+  const active = ownMathSteps(current)[0];
+  if (active?.highlight?.layout !== 'merge') return '';
+  const parent = active.case_path || [], cases = new Map();
+  const collect = (card, results = []) => {
+    if (card.ordinal >= active.ordinal) return;
+    const path = card.case_path || [];
+    if (!parent.every((part, index) => path[index] === part)) return;
+    // A descendant branch is not the result of its whole parent case.
+    if (path.length > parent.length + 1 || (path.length > parent.length && card.branch_id)) return;
+    const key = path.length > parent.length ? JSON.stringify(path)
+      : card.branch_id ? JSON.stringify([path, card.branch_id]) : null;
+    if (!key) return;
+    const lines = results.length ? results : card.highlight?.result ? [card.highlight.result]
+      : (card.after || []).map(value => value.latex ? `$${value.latex}$` : '').filter(Boolean);
+    if (!lines.length || (cases.get(key)?.ordinal || 0) > card.ordinal) return;
+    const condition = card.branch_condition || card.case_condition;
+    const label = condition?.latex ? `$${condition.latex}$` : card.title || '已完成情况';
+    cases.set(key, {ordinal: card.ordinal, label, lines});
+  };
+  for (const record of state.run?.completed || []) {
+    const decision = decisionById(record.decision, state.run.route);
+    if (decision?.source !== 'stream' || !decision.stream_last_part) continue;
+    const cards = decisionMathSteps(decision), last = ownMathSteps(decision).at(-1);
+    for (const card of cards) collect(card, card === last ? (record.results || []).map(resultText).filter(Boolean) : []);
+  }
+  // Explicitly folded predecessors are already available givens, even when
+  // their repetitive quiz was omitted. Their formulas are not the merge result.
+  for (const card of decisionMathSteps(current)) if ((current.stream_folded || []).includes(card.step_id)) collect(card);
+  if (!cases.size) return '';
+  const rows = [...cases.values()].map(({label, lines}) => `<div class="gw-merge-premise"><dt data-math-text>${escapeHTML(label)}</dt><dd>${lines.map(line => `<p data-math-text>${escapeHTML(line)}</p>`).join('')}</dd></div>`).join('');
+  return `<div class="gw-carry gw-merge-premises"><p class="gw-carry-label">已得各情况结果</p><dl>${rows}</dl></div>`;
+}
+
+/* Case-local results may only carry within their frozen branch. A new branch supplies its own premise. */
+function caseCarryHTML(previous, current) {
+  if (!bundle.stream || current?.source !== 'stream') return null;
+  const active = ownMathSteps(current)[0], prior = previous?.source === 'stream' ? ownMathSteps(previous).at(-1) : null;
+  if (!active) return null;
+  const from = prior?.case_path || [], to = active.case_path || [];
+  const fromBranch = typeof prior?.branch_id === 'string' ? prior.branch_id : '';
+  const toBranch = typeof active.branch_id === 'string' ? active.branch_id : '';
+  const sameCase = JSON.stringify(from) === JSON.stringify(to);
+  if (sameCase && fromBranch === toBranch) return null;
+  const returning = to.length < from.length && to.every((part, index) => from[index] === part);
+  const merging = (!to.length && !toBranch) || (sameCase && Boolean(fromBranch) && !toBranch);
+  const label = merging ? '汇总各情况' : returning ? '返回上层情况'
+    : from.length || fromBranch ? '切换情况' : '当前情况';
+  // The server publishes this condition with the mathematical card and includes it in its hash.
+  // Legacy cards can announce the boundary, but must not infer a condition from prose or branch IDs.
+  const formulas = to.length || toBranch ? [...new Set([active.case_condition, ...(toBranch ? [active.branch_condition] : [])]
+    .map(value => value?.latex).filter(value => typeof value === 'string' && value))] : [];
+  const condition = formulas.length
+    ? `<p data-math-text>${escapeHTML(`当前条件：${formulas.map(formula => `$${formula}$`).join(' 且 ')}`)}</p>` : '';
+  return `<div class="gw-carry gw-case-transition" data-case-transition="${merging ? 'merge' : 'case'}"><p class="gw-carry-label">${label}</p>${condition}</div>`;
+}
+
 /* The previous step carried into the active card: its results, or its answer when it produced none. */
 function carryHTML() {
   const {units, open} = stepUnits(), held = new Set(open?.records || []);
   const records = [...(state.introCompleted || []), ...(state.run?.completed || [])].filter(record => !held.has(record));
   const record = records.at(-1), decision = record && anyDecision(record.decision);
+  const current = bundle.stream ? currentDecision(bundle, state) : null, premises = mergePremisesHTML(current);
+  const transition = bundle.stream && caseCarryHTML(decision, current);
+  if (transition || premises) return (transition || '') + premises;
   if (!decision) return '';
   const results = (record.results || []).map(resultText).filter(Boolean);
   const lines = results.length ? results : [carrySummary(decision, record.answer)].filter(Boolean);
@@ -466,16 +537,16 @@ function renderInteraction(decision, {focus, pending = null} = {}) {
   const head = `<header class="step-heading"><span class="step-number" aria-hidden="true">${number}</span><h2 id="gw-current-title" tabindex="-1">${escapeHTML(title)}</h2><span class="status">进行中</span></header>${carryHTML()}`;
   const parts = grouped ? partStepperHTML(decision) + (open ? `<div class="gw-part-done">${partRowsHTML(open.records)}</div>` : '') : '';
   const label = grouped ? `<p class="gw-part-current" id="gw-part-title" tabindex="-1">第 ${decision.stream_part_index + 1} 问 · ${escapeHTML(decision.title || '')}</p>` : '';
-  host.innerHTML = head + parts + (pending ?? `${label}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' && decision.graph ? figureHTML(decision.graph, `gw-${activeRunId()}-${decision.id}-stem`, 'stem') : ''}${decision.source === 'stream' && decision.stem_board ? boardHTML(decision.stem_board) : decision.source === 'stream' && !(decision.stream_part_index > 0) ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`);
-  // Later parts build on the answered rows above them, so only the first part shows the card's premise.
+  host.innerHTML = head + parts + (pending ?? `${label}<p class="question" data-math-text>${escapeHTML(decision.question || '')}</p>${decision.source === 'stream' && decision.graph ? figureHTML(decision.graph, `gw-${activeRunId()}-${decision.id}-stem`, 'stem') : ''}${decision.source === 'stream' && decision.stem_board ? boardHTML(decision.stem_board) : decision.source === 'stream' && decision.interaction.type === 'read' ? '<div class="gw-stream-context" data-stream-context></div>' : ''}<div class="gw-interaction" ${disabled ? 'inert' : ''}>${interactionHTML(decision)}</div>${feedbackHTML()}${attemptedCalculation(decision)}<div class="gw-submit-row"><button type="button" class="primary" id="gw-submit" ${disabled || busy || !ready(decision) ? 'disabled' : ''}>${escapeHTML(decision.interaction.type === 'read' ? '读完了，下一步' : decision.submit_label || '确认，看看图谱如何变化')} <span aria-hidden="true">→</span></button>${disabled ? '<span>正在查看 AI 回放</span>' : ''}</div>`);
+  // Frozen before formulas are derivation inputs, not necessarily givens: they can be
+  // the answer being asked for. Interactive premises belong in question/graph/stem_board
+  // or the completed-step carry above; only read cards reveal the mathematical record.
   const context = pending == null && host.querySelector('[data-stream-context]');
   if (context) {
     const folded = new Set(decision.stream_folded || []);
     const steps = decisionMathSteps(decision).filter(step => !folded.has(step.step_id));
-    if (decision.interaction.type === 'read') for (const step of steps) context.append(createMathCard(document, step,
+    for (const step of steps) context.append(createMathCard(document, step,
       {renderMath: renderStreamMath, embedded: true, parentTitle: title}).node);
-    // A later merged card's before is usually the earlier card's conclusion.
-    else context.append(createMathContext(document, steps.slice(0, 1), {renderMath: renderStreamMath, question: decision.question}));
   }
   for (const button of host.querySelectorAll('[data-slot]')) {
     const expanded = Number(button.dataset.slot) === selectedSlot;
@@ -788,7 +859,6 @@ function render({focus = false, scroll = focus} = {}) {
   const lastCompleted = [...(state.introCompleted || []), ...(state.run?.completed || [])].at(-1)?.decision;
   // Watching the AI reads the whole solution, so every card it has completed stays open.
   $('#gw-steps').querySelectorAll('details[data-completed-decision]').forEach(item => { item.open = actor === 'replay' || open.has(item.dataset.completedDecision) || item.dataset.completedDecision === lastCompleted; });
-  mountCompletedMath();
   mountRetainedMath();
   if (shown) renderInteraction(current);
   else if (partway) renderInteraction(current, {pending});
@@ -806,6 +876,8 @@ function render({focus = false, scroll = focus} = {}) {
   const completedCount = introCount + units.length;
   $('#gw-progress').textContent = `${completedCount} 个步骤已确认${actor === 'replay' ? ` · AI 回放 ${replayPosition} / ${replay?.actions.length || 0}` : ''}`;
   hydrate($('#gw-steps')); hydrate($('#gw-completion'));
+  // A completion picture replaces its fallback only after every picture has drawn successfully.
+  mountCompletedMath();
   renderGraph();
   const target = (openPart && $('#gw-part-title')) || $('#gw-current-title') || $('#gw-completion h2');
   if (target && focus) { target.tabIndex = -1; target.focus({preventScroll: true}); }
@@ -1189,10 +1261,12 @@ function decisionMathSteps(decision) {
 function streamCompletion(route) {
   const goal = streamView?.goals?.[bundle.stream.target_ref];
   if (goal && (goal.available === false || goal.status === 'conflict' || goal.reason === 'route_consistency_undecidable')) return null;
-  if (bundle.routes[route]?.available === false) return null;
-  return (streamView?.completions || []).find(value =>
-    (value.target_ref || value.identity?.[0]) === bundle.stream.target_ref &&
-    (value.route_id || value.identity?.[1]) === route && value.available !== false) || null;
+  const current = bundle.routes[route], completion = current?.completion;
+  if (current?.available === false || !current?.math_complete || completion?.status !== 'verified' ||
+      completion.available === false || completion.run_id !== bundle.stream.run_id ||
+      completion.lesson_version !== bundle.stream.lesson_version ||
+      completion.target_ref !== bundle.stream.target_ref || completion.route_id !== route) return null;
+  return completion;
 }
 
 function availableQA(step) {
@@ -1215,13 +1289,20 @@ function mountCompletedMath() {
     const decision = decisionById(host.dataset.streamCompleted, state.run.route);
     if (!decision?.stream_last_part) continue;
     const parentTitle = groupOf(decision) ? decision.stream_group_title || decision.title : decision.title || decision.question;
+    const pictured = groupOf(decision) ? groupParts(decision) : [decision];
+    const expectedGraphs = pictured.reduce((count, part) => count + Number(Boolean(part.completion_graph)) +
+      (Array.isArray(part.completion_graphs) ? part.completion_graphs.length : 0), 0);
+    const figures = [...(host.closest('.gw-completed-body')?.querySelectorAll('.gw-completion-graph') || [])];
+    const externalConclusion = expectedGraphs > 0 && figures.length === expectedGraphs && figures.every(figure =>
+      [...figure.querySelectorAll('[data-graph-rendered]')].some(plot => plot.dataset.graphRendered === 'true' && plot.querySelector('svg')));
     const folded = new Set(decision.stream_folded || []);
     let fold = null;
     for (const step of decisionMathSteps(decision)) {
       const key = streamCardKey(step);
       let card = streamCards.get(key);
       if (!card) { card = createMathCard(document, step, {renderMath: renderStreamMath}); streamCards.set(key, card); }
-      setMathCardLayout(card, {embedded: true, parentTitle: folded.has(step.step_id) ? '' : parentTitle});
+      setMathCardLayout(card, {embedded: true, parentTitle: folded.has(step.step_id) ? '' : parentTitle,
+        externalConclusion: !folded.has(step.step_id) && externalConclusion});
       const qa = availableQA(step);
       if (qa) mountCardQA(card, qa);
       else card.qa.hidden = true;
@@ -1472,12 +1553,12 @@ async function applyStreamSelection(view) {
   rememberStreamDraft();
   const signature = graph => JSON.stringify([graph.nodes, graph.edges, graph.lanes]);
   const decisionSignature = value => JSON.stringify([value.intro, Object.entries(value.routes).map(([id, route]) =>
-    [id, route.steps, route.status, route.available, route.math_complete, route.interactions_complete, route.pending_count]),
+    [id, route.steps, route.status, route.available, route.math_complete, route.interactions_complete, route.pending_count, route.completion]),
     value.stream?.interaction_states]);
   const ticket = ++streamUpdateTicket, previousGraph = signature(bundle.graph);
-  const previousDecisionSignature = JSON.stringify([decisionSignature(bundle), streamView?.goals, streamView?.completions]);
+  const previousDecisionSignature = JSON.stringify([decisionSignature(bundle), streamView?.goals]);
   const next = extendStreamBundle(bundle, view, options.stream.target_ref, publicGraph);
-  const decisionsChanged = JSON.stringify([decisionSignature(next), view.goals, view.completions]) !== previousDecisionSignature;
+  const decisionsChanged = JSON.stringify([decisionSignature(next), view.goals]) !== previousDecisionSignature;
   if (signature(next.graph) !== previousGraph) {
     delete next.graph.layout;
     const laidOut = await withLayout(next);

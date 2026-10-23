@@ -251,7 +251,7 @@
       {
         "target_ref": "/root/goals/0",
         "cell": [
-          "interval",
+          "real",
           "given"
         ],
         "branches": {
@@ -286,7 +286,7 @@
       {
         "target_ref": "/root/goals/0",
         "cell": [
-          "interval",
+          "real",
           "given"
         ],
         "branches": {

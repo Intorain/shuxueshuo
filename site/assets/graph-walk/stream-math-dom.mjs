@@ -1,6 +1,7 @@
 /** Safe mathematical card DOM shared by completed/read steps and debug views.
  * This module never controls progress, transport, or interaction availability.
  */
+import {matchedOriginalChoice} from './original-choice.mjs?v=20261022-original-choice';
 
 const expressionText = value => typeof value === 'string' ? value : value?.latex || '';
 const text = (document, tag, value, className) => {
@@ -41,7 +42,7 @@ function highlightBoard(document, highlight) {
   row.className = 'function-conversion';
   highlight.items.forEach((item, index) => {
     if (index) {
-      const arrow = text(document, 'span', highlight.connector || '→', 'conversion-arrow');
+      const arrow = text(document, 'span', highlight.connector === undefined ? '→' : highlight.connector, 'conversion-arrow');
       arrow.setAttribute('aria-hidden', 'true'); row.append(arrow);
     }
     const cell = document.createElement('div');
@@ -56,6 +57,11 @@ function highlightBoard(document, highlight) {
     row.append(cell);
   });
   board.append(row);
+  if (highlight.show_result === true && typeof highlight.result === 'string' && highlight.result.trim()) {
+    const result = text(document, 'p', highlight.result, 'gw-result');
+    result.dataset.mathText = 'true';
+    board.append(result);
+  }
   return board;
 }
 
@@ -80,11 +86,20 @@ function mergeBoard(document, highlight) {
   return board;
 }
 
+function formulaLines(document, values, field) {
+  return values.map(value => {
+    const formula = text(document, 'p', expressionText(value), `stage-three-${field}`);
+    formula.dataset.mathFormula = 'true';
+    return formula;
+  });
+}
+
 /* The full derivation follows, one sentence per line; a newline also starts a line (a ∵/∴ step). */
-function derivationDetails(document, explanation) {
+function derivationDetails(document, explanation, before = []) {
   const details = document.createElement('details');
   details.className = 'details stage-three-derivation'; details.open = true;
   details.append(text(document, 'summary', '完整推导'));
+  details.append(...formulaLines(document, before, 'before'));
   for (const sentence of explanation.split(/(?<=。)|\n/).filter(part => part.trim())) {
     const line = text(document, 'p', sentence, 'stage-three-explanation');
     line.dataset.mathText = 'true'; details.append(line);
@@ -100,46 +115,44 @@ export function createMathCard(document, step, options = {}) {
     targetRef: step.target_ref, routeId: step.route_id, ordinal: String(step.ordinal)});
   const heading = text(document, 'h3', step.title);
   node.append(heading);
+  let conclusion = null, caption = null;
   if (step.highlight) {
-    node.append(highlightBoard(document, step.highlight));
+    conclusion = highlightBoard(document, step.highlight);
+    if (step.highlight.layout !== 'merge') caption = conclusion.children[0];
+    node.append(conclusion);
     if (!step.highlight.conclusion_only) node.append(derivationDetails(document, step.explanation || ''));
   } else if (step.derivation) {
     // Conclusion is the step's pictures or another board; this card is only the prose.
     node.append(derivationDetails(document, step.explanation || ''));
   } else {
-    for (const field of ['before', 'after']) for (const value of step[field] || []) {
-      const formula = text(document, 'p', expressionText(value), `stage-three-${field}`);
-      formula.dataset.mathFormula = 'true'; node.append(formula);
+    const after = step.after || [];
+    if (after.length) {
+      conclusion = document.createElement('div');
+      conclusion.className = 'visual-board completed-visual stage-three-conclusion';
+      caption = text(document, 'div', '结论', 'board-caption');
+      conclusion.append(caption, ...formulaLines(document, after, 'after'));
+      node.append(conclusion);
     }
-    const explanation = text(document, 'p', step.explanation || '', 'stage-three-explanation');
-    explanation.dataset.mathText = 'true'; node.append(explanation);
+    const conclusions = new Set(after.map(value => expressionText(value).trim()));
+    const before = (step.before || []).filter(value => !conclusions.has(expressionText(value).trim()));
+    node.append(derivationDetails(document, step.explanation || '', before));
   }
   const qa = document.createElement('aside');
   qa.className = 'stage-three-qa'; qa.hidden = true; node.append(qa);
   options.renderMath?.(node);
-  const card = {node, qa, heading, step: structuredClone(step)};
+  const card = {node, qa, heading, conclusion, caption, step: structuredClone(step)};
   setMathCardLayout(card, options);
   if (options.qa) attachMathQA(card, options.qa, options);
   return card;
 }
 
 /** A cached mathematical card can move between a named lesson step and a standalone view. */
-export function setMathCardLayout(card, {embedded = false, parentTitle = ''} = {}) {
+export function setMathCardLayout(card, {embedded = false, parentTitle = '', externalConclusion = false} = {}) {
   card.node.className = `stage-three-math-step${embedded ? ' is-embedded' : ''}`;
   card.heading.hidden = embedded && card.step.title === parentTitle;
-}
-
-/** Question context deliberately excludes conclusions, explanation and QA, and formulas the question already states. */
-export function createMathContext(document, steps, options = {}) {
-  const node = document.createElement('div');
-  node.className = 'stage-three-context';
-  for (const step of steps) for (const value of step.before || []) {
-    if (options.question?.includes(expressionText(value))) continue;
-    const formula = text(document, 'p', expressionText(value), 'stage-three-before');
-    formula.dataset.mathFormula = 'true'; node.append(formula);
-  }
-  options.renderMath?.(node);
-  return node;
+  if (card.caption) card.caption.hidden = card.caption.textContent === card.step.title ||
+    embedded && card.caption.textContent === parentTitle;
+  if (card.conclusion) card.conclusion.hidden = Boolean(card.step.highlight?.replace_with_graph && externalConclusion);
 }
 
 /** Only replace the QA region. The caller decides whether the card is completed. */
@@ -171,6 +184,8 @@ export function createRouteCompletion(document, payload, options = {}) {
   node.hidden = !complete;
   const answerStatus = summary ? answer.status : 'unknown';
   node.dataset.answerStatus = answerStatus;
+  const choice = complete && matchedOriginalChoice(payload);
+  if (choice) node.append(text(document, 'strong', `答案：${choice.correct_labels[0]}　`, 'stage-three-choice-answer'));
   node.append(text(document, 'span', summary?.label || '目标答案尚未确定。'));
   if (summary?.formula) {
     const formula = text(document, 'span', summary.formula, 'stage-three-answer');

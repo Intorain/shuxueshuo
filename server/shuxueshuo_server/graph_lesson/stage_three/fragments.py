@@ -5,13 +5,20 @@ from copy import deepcopy
 import sympy as sp
 
 from ...problem_understanding.notation_parser import NotationError
+from .context import build_context
 from .math_values import latex
 from .premises import FeatureMath, UnknownPremise, parse_expression
+from .route_constraints import apply_visible_constraints
+from .verification import VerificationGap
 
 
 def _bindings(indexed, branch, additional_checks=()):
     values = FeatureMath(indexed)
-    bindings = {"bound": latex(values.x), "parameter": latex(values.parameter)}
+    universal = values.value("quantifier") == "∀"
+    bindings = {"bound": latex(values.x), "parameter": latex(values.parameter),
+                "quantified_requirement": (f"对所有实数 ${latex(values.x)}$ 成立" if universal else
+                                           f"存在实数 ${latex(values.x)}$ 使关系成立"),
+                "quantifier_kind": "全称" if universal else "存在性"}
     for check in [*branch["checks"], *additional_checks]:
         bindings.update(check["display_bindings"])
     # Display the coefficient in the original relation, as in the Demo, while
@@ -52,12 +59,39 @@ def _message(entry, branch, bindings, case_split):
     return template.format(**bindings)
 
 
-def build_fragments(contract, selection, indexed, primary):
-    axes = contract["plane_axes"]
-    cell = [axes["x"]["values"][indexed[axes["x"]["feature"]]["value"]],
-            "free" if indexed[axes["y"]["feature"]]["value"] else "given"]
+def _plane_roles(candidate, target_ref, indexed):
+    """Keep the selection axes in the original quadratic's letter roles.
+
+    The method may later make the quantified parameter its new argument. That
+    does not make its quantified interval the original principal's domain.
+    """
     values = FeatureMath(indexed)
-    base = {"bound": latex(values.x), "parameter": latex(values.parameter)}
+    bound_is_principal = values.value("range_var_is_principal")
+    if bound_is_principal:
+        principal, coefficient_parameter = values.x, values.parameter
+        domain_kind = values.value("domain_kind")
+    else:
+        principal, coefficient_parameter = values.parameter, values.x
+        # Only apply the visible restrictions on the sought letter here. This
+        # operation reads the quantified relation but does not solve it.
+        try:
+            domain, _ = apply_visible_constraints(build_context(candidate, target_ref), sp.S.Reals)
+        except VerificationGap:
+            # Detailed route constraints support fewer inputs than method
+            # selection. Keep its existing feature decision if unavailable.
+            domain_kind = values.value("domain_kind")
+        else:
+            domain_kind = "real" if domain == sp.S.Reals else "bounded_interval"
+    return {
+        "bound": latex(values.x), "parameter": latex(values.parameter),
+        "principal": latex(principal), "coefficient_parameter": latex(coefficient_parameter),
+    }, domain_kind, bound_is_principal
+
+
+def build_fragments(contract, selection, indexed, primary, *, candidate, target_ref):
+    axes = contract["plane_axes"]
+    base, domain_kind, bound_is_principal = _plane_roles(candidate, target_ref, indexed)
+    cell = [axes["x"]["values"][domain_kind], "free" if bound_is_principal else "given"]
     case_split = next(c for c in selection["recommendation_checks"] if c["check_id"] == "interval_case_split")
     branches = {b["branch"]: b for b in selection["branches"]}
     coverage, verdicts, options = {}, {}, []

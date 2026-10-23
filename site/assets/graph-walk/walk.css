@@ -76,11 +76,16 @@
 .gw-completed-body .stage-three-math-step h3 { margin: 12px 0; font-size: 15px; }
 .gw-case-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 4px 0 14px; }
 .gw-case-figures .gw-figure { margin: 0; }
+.gw-completion-group { margin: 0 0 20px; }
+.gw-completion-group + .gw-completion-group { padding-top: 16px; border-top: 1px solid #e1e9e5; }
+.gw-completion-group > h3 { margin: 0 0 12px; color: #1f4a40; font-size: 15px; font-weight: 650; }
 .gw-folded { margin-top: 16px; border: 1px solid #e1e9e5; border-radius: 10px; background: #fbfdfc; }
 .gw-folded > summary { padding: 9px 14px; color: #4b6e65; font-size: 13px; cursor: pointer; }
 .gw-folded > .stage-three-math-step { margin: 0; padding: 4px 14px 14px; }
 .gw-folded > .stage-three-math-step + .stage-three-math-step { border-top: 1px dashed #d9e6e0; }
 .stage-three-highlight .function-conversion .math { font-size: 18px; white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.stage-three-conclusion .stage-three-after { margin: 8px 0; color: #1f5a4c; font-size: 18px; overflow-x: auto; overflow-y: hidden; }
+.stage-three-derivation .stage-three-before { margin: 10px 0; overflow-x: auto; overflow-y: hidden; }
 .gw-stream-routes { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
 .gw-stream-routes button { padding: 8px 13px; border: 1px solid #ccddd7; border-radius: 9px; background: #fff; color: #315b52; font: inherit; font-size: 13px; }
 .gw-stream-routes button[aria-pressed="true"] { border-color: #087f79; background: #eaf5f1; color: #075f5a; font-weight: 650; }
@@ -92,6 +97,11 @@
 .gw-carry { margin: 0 0 14px; padding: 9px 13px; border-left: 3px solid #6fb3a5; border-radius: 0 10px 10px 0; background: #f1f8f5; }
 .gw-carry p { margin: 0; color: #1f5a4c; font-size: 14px; font-weight: 550; line-height: 1.7; }
 .gw-carry .gw-carry-label { margin-bottom: 2px; color: #6f8a81; font-size: 11px; font-weight: 600; }
+.gw-merge-premises dl { margin: 0; }
+.gw-merge-premise { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 5px 0; }
+.gw-merge-premise + .gw-merge-premise { border-top: 1px dashed #d6e7e1; }
+.gw-merge-premise dt { color: #6f8a81; font-size: 13px; }
+.gw-merge-premise dd { margin: 0; }
 .gw-part-stepper { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 14px; padding: 0; list-style: none; color: #8a9c95; font-size: 13px; }
 .gw-part-stepper li { display: inline-flex; align-items: center; gap: 6px; }
 .gw-part-stepper li > span { display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid #cfdcd6; border-radius: 50%; font-size: 11px; font-weight: 650; }

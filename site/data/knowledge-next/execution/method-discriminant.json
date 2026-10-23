@@ -79,11 +79,15 @@
               "$coefficient"
             ],
             "coefficient": "$coefficient",
-            "parameter": "$parameter"
+            "parameter": "$parameter",
+            "relation": "$relation",
+            "cases": "$degree_cases"
           },
           "depends_on": [
             "coefficient",
-            "parameter"
+            "parameter",
+            "relation",
+            "degree_cases"
           ],
           "guard": {
             "ref": "has_degenerate",
@@ -109,7 +113,8 @@
                 "relation": "$relation",
                 "variable": "$x",
                 "parameter": "$parameter",
-                "case": "$case"
+                "case": "$case",
+                "quantifier": "$quantifier"
               },
               "outputs": {
                 "degenerate_solution": "solution",
@@ -144,7 +149,8 @@
                 "value": "$case.value",
                 "holds": "$holds",
                 "linear_coefficient": "$linear_coefficient",
-                "constant": "$constant"
+                "constant": "$constant",
+                "quantifier": "$quantifier"
               },
               "depends_on": [
                 "case",
@@ -154,7 +160,8 @@
                 "relation",
                 "substituted_relation",
                 "linear_coefficient",
-                "constant"
+                "constant",
+                "quantifier"
               ]
             }
           ],
@@ -235,7 +242,8 @@
           "outputs": {
             "opening": "opening",
             "delta": "delta",
-            "sign_expression": "basis_expression"
+            "sign_expression": "basis_expression",
+            "condition_combiner": "condition_combiner"
           },
           "order": 0
         },
@@ -297,30 +305,17 @@
             ],
             "strict": "$strict",
             "relation": "$normalized",
-            "expression": "$sign_expression"
+            "expression": "$sign_expression",
+            "quantifier": "$quantifier",
+            "condition_combiner": "$condition_combiner"
           },
           "depends_on": [
             "opening",
             "strict",
             "normalized",
-            "sign_expression"
-          ]
-        },
-        {
-          "id": "discriminant",
-          "after": "transform",
-          "template": "discriminant",
-          "bindings": {
-            "before": [
-              "$delta_condition"
-            ],
-            "after": [
-              "$parameter_condition"
-            ]
-          },
-          "depends_on": [
-            "delta_condition",
-            "parameter_condition"
+            "sign_expression",
+            "quantifier",
+            "condition_combiner"
           ]
         }
       ],
@@ -442,8 +437,8 @@
           "skip_reason": "not_selected"
         },
         {
-          "id": "intersection",
-          "capability": "intersect_conditions",
+          "id": "combine",
+          "capability": "combine_condition_solutions",
           "public_ref": null,
           "inputs": {
             "conditions": [
@@ -455,12 +450,48 @@
               "$delta_solution"
             ],
             "variable": "$parameter",
-            "case_domain": "$case.domain"
+            "case_domain": "$case.domain",
+            "combiner": "$condition_combiner",
+            "quantifier": "$quantifier"
           },
           "outputs": {
             "candidate_set": "solution"
           },
           "order": 6,
+          "guard": {
+            "ref": "case.kind",
+            "equals": "nondegenerate"
+          },
+          "skip_reason": "not_selected"
+        },
+        {
+          "id": "opening_branches",
+          "capability": "quadratic_opening_solutions",
+          "public_ref": null,
+          "inputs": {
+            "relation": "$normalized",
+            "variable": "$x",
+            "parameter": "$parameter",
+            "quantifier": "$quantifier",
+            "case_domain": "$case.domain",
+            "delta": "$delta",
+            "parameter_condition": "$parameter_condition",
+            "delta_solution": "$delta_solution",
+            "solution": "$candidate_set"
+          },
+          "outputs": {
+            "opening_branches": "branches",
+            "automatic_branch": "automatic",
+            "restricted_branch": "restricted",
+            "automatic_up": "automatic_up",
+            "automatic_down": "automatic_down",
+            "has_restricted": "has_restricted",
+            "merge_openings": "merge_required",
+            "none_viable": "none_viable",
+            "excluded_openings": "excluded",
+            "opening_certificate": "certificate"
+          },
+          "order": 7,
           "guard": {
             "ref": "case.kind",
             "equals": "nondegenerate"
@@ -501,21 +532,255 @@
       ],
       "display_units": [
         {
-          "id": "solution",
-          "after": "intersection",
-          "template": "solution",
+          "id": "automatic_up",
+          "after": "opening_branches",
+          "template": "opening_branch_solution",
+          "bindings": {
+            "branch": "$automatic_branch",
+            "parameter": "$parameter",
+            "relation": "$normalized",
+            "delta": "$delta",
+            "quantifier": "$quantifier",
+            "before": [],
+            "after": [
+              "$automatic_branch.solution"
+            ],
+            "opening_certificate": "$opening_certificate"
+          },
+          "depends_on": [
+            "automatic_branch",
+            "delta",
+            "normalized",
+            "parameter",
+            "quantifier",
+            "opening_certificate"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "automatic_up",
+                "equals": true
+              }
+            ]
+          },
+          "source_scope": {
+            "step": "solve",
+            "actions": [
+              "opening_branches"
+            ]
+          }
+        },
+        {
+          "id": "discriminant",
+          "after": "opening_branches",
+          "template": "discriminant",
           "bindings": {
             "before": [
-              "$parameter_condition"
+              "$delta_condition"
             ],
             "after": [
-              "$candidate_set"
+              "$parameter_condition"
+            ],
+            "quantifier": "$quantifier",
+            "condition_combiner": "$condition_combiner",
+            "opening": "$opening",
+            "relation": "$normalized",
+            "delta": "$delta",
+            "x": "$x",
+            "branch": "$restricted_branch"
+          },
+          "depends_on": [
+            "delta_condition",
+            "parameter_condition",
+            "quantifier",
+            "condition_combiner",
+            "opening",
+            "normalized",
+            "delta",
+            "x",
+            "restricted_branch"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "has_restricted",
+                "equals": true
+              }
             ]
+          },
+          "source_scope": {
+            "step": "conditions",
+            "actions": [
+              "delta",
+              "simplify",
+              "transform"
+            ]
+          }
+        },
+        {
+          "id": "solution",
+          "after": "opening_branches",
+          "template": "opening_branch_solution",
+          "bindings": {
+            "branch": "$restricted_branch",
+            "parameter": "$parameter",
+            "relation": "$normalized",
+            "delta": "$delta",
+            "quantifier": "$quantifier",
+            "before": [],
+            "after": [
+              "$restricted_branch.solution"
+            ],
+            "opening_certificate": "$opening_certificate"
+          },
+          "depends_on": [
+            "delta",
+            "normalized",
+            "parameter",
+            "quantifier",
+            "restricted_branch",
+            "opening_certificate"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "has_restricted",
+                "equals": true
+              }
+            ]
+          },
+          "source_scope": {
+            "step": "solve"
+          }
+        },
+        {
+          "id": "automatic_down",
+          "after": "opening_branches",
+          "template": "opening_branch_solution",
+          "bindings": {
+            "branch": "$automatic_branch",
+            "parameter": "$parameter",
+            "relation": "$normalized",
+            "delta": "$delta",
+            "quantifier": "$quantifier",
+            "before": [],
+            "after": [
+              "$automatic_branch.solution"
+            ],
+            "opening_certificate": "$opening_certificate"
+          },
+          "depends_on": [
+            "automatic_branch",
+            "delta",
+            "normalized",
+            "parameter",
+            "quantifier",
+            "opening_certificate"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "automatic_down",
+                "equals": true
+              }
+            ]
+          },
+          "source_scope": {
+            "step": "solve",
+            "actions": [
+              "opening_branches"
+            ]
+          }
+        },
+        {
+          "id": "opening_merge",
+          "after": "opening_branches",
+          "template": "opening_branch_merge",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$candidate_set"
+            ],
+            "branches": "$opening_branches",
+            "parameter": "$parameter",
+            "opening_certificate": "$opening_certificate"
           },
           "depends_on": [
             "candidate_set",
-            "parameter_condition"
-          ]
+            "opening_branches",
+            "parameter",
+            "opening_certificate"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "merge_openings",
+                "equals": true
+              }
+            ]
+          },
+          "source_scope": {
+            "step": "solve",
+            "actions": [
+              "opening_branches"
+            ]
+          }
+        },
+        {
+          "id": "opening_excluded",
+          "after": "opening_branches",
+          "template": "opening_excluded",
+          "bindings": {
+            "before": [],
+            "after": [
+              "$candidate_set"
+            ],
+            "branches": "$excluded_openings",
+            "parameter": "$parameter"
+          },
+          "depends_on": [
+            "candidate_set",
+            "excluded_openings",
+            "parameter"
+          ],
+          "guard": {
+            "all": [
+              {
+                "ref": "case.kind",
+                "equals": "nondegenerate"
+              },
+              {
+                "ref": "none_viable",
+                "equals": true
+              }
+            ]
+          },
+          "source_scope": {
+            "step": "solve",
+            "actions": [
+              "opening_branches"
+            ]
+          }
         }
       ],
       "merges": [
@@ -549,7 +814,7 @@
         },
         {
           "id": "case_solution",
-          "order": 7,
+          "order": 8,
           "branches": [
             {
               "guard": {
@@ -601,11 +866,13 @@
             "after": [
               "$candidate_set"
             ],
-            "case_results": "$case_results"
+            "case_results": "$case_results",
+            "parameter": "$parameter"
           },
           "depends_on": [
             "candidate_set",
-            "case_results"
+            "case_results",
+            "parameter"
           ],
           "guard": {
             "ref": "has_degenerate",
@@ -676,7 +943,7 @@
         }
       },
       {
-        "function": "universal_reals",
+        "function": "quantified_reals",
         "inputs": {
           "quantifier": "$quantifier",
           "domain": "$domain"

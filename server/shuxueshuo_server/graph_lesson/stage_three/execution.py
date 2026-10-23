@@ -12,6 +12,7 @@ from jsonschema import Draft202012Validator
 
 from . import driver, verification
 from .checkpoint import export_json, make_checkpoint
+from .choice_completion import normalize_original_choice, resolve_original_choice
 from .contracts import ROOT
 from .goals import GoalClosureMismatch
 from .handoff import complete_route
@@ -281,10 +282,14 @@ def execute_route(candidate, goal, branch, folder, store, *, previous=(), hooks=
     if store.checkpoint(ref, route_id)["status"] not in TERMINAL:
         route = _artifact(state, goal["constraint_context"], folder)
         if state["status"] == "verified":
+            original_choice = resolve_original_choice(
+                store, candidate, ref, route_id, state["verified_result"]["answer"], state["feasible_set_exact"],
+            )
+            original_choice = normalize_original_choice(original_choice, ref)
             complete_route(store, _checkpoint(store, state, phase="complete", status="verified"), route=route,
                            verification=state["verification"], feasible_set=state["verified_result"]["feasible_set"],
                            answer=state["verified_result"]["answer"], commit_id=f"{ref}:{route_id}:complete",
-                           consistency=state["consistency"])
+                           consistency=state["consistency"], original_choice=original_choice)
         else:
             _commit(store, state, "terminal", status=state["status"], phase="complete",
                     events=[_event("lesson.route_status", state, {"status": state["status"], "diagnostics": state["diagnostics"]})],

@@ -85,7 +85,6 @@ def _recommend(contract, branches, indexed):
 
 def evaluate_goal(candidate, target_ref, features, primary):
     """Evaluate one admitted stage-two target. Batch 1a executes no routes."""
-    del candidate  # Full candidate constraints are handled by the runner/context boundary.
     if isinstance(primary, dict):
         primary = primary.get("type_id")
     contract = load_contract(primary)
@@ -117,5 +116,6 @@ def evaluate_goal(candidate, target_ref, features, primary):
     selection = {"rule": contract["rule"], "branches": list(branches.values()),
                  "recommendation_rule": rule, "recommendation_checks": [case_split]}
     status = "no_verified_route" if rule else "no_applicable_method"
-    d3, d4 = build_fragments(contract, selection, indexed, primary) if rule else (None, None)
+    d3, d4 = (build_fragments(contract, selection, indexed, primary,
+                              candidate=candidate, target_ref=target_ref) if rule else (None, None))
     return {"status": status, "selection": deepcopy(selection), "d3": d3, "d4": d4, "diagnostics": []}

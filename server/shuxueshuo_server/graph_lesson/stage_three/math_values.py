@@ -76,6 +76,10 @@ class _DescendingPrinter(LatexPrinter):
         (low, low_op), symbol, (high, high_op) = bounds
         return f"{self._print(low)} {low_op} {self._print(symbol)} {high_op} {self._print(high)}"
 
+    def _print_Or(self, expr):
+        # Keep the printer's grouping/precedence while using familiar student notation.
+        return super()._print_Or(expr).replace(r"\vee", r"\quad\text{或}\quad")
+
 
 _STRICT_TEX = {True: "<", False: r"\leq"}
 

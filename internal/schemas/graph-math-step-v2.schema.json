@@ -69,6 +69,19 @@
         "minLength": 1
       }
     },
+    "case_condition": {
+      "$ref": "#/$defs/mathValue",
+      "description": "Verified condition for the current case, frozen with the card."
+    },
+    "branch_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Presentation branch within the execution case; does not alter source case_path."
+    },
+    "branch_condition": {
+      "$ref": "#/$defs/mathValue",
+      "description": "Verified nontrivial condition for the presentation branch, frozen with the card."
+    },
     "title": {
       "type": "string",
       "minLength": 1
@@ -102,8 +115,7 @@
           "type": "string"
         },
         "connector": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "items": {
           "type": "array",
@@ -130,6 +142,12 @@
           }
         },
         "conclusion_only": {
+          "const": true
+        },
+        "show_result": {
+          "const": true
+        },
+        "replace_with_graph": {
           "const": true
         },
         "layout": {

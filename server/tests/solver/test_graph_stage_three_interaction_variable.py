@@ -206,8 +206,24 @@ def test_actual_affine_cards_compile_without_future_evidence(registry, fact):
     assert pending == []
     for seed, (chunk, diagnostics) in zip(seeds, results, strict=True):
         interaction.validate_chunk(chunk)
-        if seed["template"] in ("variable_roles", "variable_reorder", "variable_range", "variable_conditions"):
+        if seed["template"] in ("variable_swap", "variable_slope", "variable_sign_case"):
             assert chunk["status"] == "interactive", (seed["template"], diagnostics)
+
+
+def test_current_problem_asks_for_slope_then_one_closed_interval_case(registry):
+    state = _finish_swap(simple("∀m∈[1,3]:m*(x^2-x+1)-6<0", symbol="x"))
+    seeds = state["interaction_seeds"]
+    slope, = [seed for seed in seeds if seed["template"] == "variable_slope"]
+    sign, _ = compile_seed(slope, registry)
+    assert selected_options(sign["parts"][0]) == ["恒大于 0"]
+    seed, = [seed for seed in seeds if seed["template"] == "variable_sign_case"]
+    chunk, diagnostics = compile_seed(seed, registry)
+    assert chunk["status"] == "interactive", diagnostics
+    assert [part["title"] for part in chunk["parts"]] == [
+        "看图确定位置", "计算函数值", "写出本情况的条件", "求本情况的范围"]
+    assert selected_options(chunk["parts"][0]) == ["右端点 $m=3$"]
+    assert all("True" not in part["question"] for part in chunk["parts"])
+    assert not any(seed["template"] == "variable_case_merge" for seed in seeds)
 
 
 def test_actual_open_interval_case_merge_unions_isolated_point_and_draws_it(registry):
@@ -216,7 +232,7 @@ def test_actual_open_interval_case_merge_unions_isolated_point_and_draws_it(regi
     seed, = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_case_merge"]
     # Linear-case seeds deliberately have no quadratic result/axis presentation bindings.
     assert "results" not in interaction.decode_value(seed["values"])
-    # The real driver produces [-1,0), {0}, (0,1), and two empty cases.
+    # Equal-sign cells share one case; the results are [-1,0), {0}, and (0,1).
     # The union includes -1 and the isolated constant-case value 0, but not 1.
     chunk, diagnostics = compile_seed(seed, registry)
     part, = chunk["parts"]
@@ -239,8 +255,8 @@ def test_actual_open_interval_case_merge_unions_isolated_point_and_draws_it(regi
 def test_actual_classified_affine_questions_include_their_frozen_case_condition(registry):
     state = _finish_swap(simple("∀a∈(-1,1):a*x^2-(a+1)*x+1>0", symbol="x"))
     assert state["status"] == "method_complete"
-    seeds = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_case_range"]
-    assert len(seeds) == 5
+    seeds = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_sign_case"]
+    assert len(seeds) == 3
     questions = []
     for seed in seeds:
         # Compile each real frozen card by itself: the question must not rely on
@@ -254,6 +270,37 @@ def test_actual_classified_affine_questions_include_their_frozen_case_condition(
     assert any("$0 < x < 1$" in question for question in questions)
 
     first, _ = compile_seed(seeds[0], registry)
-    assert [part["title"] for part in first["parts"]] == ["计算候选值", "判断候选值能否取得"]
-    assert all("$x < 0$" in part["question"] for part in first["parts"])
-    assert selected_rows(first["parts"][1]) == [("候选位置 $a=-1$", "只能趋近，不能取得")]
+    assert [part["title"] for part in first["parts"]] == [
+        "看图确定位置", "计算函数值", "判断能否取得", "写出本情况的条件", "求本情况的范围"]
+    assert first["parts"][0]["graph"]["kind"] == "linear"
+    assert selected_rows(first["parts"][2]) == [("候选位置 $a=-1$", "只能趋近，不能取得")]
+
+
+@pytest.mark.parametrize("interval,is_open", [("[-1,1]", False), ("(-1,1)", True)])
+def test_complete_positive_zero_negative_flow_has_one_interactive_card_per_sign(registry, interval, is_open):
+    state = _finish_swap(simple(f"∀m∈{interval}:x*m-1<0", symbol="x"))
+    assert state["status"] == "method_complete"
+    seeds = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_sign_case"]
+    assert len(seeds) == 3
+    assert {interaction.decode_value(seed["values"])["slope_sign"] for seed in seeds} == {
+        "positive", "zero", "negative"}
+    for seed in seeds:
+        values = interaction.decode_value(seed["values"])
+        chunk, diagnostics = compile_seed(seed, registry)
+        assert chunk["status"] == "interactive", diagnostics
+        titles = [part["title"] for part in chunk["parts"]]
+        assert titles[-1] == "求本情况的范围"
+        graph = chunk["parts"][0]["graph"]
+        assert graph["kind"] == "linear"
+        if values["slope_sign"] == "zero":
+            assert titles[0] == "计算函数值"
+            assert "看图确定位置" not in titles
+            assert "判断能否取得" not in titles
+            assert graph["params"]["slope"] == 0
+        else:
+            assert titles[0] == "看图确定位置"
+            assert ("判断能否取得" in titles) is is_open
+        assert all(f"${latex(values['case']['condition'])}$" in part["question"] for part in chunk["parts"])
+    merge, = [seed for seed in state["interaction_seeds"] if seed["template"] == "variable_case_merge"]
+    merged = interaction.decode_value(merge["values"])["after"][-1]
+    assert merged == (sp.Interval(-1, 1) if is_open else sp.Interval.open(-1, 1))

@@ -311,6 +311,7 @@ export function createEventConsumer(identity, hooks = {}) {
       if (task.available && !unavailable(goals.get(task.target_ref))) completions.set(routeKey(task.target_ref, task.route_id), {
         kind: 'route_completion', status: 'verified', answer: copy(task.answer), feasible_set: copy(task.feasible_set),
         verified_route_sha256: task.verified_route_sha256,
+        ...(task.original_choice ? {original_choice: copy(task.original_choice)} : {}),
       });
       enrichmentStatuses.set(routeKey(task.target_ref, task.route_id), {status: task.status});
     }

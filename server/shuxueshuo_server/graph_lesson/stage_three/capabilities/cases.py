@@ -70,8 +70,8 @@ def coefficient_zeros(coefficient, parameter):
 def partition_cases(relation, variable, parameter, domain, quantifier):
     if relation.rel_op not in (">", ">=", "<", "<="):
         raise CapabilityGap("ordered_relation_required")
-    if domain != sp.S.Reals or quantifier != "∀":
-        raise CapabilityGap("all_real_universal_quadratic_required")
+    if domain != sp.S.Reals or quantifier not in ("∀", "∃"):
+        raise CapabilityGap("all_real_quantified_quadratic_required")
     expression = residual(relation)
     poly = polynomial(expression, variable)
     if poly.degree() != 2 or expression.free_symbols - {variable, parameter}:
@@ -141,7 +141,9 @@ def solve_parameter_relation(relation, variable):
     return result({"solution": solution}, ["parameter_polynomial_signs"], checks)
 
 
-def degenerate_case_check(relation, variable, parameter, case):
+def degenerate_case_check(relation, variable, parameter, case, quantifier):
+    if quantifier not in ("∀", "∃"):
+        raise CapabilityGap("unsupported_quantifier")
     if case["kind"] != "degenerate" or case["value"] is None:
         raise LocalCheckFailed("degenerate_case_required")
     value = case["value"]
@@ -159,9 +161,9 @@ def degenerate_case_check(relation, variable, parameter, case):
         raise LocalCheckFailed("case_does_not_remove_quadratic_term")
     slope, constant = poly.nth(1), poly.nth(0)
     if slope.is_zero is False:
-        # A nonconstant affine function is unbounded below on R.
-        holds = False
-        reason = "nonconstant_affine_unbounded_below"
+        # A nonconstant affine residual takes every real value on R.
+        holds = quantifier == "∃"
+        reason = "nonconstant_affine_full_real_range"
     elif slope.is_zero is True:
         truth = constant.is_positive if relation.rel_op in (">", "<") else constant.is_nonnegative
         if truth not in (True, False):
@@ -178,11 +180,11 @@ def degenerate_case_check(relation, variable, parameter, case):
         [{"kind": "case_substitution", "passed": True, "parameter": parameter,
           "value": value, "condition": case["condition"], "residual": expression},
          {"kind": "whole_real_affine_sign", "passed": True, "reason": reason,
-          "slope": slope, "constant": constant, "holds": holds}],
+          "slope": slope, "constant": constant, "holds": holds, "quantifier": quantifier}],
     )
 
 
-def intersect_conditions(conditions, solutions, variable, case_domain):
+def _combine_conditions(conditions, solutions, variable, case_domain, combiner):
     if not conditions or len(conditions) != len(solutions):
         raise LocalCheckFailed("incomplete_condition_solutions")
     checks = []
@@ -192,10 +194,28 @@ def intersect_conditions(conditions, solutions, variable, case_domain):
             raise LocalCheckFailed("incorrect_condition_solution")
         checks.append({"kind": "condition_solution", "passed": True,
                        "condition": condition, "solution": solution, "evidence": evidence})
-    solution = sp.Intersection(case_domain, *solutions)
-    checks.append({"kind": "same_case_intersection", "passed": True,
-                   "case_domain": case_domain, "condition_sets": solutions})
-    return result({"solution": solution}, ["intersect_case_conditions"], checks)
+    combined = sp.Intersection(*solutions) if combiner == "all" else sp.Union(*solutions)
+    solution = sp.Intersection(case_domain, combined)
+    checks.append({"kind": "same_case_intersection" if combiner == "all" else "same_case_condition_union",
+                   "passed": True, "case_domain": case_domain, "condition_sets": solutions,
+                   "combiner": combiner, "combined": combined})
+    return result({"solution": solution},
+                  ["intersect_case_conditions" if combiner == "all" else "union_case_conditions"], checks)
+
+
+def combine_condition_solutions(conditions, solutions, variable, case_domain, combiner, quantifier):
+    """Combine quantified sign alternatives, then restrict to this degree case."""
+    if quantifier not in ("∀", "∃"):
+        raise CapabilityGap("unsupported_quantifier")
+    expected_combiner = "all" if quantifier == "∀" else "any"
+    if combiner != expected_combiner:
+        raise LocalCheckFailed("quantifier_condition_combiner_mismatch")
+    combined = _combine_conditions(conditions, solutions, variable, case_domain, combiner)
+    return result(combined["outputs"], combined["operations"], [
+        *combined["checks"],
+        {"kind": "quantifier_condition_combiner", "passed": True,
+         "quantifier": quantifier, "combiner": combiner},
+    ])
 
 
 def merge_cases(cases, results):

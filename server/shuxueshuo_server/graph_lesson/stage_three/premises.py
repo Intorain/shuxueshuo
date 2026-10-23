@@ -15,7 +15,7 @@ from ...problem_understanding.notation_compile import NotationValidator
 from ...problem_understanding.notation_parser import NotationError
 from ...problem_understanding.notation_semantics import bounded_expand
 from ..stage_one.features import FEATURE_REGISTRY, _Algebra
-from .math_values import latex
+from .math_values import BOUND_NAMES, latex
 
 _REGISTERED_FEATURES = frozenset(spec.feature_id for spec in FEATURE_REGISTRY)
 
@@ -258,7 +258,7 @@ def interval_case_split(values):
                    "parameter_vertex_requires_cases" if needs_cases else "no_parameter_cases",
                    axis=axis, coefficient=coefficient,
                    opening="向上" if coefficient.is_positive else "向下",
-                   bound_kind="下界" if quantifier == "∀" else "上界",
+                   bound_kind=BOUND_NAMES["inf" if quantifier == "∀" else "sup"],
                    vertex_extremum=bool(vertex_extremum))
 
 

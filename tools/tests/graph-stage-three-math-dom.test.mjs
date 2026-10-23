@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {attachMathQA, createMathCard, setMathCardLayout, createMathContext, createRouteCompletion} from '../../site/assets/graph-walk/stream-math-dom.mjs';
+import {attachMathQA, createMathCard, setMathCardLayout, createRouteCompletion} from '../../site/assets/graph-walk/stream-math-dom.mjs';
 
 function documentFixture() {
   const document = {createElement(tag) { return new Element(tag); }};
@@ -41,6 +41,29 @@ test('shared card preserves identity, formula structure and a separate empty QA 
   assert.deepEqual(rendered, [card.node]);
 });
 
+test('a generic card leads with its after conclusion and keeps premises and prose inside open derivation', () => {
+  const {document, find} = documentFixture();
+  const card = createMathCard(document, step);
+  const [details] = find('details stage-three-derivation', card.node);
+  assert.equal(card.node.children[1], card.conclusion);
+  assert.equal(card.conclusion.className, 'visual-board completed-visual stage-three-conclusion');
+  assert.deepEqual(find('stage-three-after', card.conclusion).map(node => node.textContent), [step.after[0].latex]);
+  assert.equal(card.node.children[2], details);
+  assert.equal(details.open, true);
+  assert.deepEqual(details.children.map(node => node.textContent), ['完整推导', step.before[0].latex, step.explanation]);
+});
+
+test('generic derivations omit only premises already stated in the conclusion', () => {
+  const {document, find} = documentFixture();
+  const card = createMathCard(document, {...step, before: [{latex: 'x>0'}, {latex: ' a=1 '}], after: ['a=1']});
+  assert.deepEqual(find('stage-three-before', card.node).map(node => node.textContent), ['x>0']);
+  assert.deepEqual(find('stage-three-after', card.node).map(node => node.textContent), ['a=1']);
+  assert.equal(find('stage-three-explanation', card.node)[0].textContent, step.explanation);
+  const premiseOnly = createMathCard(document, {...step, after: []});
+  assert.equal(premiseOnly.conclusion, null);
+  assert.equal(find('stage-three-before', premiseOnly.node)[0].textContent, step.before[0].latex);
+});
+
 test('embedding hides only a repeated title and moving the card restores its standalone heading without rebuilding math', () => {
   const {document} = documentFixture();
   const card = createMathCard(document, step, {embedded: true, parentTitle: step.title});
@@ -53,6 +76,35 @@ test('embedding hides only a repeated title and moving the card restores its sta
   assert.equal(card.heading.hidden, false);
   assert.equal(card.node.className, 'stage-three-math-step');
   assert.deepEqual(card.node.children, children, 'layout changes do not replace the math or QA nodes');
+});
+
+test('a repeated board caption is hidden while distinct conclusion labels remain visible', () => {
+  const {document} = documentFixture();
+  const card = createMathCard(document, {...step, highlight: {caption: '外层步骤', items: [{label: '范围', math: 'a>1'}]}},
+    {embedded: true, parentTitle: '外层步骤'});
+  assert.equal(card.heading.hidden, false);
+  assert.equal(card.caption.hidden, true);
+  setMathCardLayout(card);
+  assert.equal(card.caption.hidden, false, 'standalone views recover a caption different from their own title');
+  const repeated = createMathCard(document, {...step, highlight: {caption: step.title, items: [{label: '最小值', math: '-1'}]}});
+  assert.equal(repeated.caption.hidden, true);
+  assert.equal(repeated.heading.hidden, false);
+});
+
+test('only an explicit graph replacement hides a conclusion, and reused cards restore their fallback', () => {
+  const {document, find} = documentFixture();
+  for (const replace_with_graph of [true, false, undefined]) {
+    const card = createMathCard(document, {...step, highlight: {caption: '判定', replace_with_graph,
+      items: [{label: '结论', math: 'a>1'}]}}, {externalConclusion: true});
+    const nodes = [...card.node.children];
+    assert.equal(card.conclusion.hidden, replace_with_graph === true);
+    assert.equal(find('details stage-three-derivation', card.node)[0].open, true);
+    setMathCardLayout(card);
+    assert.equal(card.conclusion.hidden, false, 'readonly, retained and failed-graph views show the fallback again');
+    assert.deepEqual(card.node.children, nodes);
+  }
+  const generic = createMathCard(document, step, {externalConclusion: true});
+  assert.equal(generic.conclusion.hidden, false, 'a separate formula conclusion is not replaced by a picture');
 });
 
 test('a highlighted card leads with the conclusion board and folds the prose into a derivation', () => {
@@ -72,6 +124,44 @@ test('a highlighted card leads with the conclusion board and folds the prose int
   assert.deepEqual(find('stage-three-explanation', details).map(line => line.textContent),
     ['$\\because x<0$，$\\therefore x<0$。', '移项得 $ax\\ge-x^2-2$。']);
   assert.equal(find('stage-three-after', node).length, 0);
+});
+
+test('parallel case conclusions preserve an explicit empty connector instead of implying a transformation', () => {
+  const {document, find} = documentFixture();
+  const highlight = {caption: '分类条件', connector: '', items: [
+    {label: '一次或常数情况', math: 'k=0'}, {label: '二次情况', math: 'k\\ne0'}]};
+  const card = createMathCard(document, {...step, highlight});
+  const arrows = find('conversion-arrow', card.node);
+  assert.equal(arrows.length, 1, 'the empty layout spacer keeps the cases side by side');
+  assert.equal(arrows[0].textContent, '');
+  assert.equal(arrows[0]['aria-hidden'], 'true');
+  assert.deepEqual(find('math', card.node).map(item => item.textContent), ['\\displaystyle k=0', '\\displaystyle k\\ne0']);
+  const defaultHighlight = {...highlight}; delete defaultHighlight.connector;
+  assert.equal(find('conversion-arrow', createMathCard(document, {...step, highlight: defaultHighlight}).node)[0].textContent, '→');
+  assert.equal(find('conversion-arrow', createMathCard(document, {...step, highlight: {...highlight, connector: '⇔'}}).node)[0].textContent, '⇔');
+});
+
+test('an ordinary conclusion board displays a result only when explicitly requested', () => {
+  const {document, find} = documentFixture(), rendered = [];
+  const highlight = {caption: '检查退化情况', items: [{label: '代入后', math: '0\\ge0'}],
+    result: '满足原题，保留 $k=0$。', show_result: true};
+  const card = createMathCard(document, {...step, highlight}, {renderMath: node => rendered.push(node)});
+  const [result] = find('gw-result', card.conclusion);
+  assert.equal(result.textContent, highlight.result);
+  assert.equal(result.dataset.mathText, 'true');
+  assert.equal(card.conclusion.children.at(-1), result);
+  assert.deepEqual(rendered, [card.node], 'the result is present before mathematical text is rendered');
+  for (const show_result of [undefined, false, 'true']) {
+    assert.equal(find('gw-result', createMathCard(document, {...step, highlight: {...highlight, show_result}}).node).length, 0,
+      'legacy carry results do not duplicate the mathematical conclusion');
+  }
+  for (const value of [undefined, '', '   ']) {
+    assert.equal(find('gw-result', createMathCard(document, {...step, highlight: {...highlight, result: value}}).node).length, 0);
+  }
+  const untrusted = '<img src=x onerror=alert(1)> $k=0$';
+  const safe = createMathCard(document, {...step, highlight: {...highlight, result: untrusted}});
+  assert.equal(find('gw-result', safe.node)[0].textContent, untrusted);
+  assert.equal(find('gw-result', safe.node)[0].children.length, 0);
 });
 
 test('a newline in the derivation starts a new line, as each ∵/∴ step does', () => {
@@ -120,24 +210,6 @@ test('a conclusion-only card shows the board alone, with no derivation or formul
   assert.equal(find('stage-three-before', node).length + find('stage-three-after', node).length, 0);
 });
 
-test('active question context reveals only before formulas from all covered cards', () => {
-  const {document, find} = documentFixture(), rendered = [];
-  const other = {...step, before: [{latex: 'b>1'}], after: [{latex: 'hidden answer'}]};
-  const node = createMathContext(document, [step, other], {renderMath: value => rendered.push(value)});
-  assert.deepEqual(find('stage-three-before', node).map(value => value.textContent), [step.before[0].latex, 'b>1']);
-  assert.equal(find('stage-three-after', node).length, 0);
-  assert.equal(find('stage-three-explanation', node).length, 0);
-  assert.equal(find('stage-three-qa', node).length, 0);
-  assert.deepEqual(rendered, [node]);
-});
-
-test('question context skips a formula the question already states', () => {
-  const {document, find} = documentFixture();
-  const node = createMathContext(document, [{...step, before: [{latex: 'a \\geq - \\frac{5}{2}'}, {latex: 'b>1'}]}],
-    {question: '由 $a \\geq - \\frac{5}{2}$，$a$ 的取值范围是？'});
-  assert.deepEqual(find('stage-three-before', node).map(value => value.textContent), ['b>1']);
-});
-
 test('late QA only changes its region and preserves the mathematical DOM', () => {
   const {document} = documentFixture(), rendered = [];
   const card = createMathCard(document, step), nodes = [...card.node.children];
@@ -175,9 +247,12 @@ test('untrusted titles, formula text, explanation and QA never become executable
   const card = createMathCard(document, {...step, title: source, before: [{latex: source}], after: [{latex: source}], explanation: source},
     {qa: {...qa, qa: {questions: [source], extra: {text: source}}}});
   assert.equal(card.node.children[0].textContent, source);
-  for (const name of ['stage-three-before', 'stage-three-after', 'stage-three-explanation']) {
+  assert.equal(find('stage-three-before', card.node).length, 0, 'identical before/after text is only shown once');
+  for (const name of ['stage-three-after', 'stage-three-explanation']) {
     assert.equal(find(name, card.node)[0].textContent, source);
   }
+  const premise = createMathCard(document, {...step, before: [{latex: source}], after: []});
+  assert.equal(find('stage-three-before', premise.node)[0].textContent, source);
   assert.equal(card.qa.children[1].textContent, source);
   assert.equal(card.qa.children[3].textContent, source);
 });
@@ -240,4 +315,21 @@ test('revoked mathematical answers do not show a successful completion', () => {
   const value = createRouteCompletion(document, {available: false, answer: {kind: 'find_range', status: 'set', set: '[0,1]'}});
   assert.equal(value.complete, false);
   assert.equal(value.node.hidden, true);
+});
+
+test('verified original option appears alongside the mathematical answer, with no HTML interpretation', () => {
+  const {document, find} = documentFixture();
+  const payload = {status: 'verified', identity: ['/root/goals/0', 'discriminant'],
+    answer: {kind: 'find_range', status: 'set', set: {latex: '(-\\infty,-2]\\cup[2,\\infty)'}},
+    original_choice: {status: 'matched', kind: 'single_choice', target_ref: '/root/goals/0',
+      options: [{label: 'A', text: '$m\\le-2$ 或 $m\\ge2$'}, {label: 'B', text: '<img src=x>'}], correct_labels: ['A']}};
+  const result = createRouteCompletion(document, payload);
+  assert.equal(result.complete, true);
+  assert.equal(find('stage-three-choice-answer', result.node)[0].textContent, '答案：A　');
+  assert.equal(find('stage-three-answer', result.node)[0].textContent, payload.answer.set.latex);
+  assert.equal(find('stage-three-choice-answer', createRouteCompletion(document, {...payload, available: false}).node).length, 0);
+  for (const original_choice of [{...payload.original_choice, status: 'unmatched'},
+    {...payload.original_choice, target_ref: '/wrong'}, {...payload.original_choice, correct_labels: ['A', 'B']}]) {
+    assert.equal(find('stage-three-choice-answer', createRouteCompletion(document, {...payload, original_choice}).node).length, 0);
+  }
 });

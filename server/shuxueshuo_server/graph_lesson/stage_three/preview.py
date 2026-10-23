@@ -65,7 +65,7 @@ function addQA(chunk){
 }
 function finish(target,route,payload){
  const id=key(target,route);if(completed.has(id)||payload.available===false)return;
- const card=createRouteCompletion(document,payload,{renderMath});
+ const card=createRouteCompletion(document,{...payload,target_ref:target},{renderMath});
  completed.set(id,{...card,target});const section=routeNode(target,route);
  section.node.append(card.node);section.info.textContent=card.statusText;
 }
@@ -119,7 +119,7 @@ def make_server(directory, *, host="127.0.0.1", port=0):
                              "last_seq": events[-1]["seq"] if events else cursor}
                 elif target.path in {"/", "/index.html"}:
                     value, content_type = PAGE, "text/html; charset=utf-8"
-                elif target.path in {"/stage-three-stream.mjs", "/stream-math-dom.mjs"}:
+                elif target.path in {"/stage-three-stream.mjs", "/stream-math-dom.mjs", "/original-choice.mjs"}:
                     value = (ROOT / "site/assets/graph-walk" / target.path[1:]).read_text()
                     content_type = "text/javascript; charset=utf-8"
                 elif target.path == "/katex.min.js":

@@ -1,8 +1,8 @@
 """Affine quantified-variable envelopes with exact parameter sign evidence.
 
 The variable is the quantified letter; the parameter is the letter being
-solved for. Closed rational intervals support every affine slope. Open finite intervals
-with parameter-dependent zero slopes use complete exact slope-root cases;
+solved for. A variable slope uses up to three complete exact sign cases on
+every finite interval. Disconnected cells with the same sign share one case;
 zero cases are constant and attained in the interior.
 """
 
@@ -240,25 +240,29 @@ def combine_variable_solutions(conditions, first, second, combiner, variable):
 
 @lru_cache(maxsize=32)
 def _session_variable_cases(expression, variable, parameter, domain, policy_key):
-    """Complete slope roots determine strict sign and zero/constant cases."""
+    """Group complete root cells by slope sign, independent of endpoint closure."""
     from .parametric import _partition_polynomials
 
     slope, _, sign, certificate = _range_input(expression, variable, parameter, domain, dict(policy_key))
-    if sign != "unknown" or not (domain.left_open or domain.right_open):
+    if sign != "unknown":
         return [{"id": "variable-direct", "kind": "nondegenerate", "mode": "direct",
                  "condition": sp.true, "domain": sp.S.Reals, "value": None,
                  "slope_sign": sign, "certificate": certificate}]
     cells, critical = _partition_polynomials([("slope", slope)], parameter)
     cases = []
-    for index, cell in enumerate(cells):
-        sign = {1: "positive", -1: "negative", 0: "zero"}[cell["signs"]["slope"]]
+    for sign, sign_value in (("positive", 1), ("zero", 0), ("negative", -1)):
+        sign_cells = [cell for cell in cells if cell["signs"]["slope"] == sign_value]
+        if not sign_cells:
+            continue
+        case_domain = sp.Union(*(cell["domain"] for cell in sign_cells))
+        value = next(iter(case_domain)) if isinstance(case_domain, sp.FiniteSet) and len(case_domain) == 1 else None
         cases.append({
-            "id": f"variable-case-{index + 1}", "kind": "constant" if sign == "zero" else "linear",
-            "mode": "classified", "condition": cell["domain"].as_relational(parameter),
-            "domain": cell["domain"], "value": cell["value"], "slope_sign": sign,
+            "id": f"variable-case-{len(cases) + 1}", "kind": "constant" if sign == "zero" else "linear",
+            "mode": "classified", "condition": case_domain.as_relational(parameter),
+            "domain": case_domain, "value": value, "slope_sign": sign,
             "certificate": {"kind": "affine_slope_case_certificate", "passed": True,
-                            "slope": slope, "sign": sign, "parameter_domain": cell["domain"],
-                            "cell": cell, "critical_polynomials": critical},
+                            "slope": slope, "sign": sign, "parameter_domain": case_domain,
+                            "cells": sign_cells, "critical_polynomials": critical},
         })
     return cases
 
@@ -272,7 +276,7 @@ def variable_case_plan(expression, variable, parameter, domain, policy):
                 "kind": "complete_affine_slope_partition", "passed": True,
                 "case_domains": [case["domain"] for case in cases],
                 "certificates": [case["certificate"] for case in cases],
-                "reason": ("All slope roots are isolated; every other parameter cell has a fixed strict slope sign."
+                "reason": ("Complete slope-root cells are grouped by positive, zero and negative sign; each nonempty sign is one disjoint case."
                            if classified else "One globally valid envelope applies; no parameter case split is required."),
             }}
 

@@ -143,6 +143,8 @@ def stop_named(runtime, names, *, timeout=30):
 
 def spawn_named(runtime, version, names):
     """Start missing tracked processes and record them under ``version``."""
+    from .backup import require_restore_complete
+    require_restore_complete(runtime.settings)
     commands, ports = _service_commands(runtime)
     records = process_state(runtime)
     env = _service_env(runtime)

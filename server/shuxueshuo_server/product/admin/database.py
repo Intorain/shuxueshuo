@@ -16,6 +16,7 @@ from ..repositories import UserContext, insert, row
 from ..storage import LocalArtifactStorage
 
 MUTABLE = {
+    'search_recovery_state': 'initialized sequence digest replayed_sequence',
     'lesson_runs': 'updated_at',
     'lesson_metadata': 'value',
     'lesson_checkpoints': 'value',

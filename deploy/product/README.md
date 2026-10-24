@@ -174,7 +174,7 @@ admin 以部署用户 UID/GID 运行，按需挂载配置及数据；不启动�
 
 ## 备份和恢复
 
-先停止业务写入和产物清理。备份包含逻辑数据库 dump、全部登记文件、行数及 SHA256 清单、迁移版本；不包含原始凭据。
+先停止业务写入和产物清理。`product-backup/v2` 包含逻辑数据库 dump、产品登记产物，以及数据库登记且尚未到期的拍题页面和提交私有文件；拍题文件逐项记录 SHA-256、字节数、归属和原始 `expires_at`，不按目录扫描导入匿名或孤立文件。备份清单还记录行数、迁移版本和删除权威游标；不包含原始凭据。
 备份前阻止新的 app 登录，现存 app 连接会令操作失败；不会强制终止其他进程。
 以 migration/bootstrap 身份运行的其他管理程序也必须停止，不能绕过维护窗口约定。
 
@@ -183,16 +183,41 @@ admin 以部署用户 UID/GID 运行，按需挂载配置及数据；不启动�
 ./deploy/product/manage.sh --mode server --data-dir /srv/shuxueshuo backup
 ```
 
-备份文件在 `backups/{id}/`；`.incomplete` 表示失败或中断，不能用作恢复源。
-恢复必须使用新实例、新数据目录和未占用端口，重建角色及权限，不覆盖原库或自动切换应用：
+备份文件在 `backups/{id}/`；`.incomplete` 表示失败或中断，不能用作恢复源。完整 v2 备份保留最多 30 天，拍题文件副本仍按原页面 24 小时、原提交 30 天的截止时间提前清除，备份和恢复均不续期。数据库 dump 不是逐行即时擦除：它随整份备份最多保留 30 天，恢复前必须通过独立删除日志和原截止时间过滤。自动清理只处理本实例中可识别的备份；离线复制到别处的备份须另行落实相同保留期。
+
+拍题删除的独立权威记录位于源实例 `work/search/private-v1/recovery/deletions.jsonl`，不以旧数据库或备份中的日志副本替代。它在数据库删除前先持久写入并 `fsync`，只记录 `user_id/search_id/created_at`，不保存题面或照片。迁移 `0015_search_recovery` 将数据库与该日志的 authority/cursor 绑定；缺失、完整行或中间记录损坏、权威不匹配或落后于数据库游标时拒绝继续，不能靠回滚数据库或新建空日志消除错误。管理者仍须保证提供的是当前源权威；校验不能证明任意旧副本就是最新日志。
+
+写入或刷盘失败会尝试截回追加前长度并刷盘；若异常中断遗留末尾无换行残片，初始化在排他锁下验证完整前缀的哈希链、authority 及数据库游标后，才自动截掉残片并记录告警。数据库游标不能超过该前缀；完整记录仍保留。磁盘故障先停止业务、修复空间或文件系统问题，再启动应用触发有限修复；仍报完整性错误时须取回可信当前日志，不允许手工编辑日志、修改游标或绕过校验。详细边界见[删除权威修复说明](../../docs/search-backup-restore-local-acceptance.md#尾部未完成写入的修复边界)。
+
+首次建头断电留下空文件或半行时，只有数据库尚未初始化、两个游标为零且摘要为空，才在上述锁内删除没有任何完整行的普通文件，并用原 authority 重建；已绑定日志或任何完整记录不因此清空。
+
+**升级恢复点要求：** 含拍题数据的 `0014` 备份及所有含拍题数据的 v1 备份均不能恢复新版拍题数据。迁移到 `0015`、首次初始化日志成功后，必须立即停止业务写入及清理，建立并核验首份 v2 备份，同时独立保管当前日志，然后再开放接单。不要等下一次定时备份：迁移前备份到首份合格 v2 备份之间没有新版拍题可用恢复点。
+
+恢复前必须停止源实例的全部业务写入、清理及管理操作；恢复期间持有源日志共享锁，误留在线的删除请求争锁最多等待 250 毫秒，超时返回 503 `recovery.busy`，而不是无限等待。503 不表示删除成功，此保护也不能把恢复结束后旧源的新删除同步到目标。恢复必须使用新实例、新数据目录和未占用端口，重建角色及权限，不覆盖原库或自动切换应用。`--search-recovery-root` 指向当前源实例的拍题根目录，必须包含其 `recovery/`，不是某次备份中的目录：
 
 ```bash
-./deploy/product/manage.sh --mode local --data-dir '/absolute/path/restored' --port 55433 restore --target restored --backup '/absolute/path/backup-id'
-/absolute/path/release/scripts/manage.sh --mode server --release /absolute/path/release --data-dir /srv/shuxueshuo-restored --port 55433 restore --target restored --backup /absolute/path/backup-id
+./deploy/product/manage.sh --mode local --data-dir '/absolute/path/restored' --port 55433 restore --target restored --backup '/absolute/path/backup-id' --search-recovery-root '/absolute/path/source/work/search/private-v1'
+/absolute/path/release/scripts/manage.sh --mode server --release /absolute/path/release --data-dir /srv/shuxueshuo-restored --port 55433 restore --target restored --backup /absolute/path/backup-id --search-recovery-root /srv/shuxueshuo/work/search/private-v1
 ```
 
-先校验所有备份文件，再恢复数据库和产物，最后比对行数、迁移版本、账号权限及所有登记文件哈希。
-失败目标留待诊断，重试使用另一个全新目录；不提供自动清空或 `down -v` 快捷命令。
+服务器包装脚本将指定的源拍题根只读挂载到恢复容器。v2 备份没有任何拍题页面/提交时可省略该参数；有拍题数据时必须提供当前源日志及 `0015` 游标。旧 v1 备份只允许恢复没有拍题页面/提交的实例，仍需满足迁移版本匹配；含拍题数据的 v1 明确拒绝为 `restore.search_backup_unsupported`，不能把缺失的私有文件或日志视为已经删除。
+
+目标应用角色在整个恢复过程中保持 `NOLOGIN`。校验备份及当前源删除权威后，先恢复数据库并重放删除，再为目标建立新 authority，只复制剩余且未到期记录的私有文件，按原期限清理到期内容并将遗留非终态标为中断；完成版本、权限、内容校验及 doctor 后才恢复登录。恢复还撤销备份中的全部学生登录会话及未消费短信挑战，学生必须重新获取验证码并登录，旧 Cookie 和旧验证码不能复活。源实例保持不变；之后的目标删除记入目标日志。
+
+仅做隔离演练、不切换业务流量时，原源实例仍是当前权威。正式切换到恢复目标后，必须同时将权威来源切换为新目标日志，并立即创建新 v2 备份。旧备份与新 authority 不匹配时会拒绝恢复；不能继续把旧备份配旧源日志当作当前恢复入口。旧源仍存在不证明它仍是当前源，工具不能自动识别所有陈旧副本或替代这一步运维交接。
+
+恢复失败保留目标 `locks/restore-incomplete`，`resume` 和 `services-start` 不能绕过。保留失败目标作诊断，重试使用另一个全新目录；不要手动删除标记后开放服务，不提供自动清空或 `down -v` 快捷命令。删除权威须独立于可回滚数据库保管；当前源权威丢失或存在上述有限修复之外的损坏时恢复失败关闭，异地保管与灾备流程仍须部署前另行安排。
+
+运行文件在启动和每分钟维护，v2 备份在启动及每小时维护；显式 `search.maintenance ... cleanup` / `backup-prune` 立即处理，不等待下个定时周期，详见[拍题备份恢复说明与本地验收](../../docs/search-backup-restore-local-acceptance.md)。识别为本轮格式的不完整备份在创建一小时后可清理；清理失败保留记录并在对应周期重试，备份错误不每分钟重复报告。只删除当前实例认可的路径，不操作旧匿名目录或未知备份格式。账号注销按当前决定暂缓，按题删除也不等于删除整个账号。
+
+2026-10-24 审查修复合并回归 **200 passed、0 skipped**，涵盖真实 PostgreSQL 备份恢复、受限修尾及 API 重新启动/MockSMS 登录、首次日志头断电恢复、清理双异常、恢复锁下删除 503、历史快照复用与维护周期；完整命令和日志见[审查修复验收](../../docs/search-backup-restore-local-acceptance.md#7-审查修复验收2026-10-24)。未部署线上，不替代服务器与真实供应商验收。
+
+停服期间自动维护不运行，须由值守人员或既有系统 timer 调用独立 `backup-prune`；该命令不连接数据库或依赖删除日志，日志故障时仍可按期清除备份副本。本轮不新增服务器调度系统，也不能将“已提供命令”等同于“停服期间已持续清理”：
+
+```bash
+./deploy/product/manage.sh --mode local --data-dir /absolute/path/source --instance source backup-prune
+/absolute/path/release/scripts/manage.sh --mode server --release /absolute/path/release --data-dir /srv/shuxueshuo backup-prune
+```
 
 ## 验证
 

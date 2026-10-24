@@ -49,7 +49,7 @@ def ledger_factory(stage_three_storage, tmp_path):
 @pytest.fixture
 def linked_submission(stage_three_storage, tmp_path):
     now = [datetime.now(UTC)]
-    repository = SearchRepository(stage_three_storage, tmp_path / "private-v1", clock=lambda: now[0])
+    repository = SearchRepository(stage_three_storage, stage_three_storage._search_recovery.root.parent, clock=lambda: now[0])
     phone = "139" + "".join(str(secrets.randbelow(10)) for _ in range(8))
     with stage_three_storage.begin() as connection:
         user = connection.scalar(text("SELECT register_student_phone(:phone,:id)"), {"phone": phone, "id": uuid4()})

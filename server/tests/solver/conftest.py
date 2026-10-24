@@ -20,7 +20,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 
 @pytest.fixture(scope="module", autouse=True)
-def stage_three_storage(request):
+def stage_three_storage(request, tmp_path_factory):
     name = Path(str(request.fspath)).name
     if not name.startswith("test_graph_stage_three") and name != "test_interaction_scheduler_failures_store.py":
         yield None
@@ -36,18 +36,20 @@ def stage_three_storage(request):
     settings = Settings.load("local", root, instance)
     admin = engine(settings.url("migration"))
     schema = "test_stage_three_" + uuid4().hex
-    migrations = list((Path(__file__).parents[2] / "alembic/versions").glob("0014_*.sql"))
-    assert len(migrations) == 1, "the PostgreSQL executor migration must exist"
+    migrations = Path(__file__).parents[2] / "alembic/versions"
     with admin.begin() as connection:
         assert connection.scalar(text("SELECT to_regclass('public.lesson_runs')")), "Apply the PostgreSQL executor migration to the isolated test instance first"
         connection.exec_driver_sql(f"CREATE SCHEMA {schema}")
         connection.exec_driver_sql(f"SET LOCAL search_path TO {schema}, public")
-        connection.exec_driver_sql(migrations[0].read_text())
+        for name in ('0013_student_search.sql', '0014_lesson_execution.sql', '0015_search_recovery.sql'):
+            connection.exec_driver_sql((migrations / name).read_text())
         connection.exec_driver_sql(f"GRANT USAGE ON SCHEMA {schema} TO product_app")
         connection.exec_driver_sql(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {schema} TO product_app")
         connection.exec_driver_sql(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA {schema} TO product_app")
     database = create_engine(settings.url(), isolation_level="READ COMMITTED", pool_pre_ping=True,
                              hide_parameters=True, connect_args={"options": f"-c timezone=UTC -c search_path={schema},public"})
+    from shuxueshuo_server.search.repository import SearchRepository
+    SearchRepository(database, tmp_path_factory.mktemp('stage-three-private') / 'private-v1')
     try:
         with pytest.MonkeyPatch.context() as environment:
             environment.setenv("PRODUCT_TEST_SCHEMA", schema)

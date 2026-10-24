@@ -4,7 +4,7 @@
 
 ## 1. 生产入口与持久化
 
-服务器使用既有 `shuxueshuo_server.main:app`，`PRODUCT_MODE=server` 且非 legacy 后端时自动安装拍题 API。它与登录、产品服务复用同一个 `Settings`、PostgreSQL 引擎及应用角色，迁移必须包含 `0014_lesson_execution`。不再通过开发用的 `run_site.py` 启动生产服务。
+服务器使用既有 `shuxueshuo_server.main:app`，`PRODUCT_MODE=server` 且非 legacy 后端时自动安装拍题 API。它与登录、产品服务复用同一个 `Settings`、PostgreSQL 引擎及应用角色，迁移必须包含 `0014_lesson_execution` 和 `0015_search_recovery`。不再通过开发用的 `run_site.py` 启动生产服务。
 
 `compose.app.yml` 与应用镜像固定一个 Uvicorn worker。拍题仍使用进程内两个工作线程和本机文件锁；不能在同一数据根上启动多个 API 副本。`PRODUCT_EXECUTION_STORAGE_CONTEXT_REQUIRED=1` 禁止网页路径漏设执行上下文后回退到默认本地数据库。
 
@@ -55,6 +55,20 @@ python -m shuxueshuo_server.search.maintenance --mode server \
 
 实例名必须与实际配置相同，也可继承容器的 `PRODUCT_MODE`、`PRODUCT_DATA_DIR`、`PRODUCT_INSTANCE`。上述命令不创建账号、不修改题目正文、不调用模型或短信。页面仍保留 24 小时、提交私有产物 30 天；删题不提前删除来源整页。
 
+拍题备份恢复使用 `product-backup/v2`，登记尚未到期的页面/提交文件及其哈希、大小和原截止时间；不复制匿名或孤立目录。运行文件保持启动及每分钟清理，备份清理改为启动及每小时；上述单次 `cleanup` 和独立 `backup-prune` 立即执行，不等待定时周期。完整备份最多保留 30 天，私有文件副本仍按原截止时间提前移除，恢复不续期。数据库 dump 随备份有限保留，不承诺删除请求立即物理擦除所有备份；恢复必须先重放当前源的删除记录并过滤到期内容。
+
+停服或删除日志故障时仍须按期清理备份。独立管理命令 `manage.sh --mode local|server ... backup-prune` 不连接数据库、不依赖删除日志；实际使用时选定一种 mode 并填写实例参数，完整示例见[部署手册](../deploy/product/README.md#备份和恢复)。停服期间由值守人员或既有系统 timer 执行，本轮不安装新的服务器调度；正常 `cleanup` 即使运行文件清理失败也会尝试备份清理。
+
+`work/search/private-v1/recovery/deletions.jsonl` 是独立于数据库回滚的删除权威，写入并 `fsync` 后才删除数据库记录；日志仅含账号、提交 ID 及创建时间。追加失败尝试截回原长度并刷盘，初始化只允许在排他锁下、完整前缀与数据库游标校验通过后修剪末尾无换行残片；缺失、完整行/中间记录损坏、日志落后或 authority 不匹配仍失败关闭，不得手改日志或游标绕过。恢复旧备份必须额外指定当前源的 `--search-recovery-root`，不能使用旧备份内日志替代；源实例必须先停止全部写入，恢复共享锁冲突时删除返回 503（不是删除成功），不能以此代替停源。迁移中的 authority/cursor 校验不等于能判断任意离线副本是否最新，部署者须独立保管当前日志，不能用回滚数据库覆盖它。目标恢复全程 `NOLOGIN`，删除重放、到期清理、中断恢复及 doctor 全部通过后才放行；失败保留 `locks/restore-incomplete`，禁止通过 `resume`/`services-start` 绕过。操作细节与真实 PostgreSQL 本地验收见[拍题备份恢复说明](search-backup-restore-local-acceptance.md)。
+
+首次建头断电遗留空文件或半行时，只有数据库尚未初始化、两个游标为零且摘要为空，才在状态行锁及日志排他锁内清除没有完整行的普通文件并用原 authority 重建。已有完整记录及已绑定日志不走此重建路径。显式 `maintenance cleanup` 同时遇到运行文件与备份清理异常时，保留前者并记录后者；只有备份异常仍向命令行报告失败。
+
+含拍题数据的 `0014` 备份及所有含拍题数据的 v1 备份不支持新版私有拍题恢复。迁移到 `0015`、当前日志首次初始化成功后，必须立即停止业务写入和清理，创建并核验首份 v2 备份、独立保管当前日志，然后才重新接单；在这份备份建立前没有新版拍题可用恢复点，不应等下一次日常备份。
+
+隔离恢复演练不切流量，原源实例继续作为当前权威；若以后正式切换到恢复目标，须同时切换到目标新 journal 并立即创建新 v2 备份。旧备份与新 authority 不匹配时失败关闭，不能再把旧备份和仍存在的旧源日志当作最新恢复入口；工具不自动决定哪个实例已成为正式源。
+
+本轮 v2 备份恢复及审查修复合并回归 **200 passed、0 skipped**，53.98 秒，日志 `/private/tmp/search-backup-edge-acceptance-20261024.log`。包含真实 PostgreSQL dump/restore、日志写入失败及受限修尾、首次日志头断电恢复、清理双异常、恢复锁下 HTTP 删除 503、历史快照复用与每小时备份维护；生产 lifespan 修尾后健康检查、MockSMS 登录及归属隔离可用，完整行损坏仍拒绝启动。原 **79 项**及 Q01 离线课程恢复证据保留为历史基线，不累加计数。完整命令及范围见[审查修复验收](search-backup-restore-local-acceptance.md#7-审查修复验收2026-10-24)；这不等于服务器 Docker 只读挂载端到端、停服 timer 或异地灾备已验收，未调用付费模型或真实短信。
+
 ## 4. 可复现的离线镜像演练
 
 使用本机已存在的应用、管理、PostgreSQL、Nginx 镜像，不拉取镜像。应用和管理镜像的依赖锁必须与当前 `deploy/product/requirements.lock` 相同；脚本复用缓存依赖层，再按生产 Dockerfile 的 COPY 和启动段装入当前代码，并检查镜像未包含测试及 `.env`。
@@ -82,7 +96,7 @@ python3 deploy/product/rehearse-search.py \
 - 没有调用付费模型、真实短信或 Linux Paddle 推理；实际 OCR 镜像/模型缓存和真实供应商配置仍需在授权后另行验收。
 - 本次不启动或扩展拍题的 RabbitMQ/Celery 路线。原产品服务仍保留它们；拍题仅在单 API 进程内运行。
 - 本次不新增业务能力、跨设备进度、集群调度或自动线上发布。
-- 私有拍题文件纳入正式备份恢复、删除重放、长期容量/配额和锁文件 inode 运维仍是上线前独立工作；不能把现有产品备份等同于完整的拍题备份。
+- 私有拍题文件与删除/到期重放现使用 v2 备份恢复契约，验收状态单独记录在[拍题备份恢复说明](search-backup-restore-local-acceptance.md)，不由历史产品备份验收代替。长期容量/配额、锁文件 inode 运维及当前删除权威的独立异地保管仍是上线前工作；本轮不实现账号注销。
 
 回归及实际镜像结果见下节；旧 8779 浏览器证据保留在[第一期说明](shared-problem-library-and-student-learning-stage1.md)，不替换成此次容器验收。
 

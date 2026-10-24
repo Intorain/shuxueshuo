@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
-release='' operation='' root=${PRODUCT_DATA_DIR:-/srv/shuxueshuo} instance=server port='' backup='' target='' replace_public=0
+release='' operation='' root=${PRODUCT_DATA_DIR:-/srv/shuxueshuo} instance=server port='' backup='' target='' search_recovery_root='' replace_public=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) [[ "$2" == server ]] || fail 'server mode required'; shift 2;;
@@ -10,9 +10,10 @@ while [[ $# -gt 0 ]]; do
     --instance) instance=${2:?}; shift 2;;
     --port) port=${2:?}; shift 2;;
     --backup) backup=${2:?}; shift 2;;
+    --search-recovery-root) search_recovery_root=${2:?}; shift 2;;
     --target) target=${2:?}; shift 2;;
     --replace-legacy-public) replace_public=1; shift;;
-    install|deploy|prepare-release|preflight-learning|verify-release|resume|status|migrate|seed|doctor|backup|restore|bootstrap|publish-learning|check-learning|reassess-learning|services-install|services-start|services-stop|services-status|services-doctor) operation=$1; shift;;
+    install|deploy|prepare-release|preflight-learning|verify-release|resume|status|migrate|seed|doctor|backup|backup-prune|restore|bootstrap|publish-learning|check-learning|reassess-learning|services-install|services-start|services-stop|services-status|services-doctor) operation=$1; shift;;
     *) fail "未知参数：$1";;
   esac
 done
@@ -24,6 +25,10 @@ port=${port:-5432}
 if [[ -f "$PRODUCT_REPO/server/pyproject.toml" && "$root" == "$PRODUCT_REPO"* ]]; then fail '数据目录不能在 Git 内'; fi
 [[ "$instance" =~ ^[a-z][a-z0-9_-]{0,39}$ && "$port" =~ ^[0-9]+$ ]] || fail '实例或端口无效'
 [[ -n "$operation" ]] || fail '缺少管理操作'
+case "$operation" in
+  services-start|services-doctor|resume|deploy)
+    [[ ! -e "$root/locks/restore-incomplete" ]] || fail '恢复尚未完成，禁止启动；请使用新目标重新恢复';;
+esac
 if [[ "$operation" == preflight-learning && ! -f "$root/config/compose.env" ]]; then
   printf '%s\n' '{"state":"empty","revision":null,"counts":{},"action":"install"}'
   exit 0
@@ -183,8 +188,13 @@ case "$operation" in
   restore)
     "${compose[@]}" up -d --wait --wait-timeout 90 postgres
     "${admin[@]}" bootstrap
-    "${compose[@]}" run --rm --no-deps -v "$backup:/restore:ro" --entrypoint /opt/product/bin/python admin -c \
-      'import sys; from shuxueshuo_server.product.config import Settings; from shuxueshuo_server.product.admin.backup import restore_data; s=Settings.load("server","/var/lib/shuxueshuo",sys.argv[1],int(sys.argv[2])); print(restore_data(s,"/restore"))' "$instance" "$port";;
+    recovery_mount=()
+    if [[ -n "$search_recovery_root" ]]; then
+      [[ "$search_recovery_root" == /* && -d "$search_recovery_root/recovery" ]] || fail '--search-recovery-root 需要当前源拍题目录的绝对路径'
+      recovery_mount=(-v "$search_recovery_root:/search-authority:ro")
+    fi
+    "${compose[@]}" run --rm --no-deps -v "$backup:/restore:ro" ${recovery_mount[@]+"${recovery_mount[@]}"} --entrypoint /opt/product/bin/python admin -c \
+      'import sys; from shuxueshuo_server.product.config import Settings; from shuxueshuo_server.product.admin.backup import restore_data; s=Settings.load("server","/var/lib/shuxueshuo",sys.argv[1],int(sys.argv[2])); print(restore_data(s,"/restore",search_recovery_root="/search-authority" if sys.argv[3] else None))' "$instance" "$port" "$search_recovery_root";;
   services-install)
     [[ "$PRODUCT_RABBITMQ_IMAGE" == sha256:* ]] || fail '当前发布包缺少 PRODUCT_RABBITMQ_IMAGE；请使用包含 RabbitMQ 的 P2 发布包'
     "${admin[@]}" services-install;;

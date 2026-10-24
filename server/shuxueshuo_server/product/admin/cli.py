@@ -38,10 +38,11 @@ def main(argv=None):
     p.add_argument('--instance')
     p.add_argument('--port', type=int)
     p.add_argument('--pg-bin')
-    p.add_argument('command', choices=['configure', 'install', 'deploy', 'resume', 'bootstrap', 'migrate', 'seed', 'doctor', 'status', 'db-start', 'db-stop', 'backup', 'restore',
+    p.add_argument('command', choices=['configure', 'install', 'deploy', 'resume', 'bootstrap', 'migrate', 'seed', 'doctor', 'status', 'db-start', 'db-stop', 'backup', 'backup-prune', 'restore',
         'publish-learning', 'check-learning', 'preflight-learning', 'verify-release', 'rebuild-learning', 'reassess-learning',
         'services-install', 'services-start', 'services-stop', 'services-status', 'services-doctor'])
     p.add_argument('--backup')
+    p.add_argument('--search-recovery-root', type=Path, help='current independent source search root, never a backup copy')
     p.add_argument('--target')
     p.add_argument('--site-version', type=Path, help='knowledge/teaching/version.json of the served site')
     p.add_argument('--site-optional', action='store_true', help='report, but do not refuse, a site content mismatch')
@@ -106,6 +107,8 @@ def execute(settings, args):
         from .learning import reassess, rebuild
         return (rebuild if operation == 'rebuild-learning' else reassess)(settings)
     if operation == 'resume':
+        from .backup import require_restore_complete
+        require_restore_complete(settings)
         if settings.mode == 'server':
             from .learning import verify_release
             verify_release(settings, require_site=False)
@@ -145,9 +148,12 @@ def execute(settings, args):
     if operation == 'backup':
         from .backup import backup
         return backup(settings)
+    if operation == 'backup-prune':
+        from .search_backup import prune_backups
+        return prune_backups(settings)
     if operation == 'restore':
         from .backup import restore_data
-        return restore_data(settings, args.backup)
+        return restore_data(settings, args.backup, search_recovery_root=args.search_recovery_root)
 
 
 

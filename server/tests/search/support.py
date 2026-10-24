@@ -1,6 +1,7 @@
 """Real database ownership and Cookie sessions for private search API tests."""
 
 import os
+import atexit
 import secrets
 from functools import lru_cache
 from pathlib import Path
@@ -8,6 +9,7 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
+import sqlalchemy as sa
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -18,13 +20,10 @@ from shuxueshuo_server.auth.sms import MockSms
 from shuxueshuo_server.graph_lesson.stage_three.storage import storage_context
 from shuxueshuo_server.product.config import Settings
 from shuxueshuo_server.product.db import engine
+from shuxueshuo_server.product.admin.database import DELETABLE, MUTABLE
+from shuxueshuo_server.product.models import metadata
 from shuxueshuo_server.search import dev_api
 from shuxueshuo_server.search.repository import SearchRepository
-
-
-@lru_cache(maxsize=4)
-def test_database(data_dir, instance):
-    return engine(Settings.load("local", data_dir, instance).url())
 
 
 @lru_cache(maxsize=256)
@@ -32,7 +31,36 @@ def session_for(root):
     data_dir = os.getenv("PRODUCT_TEST_DATA_DIR")
     if not data_dir:
         pytest.fail("Requires independently migrated PRODUCT_TEST_DATA_DIR")
-    database = test_database(data_dir, os.getenv("PRODUCT_TEST_INSTANCE", "search-stage1"))
+    settings = Settings.load("local", data_dir, os.getenv("PRODUCT_TEST_INSTANCE", "search-stage1"))
+    administrator = engine(settings.url('migration'))
+    schema = 'search_api_test_' + secrets.token_hex(8)
+    with administrator.begin() as connection:
+        connection.exec_driver_sql(f'CREATE SCHEMA "{schema}"')
+        connection.exec_driver_sql(f'SET LOCAL search_path TO "{schema}", public')
+        connection.exec_driver_sql(f'GRANT USAGE ON SCHEMA "{schema}" TO product_app')
+        migrations = Path(__file__).parents[2] / 'alembic/versions'
+        for name in ('0013_student_search.sql', '0014_lesson_execution.sql', '0015_search_recovery.sql'):
+            connection.execute(sa.text((migrations / name).read_text()))
+        for name, table in metadata.tables.items():
+            if not name.startswith(('search_', 'student_search_', 'lesson_')):
+                continue
+            connection.exec_driver_sql(f'GRANT SELECT, INSERT ON "{table.name}" TO product_app')
+            if name in MUTABLE:
+                columns = ','.join('"' + column + '"' for column in MUTABLE[name].split())
+                connection.exec_driver_sql(f'GRANT UPDATE ({columns}) ON "{name}" TO product_app')
+            if name in DELETABLE:
+                connection.exec_driver_sql(f'GRANT DELETE ON "{name}" TO product_app')
+    administrator.dispose()
+    database = sa.create_engine(settings.url(), isolation_level='READ COMMITTED', pool_pre_ping=True, poolclass=sa.pool.NullPool,
+        hide_parameters=True, connect_args={'options': f'-c timezone=UTC -c search_path={schema},public'})
+
+    def cleanup():
+        database.dispose()
+        with administrator.begin() as connection:
+            connection.exec_driver_sql(f'DROP SCHEMA "{schema}" CASCADE')
+        administrator.dispose()
+
+    atexit.register(cleanup)
     config = AuthConfig(mode="mock", environment="test", origin="https://testserver", secret=secrets.token_urlsafe(48))
     auth = AuthService(database, config, MockSms())
     phone = "139" + "".join(str(secrets.randbelow(10)) for _ in range(8))

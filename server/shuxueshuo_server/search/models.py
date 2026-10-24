@@ -5,6 +5,16 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 
 def register(metadata):
+    sa.Table('search_recovery_state', metadata,
+        sa.Column('singleton', sa.Boolean, primary_key=True, server_default=sa.text('true')),
+        sa.Column('authority_id', UUID(as_uuid=True), nullable=False),
+        sa.Column('initialized', sa.Boolean, nullable=False, server_default=sa.text('false')),
+        sa.Column('sequence', sa.BigInteger, nullable=False, server_default=sa.text('0')),
+        sa.Column('replayed_sequence', sa.BigInteger, nullable=False, server_default=sa.text('0')),
+        sa.Column('digest', sa.Text, nullable=False, server_default=''),
+        sa.CheckConstraint('singleton', name='search_recovery_singleton'),
+        sa.CheckConstraint('sequence >= 0', name='search_recovery_sequence'),
+        sa.CheckConstraint('replayed_sequence >= 0 AND replayed_sequence <= sequence', name='search_recovery_replayed'))
     problems = sa.Table('search_problems', metadata,
         sa.Column('id', UUID(as_uuid=True), primary_key=True),
         sa.Column('identity_version', sa.Integer, nullable=False),

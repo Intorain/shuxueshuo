@@ -44,7 +44,9 @@ def repository(tmp_path):
         script = Path(__file__).parents[2] / 'alembic/versions/0013_student_search.sql'
         connection.execute(sa.text(script.read_text()))
         connection.execute(sa.text(script.with_name('0014_lesson_execution.sql').read_text()))
-        for table in (PROBLEMS, PAGES, SUBMISSIONS, RELATIONS, *[table for name, table in metadata.tables.items() if name.startswith('lesson_')]):
+        connection.execute(sa.text(script.with_name('0015_search_recovery.sql').read_text()))
+        for table in (PROBLEMS, PAGES, SUBMISSIONS, RELATIONS, metadata.tables['search_recovery_state'],
+                      *[table for name, table in metadata.tables.items() if name.startswith('lesson_')]):
             connection.exec_driver_sql(f'GRANT SELECT, INSERT ON "{table.name}" TO product_app')
             if table.name in MUTABLE:
                 columns = ','.join('"' + name + '"' for name in MUTABLE[table.name].split())
@@ -695,14 +697,85 @@ def test_history_uses_one_snapshot_when_group_changes_concurrently(repository, c
             changed.result()
     finally:
         sa.event.remove(repository.db, 'after_cursor_execute', after_selection)
-    assert [item['search_id'] for item in history['items']] == [row['id']]
-    assert history['items'][0]['problem_id'] == (str(problem['id']) if problem else None)
+    if change in {'delete', 'delete_linked'}:
+        assert history['items'] == []
+    else:
+        assert [item['search_id'] for item in history['items']] == [row['id']]
+        assert history['items'][0]['problem_id'] == (str(problem['id']) if problem else None)
     assert not history['has_more']
     latest = repository.history(user)['items']
     if change in {'delete', 'delete_linked'}:
         assert latest == []
     else:
         assert latest[0]['problem_id'] is not None
+
+
+def test_history_reuses_validated_deletion_snapshots_for_full_page(repository, monkeypatch):
+    user = student(repository)
+    page_id = page(repository, user)
+    rows = [submission(repository, user, page_id)[0] for _index in range(100)]
+    submission(repository, student(repository))
+    snapshots, statements = [], []
+    original = repository.recovery.snapshot
+
+    def snapshot():
+        snapshots.append(True)
+        return original()
+
+    def record_statement(_connection, _cursor, statement, *_args):
+        if 'search_recovery_state' in statement:
+            statements.append(statement)
+
+    monkeypatch.setattr(repository.recovery, 'snapshot', snapshot)
+    sa.event.listen(repository.db, 'before_cursor_execute', record_statement)
+    try:
+        history = repository.history(user, limit=100)
+    finally:
+        sa.event.remove(repository.db, 'before_cursor_execute', record_statement)
+    assert {item['search_id'] for item in history['items']} == {row['id'] for row in rows}
+    assert not history['has_more']
+    assert len(snapshots) == len(statements) == 3
+
+
+@pytest.mark.parametrize('linked', [False, True])
+def test_history_rechecks_deletions_after_item_decoration(repository, monkeypatch, linked):
+    user = student(repository)
+    rows = [submission(repository, user)[0] for _index in range(2)]
+    if linked:
+        common = identity()
+        for row in rows:
+            repository.link_identity(row['id'], common)
+    original = repository._decorate
+    deleted = []
+
+    with ThreadPoolExecutor(1) as pool:
+        def decorate(connection, row, **kwargs):
+            value = original(connection, row, **kwargs)
+            if not deleted:
+                result = pool.submit(repository.delete, user, row['id']).result(timeout=5)
+                deleted.extend(result['deleted_search_ids'])
+            return value
+
+        monkeypatch.setattr(repository, '_decorate', decorate)
+        history = repository.history(user)
+    assert {item['search_id'] for item in history['items']} == {row['id'] for row in rows} - set(deleted)
+    assert not history['has_more']
+
+
+def test_history_rejects_journal_damage_during_decoration(repository, monkeypatch):
+    user = student(repository)
+    submission(repository, user)
+    original = repository._decorate
+
+    def decorate(connection, row, **kwargs):
+        value = original(connection, row, **kwargs)
+        with repository.recovery.path.open('ab') as stream:
+            stream.write(b'{"sequence":')
+        return value
+
+    monkeypatch.setattr(repository, '_decorate', decorate)
+    with pytest.raises(SearchError, match='recovery.truncated'):
+        repository.history(user)
 
 
 def test_identity_link_rechecks_expiry_after_waiting_for_public_problem(repository):

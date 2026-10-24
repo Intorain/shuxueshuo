@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..product.db import transaction
 from ..product.models import metadata
+from .recovery import STATE, RecoveryJournal, entry_key
 from .storage import SearchError, SearchStorage
 
 PROBLEMS = metadata.tables['search_problems']
@@ -35,16 +36,20 @@ class _LinkExpired(Exception):
 
 
 class SearchRepository:
-    def __init__(self, db, root, *, clock=None):
+    def __init__(self, db, root, *, clock=None, initialize_recovery=True):
         self.db = db
         self.storage = SearchStorage(root)
         self.root = self.storage.root
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.recovery = RecoveryJournal(self.root)
+        if initialize_recovery:
+            self.recovery.initialize(db)
 
     def lifecycle_lock(self, search_id, *, blocking=False):
         return self.storage.lifecycle_lock(search_id, blocking=blocking)
 
     def _page(self, connection, user, page_id, *, locked=False, require_image=False):
+        self.recovery.validate_state(connection)
         statement = sa.select(PAGES).where(PAGES.c.id == page_id, PAGES.c.user_id == user_uuid(user))
         if locked:
             statement = statement.with_for_update()
@@ -63,7 +68,11 @@ class SearchRepository:
         with transaction(self.db) as connection:
             return self._page(connection, user, page_id, require_image=require_image)
 
-    def _decorate(self, connection, row):
+    def _decorate(self, connection, row, *, deletion_snapshot=None):
+        deleted = (self.recovery.is_deleted(connection, row) if deletion_snapshot is None
+                   else entry_key(row) in deletion_snapshot.deleted_keys)
+        if deleted:
+            raise SearchError('search.not_found', 404)
         value = dict(row)
         value['search_id'] = value['id']
         value['path'] = self.storage.path(value['storage_key'])
@@ -152,6 +161,8 @@ class SearchRepository:
     def _live(self, connection, row):
         if row is None or row['artifact_state'] != 'active' or row['expires_at'] <= self.clock():
             return False
+        if self.recovery.is_deleted(connection, row):
+            return False
         if row['problem_id']:
             return connection.scalar(sa.select(PROBLEMS.c.status).where(PROBLEMS.c.id == row['problem_id'])) == 'active'
         return True
@@ -216,33 +227,43 @@ class SearchRepository:
         limit, offset = max(1, min(100, int(limit))), max(0, int(offset))
         owner = user_uuid(user)
         with transaction(self.db) as connection:
+            snapshot = self.recovery.validate_state(connection)
+            deleted = [(UUID(owner_id), identifier, datetime.fromisoformat(created))
+                       for owner_id, identifier, created in snapshot.keys_by_owner.get(str(owner), ())]
+            visible = sa.not_(sa.tuple_(SUBMISSIONS.c.user_id, SUBMISSIONS.c.id, SUBMISSIONS.c.created_at).in_(deleted))
             group_key = sa.func.coalesce(sa.cast(SUBMISSIONS.c.problem_id, sa.Text), SUBMISSIONS.c.id)
             linked = sa.select(sa.cast(RELATIONS.c.problem_id, sa.Text).label('group_key'),
                 RELATIONS.c.last_searched_at.label('recent_at')).where(RELATIONS.c.user_id == owner,
                     sa.select(SUBMISSIONS.c.id).where(SUBMISSIONS.c.user_id == RELATIONS.c.user_id,
-                        SUBMISSIONS.c.problem_id == RELATIONS.c.problem_id).correlate(RELATIONS).exists())
+                        SUBMISSIONS.c.problem_id == RELATIONS.c.problem_id, visible).correlate(RELATIONS).exists())
             unlinked = sa.select(SUBMISSIONS.c.id.label('group_key'), SUBMISSIONS.c.created_at.label('recent_at')).where(
-                SUBMISSIONS.c.user_id == owner, SUBMISSIONS.c.problem_id.is_(None), SUBMISSIONS.c.expires_at > self.clock())
+                SUBMISSIONS.c.user_id == owner, SUBMISSIONS.c.problem_id.is_(None), SUBMISSIONS.c.expires_at > self.clock(), visible)
             history_groups = linked.union_all(unlinked).subquery('search_history')
             page_groups = (sa.select(history_groups)
                 .order_by(history_groups.c.recent_at.desc(), history_groups.c.group_key.desc())
                 .limit(limit + 1).offset(offset).cte('history_groups'))
             rows = connection.execute(sa.select(SUBMISSIONS, page_groups.c.group_key, page_groups.c.recent_at)
-                .join(page_groups, group_key == page_groups.c.group_key).where(SUBMISSIONS.c.user_id == owner)
+                .join(page_groups, group_key == page_groups.c.group_key).where(SUBMISSIONS.c.user_id == owner, visible)
                 .order_by(page_groups.c.recent_at.desc(), page_groups.c.group_key.desc(),
                           SUBMISSIONS.c.created_at.desc(), SUBMISSIONS.c.id.desc())).mappings().all()
             groups = {}
+            snapshot = self.recovery.validate_state(connection)
+            latest_deletions = snapshot.deleted_keys
             for row in rows:
+                if entry_key(row) in latest_deletions:
+                    continue
                 groups.setdefault(row['group_key'], []).append(row)
             keys = list(groups)
             items = []
+            item_members = {}
             for key in keys[:limit]:
                 members = groups[key]
                 latest = members[0]
                 usable = [row for row in members if row['lesson_status'] == 'ready'
                           and row['artifact_state'] == 'active' and row['expires_at'] > self.clock()
                           and self.lesson_artifacts_available(row)]
-                chosen = self._decorate(connection, usable[0] if usable else latest)
+                chosen = self._decorate(connection, usable[0] if usable else latest, deletion_snapshot=snapshot)
+                item_members[chosen['id']] = (entry_key(chosen), entry_key(latest))
                 disabled = chosen['problem_status'] == 'disabled'
                 latest_lesson = ('expired' if latest['expires_at'] <= self.clock() else
                                  'unavailable' if latest['lesson_status'] == 'ready' and not any(
@@ -257,6 +278,10 @@ class SearchRepository:
                     'recognition_status': latest['recognition_status'],
                     'lesson_status': latest_lesson,
                     'lesson_available': bool(usable) and not disabled, 'image_state': chosen['artifact_state']})
+            latest_deletions = self.recovery.validate_state(connection).deleted_keys
+            items = [item for item in items
+                     if not any(member in latest_deletions for member in item_members[item['search_id']])]
+            keys = [key for key in keys if any(entry_key(row) not in latest_deletions for row in groups[key])]
         return {'user_id': str(owner), 'items': items, 'has_more': len(keys) > limit}
 
     def lesson_artifacts_available(self, row):
@@ -292,6 +317,8 @@ class SearchRepository:
             target = connection.execute(sa.select(SUBMISSIONS).where(SUBMISSIONS.c.id == search_id, SUBMISSIONS.c.user_id == owner)).mappings().first()
             if target is None:
                 raise SearchError('search.not_found', 404)
+            if self.recovery.is_deleted(connection, target):
+                raise SearchError('search.not_found', 404)
             condition = sa.and_(SUBMISSIONS.c.user_id == owner,
                 SUBMISSIONS.c.problem_id == target['problem_id'] if target['problem_id'] else SUBMISSIONS.c.id == search_id)
             hints = connection.execute(sa.select(SUBMISSIONS.c.id, SUBMISSIONS.c.page_id).where(condition)).all()
@@ -299,22 +326,54 @@ class SearchRepository:
                 self._page(connection, owner, page_id, locked=True)
             rows = connection.execute(sa.select(SUBMISSIONS).where(
                 SUBMISSIONS.c.id.in_([hint.id for hint in hints])).order_by(SUBMISSIONS.c.id).with_for_update()).mappings().all()
-            for row in rows:
-                self._queue(connection, row['page_id'], row['storage_key'], search_id=row['id'])
-            identifiers = [row['id'] for row in rows]
-            connection.execute(SUBMISSIONS.delete().where(SUBMISSIONS.c.id.in_(identifiers)))
-            for problem_id in sorted({row['problem_id'] for row in rows if row['problem_id']}):
-                relation = sa.and_(RELATIONS.c.user_id == owner, RELATIONS.c.problem_id == problem_id)
-                connection.execute(sa.select(RELATIONS).where(relation).with_for_update()).first()
-                remaining = connection.execute(sa.select(sa.func.min(SUBMISSIONS.c.created_at), sa.func.max(SUBMISSIONS.c.created_at)).where(
-                    SUBMISSIONS.c.user_id == owner, SUBMISSIONS.c.problem_id == problem_id)).one()
-                if remaining[0] is None:
-                    connection.execute(RELATIONS.delete().where(relation))
-                else:
-                    connection.execute(RELATIONS.update().where(relation).values(first_searched_at=remaining[0], last_searched_at=remaining[1]))
+            self.recovery.append(connection, rows)
+            identifiers = self._delete_rows(connection, rows)
         return {'deleted_search_ids': identifiers}
 
+    def _delete_rows(self, connection, rows):
+        for row in rows:
+            self._queue(connection, row['page_id'], row['storage_key'], search_id=row['id'])
+        identifiers = [row['id'] for row in rows]
+        connection.execute(SUBMISSIONS.delete().where(SUBMISSIONS.c.id.in_(identifiers)))
+        for owner, problem_id in sorted({(row['user_id'], row['problem_id']) for row in rows if row['problem_id']}):
+            relation = sa.and_(RELATIONS.c.user_id == owner, RELATIONS.c.problem_id == problem_id)
+            connection.execute(sa.select(RELATIONS).where(relation).with_for_update()).first()
+            remaining = connection.execute(sa.select(sa.func.min(SUBMISSIONS.c.created_at), sa.func.max(SUBMISSIONS.c.created_at)).where(
+                SUBMISSIONS.c.user_id == owner, SUBMISSIONS.c.problem_id == problem_id)).one()
+            if remaining[0] is None:
+                connection.execute(RELATIONS.delete().where(relation))
+            else:
+                connection.execute(RELATIONS.update().where(relation).values(first_searched_at=remaining[0], last_searched_at=remaining[1]))
+        return identifiers
+
+    def replay_deletions(self, snapshot=None):
+        snapshot = snapshot or self.recovery.snapshot()
+        with transaction(self.db) as connection:
+            self.recovery.validate_state(connection, snapshot)
+            if connection.scalar(sa.select(STATE.c.replayed_sequence)) >= snapshot.cursor['sequence']:
+                return {'deleted_search_ids': []}
+            keys = snapshot.deleted_keys
+            if not keys:
+                return {'deleted_search_ids': []}
+            identifiers = sorted({identifier for _, identifier, _ in keys})
+            hints = connection.execute(sa.select(SUBMISSIONS).where(SUBMISSIONS.c.id.in_(identifiers))).mappings().all()
+            hints = [row for row in hints if entry_key(row) in keys]
+            for page_id in sorted({row['page_id'] for row in hints}):
+                connection.execute(sa.select(PAGES.c.id).where(PAGES.c.id == page_id).with_for_update()).first()
+            rows = connection.execute(sa.select(SUBMISSIONS).where(SUBMISSIONS.c.id.in_([row['id'] for row in hints]))
+                                      .order_by(SUBMISSIONS.c.id).with_for_update()).mappings().all()
+            rows = [row for row in rows if entry_key(row) in keys]
+            state = connection.execute(sa.select(STATE).with_for_update()).mappings().one()
+            deleted = self._delete_rows(connection, rows)
+            if state['sequence'] <= snapshot.cursor['sequence']:
+                connection.execute(STATE.update().values(sequence=snapshot.cursor['sequence'],
+                    digest=snapshot.cursor['digest'], replayed_sequence=snapshot.cursor['sequence']))
+            elif state['replayed_sequence'] < snapshot.cursor['sequence']:
+                connection.execute(STATE.update().values(replayed_sequence=snapshot.cursor['sequence']))
+        return {'deleted_search_ids': deleted}
+
     def recover(self):
+        self.replay_deletions()
         with transaction(self.db) as connection:
             identifiers = connection.scalars(sa.select(SUBMISSIONS.c.id).where(sa.or_(
                 SUBMISSIONS.c.recognition_status.in_(['queued', 'running']), SUBMISSIONS.c.lesson_status == 'running'))).all()
@@ -339,6 +398,7 @@ class SearchRepository:
         return recovered
 
     def cleanup(self):
+        self.replay_deletions()
         now = self.clock()
         expired_submission = sa.and_(SUBMISSIONS.c.expires_at <= now, sa.or_(
             SUBMISSIONS.c.artifact_state == 'active', SUBMISSIONS.c.problem_id.is_(None)))

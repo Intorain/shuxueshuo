@@ -175,6 +175,8 @@ def schema_head():
 
 class Application:
     def __init__(self, settings, service=None, context=None, discover=dependencies):
+        from .admin.backup import require_restore_complete
+        require_restore_complete(settings)
         self.settings = settings
         self.service = service or ProductService(engine(settings.url()), LocalArtifactStorage(settings.artifact_root))
         self.db = self.service.db

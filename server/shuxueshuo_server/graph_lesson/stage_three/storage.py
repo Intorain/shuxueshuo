@@ -96,15 +96,20 @@ def current_storage():
 def _submission(connection, context, *, write):
     if context.submission_id is None:
         return None
+    recovery = getattr(context.db, '_search_recovery', None)
+    if recovery is None:
+        raise StorageContextRequired()
     parameters = {"submission": context.submission_id}
     if write:
         page_id = connection.scalar(text("SELECT page_id FROM search_submissions WHERE id=:submission"), parameters)
         if page_id is None:
             raise RunNotFound()
         connection.execute(text("SELECT id FROM search_pages WHERE id=:page FOR SHARE"), {"page": page_id}).first()
-    row = connection.execute(text("SELECT artifact_state,expires_at,problem_id FROM search_submissions "
+    row = connection.execute(text("SELECT id,user_id,created_at,artifact_state,expires_at,problem_id FROM search_submissions "
         "WHERE id=:submission" + (" FOR UPDATE" if write else "")), parameters).mappings().first()
     if row is None:
+        raise RunNotFound()
+    if recovery.is_deleted(connection, row):
         raise RunNotFound()
     if row["artifact_state"] != "active" or row["expires_at"] <= context.clock():
         raise RunUnavailable("events.submission_expired")

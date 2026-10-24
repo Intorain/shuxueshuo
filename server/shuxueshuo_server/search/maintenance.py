@@ -24,7 +24,8 @@ def main():
     try:
         repository = SearchRepository(db, settings.root / 'work/search/private-v1')
         if args.command == 'cleanup':
-            print(json.dumps(repository.cleanup()))
+            from .application import cleanup_search
+            print(json.dumps(cleanup_search(repository, settings)))
         else:
             repository.disable(args.problem_id)
             print(json.dumps({'problem_id': args.problem_id, 'status': 'disabled'}))

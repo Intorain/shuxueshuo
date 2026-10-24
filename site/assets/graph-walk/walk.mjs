@@ -17,12 +17,13 @@ let draft = null, draftKey = '', selectedSlot = null, submitted = null, busy = f
 let keptDraft = null;
 let actor = 'student', replay = null, replayPosition = 0, replayTimer = null, replayPlaying = false, replayTicket = 0, loadTicket = 0;
 let replayEntries = [], replayIndexLoaded = false, replayNotice = null, focusBeforeGraph = null, commitTimer = null;
-let graphMode = readGraphMode(), webglFailed = false;
-let preview = null, previewTimer = null, story = null, replayStatuses = {replay: null, values: []};
+let graphMode = readGraphMode(), webglFailed = false, graphTicket = 0;
+let preview = null, previewTimer = null, previewTicket = 0, story = null, replayStatuses = {replay: null, values: []};
 /* The Demo page loads its own snapshot. Another page sets <body data-walk="mount"> and calls mountWalk
    with a bundle and replay in hand; progress is kept per bundle so switching back resumes it. */
 let options = {bundleUrl: BUNDLE_URL, practicePage: PRACTICE_PAGE, bundle: null, replay: null, actor: null, revealGraph: false};
-let bound = false;
+let bound = false, disposed = false;
+let bundleScope = null;
 const saved = new Map();
 let streamView = null, publicGraph = null, streamUpdateTicket = 0;
 let streamUpdateQueue = Promise.resolve(), mountTicket = 0, streamParked = false;
@@ -35,25 +36,40 @@ function readGraphMode() {
   try { return localStorage.getItem(GRAPH_MODE_KEY) === '2d' ? '2d' : '3d'; } catch { return '3d'; }
 }
 
-async function createGraph() {
-  const host = $('#gw-graph'), onSwitch = () => void switchGraphMode();
+async function createGraph(current = () => true) {
+  const host = $('#gw-graph'), view = graphView;
+  const onSwitch = () => { if (current()) void switchGraphMode(); };
+  const onSelect = (...args) => { if (current()) selectNode(...args); };
   if (graphMode === '3d' && !webglFailed) {
     try {
       const {createWalkGraph3D} = await import('./walk-graph-3d.mjs?v=20261015-view-tabs');
-      return await createWalkGraph3D(host, graphView, {onSelect: selectNode, onSwitch});
+      if (!current()) return null;
+      return await createWalkGraph3D(host, view, {onSelect, onSwitch, current});
     } catch (error) {
+      if (!current()) return null;
       webglFailed = true;
       console.warn('三维图谱不可用，已改用平面图。', error);
     }
   }
-  return createWalkGraph(host, graphView, {onSelect: selectNode, onSwitch: webglFailed ? null : onSwitch, usedOnlyLane: CALL_LANE});
+  if (!current()) return null;
+  return createWalkGraph(host, view, {onSelect, onSwitch: webglFailed ? null : onSwitch, usedOnlyLane: CALL_LANE});
+}
+
+async function installGraph(current = () => true) {
+  const ticket = ++graphTicket;
+  const active = () => ticket === graphTicket && current();
+  graph?.destroy(); graph = null;
+  const created = await createGraph(active);
+  if (!active()) { created?.destroy(); return false; }
+  graph = created;
+  return Boolean(created);
 }
 
 async function switchGraphMode() {
+  if (streamParked || !bundle) return;
   graphMode = graphMode === '3d' ? '2d' : '3d';
   try { localStorage.setItem(GRAPH_MODE_KEY, graphMode); } catch { /* private mode keeps the choice for this page only */ }
-  graph?.destroy(); graph = null;
-  graph = await createGraph();
+  if (!await installGraph()) return;
   mountCaption(); renderGraph();
   $('#gw-graph [data-graph-action="switch"]')?.focus();
 }
@@ -765,7 +781,7 @@ function showPreview(index) {
   preview = index >= timelineNow() ? null : {index, state: studentStateAt(index)};
   renderGraph();
 }
-function stopPreview() { clearTimeout(previewTimer); previewTimer = null; }
+function stopPreview() { ++previewTicket; clearTimeout(previewTimer); previewTimer = null; }
 
 function goToTime(index) {
   if (actor === 'replay') {
@@ -792,8 +808,10 @@ function togglePlay() {
   if (previewTimer) { stopPreview(); updatePlayButton(); return; }
   const end = timelineNow();
   if (!end || busy) return;
+  const ticket = ++previewTicket;
   let index = 0;
   const step = () => {
+    if (disposed || ticket !== previewTicket) return;
     previewTimer = index >= end ? null : setTimeout(step, reduced.matches ? 900 : 1700);
     showPreview(index++);
   };
@@ -839,6 +857,7 @@ function renderGraph() {
 }
 
 function render({focus = false, scroll = focus} = {}) {
+  if (disposed) return;
   stopPreview(); preview = null;
   renderProblemContext();
   const open = new Set([...$('#gw-steps').querySelectorAll('details[open]')].map(item => item.dataset.completedDecision));
@@ -1018,7 +1037,11 @@ function submit() {
   $('#gw-submit').disabled = true;
   renderGraph();
   clearTimeout(commitTimer);
-  commitTimer = setTimeout(() => { busy = false; draftKey = ''; render({focus: true}); }, reduced.matches ? 0 : 350);
+  const ticket = loadTicket;
+  commitTimer = setTimeout(() => {
+    if (disposed || ticket !== loadTicket) return;
+    busy = false; draftKey = ''; render({focus: true});
+  }, reduced.matches ? 0 : 350);
 }
 
 function stopReplay() {
@@ -1052,7 +1075,7 @@ function playReplay() {
 }
 
 async function readJSON(url) {
-  const response = await fetch(url, {cache: 'no-store'});
+  const response = await (options.fetch || fetch)(url, {cache: 'no-store'});
   if (!response.ok) throw new Error(`读取失败（${response.status}）`);
   return response.json();
 }
@@ -1239,13 +1262,16 @@ function rememberReplayRoute() {
   replayRoutes[route || ''] = replayPosition;
 }
 
-const progressKey = value => value.stream ? JSON.stringify([value.problemId, value.bundleVersion]) : value.problemId;
+const progressKey = (value, scope = bundleScope) => JSON.stringify([scope || 'demo', value.problemId, value.bundleVersion]);
+const storedProgressKey = (value, scope) => scope ? `${scope}walk:${JSON.stringify([value.problemId, value.bundleVersion])}` : null;
 
 function savedProgress(value) {
-  let kept = saved.get(progressKey(value));
-  if (!kept && value.stream) try { kept = JSON.parse(localStorage.getItem(`graph-walk:${value.problemId}:${value.bundleVersion}`) || 'null'); } catch {}
+  const scope = options.progressScope || null;
+  let kept = saved.get(progressKey(value, scope));
+  const storageKey = storedProgressKey(value, scope);
+  if (!kept && value.stream && storageKey) try { kept = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch {}
   // The previous stage can be parked just before this run receives its identity.
-  return kept || saved.get(value.problemId);
+  return kept || (value.stream && saved.get(progressKey({...value, bundleVersion: value.stream.base_bundle_version}, scope)));
 }
 
 const streamCardKey = step => JSON.stringify([step.run_id, step.lesson_version, step.target_ref, step.route_id, step.step_id, step.math_step_sha256]);
@@ -1344,35 +1370,40 @@ function mountRetainedMath() {
 }
 
 function park() {
-  if (!bundle) return;
+  if (disposed || !bundle) return;
   rememberStreamDraft(); rememberReplayRoute();
   const previous = saved.get(progressKey(bundle));
   const draftNow = actor === 'student' && draftKey ? {key: draftKey, draft: structuredClone(draft), submitted, selectedSlot} : keptDraft;
   const value = {bundleVersion: bundle.bundleVersion, studentState, replayPosition, replayRoute, replayRoutes, actor,
     draft: draftNow ?? (previous?.bundleVersion === bundle.bundleVersion ? previous.draft : null)};
   saved.set(progressKey(bundle), value);
-  if (options.stream) try { localStorage.setItem(`graph-walk:${bundle.problemId}:${bundle.bundleVersion}`, JSON.stringify(value)); } catch {}
+  const storageKey = storedProgressKey(bundle, bundleScope);
+  if (bundle.stream && storageKey) try { localStorage.setItem(storageKey, JSON.stringify(value)); } catch {}
 }
 
-async function load() {
+async function load({replayFollowing} = {}) {
   const ticket = ++loadTicket;
+  const config = options, selection = streamView;
+  ++graphTicket;
   // A stage-two replay can already be playing when the stream identity arrives.
   // Capture its intent before stopping the old timer for the bundle migration.
-  const replayWasFollowing = actor === 'replay' && Boolean(replayPlaying ||
-    replay && replayPosition === replay.actions.length);
+  const replayWasFollowing = replayFollowing ?? (actor === 'replay' && Boolean(replayPlaying ||
+    replay && replayPosition === replay.actions.length));
   stopReplay(); ++replayTicket; clearTimeout(commitTimer); busy = false;
   park();
   $('#gw-loading').hidden = false; $('#gw-error').hidden = true;
   try {
-    let value = options.bundle || await readJSON(options.bundleUrl);
-    if (options.stream) {
+    let value = config.bundle || await readJSON(config.bundleUrl);
+    if (ticket !== loadTicket) return;
+    if (config.stream) {
       publicGraph ||= await readJSON('/knowledge/graph.json');
-      value = extendStreamBundle(value, streamView || options.stream, options.stream.target_ref, publicGraph);
+      if (ticket !== loadTicket) return;
+      value = extendStreamBundle(value, selection || config.stream, config.stream.target_ref, publicGraph);
     }
     value = await withLayout(value);
     if (ticket !== loadTicket) return;
     if (!value.bundleVersion || !value.templates || !value.intro?.length || !value.routes || !value.graph) throw new Error('Demo 快照不完整，请重新构建后重试。');
-    bundle = value; graphView = bundle.graph;
+    bundle = value; bundleScope = options.progressScope || null; graphView = bundle.graph;
     const kept = savedProgress(bundle);
     // Stage two may be readable a moment before stage three publishes its run identity.
     // Carry those same-version D1/D2 answers into that run, never across an old run.
@@ -1390,10 +1421,8 @@ async function load() {
     mountProblemBar();
     if (options.practicePage) void loadMeaning();
     if ($('#gw-version')) $('#gw-version').textContent = `版本 ${bundle.bundleVersion.slice(0, 12)} · 公共图谱 ${bundle.graphVersion.slice(0, 12)}`;
-    graph?.destroy(); graph = null;
     $('#gw-ready').hidden = false;
-    graph = await createGraph();
-    if (ticket !== loadTicket) return;
+    if (!await installGraph(() => ticket === loadTicket)) return;
     mountCaption(); mountPlayer();
     // A phone opens on the AI player, paused at the start; the visitor presses ▶ to watch.
     if (options.stream && kept?.actor) chooseActor(kept.actor, {autoplay: !migrated || replayWasFollowing,
@@ -1486,11 +1515,18 @@ if (document.readyState === 'loading') await new Promise(resolve => document.add
 /* Mount (or switch to) a bundle on a page that hosts the walk markup. Each bundle keeps its own progress. */
 export async function mountWalk(next) {
   const ticket = ++mountTicket;
+  const replayFollowing = actor === 'replay' && Boolean(replayPlaying || replay && replayPosition === replay.actions.length);
   streamParked = true; ++streamUpdateTicket;
-  const newRun = next.stream?.run_id !== options.stream?.run_id || next.stream?.lesson_version !== options.stream?.lesson_version;
+  ++loadTicket; ++graphTicket; ++replayTicket;
+  stopReplay(); stopPreview(); clearTimeout(commitTimer); busy = false;
+  park();
+  disposed = false;
+  graph?.destroy(); graph = null;
+  const scopeChanged = Object.hasOwn(next, 'progressScope') && next.progressScope !== options.progressScope;
+  const newRun = scopeChanged || next.stream?.run_id !== options.stream?.run_id || next.stream?.lesson_version !== options.stream?.lesson_version;
   if (newRun || next.stream?.target_ref !== options.stream?.target_ref) {
     if (newRun) {
-      streamQA.clear(); streamCards.clear(); visibleStreamCards = new Set();
+      streamQA.clear(); streamCards.clear(); axisPositions.clear(); visibleStreamCards = new Set();
     }
     streamView = next.stream || null; ++streamUpdateTicket;
   }
@@ -1499,14 +1535,29 @@ export async function mountWalk(next) {
   await streamUpdateQueue.catch(() => {});
   if (ticket !== mountTicket) return;
   streamParked = false;
-  await load();
+  await load({replayFollowing});
 }
 
 /* Leave the walk without a bundle, e.g. for a part with nothing to walk; its progress stays parked. */
 export function parkWalk() {
   streamParked = true; ++streamUpdateTicket; ++mountTicket;
+  ++graphTicket;
   stopReplay(); ++replayTicket; ++loadTicket; clearTimeout(commitTimer); busy = false;
   park();
+}
+
+export function disposeWalk() {
+  disposed = true;
+  streamParked = true;
+  ++graphTicket;
+  ++streamUpdateTicket; ++mountTicket; ++loadTicket; ++replayTicket;
+  stopReplay(); stopPreview(); clearTimeout(commitTimer);
+  graph?.destroy(); graph = null;
+  saved.clear(); streamQA.clear(); streamCards.clear(); axisPositions.clear(); visibleStreamCards.clear();
+  bundle = null; bundleScope = null; streamView = null; studentState = null; state = null;
+  keptDraft = null; draft = null; submitted = null; replay = null; busy = false;
+  draftKey = ''; selectedSlot = null; preview = null; story = null; replayRoutes = {}; replayRoute = null;
+  options = {...options, bundle: null, replay: null, stream: null, onState: null, progressScope: null, fetch: undefined};
 }
 
 /* The actor the walk currently shows, so a host can carry it across bundles. */
@@ -1542,8 +1593,11 @@ export function walkView() {
 
 /** Extend the same decision engine; existing answers/draft retain their identity. */
 export function updateStreamSelection(view) {
+  const ticket = mountTicket;
   // HTTP and WebSocket may deliver independently; serialize graph replacement.
-  const update = streamUpdateQueue.catch(() => {}).then(() => applyStreamSelection(view));
+  const update = streamUpdateQueue.catch(() => {}).then(() => {
+    if (ticket === mountTicket) return applyStreamSelection(view);
+  });
   streamUpdateQueue = update;
   return update;
 }
@@ -1564,8 +1618,7 @@ async function applyStreamSelection(view) {
     const laidOut = await withLayout(next);
     if (ticket !== streamUpdateTicket) return;
     bundle = laidOut; graphView = bundle.graph;
-    graph?.destroy(); graph = await createGraph();
-    if (ticket !== streamUpdateTicket) return;
+    if (!await installGraph(() => ticket === streamUpdateTicket)) return;
     mountCaption();
   } else bundle = {...bundle, ...next, graph: bundle.graph};
   streamView = view;

@@ -20,6 +20,8 @@
 uv run --project server python server/tools/run_site.py
 ```
 
+拍题学第一期需要 `0013_student_search`（或更新）迁移。旧实例升级前先停止连接它的网站与产品服务，再运行 `./deploy/product/manage.sh --mode local deploy`；日常启动不重复迁移。拍题的四表、私有文件期限、清理/停用命令与独立测试实例见[第一期实施说明](shared-problem-library-and-student-learning-stage1.md)。拍题文件使用默认持久目录下 `work/search/private-v1/`，不把匿名旧文件自动归给当前账号。
+
 启动器会启动或复用已安装的 PostgreSQL，随后提供静态网页、登录、学习记录和导师 API；不启动 Studio、RabbitMQ 或 Worker。数据库数据、账号和练习记录都保存在持久目录。启动日志打印实际网站地址、数据库端口和数据目录，不打印密码。显式 `--data-dir / --instance / --port` 仍可用于隔离联调；其中 `--port` 只控制网站端口，数据库端口由实例配置决定。
 
 打开 <http://127.0.0.1:8779/> 或 <http://127.0.0.1:8779/1/q01/>。页面与 API 同源；只监听 `127.0.0.1`，不要换成 `localhost`，也不要对外转发这个开发端口。

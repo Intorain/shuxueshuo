@@ -19,6 +19,7 @@ const topicsCrumb = {label: '高中专题', href: '/topics/'};
 export function pages() {
   const list = [
     ['index.html', {section: 'home', exact: true}],
+    ['lab/search/index.html', {section: 'search', exact: true}],
     ['nav/index.html', {section: 'junior', exact: true}],
     ['problems/tj/24/tj-2026-24-ranking.html', {section: 'junior'}],
     ['problems/tj/25/tj-2026-25-ranking.html', {section: 'junior'}],

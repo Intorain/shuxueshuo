@@ -364,3 +364,6 @@ student_learning_marks = sa.Table('student_learning_marks', metadata,
 # Learning tables participate in permission checks and backup inventories.
 from ..learning.models import register as register_learning
 register_learning(metadata)
+
+from ..search.models import register as register_search
+search_problems, search_pages, search_submissions, student_search_problems = register_search(metadata)

@@ -10,9 +10,9 @@ const navLinks = html => [...html.match(/<nav class="site-nav"[^>]*>(.*?)<\/nav>
   .map(m => [m[1], m[2]]);
 const current = html => html.match(/<nav class="site-nav"[^>]*>.*?<\/nav>/)[0].match(/aria-current="(\w+)">([^<]+)</)?.slice(1) ?? null;
 
-test('main nav has the four agreed sections in order', () => {
+test('main nav has the five agreed sections in order', () => {
   assert.deepEqual(SECTIONS.map(s => [s.href, s.label]), [
-    ['/', '首页'], ['/nav/', '初中题库'], ['/topics/', '高中专题'], ['/knowledge/', '知识图谱'],
+    ['/', '首页'], ['/lab/search/', '拍题学'], ['/nav/', '初中题库'], ['/topics/', '高中专题'], ['/knowledge/', '知识图谱'],
   ]);
   assert.deepEqual(navLinks(siteHeader()), SECTIONS.map(s => [s.href, s.label]));
   assert.equal(current(siteHeader()), null);
@@ -44,6 +44,7 @@ test('hand-written pages are in sync with the shared header', () => {
 
 test('pages highlight the expected section', () => {
   assert.deepEqual(current(site('index.html')), ['page', '首页']);
+  assert.deepEqual(current(site('lab/search/index.html')), ['page', '拍题学']);
   assert.deepEqual(current(site('nav/index.html')), ['page', '初中题库']);
   assert.deepEqual(current(site('topics/index.html')), ['page', '高中专题']);
   assert.deepEqual(current(site('senior-high/index.html')), ['true', '高中专题']);

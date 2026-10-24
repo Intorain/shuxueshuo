@@ -7,6 +7,13 @@ const params = new URLSearchParams(location.search);
 const searchId = params.get('search');
 const demo = params.get('demo') || 'ok';
 const $ = selector => document.querySelector(selector);
+const session = window.SearchSession;
+const searchFetch = (...args) => session.request(...args);
+let privateStopped = false;
+let liveTicket = 0;
+let retryRequestId = null;
+let progressOwner = null;
+let retakePending = false;
 const started = performance.now();
 
 const Q01 = '若不等式 $-x^2+2x+3\\le a^2-3a$ 对任意实数 $x$ 恒成立，求实数 $a$ 的取值范围。';
@@ -29,7 +36,7 @@ const FAILS = {
     quote: '“$a^2-3a$”中 $a$ 右上角的数字被反光挡住了', actions: ['retake'],
   },
   unsupported: {
-    icon: '?', tone: 'gray', title: '这道题暂不支持', text: '已记下，会尽快支持。', actions: ['other', 'demo'],
+    icon: '?', tone: 'gray', title: '这道题暂不支持', text: '这类题暂不支持，可以换一道题或查看示例。', actions: ['other', 'demo'],
   },
   error: {
     icon: '↻', tone: 'gray', title: '识别没有成功', text: '是我们这边的问题，请重试。', actions: ['retry', 'retake'],
@@ -348,10 +355,14 @@ const lesson = {data: null, actor: null, part: -1, engine: null, opened: false};
 let streamMount = null, streamTransport = null, streamIdentity = '', streamTicket = 0, partTicket = 0;
 let streamProjection = '', streamPreparing = null;
 let streamApplying = Promise.resolve();
-const pageProgressKey = `search-walk:${searchId || demo}`;
+const progressScope = () => progressOwner && progressOwner === session.user?.id ? session.scope(searchId) : null;
+const pageProgressKey = () => searchId && progressScope() ? `${progressScope()}page` : null;
 
 function savePageProgress(view) {
+  if (privateStopped) return;
   const goal = goals()[lesson.part];
+  if (!goal?.walk || view.problem_id !== goal.walk.bundle.problemId ||
+      view.base_bundle_version !== goal.walk.bundle.bundleVersion) return;
   if (lesson.data?.stream && (!goal?.walk || view.target_ref !== goal.target_ref)) return;
   if (goal?.walk && view.problem_id === goal.walk.bundle.problemId &&
       view.base_bundle_version === goal.walk.bundle.bundleVersion) {
@@ -360,14 +371,15 @@ function savePageProgress(view) {
     renderMeaning();
   }
   lesson.actor = view.actor;
-  try { localStorage.setItem(pageProgressKey, JSON.stringify({actor: view.actor, part: lesson.part,
+  if (pageProgressKey() && session.writable(searchId)) try { localStorage.setItem(pageProgressKey(), JSON.stringify({actor: view.actor, part: lesson.part,
     run_id: lesson.data?.stream?.run_id, lesson_version: lesson.data?.stream?.lesson_version})); } catch {}
 }
 
 function updateStreamView(view) {
-  if (!lesson.engine || !lesson.data?.stream || view.run_id !== lesson.data.stream.run_id ||
+  if (privateStopped || !lesson.engine || !lesson.data?.stream || view.run_id !== lesson.data.stream.run_id ||
       view.lesson_version !== lesson.data.stream.lesson_version) return;
   const goal = goals()[lesson.part];
+  const ticket = streamTicket;
   if (!goal?.walk || lesson.engine.walkView().target_ref !== goal.target_ref) return;
   const projection = JSON.stringify([view.run_id, view.lesson_version, lesson.part,
     view.selection_chunks, view.math_steps, view.trajectories, view.interaction_protocol, view.interaction_states,
@@ -379,10 +391,10 @@ function updateStreamView(view) {
   // QA can arrive after all decisions are complete, without changing the
   // mathematical projection. Attach it independently after the view update.
   void streamApplying.then(() => {
-    if (streamProjection !== projection || lesson.engine.walkView().target_ref !== goal.target_ref) return;
+    if (privateStopped || ticket !== streamTicket || streamProjection !== projection || lesson.engine.walkView().target_ref !== goal.target_ref) return;
     for (const chunk of view.qa || []) lesson.engine.attachStreamQA(chunk);
   }).catch(() => {
-    if (streamProjection !== projection) return;
+    if (privateStopped || ticket !== streamTicket || streamProjection !== projection) return;
     streamProjection = '';
     $('#pq-stream-status').hidden = false;
     $('#pq-stream-status').textContent = '解题过程暂时无法更新，正在重新连接。';
@@ -403,6 +415,7 @@ async function prepareStream() {
   if (ticket !== streamTicket) return;
   streamMount = module.mountStageThreeStream(descriptor);
   streamTransport = module.connectStageThreeStream(streamMount.consumer, descriptor, {
+    fetch: searchFetch,
     onUpdate: view => { if (ticket === streamTicket) { updateStreamView(view); $('#pq-stream-status').hidden = true; } },
     onError: () => { if (ticket === streamTicket) { $('#pq-stream-status').hidden = false;
       $('#pq-stream-status').textContent = '连接暂时中断，已到达的步骤可以继续阅读，正在重连。'; } },
@@ -457,7 +470,7 @@ function markPartTabs() {
 
 function noteHtml(goal) {
   const which = goals().length > 1 ? '这一问' : '这道题';
-  if (goal?.status === 'unsupported') return `<section class="pq-part" data-state="unsupported"><p class="pq-part-note">${which}暂不支持 · 已记下</p></section>`;
+  if (goal?.status === 'unsupported') return `<section class="pq-part" data-state="unsupported"><p class="pq-part-note">${which}暂不支持，可以换一道题。</p></section>`;
   return `<section class="pq-part" data-state="failed"><p class="pq-part-note">${which}没判断出题型</p>
     <div class="pq-fail-actions"><button type="button" class="sq-primary" data-lesson-retry>重试</button><a class="sq-ghost" href="./">重新拍照</a></div></section>`;
 }
@@ -487,6 +500,7 @@ function offerStart() {
 }
 
 function showLesson(data) {
+  if (privateStopped) return;
   const action = $('#pq-stream-action');
   action.hidden = !searchId || !(data.execution_status === 'not_started' ||
     (data.stream && ['interrupted', 'error'].includes(data.execution_status)));
@@ -526,7 +540,7 @@ function showLesson(data) {
     if (!same || !lesson.mounted) openPart(lesson.part);
   } else {
     let saved;
-    try { saved = JSON.parse(localStorage.getItem(pageProgressKey) || 'null'); } catch {}
+    if (pageProgressKey()) try { saved = JSON.parse(localStorage.getItem(pageProgressKey()) || 'null'); } catch {}
     if (data.stream && saved?.run_id === data.stream.run_id && saved?.lesson_version === data.stream.lesson_version) {
       if (data.goals[saved.part]) lesson.part = saved.part;
       void enterWalk(saved.actor === 'replay' ? 'replay' : 'student');
@@ -565,13 +579,17 @@ function foldGraph(folded) {
 }
 
 async function enterWalk(actor) {
+  const ticket = liveTicket;
+  if (privateStopped) return;
   if (lesson.opened) return;
   lesson.actor = actor;
   lesson.opened = true;
   // Switch only with styles and engine in hand, so the first walk frame already has its final layout.
   const [engine, styles] = await Promise.all([import(WALK), loadPracticeStyles()]);
+  if (privateStopped || ticket !== liveTicket) return;
   lesson.engine = engine;
   const swap = () => {
+    if (privateStopped || ticket !== liveTicket) return;
     styles.media = 'all';
     document.body.classList.add('gw-page');
     document.body.dataset.actor = actor;
@@ -590,11 +608,13 @@ async function enterWalk(actor) {
   if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     await document.startViewTransition(swap).updateCallbackDone;
   } else swap();
+  if (privateStopped || ticket !== liveTicket) return;
   if (lesson.data) openPart(lesson.part);
   else showNote($('#pq-start-note').hidden ? noteHtml(null) : WAITING);
 }
 
 async function openPart(index) {
+  if (privateStopped) return;
   const ticket = ++partTicket;
   lesson.part = index;
   renderMeaning();
@@ -611,31 +631,36 @@ async function openPart(index) {
   const stream = lesson.data.stream ? {...streamMount.consumer.view(), target_ref: goal.target_ref} : null;
   $('#pq-stream').hidden = true;
   await lesson.engine.mountWalk({bundle: goal.walk.bundle, replay: goal.walk.replay, actor,
-    revealGraph: true, practicePage: null, stream, onState: savePageProgress});
+    revealGraph: true, practicePage: null, stream, onState: view => { if (ticket === partTicket) savePageProgress(view); },
+    progressScope: searchId ? progressScope() : null, fetch: searchId ? searchFetch : undefined});
   if (ticket !== partTicket) return;
   if (stream) { streamProjection = ''; updateStreamView(streamMount.consumer.view()); savePageProgress(lesson.engine.walkView()); }
 }
 
 async function retryLesson() {
+  if (privateStopped) return;
   if (!searchId) return toast('原型不能重试');
-  const response = await fetch(`/api/search/problems/${searchId}/lesson`, {method: 'POST'}).catch(() => null);
+  const response = await searchFetch(`/api/search/problems/${searchId}/lesson`, {method: 'POST'}).catch(() => null);
+  if (privateStopped) return;
   if (!response?.ok) return toast('重试失败，请稍后再试');
   resumeLesson();
 }
 
 async function continueCalculation() {
   const descriptor = lesson.data?.stream;
-  if (!searchId) return;
+  if (!searchId || privateStopped) return;
+  const ticket = liveTicket;
   const action = $('#pq-stream-action'); action.disabled = true;
   const url = descriptor ? descriptor.snapshot_url.replace(/\/snapshot$/, '/resume') : `/api/search/problems/${searchId}/lesson/start`;
   try {
-    const response = await fetch(url, {method: 'POST'});
+    const response = await searchFetch(url, {method: 'POST'});
+    if (privateStopped || ticket !== liveTicket) return;
     if (!response.ok) throw new Error('resume rejected');
     action.hidden = true;
     void pollLesson();
     await streamTransport?.refresh();
-  } catch { toast('暂时无法继续计算，请稍后重试'); }
-  finally { action.disabled = false; }
+  } catch { if (!privateStopped) toast('暂时无法继续计算，请稍后重试'); }
+  finally { if (!privateStopped) action.disabled = false; }
 }
 
 const LESSON_MISSES = 10;
@@ -644,6 +669,7 @@ let lessonPoll = 0;
 const lessonNeedsPolling = data => data.status === 'running' || ['starting', 'running'].includes(data.execution_status);
 
 async function pollLesson() {
+  if (privateStopped) return;
   const ticket = ++lessonPoll;
   let hasStream = Boolean(lesson.data?.stream);
   // A quiet event stream cannot report a worker that died before its final
@@ -651,10 +677,13 @@ async function pollLesson() {
   for (let misses = 0; misses < LESSON_MISSES || hasStream;) {
     await wait(hasStream ? LESSON_STATUS_POLL_MS : 800);
     if (ticket !== lessonPoll) return;
-    const response = await fetch(`/api/search/problems/${searchId}`, {cache: 'no-store'}).catch(() => null);
+    const response = await searchFetch(`/api/search/problems/${searchId}`, {cache: 'no-store'}).catch(() => null);
     const status = response?.ok ? await response.json().catch(() => null) : null;
     if (ticket !== lessonPoll) return;
+    if (response?.status === 404) { unavailable('这条拍题记录不存在或已删除。'); return; }
+    if (status && ['expired', 'disabled'].includes(status.outcome)) { unavailableStatus(status); return; }
     if (!status) { misses += 1; continue; }
+    if (status.user_id !== session.user?.id) { unavailable('账号状态已变更，请重新打开这道题。'); return; }
     misses = 0;
     if (status.lesson && (status.lesson.status !== 'running' || status.lesson.goals?.length)) {
       showLesson(status.lesson);
@@ -667,6 +696,7 @@ async function pollLesson() {
 }
 
 function resumeLesson() {
+  if (privateStopped) return;
   if (!lesson.data?.stream) showLesson({status: 'running'});
   pollLesson();
 }
@@ -699,37 +729,50 @@ let pollLost = false;
 /* Lost polling: the run may still be going, so reload and keep polling the same search.
    A run that ended in failure never reruns, so submit the same page crop as a new search. */
 async function retry() {
+  if (privateStopped) return;
   if (pollLost || !liveCrop) return location.reload();
   const button = $('[data-retry]');
   button.disabled = true;
   try {
-    const response = await fetch('/api/search/problems', {
+    retryRequestId ||= crypto.randomUUID();
+    const response = await searchFetch('/api/search/problems', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({page_id: liveCrop.page_id, box: liveCrop.box}),
+      body: JSON.stringify({page_id: liveCrop.page_id, box: liveCrop.box, client_request_id: retryRequestId}),
     });
     const body = await response.json().catch(() => ({}));
+    if (privateStopped) return;
     if (response.ok) { location.href = `problem.html?search=${body.search_id}`; return; }
     toast(`重试失败：${body.detail || response.status}`);
   } catch (error) {
-    toast(`重试失败：${error.message}`);
+    if (!privateStopped) toast(`重试失败：${error.message}`);
   }
   button.disabled = false;
 }
 
 async function runLive() {
-  setPhotos(`/api/search/problems/${searchId}/image`);
+  if (privateStopped) return;
+  const ticket = ++liveTicket;
   const items = phaseItems();
   items[0].dataset.state = 'doing';
   let status;
   let misses = 0;
+  let photosLoaded = false;
   for (;;) {
     try {
-      const response = await fetch(`/api/search/problems/${searchId}`, {cache: 'no-store'});
+      const response = await searchFetch(`/api/search/problems/${searchId}`, {cache: 'no-store'});
+      if (ticket !== liveTicket || privateStopped) return;
+      if (response.status === 404) { unavailable('这条拍题记录不存在或已删除。'); return; }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       status = await response.json();
+      if (ticket !== liveTicket || privateStopped) return;
+      if (!status.user_id || status.user_id !== session.user?.id) { unavailable('登录状态无法确认，请返回后重新打开。'); return; }
+      progressOwner = status.user_id;
+      if (['expired', 'disabled'].includes(status.outcome)) { unavailableStatus(status); return; }
+      if (!photosLoaded) { setPhotos(`/api/search/problems/${searchId}/image`); photosLoaded = true; }
       liveCrop = status.crop || liveCrop;
       misses = 0;
     } catch (error) {
+      if (ticket !== liveTicket || privateStopped || error.name === 'AbortError') return;
       if (++misses < 5) { await wait(1500); continue; }
       pollLost = true;
       status = {state: 'done', outcome: 'error', status: `poll: ${error}`};
@@ -743,12 +786,14 @@ async function runLive() {
     }
     if (status.state === 'done') break;
     await wait(800);
+    if (ticket !== liveTicket || privateStopped) return;
   }
   if (status.outcome !== 'ok') {
     if ($('#pq-result').hidden) {
       const stopAt = items.findIndex(item => item.dataset.state === 'doing');
       items[Math.max(0, stopAt)].dataset.state = 'stop';
       await wait(500);
+      if (ticket !== liveTicket || privateStopped) return;
     }
     const fail = {...FAILS[status.outcome] || FAILS.error};
     const finding = status.outcome === 'unclear' && (status.findings?.find(f => ['unreadable', 'ambiguous'].includes(f.kind)) || status.findings?.[0]);
@@ -760,6 +805,7 @@ async function runLive() {
   if (shown.text === null) {
     for (const item of items) item.dataset.state = 'done';
     await wait(300);
+    if (ticket !== liveTicket || privateStopped) return;
   }
   settle(status.original_text || '', status.parts || [], status.root);
   devCheck(status, '#pq-result');
@@ -811,14 +857,70 @@ function showFail(fail) {
     .join('');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function stopPrivateLesson() {
+  privateStopped = true;
+  liveTicket++; lessonPoll++; streamTicket++; partTicket++;
+  streamTransport?.stop(); streamMount?.stop();
+  lesson.engine?.disposeWalk();
+  lesson.data = null;
+  lesson.teaching = null;
+  shown.text = null; shown.parts = []; shown.root = null;
+  liveCrop = null;
+  progressOwner = null;
+  for (const selector of ['#pq-photo', '#pq-thumb-img', '#pq-fail-img', '#pq-viewer img']) $(selector)?.removeAttribute('src');
+  for (const selector of ['#pq-text', '#pq-meaning-body', '#pq-lesson', '#pq-fail-quote', '#gw-steps', '#pq-stream', '#gw-ready']) $(selector)?.replaceChildren();
+  for (const selector of ['#pq-result', '#pq-scan', '#gw-main']) $(selector).hidden = true;
+  $('#pq-viewer').close();
+}
+
+function unavailable(message) {
+  stopPrivateLesson();
+  $('#main').hidden = false;
+  showFail({icon: '!', title: '暂时无法打开这道题', text: message, actions: ['retake']});
+}
+
+function unavailableStatus(status) {
+  unavailable(status.outcome === 'disabled' ? '题目已下线，请重新拍摄。' : '原图已到期清除。解析已随原图到期清除，重新拍摄可再次学习。');
+  if (status.statement) {
+    $('#pq-fail-quote').textContent = status.statement;
+    $('#pq-fail-quote').hidden = false;
+    renderMath($('#pq-fail-quote'));
+  }
+}
+
+async function deleteAndRetake() {
+  if (!searchId || !session.user || privateStopped || retakePending) return;
+  const userId = session.user.id;
+  retakePending = true;
+  $('#pq-misread').disabled = true;
+  try {
+    const detailResponse = await searchFetch(`/api/search/problems/${searchId}`, {cache: 'no-store'});
+    if (!detailResponse.ok) throw new Error();
+    const detail = await detailResponse.json();
+    if (privateStopped || session.user?.id !== userId) return;
+    if (detail.user_id !== userId) throw new Error();
+    const message = detail.problem_id
+      ? '删除你拍过的这道题的全部已关联记录、照片和已可学习课程后重新拍摄？其他题目不受影响，来源整页仍按原 24 小时期限保留。'
+      : '删除这条拍题记录和照片后重新拍摄？其他记录不受影响，来源整页仍按原 24 小时期限保留。';
+    if (!window.confirm(message) || privateStopped || session.user?.id !== userId) return;
+    const response = await searchFetch(`/api/search/problems/${searchId}`, {method: 'DELETE'});
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    if (privateStopped || session.user?.id !== userId) return;
+    stopPrivateLesson();
+    session.clearProgress(userId, data.deleted_search_ids);
+    location.href = 'camera.html';
+  } catch (error) {
+    if (!privateStopped && session.user?.id === userId && error.name !== 'AbortError') toast('删除失败，请稍后重试');
+  } finally {
+    retakePending = false;
+    if (!privateStopped) $('#pq-misread').disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   $('#pq-thumb').addEventListener('click', () => $('#pq-viewer').showModal());
-  $('#pq-misread').addEventListener('click', () => $('#pq-misread-sheet').showModal());
-  $('#pq-misread-sheet').addEventListener('close', () => {
-    if ($('#pq-misread-sheet').returnValue !== 'retake') return;
-    toast('已记录，谢谢反馈。这次不计次数');
-    setTimeout(() => { location.href = './'; }, 1200);
-  });
+  $('#pq-misread').addEventListener('click', deleteAndRetake);
   // Before the walk opens a part button only picks which part opens first.
   $('#pq-parts').addEventListener('click', event => {
     const index = Number(event.target.closest('[data-part]')?.dataset.part ?? -1);
@@ -842,8 +944,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (searchId) {
     $('.sq-proto-note').hidden = true;
-    runLive();
+    window.addEventListener('pagehide', stopPrivateLesson);
+    window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+    await session.init((_next, previous) => {
+      if (!previous) return;
+      stopPrivateLesson();
+      location.href = './';
+    });
+    window.addEventListener('search-records-deleted', event => {
+      if (event.detail.user_id === session.user?.id && event.detail.search_ids.includes(searchId)) unavailable('这条拍题记录已删除。');
+    });
+    try {
+      if (!await session.login()) { location.href = './'; return; }
+      await runLive();
+    } catch { if (!privateStopped) unavailable('登录服务暂不可用，请稍后重试。'); }
   } else {
+    $('#pq-misread').hidden = true;
     runDemo();
   }
 });

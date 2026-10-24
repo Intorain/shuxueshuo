@@ -14,13 +14,15 @@
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
   <script src="/assets/practice/math-text.js" defer></script>
   <script src="/assets/practice/components.js?v=20261022-axis-family" defer></script>
-  <script src="problem.js?v=20261023-active-premises" defer></script>
+  <script src="search-session.js?v=1" defer></script>
+  <script src="problem.js?v=20261024-auth" defer></script>
+  <script type="module" src="../../assets/auth/site-auth.js?v=4"></script>
 </head>
 <body class="sq-page" data-walk="mount">
   <header class="pq-bar">
     <a class="pq-back" href="./" aria-label="返回拍题学">‹</a>
     <strong>拍题学</strong>
-    <a class="pq-history" href="./">拍过的题</a>
+    <a class="pq-history" href="./">拍过的题</a><span data-site-auth></span>
   </header>
 
   <main class="pq-main" id="main">
@@ -66,7 +68,7 @@
         <p class="pq-start-note" id="pq-start-note" hidden><span class="pq-spin" aria-hidden="true"></span>正在判断题型，选好就开始</p>
       </section>
       <div class="pq-lesson" id="pq-lesson"></div>
-      <p class="pq-quota" id="pq-quota" hidden>已计入今天的次数，还可以拍 7 道</p>
+      <p class="pq-quota" id="pq-quota" hidden></p>
     </section>
 
     <!-- 失败 -->
@@ -78,7 +80,7 @@
         <blockquote id="pq-fail-quote" hidden></blockquote>
         <p id="pq-fail-text"></p>
         <div class="pq-fail-actions" id="pq-fail-actions"></div>
-        <p class="pq-fail-free" id="pq-fail-free">这次不计次数</p>
+        <p class="pq-fail-free" id="pq-fail-free" hidden></p>
       </div>
     </section>
 
@@ -116,20 +118,6 @@
     </div>
   </main>
   <div id="gw-announcement" class="sr-only" aria-live="polite" role="status"></div>
-
-  <dialog class="sq-dialog pq-sheet" id="pq-misread-sheet">
-    <form method="dialog">
-      <h2>哪里识别错了？</h2>
-      <p>提交后重拍，不计次数。</p>
-      <div class="pq-options">
-        <label><input type="checkbox" name="kind" value="text">文字或公式错了</label>
-        <label><input type="checkbox" name="kind" value="missing">漏了条件或小问</label>
-        <label><input type="checkbox" name="kind" value="parts">小问拆分不对</label>
-        <label><input type="checkbox" name="kind" value="other">其他</label>
-      </div>
-      <menu><button value="cancel" class="sq-ghost">取消</button><button value="retake" class="sq-primary">提交并重拍</button></menu>
-    </form>
-  </dialog>
 
   <dialog class="pq-viewer" id="pq-viewer"><form method="dialog"><img id="pq-viewer-img" alt="原图"><button class="sq-ghost">关闭</button></form></dialog>
   <div class="sq-toast" id="sq-toast" role="status" hidden></div>

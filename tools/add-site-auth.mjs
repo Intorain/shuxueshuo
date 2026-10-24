@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pages = ['index.html', 'nav/index.html', 'senior-high/index.html', 'mistake-book/index.html',
-  'topics/index.html', '1/index.html', '2/index.html'];
+  'topics/index.html', '1/index.html', '2/index.html', 'lab/search/index.html', 'lab/search/camera.html', 'lab/search/problem.html'];
 function collect(directory) {
   for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
     const file = path.join(directory, entry.name);

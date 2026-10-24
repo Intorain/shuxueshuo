@@ -343,5 +343,5 @@ export function createWalkGraph(host, graph, {onSelect = () => {}, onSwitch = nu
     if (svg.clientWidth && next !== size) { size = next; arrange(); }
   });
   resizeObserver.observe(svg);
-  return {render, focus: () => fit(false), fit, destroy() { cancelAnimationFrame(animation); resizeObserver.disconnect(); host.replaceChildren(); }};
+  return {render, focus: () => fit(false), fit, destroy() { cancelAnimationFrame(animation); resizeObserver.disconnect(); controls.remove(); svg.remove(); }};
 }

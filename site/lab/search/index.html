@@ -11,10 +11,12 @@
   <link rel="stylesheet" href="search.css">
   <script src="/assets/practice/vendor/katex-0.18.9/katex.min.js" defer></script>
   <script src="/assets/practice/vendor/katex-0.18.9/auto-render.min.js" defer></script>
-  <script src="search.js" defer></script>
+  <script src="search-session.js?v=1" defer></script>
+  <script src="search.js?v=1" defer></script>
+  <script type="module" src="../../assets/auth/site-auth.js?v=4"></script>
 </head>
 <body class="sq-page">
-  <header class="site-header"><div class="site-header-inner"><a class="site-brand" href="/" aria-label="数学说首页"><span class="site-brand-mark" aria-hidden="true">数</span><span class="site-brand-name">数学说</span></a><nav class="site-nav" aria-label="站内导航"><a href="/">首页</a><a href="/nav/">初中题库</a><a href="/topics/">高中专题</a><a href="/knowledge/">知识图谱</a></nav><div class="site-header-account" id="sq-account"></div></div></header>
+  <!-- site-header:begin --><header class="site-header"><div class="site-header-inner"><a class="site-brand" href="/" aria-label="数学说首页"><span class="site-brand-mark" aria-hidden="true">数</span><span class="site-brand-name">数学说</span></a><nav class="site-nav" aria-label="站内导航"><a href="/">首页</a><a href="/lab/search/" aria-current="page">拍题学</a><a href="/nav/">初中题库</a><a href="/topics/">高中专题</a><a href="/knowledge/">知识图谱</a></nav><div class="site-header-account" data-site-auth></div></div></header><!-- site-header:end -->
 
   <main class="sq-main" id="main">
     <section class="sq-hero" aria-labelledby="sq-title">
@@ -30,11 +32,10 @@
             </span>
             <span class="sq-shoot-text"><strong>拍一道题</strong><small>整页也能拍，拍完点选一道</small></span>
           </a>
-          <label class="sq-album" for="sq-file">从相册选择</label>
+          <button class="sq-album" type="button" data-album>从相册选择</button>
           <input id="sq-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
         </div>
 
-        <p class="sq-quota" id="sq-quota"></p>
       </div>
     </section>
 
@@ -85,14 +86,14 @@
         <h2 id="sq-history-title">我拍过的题</h2>
       </div>
       <ul class="sq-history-list" id="sq-history-list"></ul>
-      <a href="#" class="sq-history-more" id="sq-history-all">查看全部 12 道 ›</a>
+      <p id="sq-history-message" role="status"></p>
+      <button type="button" class="sq-history-more" id="sq-history-all" hidden>加载更多</button>
       <div class="sq-history-guest" id="sq-history-guest" hidden>
         <p>登录后保存每一道拍过的题，做到一半也能接着做。</p>
         <button type="button" class="sq-ghost" data-login>手机号登录</button>
       </div>
     </section>
 
-    <p class="sq-proto-note">原型页 · 数据为模拟。切换：<a href="?as=user">已登录</a> · <a href="?as=guest">游客</a> · <a href="?as=empty">已登录无记录</a></p>
   </main>
 
   <div class="sq-dock" id="sq-dock" hidden>
@@ -101,16 +102,6 @@
       拍一道题
     </a>
   </div>
-
-  <dialog class="sq-dialog" id="sq-login">
-    <form method="dialog">
-      <h2>登录后开始拍题学</h2>
-      <p>每道题都要为你生成专属的学习过程，登录后还会保存你拍过的题。</p>
-      <input type="tel" placeholder="手机号" inputmode="numeric" aria-label="手机号">
-      <div class="sq-code"><input type="text" placeholder="验证码" inputmode="numeric" aria-label="验证码"><button type="button" class="sq-ghost">获取验证码</button></div>
-      <menu><button value="cancel" class="sq-ghost">取消</button><button value="ok" class="sq-primary" id="sq-login-ok">登录并继续</button></menu>
-    </form>
-  </dialog>
 
   <div class="sq-toast" id="sq-toast" role="status" hidden></div>
 </body>

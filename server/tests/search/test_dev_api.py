@@ -6,14 +6,14 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from PIL import Image
 
 from shuxueshuo_server.graph_lesson.stage_one.runner import build_image_request
 from shuxueshuo_server.problem_understanding.identity import revision
 from shuxueshuo_server.search import dev_api
 from shuxueshuo_server.solver.extraction.artifacts import ExtractionArtifactStore
+from tests.search.support import authenticated_client
+from tests.search.test_identity import public_candidate, reviewed_result
 
 PAGE = Path(__file__).parent / "fixtures/segment-pages/two-column"
 
@@ -22,9 +22,7 @@ PAGE = Path(__file__).parent / "fixtures/segment-pages/two-column"
 def client(tmp_path, monkeypatch):
     recorded = json.loads((PAGE / "ocr.json").read_text(encoding="utf-8"))
     monkeypatch.setattr(dev_api.OcrClient, "observe", lambda self, path: recorded)
-    app = FastAPI()
-    app.include_router(dev_api.create_search_router(tmp_path))
-    return TestClient(app)
+    return authenticated_client(tmp_path)
 
 
 def _upload(client):
@@ -59,7 +57,7 @@ def test_chosen_box_is_cropped_and_handed_to_stage_one(client, monkeypatch, tmp_
         received["png"] = png
         digest = sha256(png).hexdigest()
         (output / dev_api.RESULT_FILE).write_text(json.dumps({
-            "status": "reviewed_candidate", "candidate": {"original_text": "若不等式…", "root": {"children": []}},
+            **reviewed_result(public_candidate()),
             "features": [], "review_findings": [], "question_sha256": digest, "sent_image_sha256": [digest],
             "elapsed_seconds": 1.0}), encoding="utf-8")
 

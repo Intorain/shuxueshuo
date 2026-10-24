@@ -6,13 +6,12 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 
 from shuxueshuo_server.search import dev_api
 from shuxueshuo_server.search.question_image import question_png
 from shuxueshuo_server.search.segmentation import segment
+from tests.search.support import authenticated_client
 
 
 def _turn(image, degrees):
@@ -63,9 +62,7 @@ def _observed(size, orientation, *, manual=False):
 
 def _client(tmp_path, monkeypatch, observe, *, raise_server_exceptions=True):
     monkeypatch.setattr(dev_api.OcrClient, "observe", observe)
-    app = FastAPI()
-    app.include_router(dev_api.create_search_router(tmp_path))
-    return TestClient(app, raise_server_exceptions=raise_server_exceptions)
+    return authenticated_client(tmp_path, raise_server_exceptions=raise_server_exceptions)
 
 
 def _upload(client, image=None, *, content=None):
@@ -113,7 +110,7 @@ def test_upload_normalizes_image_and_selected_crop_to_ocr_frame(tmp_path, monkey
     client = _client(tmp_path, monkeypatch, observe)
     received, done = _capture_stage_one(monkeypatch)
     page = _upload(client, source)
-    directory = tmp_path / page["page_id"]
+    directory = tmp_path / "pages" / page["page_id"]
     assert calls == [directory / "source.png"]
     assert page["orientation"] == _orientation(degrees)
     assert page["rotation_reference"] == "upload_after_exif"
@@ -152,7 +149,7 @@ def test_exif_is_applied_once_before_orientation_and_removed_from_source(tmp_pat
 
     client = _client(tmp_path, monkeypatch, observe)
     page = _upload(client, content=_png(raw, exif=exif))
-    _assert_image(tmp_path / page["page_id"] / "page.png", canonical)
+    _assert_image(tmp_path / "pages" / page["page_id"] / "page.png", canonical)
     _assert_image(client.get(page["image_url"]).content, canonical)
 
 
@@ -193,7 +190,7 @@ def test_manual_rotation_uses_current_canonical_image_and_creates_fresh_page(tmp
     client = _client(tmp_path, monkeypatch, observe)
     received, done = _capture_stage_one(monkeypatch)
     old = _upload(client, source)
-    old_dir = tmp_path / old["page_id"]
+    old_dir = tmp_path / "pages" / old["page_id"]
     started = client.post("/api/search/problems", json={"page_id": old["page_id"], "box": old["regions"][0]["box"]})
     assert started.status_code == 200
     assert done.wait(5)
@@ -202,7 +199,7 @@ def test_manual_rotation_uses_current_canonical_image_and_creates_fresh_page(tmp
     response = client.post(f"/api/search/pages/{old['page_id']}/rotate", json={"degrees": degrees})
     assert response.status_code == 200, response.text
     page = response.json()
-    directory = tmp_path / page["page_id"]
+    directory = tmp_path / "pages" / page["page_id"]
     assert page["page_id"] != old["page_id"]
     assert page["parent_page_id"] == old["page_id"]
     assert page["rotation_reference"] == "parent_page"
@@ -240,7 +237,7 @@ def test_manual_rotation_rejects_invalid_angles_without_calling_ocr(tmp_path, mo
     page = _upload(client, _page())
     response = client.post(f"/api/search/pages/{page['page_id']}/rotate", json={"degrees": degrees})
     assert response.status_code == 422
-    assert len(list(tmp_path.iterdir())) == 1
+    assert len(list((tmp_path / "pages").iterdir())) == 1
 
 
 @pytest.mark.parametrize("orientation", [
@@ -257,8 +254,8 @@ def test_invalid_worker_orientation_is_not_published(tmp_path, monkeypatch, orie
     client = _client(tmp_path, monkeypatch, lambda self, path: observed)
     response = client.post("/api/search/pages", content=_png(_page()))
     assert response.status_code == 503, response.text
-    assert "orientation.invalid" in response.json()["detail"]
-    (directory,) = list(tmp_path.iterdir())
+    assert response.json()["detail"] == "ocr.unavailable"
+    (directory,) = list((tmp_path / "pages").iterdir())
     assert (directory / "source.png").exists()
     assert not (directory / "ocr.json").exists()
     assert not (directory / "page.png").exists()
@@ -276,7 +273,7 @@ def test_ocr_failure_does_not_publish_or_reuse_regions(tmp_path, monkeypatch, ma
     client = _client(tmp_path, monkeypatch, observe)
     if manual:
         old = _upload(client, _page())
-        old_dir = tmp_path / old["page_id"]
+        old_dir = tmp_path / "pages" / old["page_id"]
         previous = {path.name: path.read_bytes() for path in old_dir.iterdir()}
         response = client.post(f"/api/search/pages/{old['page_id']}/rotate", json={"degrees": 90})
         for name, content in previous.items():
@@ -284,8 +281,8 @@ def test_ocr_failure_does_not_publish_or_reuse_regions(tmp_path, monkeypatch, ma
     else:
         response = client.post("/api/search/pages", content=_png(_page()))
     assert response.status_code == 503
-    assert "test.failure" in response.json()["detail"]
-    failed = [path for path in tmp_path.iterdir() if not (path / "page.png").exists()]
+    assert response.json()["detail"] == "ocr.unavailable"
+    failed = [path for path in (tmp_path / "pages").iterdir() if not (path / "page.png").exists()]
     assert len(failed) == 1
     assert (failed[0] / "source.png").exists()
     assert not (failed[0] / "segments.json").exists()
@@ -297,8 +294,8 @@ def test_manual_worker_must_not_apply_a_second_rotation(tmp_path, monkeypatch):
     old = _upload(client, _page())
     response = client.post(f"/api/search/pages/{old['page_id']}/rotate", json={"degrees": 90})
     assert response.status_code == 503
-    assert "orientation.manual_auto_rotation" in response.json()["detail"]
-    assert len(list(tmp_path.glob("*/page.png"))) == 1
+    assert response.json()["detail"] == "ocr.unavailable"
+    assert len(list(tmp_path.glob("pages/*/page.png"))) == 1
 
 
 def test_manual_rotation_requires_an_existing_page(tmp_path, monkeypatch):
@@ -334,7 +331,7 @@ def test_large_jpeg_has_a_small_preview_but_keeps_full_resolution_crop_pixels(tm
     with Image.open(BytesIO(preview.content)) as image:
         assert image.format == "JPEG"
         assert image.size == (1200, 1600)
-    _assert_image(tmp_path / page["page_id"] / "page.png", canonical)
+    _assert_image(tmp_path / "pages" / page["page_id"] / "page.png", canonical)
     box = [0.12, 0.13, 0.27, 0.29]
     crop = canonical.crop((360, 520, 810, 1160))
     started = client.post("/api/search/problems", json={"page_id": page["page_id"], "box": box})
@@ -366,8 +363,8 @@ def test_images_without_a_final_manifest_are_never_readable(tmp_path, monkeypatc
     client = _client(tmp_path, monkeypatch, lambda self, path: _observed(_page().size, _orientation()),
                      raise_server_exceptions=False)
     response = client.post("/api/search/pages", content=_png(_page()))
-    assert response.status_code == 500
-    (directory,) = list(tmp_path.iterdir())
+    assert response.status_code == 503
+    (directory,) = list((tmp_path / "pages").iterdir())
     assert (directory / "page.png").is_file(), "even a finished canonical image is not a publication marker"
     assert not (directory / "segments.json").exists()
     assert client.get(f"/api/search/pages/{directory.name}/image").status_code == 404
@@ -394,7 +391,7 @@ def test_both_images_finish_before_manifest_publication(tmp_path, monkeypatch):
     monkeypatch.setattr(dev_api, "save", save)
     client = _client(tmp_path, monkeypatch, lambda self, path: _observed(_page().size, _orientation()))
     page = _upload(client, _page())
-    assert checked == [tmp_path / page["page_id"] / "segments.json"]
+    assert checked == [tmp_path / "pages" / page["page_id"] / "segments.json"]
 
 
 def test_upload_and_manual_image_work_never_run_on_an_event_loop(tmp_path, monkeypatch):
@@ -445,7 +442,7 @@ def test_rotation_depth_limit_is_persistent_and_keeps_existing_problems(tmp_path
     started = client.post("/api/search/problems", json={"page_id": first["page_id"], "box": [0.1, 0.1, 0.8, 0.8]})
     assert started.status_code == 200
     assert done.wait(5)
-    first_dir = tmp_path / first["page_id"]
+    first_dir = tmp_path / "pages" / first["page_id"]
     original = {path.relative_to(first_dir): path.read_bytes() for path in first_dir.rglob("*") if path.is_file()}
     page = first
     for count in range(1, 9):
@@ -458,18 +455,18 @@ def test_rotation_depth_limit_is_persistent_and_keeps_existing_problems(tmp_path
         page = rotated
     # A fresh router must enforce the saved count rather than restarting it.
     client = _client(tmp_path, monkeypatch, observe)
-    before = set(tmp_path.iterdir())
+    before = set((tmp_path / "pages").iterdir())
     response = client.post(f"/api/search/pages/{page['page_id']}/rotate", json={"degrees": 180})
     assert response.status_code == 409
     assert response.json()["detail"] == "page.rotation_limit"
-    assert set(tmp_path.iterdir()) == before
+    assert set((tmp_path / "pages").iterdir()) == before
     assert len(calls) == 9
     for path, content in original.items():
         assert (first_dir / path).read_bytes() == content
     assert client.get(f"/api/search/problems/{started.json()['search_id']}/image").content == received["png"]
 
 
-def test_legacy_page_gets_a_lazy_preview_and_starts_its_rotation_count_at_zero(tmp_path, monkeypatch):
+def test_unregistered_legacy_page_remains_inaccessible(tmp_path, monkeypatch):
     page_id = "0123456789ab"
     directory = tmp_path / page_id
     directory.mkdir()
@@ -486,21 +483,16 @@ def test_legacy_page_gets_a_lazy_preview_and_starts_its_rotation_count_at_zero(t
 
     client = _client(tmp_path, monkeypatch, observe)
     response = client.get(f"/api/search/pages/{page_id}/preview")
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "image/jpeg"
+    assert response.status_code == 404
     assert not calls
-    with Image.open(BytesIO(response.content)) as preview:
-        assert preview.size == source.size
-        assert preview.format == "JPEG"
     assert json.loads((directory / "segments.json").read_text()) == legacy
-    _assert_image(client.get(f"/api/search/pages/{page_id}/image").content, source)
+    assert client.get(f"/api/search/pages/{page_id}/image").status_code == 404
     rotated = client.post(f"/api/search/pages/{page_id}/rotate", json={"degrees": 90})
-    assert rotated.status_code == 200, rotated.text
-    assert rotated.json()["rotation_count"] == 1
-    assert len(calls) == 1
+    assert rotated.status_code == 404
+    assert not calls
 
 
-def test_concurrent_legacy_preview_requests_publish_complete_jpegs(tmp_path, monkeypatch):
+def test_concurrent_unregistered_legacy_preview_requests_are_denied(tmp_path, monkeypatch):
     page_id = "0123456789ab"
     directory = tmp_path / page_id
     directory.mkdir()
@@ -520,12 +512,6 @@ def test_concurrent_legacy_preview_requests_publish_complete_jpegs(tmp_path, mon
     client = _client(tmp_path, monkeypatch, lambda self, path: pytest.fail("Preview reads must not run OCR"))
     with ThreadPoolExecutor(max_workers=2) as executor:
         replies = list(executor.map(lambda _: client.get(f"/api/search/pages/{page_id}/preview"), range(2)))
-    assert len(set(destinations)) == 2
-    assert all(Path(name).parent == directory for name in destinations)
-    assert all(not Path(name).exists() for name in destinations)
+    assert not destinations
     for response in replies:
-        assert response.status_code == 200
-        with Image.open(BytesIO(response.content)) as image:
-            image.load()
-            assert image.format == "JPEG"
-            assert image.size == (320, 200)
+        assert response.status_code == 404

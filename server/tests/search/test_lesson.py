@@ -1,11 +1,10 @@
 import json
 import re
 import time
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from shuxueshuo_server.graph_lesson.stage_one.features import extract_features
 from shuxueshuo_server.search import dev_api
@@ -15,6 +14,8 @@ from shuxueshuo_server.search.lesson import (
     stage_one_result,
     tex,
 )
+from tests.search.support import authenticated_client
+from tests.search.test_identity import reviewed_result
 
 RECORDED = Path(__file__).parents[1] / "solver/fixtures/graph-guided-stage-one/recorded/live-v2-20261017-02"
 PAGE = Path(__file__).parent / "fixtures/segment-pages/two-column"
@@ -186,14 +187,27 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("RUN_LLM_INTEGRATION", "1")
     monkeypatch.setattr("shuxueshuo_server.problem_understanding.batch_smoke.live_provider_factory",
                         lambda name: (lambda: object()))
-    app = FastAPI()
-    app.include_router(dev_api.create_search_router(tmp_path))
-    return TestClient(app)
+    return authenticated_client(tmp_path)
 
 
 def start(client, monkeypatch, case):
     def fake_run(png, output, provider, *, problem_id):
         result = {**search_result(case), "question_sha256": "a", "sent_image_sha256": ["a"]}
+        candidate = deepcopy(result["candidate"])
+        children = candidate["root"].get("children", [])
+        body = candidate["original_text"]
+        public_scopes = [{"scope_ref": "/root", "statement": body.split(children[0]["label"])[0] if children else body,
+                          "choices": [{"target_ref": f"/root/goals/{index}", "status": "none", "selection_mode": "none", "options": []}
+                                      for index, _goal in enumerate(candidate["root"].get("goals", []))]}]
+        for index, child in enumerate(children):
+            statement = body.split(child["label"], 1)[1]
+            if index + 1 < len(children):
+                statement = statement.split(children[index + 1]["label"], 1)[0]
+            public_scopes.append({"scope_ref": f"/root/children/{index}", "statement": statement,
+                                  "choices": [{"target_ref": f"/root/children/{index}/goals/{number}", "status": "none",
+                                               "selection_mode": "none", "options": []} for number, _goal in enumerate(child.get("goals", []))]})
+        candidate["public_content"] = {"completeness": "complete", "privacy": "separated", "figure": "not_required", "scopes": public_scopes}
+        result.update(reviewed_result(candidate))
         (output / dev_api.RESULT_FILE).write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
         return result
 
@@ -233,7 +247,7 @@ def test_retry_reruns_stage_two_only_into_a_new_attempt(client, monkeypatch, tmp
     wait(client, sid)
     assert client.post(f"/api/search/problems/{sid}/lesson").json() == {"status": "running"}
     assert wait(client, sid)["lesson"]["status"] == "completed"
-    (directory,) = tmp_path.glob(f"*/problems/{sid}")
+    directory = tmp_path / "submissions" / sid
     assert sorted(p.name for p in directory.glob("stage-two-*")) == ["stage-two-1", "stage-two-2"]
 
 

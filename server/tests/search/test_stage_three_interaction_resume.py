@@ -11,7 +11,6 @@ from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetLedger
 from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
 from shuxueshuo_server.search import stage_three
 from tests.search.test_stage_three_api import (
-    SEARCH_ID,
     client_for,
     forbidden,
     no_live_llm,  # noqa: F401 -- shared autouse fixture
@@ -62,7 +61,7 @@ def test_product_resume_drains_completed_math_without_recalculation(tmp_path, mo
     with client_for(root, hooks={"interaction_dispatch": interaction_only_dispatch}) as client:
         stopped = status(client)
         assert stopped["execution_status"] == "interrupted"
-        resume_url = f"/api/search/problems/{SEARCH_ID}/lesson/{result['run_id']}/resume"
+        resume_url = f"/api/search/problems/{directory.name}/lesson/{result['run_id']}/resume"
         response = client.post(resume_url)
         assert response.status_code == 200 and response.json()["status"] == "running"
         completed = wait_done(client)
@@ -111,7 +110,7 @@ def test_repeated_interaction_failure_eventually_removes_the_resume_action(tmp_p
     assert result["status"] == "completed" and durable.has_pending_interactions()
     monkeypatch.setattr(runner, "run_sample", forbidden)
     monkeypatch.setattr(runner, "resume_sample", forbidden)
-    resume_url = f"/api/search/problems/{SEARCH_ID}/lesson/{result['run_id']}/resume"
+    resume_url = f"/api/search/problems/{directory.name}/lesson/{result['run_id']}/resume"
     with client_for(root, hooks={"interaction_dispatch": interaction_only_dispatch,
                                 "interaction_returned": fail}) as client:
         assert status(client)["execution_status"] == "interrupted"

@@ -10,7 +10,6 @@ from shuxueshuo_server.graph_lesson.stage_two.runner import replay_run
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from shuxueshuo_server.search import dev_api, stage_three
 from tests.search.test_stage_three_api import (
-    SEARCH_ID,
     client_for,
     forbidden,
     seed,
@@ -33,7 +32,7 @@ def test_accepted_retry_does_not_publish_previous_terminal_run(tmp_path, monkeyp
 
     class PausedExecutor(executor):
         def submit(self, function, *args, **kwargs):
-            if function.__name__ == "judge":
+            if function.__qualname__.endswith("retry_lesson.<locals>.work"):
                 def queued():
                     try:
                         if paused_phase == "queued":
@@ -58,7 +57,7 @@ def test_accepted_retry_does_not_publish_previous_terminal_run(tmp_path, monkeyp
         first = start(client)["stream"]
         old_snapshot = client.get(first["snapshot_url"]).json()
         try:
-            assert client.post(f"/api/search/problems/{SEARCH_ID}/lesson").json() == {"status": "running"}
+            assert client.post(f"/api/search/problems/{directory.name}/lesson").json() == {"status": "running"}
             assert reached.wait(5)
             assert not (directory / "stage-two-2").exists()
             for observer in (client, client_for(root)):
@@ -87,12 +86,12 @@ def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monk
 
     class FailingExecutor(executor):
         def submit(self, function, *args, **kwargs):
-            if failure_phase == "queue" and function.__name__ == "judge":
+            if failure_phase == "queue" and function.__qualname__.endswith("retry_lesson.<locals>.work"):
                 raise RuntimeError("injected queue failure")
             return super().submit(function, *args, **kwargs)
 
     def failed_stage_two(*args, **kwargs):
-        raise RuntimeError("injected stage two failure")
+        raise RuntimeError(f"injected stage two failure reading {directory / 'question.png'}")
 
     monkeypatch.setattr(dev_api, "ThreadPoolExecutor", FailingExecutor)
     monkeypatch.setattr(dev_api, "run_stage_two", failed_stage_two)
@@ -100,9 +99,9 @@ def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monk
     with client_for(root) as client:
         if failure_phase == "queue":
             with pytest.raises(RuntimeError, match="injected queue failure"):
-                client.post(f"/api/search/problems/{SEARCH_ID}/lesson")
+                client.post(f"/api/search/problems/{directory.name}/lesson")
         else:
-            assert client.post(f"/api/search/problems/{SEARCH_ID}/lesson").json() == {"status": "running"}
+            assert client.post(f"/api/search/problems/{directory.name}/lesson").json() == {"status": "running"}
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             current = status(client)
@@ -113,7 +112,8 @@ def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monk
         assert current["goals"] and not (directory / "stage-two-2").exists()
         assert not (directory / stage_three.RETRY_INTENT).exists()
         if failure_phase == "stage_two":
-            assert current["execution_error"] == "injected stage two failure"
+            assert current["execution_error"] == "search.lesson_failed"
+            assert str(directory) not in str(current)
         # The next operation can reserve the problem immediately, and a fresh
         # router also sees readable history rather than a permanent spinner.
         stage_three.release_problem(stage_three.acquire_problem(directory))
@@ -155,7 +155,7 @@ def test_terminal_result_remains_running_until_current_worker_finishes(tmp_path,
 
     monkeypatch.setattr(stage_three, "run_stage_three", delay_worker_cleanup)
     with client_for(root) as client:
-        assert client.post(f"/api/search/problems/{SEARCH_ID}/lesson/start").status_code == 200
+        assert client.post(f"/api/search/problems/{directory.name}/lesson/start").status_code == 200
         try:
             assert completed.wait(15)
             assert (directory / "stage-two-1/stage-three/stage-three-result.json").is_file()

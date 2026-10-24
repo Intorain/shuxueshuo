@@ -56,17 +56,21 @@ test('stream arrival preserves the AI replay reading position and chooses an exe
   assert.equal(compiled, 0, 'parked questions reject queued updates before recompiling or rendering');
 });
 
-for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream migration preserves AI playback intent: ${mode}`, async () => {
+for (const entry of ['load', 'mount']) for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream migration preserves AI playback intent: ${entry}/${mode}`, async () => {
   const {context, nodes, run} = viewContext();
   const bridge = source.slice(source.indexOf('function streamReplay()'), source.indexOf('/** The same safe text/LaTeX renderer'));
   vm.runInContext(bridge.replace(/^export /gm, ''), context);
+  const mountSource = source.slice(source.indexOf('export async function mountWalk'), source.indexOf('/* The actor the walk'));
+  vm.runInContext(mountSource.replace(/^export /gm, ''), context);
   context.document.body = {dataset: {}};
   context.PracticeMath = {render() {}};
   context.createState = value => ({bundleVersion: value.bundleVersion, introCompleted: [], run: {route: null}, events: []});
   context.replayState = (value, recording, position) => ({bundleVersion: value.bundleVersion,
     introCompleted: recording.actions.slice(0, position), run: {route: position === 3 ? 'discriminant' : null}, events: []});
   context.migrateStageTwoState = (_base, value, state) => ({...state, bundleVersion: value.bundleVersion});
+  context.refreshStreamState = (_bundle, state) => state;
   context.extendStreamBundle = value => ({...structuredClone(value), bundleVersion: 'stream-version',
+    stream: {run_id: 'run', lesson_version: 'version', target_ref: '/root/goals/0', base_bundle_version: value.bundleVersion},
     intro: [...value.intro, {id: 'D3', expected_answer: {cell: ['real', 'free']},
       interaction: {methods: [{value: 'discriminant', route: 'discriminant'}]}}],
     routes: {discriminant: {route_plan: 'planned'}}});
@@ -79,7 +83,7 @@ for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream mi
     studentState = state = createState(bundle); replay = options.replay;
     render = () => {}; updatePlayButton = () => {}; toggleSteps = () => {};
     mountProblemBar = () => {}; mountCaption = () => {}; mountPlayer = () => {};
-    createGraph = async () => ({destroy() {}});`);
+    createGraph = async () => ({destroy() {}}); bound=true;`);
   for (const selector of ['#gw-graph-panel', '#gw-student', '#gw-ai']) {
     context.document.querySelector(selector);
     Object.assign(nodes.get(selector), {classList: {contains: () => false}, setAttribute() {}});
@@ -87,7 +91,7 @@ for (const mode of ['playing', 'at-end', 'paused']) test(`stage-two to stream mi
   const scheduled = [];
   context.setTimeout = callback => { scheduled.push(callback); return scheduled.length; };
   run(`replayPosition = ${mode === 'at-end' ? 2 : 1}; replayPlaying = ${mode === 'playing'};`);
-  await run('load()');
+  await run(entry === 'mount' ? 'mountWalk({})' : 'load()');
   assert.equal(run('bundle.bundleVersion'), 'stream-version');
   const expected = {playing: 2, 'at-end': 3, paused: 1}[mode];
   assert.equal(run('replayPosition'), expected, 'playback continues step by step from where stage two left it');
@@ -391,8 +395,9 @@ class SVGElement {
     this.classList = {toggle() {}};
   }
   setAttribute(name, value) { this.attributes[name] = String(value); }
-  append(...nodes) { this.children.push(...nodes); }
-  replaceChildren(...nodes) { this.children = nodes; }
+  append(...nodes) { for (const node of nodes) node.parentNode = this; this.children.push(...nodes); }
+  replaceChildren(...nodes) { for (const node of this.children) node.parentNode = null; this.children = []; this.append(...nodes); }
+  remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(node => node !== this); this.parentNode = null; }
   insertBefore(node, other) { this.children.splice(this.children.indexOf(other), 0, node); }
   addEventListener(type, listener) { (this.listeners ||= {})[type] = listener; }
   getBoundingClientRect() { return {left: 0, top: 0}; }
@@ -428,6 +433,28 @@ test('the 2D graph shows the whole tree and stays still while the walk advances'
     const edges = viewport.children.find(node => node.attributes.class === 'gw-edge-layer').children;
     assert.equal(edges.find(edge => edge.attributes['data-edge'] === first.id).children.at(-1).textContent, RELATIONS[first.type]);
     assert.equal(nodeHref({id: 'quadratic', ref: 'quadratic#sign'}), '/knowledge/quadratic/#sign');
+  } finally {
+    for (const key of globals) previous.get(key) === undefined ? delete globalThis[key] : globalThis[key] = previous.get(key);
+  }
+});
+
+test('destroying an obsolete 2D graph preserves the replacement graph nodes', () => {
+  const globals = ['document', 'matchMedia', 'ResizeObserver', 'cancelAnimationFrame'];
+  const previous = new Map(globals.map(key => [key, globalThis[key]]));
+  try {
+    globalThis.document = {createElement: tag => new SVGElement(tag), createElementNS: (_namespace, tag) => new SVGElement(tag)};
+    globalThis.matchMedia = () => ({matches: true});
+    globalThis.ResizeObserver = class {observe() {} disconnect() {}};
+    globalThis.cancelAnimationFrame = () => {};
+    const host = new SVGElement('div');
+    const stale = createWalkGraph(host, structuredClone(bundle.graph));
+    const current = createWalkGraph(host, structuredClone(bundle.graph));
+    const retained = [...host.children];
+    stale.destroy();
+    assert.deepEqual(host.children, retained);
+    current.render({nodes: {}, edges: {}, focus: []});
+    current.destroy();
+    assert.equal(host.children.length, 0);
   } finally {
     for (const key of globals) previous.get(key) === undefined ? delete globalThis[key] : globalThis[key] = previous.get(key);
   }

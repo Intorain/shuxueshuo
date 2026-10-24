@@ -5,12 +5,15 @@ from hashlib import sha256
 from pathlib import Path
 from time import perf_counter
 
-from shuxueshuo_server.graph_lesson.stage_one.extraction import GraphStageOneContract, StageOneStorage
-from shuxueshuo_server.graph_lesson.stage_one.runner import build_image_request, candidate_features
+from shuxueshuo_server.graph_lesson.stage_one.extraction import StageOneStorage
+from shuxueshuo_server.graph_lesson.stage_one.runner import candidate_features
 from shuxueshuo_server.problem_understanding.identity import revision
 from shuxueshuo_server.problem_understanding.workflow import run_workflow
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from shuxueshuo_server.solver.extraction.artifacts import ExtractionArtifactStore
+
+from .extraction import SearchStageOneContract, build_search_request
+from .identity import mathematical_candidate
 
 RESULT_FILE = "result.json"
 
@@ -25,15 +28,19 @@ def run_question_image(png, output, provider, *, problem_id):
     output.mkdir(parents=True, exist_ok=True)
     (output / "question.png").write_bytes(png)
     started = perf_counter()
-    request = build_image_request(png, ExtractionArtifactStore(output / "inputs"))
+    request = build_search_request(png, ExtractionArtifactStore(output / "inputs"))
     storage = StageOneStorage(output / "workflow")
     workflow = run_workflow(request, provider, storage.directory, [], problem_id=problem_id,
-                            storage=storage, contract_adapter=GraphStageOneContract())
-    candidate = workflow.get("candidate")
+                            storage=storage, contract_adapter=SearchStageOneContract())
+    public_candidate = workflow.get("candidate")
+    candidate = mathematical_candidate(public_candidate)
     features = candidate_features(candidate)
     result = {
         "status": workflow.get("status"),
         "source_reviewed": workflow.get("source_reviewed", False),
+        "output_contract": workflow.get("output_contract"),
+        "public_candidate": public_candidate,
+        "reviewed_candidate_revision": (workflow.get("review") or {}).get("revision"),
         "candidate": candidate,
         "features": features["features"],
         "features_ok": features.get("ok", False),

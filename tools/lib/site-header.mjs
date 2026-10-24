@@ -6,6 +6,7 @@ export const END = '<!-- site-header:end -->';
 
 export const SECTIONS = [
   {id: 'home', label: '首页', href: '/'},
+  {id: 'search', label: '拍题学', href: '/lab/search/'},
   {id: 'junior', label: '初中题库', href: '/nav/'},
   {id: 'topics', label: '高中专题', href: '/topics/'},
   {id: 'knowledge', label: '知识图谱', href: '/knowledge/'},

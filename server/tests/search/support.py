@@ -1,0 +1,53 @@
+"""Real database ownership and Cookie sessions for private search API tests."""
+
+import os
+import secrets
+from functools import lru_cache
+from pathlib import Path
+from types import SimpleNamespace
+from uuid import UUID
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from shuxueshuo_server.auth.api import cookie_name
+from shuxueshuo_server.auth.config import AuthConfig
+from shuxueshuo_server.auth.service import AuthService
+from shuxueshuo_server.auth.sms import MockSms
+from shuxueshuo_server.product.config import Settings
+from shuxueshuo_server.product.db import engine
+from shuxueshuo_server.search import dev_api
+from shuxueshuo_server.search.repository import SearchRepository
+
+
+@lru_cache(maxsize=4)
+def test_database(data_dir, instance):
+    return engine(Settings.load("local", data_dir, instance).url())
+
+
+@lru_cache(maxsize=256)
+def session_for(root):
+    data_dir = os.getenv("PRODUCT_TEST_DATA_DIR")
+    if not data_dir:
+        pytest.skip("Requires independently migrated PRODUCT_TEST_DATA_DIR")
+    database = test_database(data_dir, os.getenv("PRODUCT_TEST_INSTANCE", "search-stage1"))
+    config = AuthConfig(mode="mock", environment="test", origin="https://testserver", secret=secrets.token_urlsafe(48))
+    auth = AuthService(database, config, MockSms())
+    phone = "139" + "".join(str(secrets.randbelow(10)) for _ in range(8))
+    challenge = auth.send(phone, "fixture-" + secrets.token_hex(6))
+    code = auth.sms.messages[challenge["challenge_id"]][1]
+    user, token = auth.verify(phone, UUID(challenge["challenge_id"]), code, "fixture-" + secrets.token_hex(6))
+    return SimpleNamespace(auth=auth, user=user, token=token, repository=SearchRepository(database, Path(root)))
+
+
+def authenticated_client(root, *, hooks=None, raise_server_exceptions=True):
+    session = session_for(Path(root))
+    app = FastAPI()
+    app.state.student_auth = session.auth
+    app.state.search_repository = session.repository
+    app.include_router(dev_api.create_search_router(root, stage_three_hooks=hooks))
+    client = TestClient(app, base_url=session.auth.config.origin, headers={"Origin": session.auth.config.origin},
+                        raise_server_exceptions=raise_server_exceptions)
+    client.cookies.set(cookie_name(session.auth.config), session.token)
+    return client

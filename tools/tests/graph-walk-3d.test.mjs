@@ -1,9 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {HUB, azimuthFacing, distanceForScale, edgeControls, frameFor, grownNodes, layoutRadial, viewDirection} from '../../site/assets/graph-walk/walk-graph-3d.mjs';
 
 const bundle = JSON.parse(fs.readFileSync(new URL('../../site/data/graph-walk/quadratic-always-q01.json', import.meta.url), 'utf8'));
+const source = fs.readFileSync(new URL('../../site/assets/graph-walk/walk-graph-3d.mjs', import.meta.url), 'utf8');
+
+test('a stale Three.js import cannot create a renderer or replace the current graph', async () => {
+  let resolve;
+  const context = vm.createContext({THREEReady: new Promise(done => { resolve = done; })});
+  vm.runInContext(source.replace(/^import .*;\n/gm, '').replace(/^export /gm, '').replace('await import(THREE_URL)', 'await THREEReady'), context);
+  context.active = true;
+  context.host = {replaceChildren() { assert.fail('stale construction must not touch the host'); }};
+  const creating = vm.runInContext('createWalkGraph3D(host, {}, {current:()=>active})', context);
+  context.active = false;
+  resolve({WebGLRenderer: class { constructor() { assert.fail('stale construction must not allocate WebGL'); } }});
+  assert.equal(await creating, null);
+});
+
+test('destroying an obsolete 3D graph releases its resources but preserves replacement DOM', () => {
+  const retained = [{name: 'new-controls'}, {name: 'new-stage'}];
+  const host = {children: retained, replaceChildren(...nodes) { this.children = nodes; }};
+  const ownNode = () => ({remove() { host.children = host.children.filter(node => node !== this); }});
+  let disposed = 0;
+  const disposable = {dispose() { disposed++; }};
+  const context = {host, destroyed: false, raf: 1, controlsBar: ownNode(), stage: ownNode(),
+    cancelAnimationFrame() {}, resizeObserver: {disconnect() {}}, visibility: {disconnect() {}},
+    document: {removeEventListener() {}}, onVisibility() {}, controls: disposable,
+    scene: {traverse(callback) { callback({geometry: disposable, material: disposable}); }},
+    glow: disposable, renderer: {...disposable, forceContextLoss() {}}};
+  const callback = source.slice(source.lastIndexOf('    destroy() {'), source.lastIndexOf('    },') + 6);
+  const view = vm.runInNewContext(`({${callback}})`, context);
+  view.destroy();
+  assert.deepEqual(host.children, retained);
+  assert.equal(disposed, 5);
+  view.destroy();
+  assert.equal(disposed, 5);
+});
 
 test('radial layout puts each 2D column on its own ring, from the problem outward', () => {
   const {points, rings} = layoutRadial(bundle.graph);

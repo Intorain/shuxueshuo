@@ -1,14 +1,13 @@
 """Recorded Q01 reaches real product streams without image extraction or live LLM calls."""
 
 import json
+import secrets
 import shutil
 import threading
 import time
 from copy import deepcopy
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from shuxueshuo_server.graph_lesson.stage_three import runner
 from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
@@ -16,10 +15,10 @@ from shuxueshuo_server.graph_lesson.stage_two.runner import replay_run
 from shuxueshuo_server.problem_understanding.identity import revision
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from shuxueshuo_server.search import dev_api, stage_three
+from tests.search.support import authenticated_client, session_for
 from tests.search.test_lesson import search_result
 from tests.solver.test_graph_stage_three_recorded import Q01_SELECTION
 
-SEARCH_ID = "b" * 12
 TARGET = "/root/goals/0"
 
 
@@ -35,26 +34,37 @@ def no_live_llm(monkeypatch):
 
 
 def seed(tmp_path):
+    """Register a recorded private lesson; it does not claim a public identity review."""
     root = tmp_path / "search"
-    directory = root / ("a" * 12) / "problems" / SEARCH_ID
+    session = session_for(root)
+    page_id, search_id = secrets.token_hex(6), secrets.token_hex(6)
+    session.search_id = search_id
+    directory = root / "submissions" / search_id
     directory.mkdir(parents=True)
     value = {**search_result("q01"), "question_sha256": "recorded", "sent_image_sha256": ["recorded"]}
     save(directory / dev_api.RESULT_FILE, value)
-    save(directory / "crop.json", {"page_id": "a" * 12})
+    save(directory / "crop.json", {"page_id": page_id})
     result = replay_run(Q01_SELECTION, directory / "stage-two-1")
     assert result["replay_comparison"]["ok"] and result["llm"]["new_network_attempts"] == 0
     shutil.copyfile(directory / "stage-two-1/source.png", directory / "question.png")
+    shutil.copyfile(directory / "question.png", directory / "original.png")
+    page = root / "pages" / page_id
+    page.mkdir()
+    shutil.copyfile(directory / "question.png", page / "page.png")
+    session.repository.register_page(session.user, page_id, {})
+    session.repository.create_submission(session.user, search_id, page_id, [0, 0, 1, 1])
+    session.repository.set_state(search_id, recognition_state="reviewed", lesson_state="ready")
     return root, directory
 
 
 def client_for(root, *, hooks=None):
-    app = FastAPI()
-    app.include_router(dev_api.create_search_router(root, stage_three_hooks=hooks))
-    return TestClient(app)
+    client = authenticated_client(root, hooks=hooks)
+    client.search_id = session_for(root).search_id
+    return client
 
 
 def status(client):
-    response = client.get(f"/api/search/problems/{SEARCH_ID}")
+    response = client.get(f"/api/search/problems/{client.search_id}")
     assert response.status_code == 200, response.text
     return response.json()["lesson"]
 
@@ -71,7 +81,7 @@ def wait_done(client):
 
 
 def start(client):
-    response = client.post(f"/api/search/problems/{SEARCH_ID}/lesson/start")
+    response = client.post(f"/api/search/problems/{client.search_id}/lesson/start")
     assert response.status_code == 200, response.text
     return wait_done(client)
 
@@ -142,7 +152,7 @@ def test_start_and_resume_recheck_attempt_after_acquiring_problem_lease(tmp_path
     monkeypatch.setattr(stage_three, "resume_stage_three", forbidden)
     suffix = "start" if operation == "start" else "e" * 32 + "/resume"
     with client_for(root) as client:
-        response = client.post(f"/api/search/problems/{SEARCH_ID}/lesson/{suffix}")
+        response = client.post(f"/api/search/problems/{directory.name}/lesson/{suffix}")
         assert response.status_code == 409
         assert response.json() == {"detail": "lesson.stale_run"}
         assert not (directory / "stage-two-2/stage-three").exists()
@@ -161,7 +171,7 @@ def test_real_recorded_two_routes_stream_while_running_and_refresh_never_recompu
 
     with client_for(root, hooks={"before_verification": before_verification}) as client:
         try:
-            response = client.post(f"/api/search/problems/{SEARCH_ID}/lesson/start")
+            response = client.post(f"/api/search/problems/{directory.name}/lesson/start")
             assert response.status_code == 200
             assert reached.wait(8)
             current = status(client)
@@ -199,7 +209,7 @@ def test_real_recorded_two_routes_stream_while_running_and_refresh_never_recompu
         for _ in range(2):
             assert status(client)["stream"] == completed["stream"]
             assert client.get(completed["stream"]["snapshot_url"]).json() == snapshot
-        assert client.post(f"/api/search/problems/{SEARCH_ID}/lesson/start").json()["stream"] == completed["stream"]
+        assert client.post(f"/api/search/problems/{directory.name}/lesson/start").json()["stream"] == completed["stream"]
         resume_url = completed["stream"]["snapshot_url"].removesuffix("/snapshot") + "/resume"
         assert client.post(resume_url).json()["status"] == "completed"
         stable = stage_three.open_store(directory / "stage-two-1/stage-three").snapshot()
@@ -246,7 +256,7 @@ def test_explicit_retry_automatically_runs_stage_three_and_isolates_old_run(tmp_
     with client_for(root) as client:
         first = start(client)["stream"]
         old_snapshot = client.get(first["snapshot_url"]).json()
-        assert client.post(f"/api/search/problems/{SEARCH_ID}/lesson").status_code == 200
+        assert client.post(f"/api/search/problems/{directory.name}/lesson").status_code == 200
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             current = status(client)
@@ -264,7 +274,7 @@ def test_explicit_retry_automatically_runs_stage_three_and_isolates_old_run(tmp_
         new = client.get(second["events_url"]).json()
         assert all(event["run_id"] == first["run_id"] for event in old["events"])
         assert all(event["run_id"] == second["run_id"] for event in new["events"])
-        assert client.get(first["snapshot_url"].replace(SEARCH_ID, "c" * 12)).status_code == 404
+        assert client.get(first["snapshot_url"].replace(directory.name, "c" * 12)).status_code == 404
 
 
 def test_explicit_resume_continues_same_partial_run_and_rejects_changed_revision(tmp_path, monkeypatch):

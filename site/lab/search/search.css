@@ -105,6 +105,11 @@ a { color: var(--sq-teal); }
 .sq-history-head { display: flex; align-items: baseline; justify-content: space-between; }
 .sq-history-head a { font-size: 13px; text-decoration: none; }
 .sq-history-list { display: grid; gap: 2px; margin: 10px 0 0; padding: 0; list-style: none; }
+.sq-history-list li { display: flex; align-items: center; gap: 12px; }
+.sq-history-list li > a { flex: 1; min-width: 0; }
+.sq-history-delete { flex: 0 0 auto; padding: 10px 8px; border: 0; background: transparent; color: #7b4949; cursor: pointer; }
+.sq-history-more { border: 0; background: transparent; cursor: pointer; }
+#sq-history-message { color: var(--sq-muted); font-size: 14px; }
 .sq-history-list a { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 4px; border-bottom: 1px solid #edf2ef; color: var(--sq-ink); text-decoration: none; }
 .sq-history-list li:last-child a { border-bottom: 0; }
 .sq-history-q { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 14px; line-height: 1.55; }

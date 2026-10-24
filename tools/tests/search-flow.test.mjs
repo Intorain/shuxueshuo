@@ -9,7 +9,9 @@ function setup(file, search = '') {
   const draws = [];
   const imageLoads = [];
   const documentListeners = new Map();
+  const windowListeners = new Map();
   let created = 0;
+  let requestNumber = 0;
   let imageDecoder = async () => {};
   const element = selector => {
     if (!nodes.has(selector)) nodes.set(selector, {
@@ -17,7 +19,7 @@ function setup(file, search = '') {
       naturalWidth: 1000, naturalHeight: 2000,
       classList: {add() {}, remove() {}}, decode: async () => {},
       listeners: new Map(),
-      addEventListener(type, callback) { this.listeners.set(type, callback); }, setAttribute() {}, append() {},
+      addEventListener(type, callback) { this.listeners.set(type, callback); }, setAttribute() {}, append() {}, replaceChildren() {}, close() {}, click() {},
       removeAttribute(name) { delete this[name]; },
       replaceWith(node) { nodes.set('#cm-photo', node); },
       getContext: () => ({drawImage(...args) { draws.push(args); }}), toDataURL: () => 'data:image/jpeg;base64,fixture',
@@ -26,7 +28,8 @@ function setup(file, search = '') {
   };
   const location = {search, href: '', reloads: 0, reload() { this.reloads++; }};
   const context = vm.createContext({
-    URLSearchParams, location, performance: {now: () => 0}, window: {},
+    URLSearchParams, location, performance: {now: () => 0}, window: {addEventListener(type, callback) { windowListeners.set(type, callback); }},
+    navigator: {}, crypto: {randomUUID: () => `request-${++requestNumber}`},
     setTimeout: (callback, delay) => { delays.push(delay); if (delay !== 2400) callback(); return 1; }, clearTimeout() {},
     sessionStorage: {getItem() { return null; }, setItem() {}, removeItem() {}},
     document: {
@@ -39,18 +42,339 @@ function setup(file, search = '') {
       }, addEventListener(type, callback) { documentListeners.set(type, callback); },
     },
   });
+  context.window.SearchSession = {user: {id: 'student-a'}, epoch: 1,
+    request: (...args) => context.fetch(...args), init: async () => {}, login: async () => ({id: 'student-a'}),
+    valid: ticket => ticket === 1, scope: id => `search-progress:v1:student-a:${id}:`, writable: () => true};
   vm.runInContext(fs.readFileSync(new URL(`../../site/lab/search/${file}`, import.meta.url), 'utf8'), context);
-  return {context, element, location, delays, draws, imageLoads, documentListeners, setImageDecode(fn) { imageDecoder = fn; }};
+  return {context, element, location, delays, draws, imageLoads, documentListeners, windowListeners, setImageDecode(fn) { imageDecoder = fn; }};
 }
 
-const crop = {page_id: '123456789abc', box: [0, 0, 1, 1]};
+const crop = {page_id: '123456789abc', box: [0, 0, 1, 1], client_request_id: 'request-1'};
 const rect = {x: 0, y: 0, w: 1, h: 1};
-const response = value => ({ok: true, json: async () => value});
+const response = value => ({ok: true, json: async () => ({user_id: 'student-a', ...value})});
 const page = {page_id: crop.page_id, image_url: `/api/search/pages/${crop.page_id}/image`,
   orientation: {status: 'upright', rotation_degrees: 0, predicted_degrees: 0, confidence: .99},
   latency_ms: {detect: 1000}, regions: [], mode: 'whole_content'};
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return {promise, resolve}; };
 const tick = () => new Promise(resolve => setImmediate(resolve));
+
+for (const linked of [true, false]) test(`canceling the misrecognition retake reads current scope but never deletes or navigates: ${linked ? 'linked' : 'unlinked'}`, async () => {
+  const {context, location} = setup('problem.js', '?search=0123456789ab');
+  const requests = [], messages = [];
+  let cleared = 0, disposed = 0;
+  context.window.confirm = text => { messages.push(text); return false; };
+  context.fetch = async (url, options = {}) => {
+    requests.push([url, options.method || 'GET', options.cache]);
+    return response({problem_id: linked ? 'public-problem' : null, result: {problem_id: 'not-the-authoritative-id'}});
+  };
+  context.window.SearchSession.clearProgress = () => { cleared++; };
+  context.dispose = () => { disposed++; };
+  vm.runInContext('lesson.engine={disposeWalk:dispose}; lesson.data={status:"completed"}', context);
+  await context.deleteAndRetake();
+  assert.equal(messages.length, 1);
+  if (linked) {
+    assert.match(messages[0], /全部已关联记录/);
+    assert.match(messages[0], /已可学习课程/);
+  } else {
+    assert.match(messages[0], /这条拍题记录/);
+    assert.doesNotMatch(messages[0], /全部.*关联|课程/);
+  }
+  assert.match(messages[0], /照片/);
+  assert.match(messages[0], /来源整页仍按原 24 小时期限保留/);
+  assert.deepEqual(requests, [['/api/search/problems/0123456789ab', 'GET', 'no-store']]);
+  assert.equal(cleared, 0);
+  assert.equal(disposed, 0);
+  assert.equal(location.href, '');
+  assert.equal(vm.runInContext('lesson.data.status', context), 'completed');
+});
+
+test('confirmed misrecognition retake uses aggregate deletion and clears every returned search scope', async () => {
+  const {context, location} = setup('problem.js', '?search=0123456789ab');
+  const operations = [];
+  context.window.confirm = () => { operations.push('confirm'); return true; };
+  context.fetch = async (url, options = {}) => {
+    operations.push([url, options.method || 'GET']);
+    return response(options.method === 'DELETE'
+      ? {deleted_search_ids: ['0123456789ab', 'fedcba987654']} : {problem_id: 'public-problem'});
+  };
+  context.window.SearchSession.clearProgress = (owner, ids) => operations.push([owner, ...ids]);
+  await context.deleteAndRetake();
+  assert.deepEqual(operations, [['/api/search/problems/0123456789ab', 'GET'], 'confirm', ['/api/search/problems/0123456789ab', 'DELETE'],
+    ['student-a', '0123456789ab', 'fedcba987654']]);
+  assert.equal(location.href, 'camera.html');
+  assert.equal(vm.runInContext('privateStopped', context), true);
+});
+
+test('a failed confirmed retake deletion preserves the current page and local progress', async () => {
+  const {context, location, element} = setup('problem.js', '?search=0123456789ab');
+  context.window.confirm = () => true;
+  context.fetch = async (_url, options = {}) => options.method === 'DELETE' ? {ok: false} : response({problem_id: 'public-problem'});
+  context.window.SearchSession.clearProgress = () => assert.fail('failed deletion must keep progress');
+  await context.deleteAndRetake();
+  assert.equal(location.href, '');
+  assert.equal(vm.runInContext('privateStopped', context), false);
+  assert.match(element('#sq-toast').textContent, /删除失败/);
+});
+
+test('confirmed unlinked retake describes and clears only the submitted record scope', async () => {
+  const {context, location} = setup('problem.js', '?search=0123456789ab');
+  const messages = [], requests = [], cleared = [];
+  context.window.confirm = text => { messages.push(text); return true; };
+  context.fetch = async (url, options = {}) => {
+    requests.push([url, options.method || 'GET']);
+    return response(options.method === 'DELETE' ? {deleted_search_ids: ['0123456789ab']}
+      : {problem_id: null, lesson: {problem_id: 'not-the-authoritative-id'}});
+  };
+  context.window.SearchSession.clearProgress = (owner, ids) => cleared.push([owner, ...ids]);
+  await context.deleteAndRetake();
+  assert.equal(messages.length, 1);
+  assert.match(messages[0], /这条拍题记录/);
+  assert.match(messages[0], /照片/);
+  assert.match(messages[0], /来源整页仍按原 24 小时期限保留/);
+  assert.doesNotMatch(messages[0], /全部.*关联|课程/);
+  assert.deepEqual(requests, [['/api/search/problems/0123456789ab', 'GET'], ['/api/search/problems/0123456789ab', 'DELETE']]);
+  assert.deepEqual(cleared, [['student-a', '0123456789ab']]);
+  assert.equal(location.href, 'camera.html');
+});
+
+test('the misrecognition button directly opens exactly one confirmation with no intermediate sheet', async () => {
+  const html = fs.readFileSync(new URL('../../site/lab/search/problem.html', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../../site/lab/search/problem.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /pq-misread-sheet/);
+  assert.doesNotMatch(source, /pq-misread-sheet/);
+  const {context, location, element, documentListeners} = setup('problem.js', '?search=0123456789ab');
+  const requests = [], messages = [];
+  context.runLive = async () => {};
+  context.fetch = async (url, options = {}) => { requests.push([url, options.method || 'GET']); return response({problem_id: 'public-problem'}); };
+  context.window.confirm = text => { messages.push(text); return false; };
+  await documentListeners.get('DOMContentLoaded')();
+  element('#pq-misread').listeners.get('click')();
+  await tick();
+  assert.equal(messages.length, 1);
+  assert.deepEqual(requests, [['/api/search/problems/0123456789ab', 'GET']]);
+  assert.equal(location.href, '');
+});
+
+for (const failure of ['http', 'network', 'json', 'wrong-account']) test(`failed retake scope reads never confirm or delete: ${failure}`, async () => {
+  const {context, location, element} = setup('problem.js', '?search=0123456789ab');
+  let requests = 0, confirmations = 0, cleared = 0;
+  context.window.confirm = () => { confirmations++; return true; };
+  context.fetch = async () => {
+    requests++;
+    if (failure === 'network') throw new Error('offline');
+    if (failure === 'http') return {ok: false};
+    if (failure === 'json') return {ok: true, json: async () => { throw new SyntaxError('invalid JSON'); }};
+    return response({user_id: 'student-b', problem_id: 'public-problem'});
+  };
+  context.window.SearchSession.clearProgress = () => { cleared++; };
+  await context.deleteAndRetake();
+  assert.equal(requests, 1);
+  assert.equal(confirmations, 0);
+  assert.equal(cleared, 0);
+  assert.equal(location.href, '');
+  assert.equal(vm.runInContext('privateStopped', context), false);
+  assert.equal(element('#pq-misread').disabled, false);
+});
+
+test('repeated retake clicks share one pending scope read and one confirmation', async () => {
+  const {context, location, element} = setup('problem.js', '?search=0123456789ab');
+  const pending = deferred();
+  const requests = [];
+  let confirmations = 0;
+  context.fetch = (url, options = {}) => { requests.push([url, options.method || 'GET']); return pending.promise; };
+  context.window.confirm = () => { confirmations++; return false; };
+  const first = context.deleteAndRetake();
+  assert.equal(element('#pq-misread').disabled, true);
+  const second = context.deleteAndRetake();
+  pending.resolve(response({problem_id: 'public-problem'}));
+  await Promise.all([first, second]);
+  assert.deepEqual(requests, [['/api/search/problems/0123456789ab', 'GET']]);
+  assert.equal(confirmations, 1);
+  assert.equal(element('#pq-misread').disabled, false);
+  assert.equal(location.href, '');
+});
+
+for (const boundary of ['response', 'json']) for (const invalidation of ['switch-account', 'logout', 'stop-page']) test(`late retake scope cannot act after ${invalidation} during ${boundary}`, async () => {
+  const {context, location} = setup('problem.js', '?search=0123456789ab');
+  const pending = deferred();
+  const requests = [];
+  let confirmations = 0, cleared = 0;
+  context.window.confirm = () => { confirmations++; return true; };
+  context.window.SearchSession.clearProgress = () => { cleared++; };
+  context.fetch = (url, options = {}) => {
+    requests.push([url, options.method || 'GET']);
+    return boundary === 'response' ? pending.promise : Promise.resolve({ok: true, json: () => pending.promise});
+  };
+  const retaking = context.deleteAndRetake();
+  await tick();
+  if (invalidation === 'stop-page') context.stopPrivateLesson();
+  else context.window.SearchSession.user = invalidation === 'logout' ? null : {id: 'student-b'};
+  const scope = {user_id: 'student-a', problem_id: 'public-problem'};
+  pending.resolve(boundary === 'response' ? response(scope) : scope);
+  await retaking;
+  assert.deepEqual(requests, [['/api/search/problems/0123456789ab', 'GET']]);
+  assert.equal(confirmations, 0);
+  assert.equal(cleared, 0);
+  assert.equal(location.href, '');
+});
+
+for (const invalidation of ['switch-account', 'logout', 'stop-page']) test(`late retake DELETE cannot clear progress or navigate after ${invalidation}`, async () => {
+  const {context, location} = setup('problem.js', '?search=0123456789ab');
+  const pending = deferred();
+  const requests = [];
+  let confirmations = 0, cleared = 0;
+  context.window.confirm = () => { confirmations++; return true; };
+  context.window.SearchSession.clearProgress = () => { cleared++; };
+  context.fetch = async (url, options = {}) => {
+    requests.push([url, options.method || 'GET']);
+    return options.method === 'DELETE' ? pending.promise : response({problem_id: 'public-problem'});
+  };
+  const retaking = context.deleteAndRetake();
+  await tick();
+  if (invalidation === 'stop-page') context.stopPrivateLesson();
+  else context.window.SearchSession.user = invalidation === 'logout' ? null : {id: 'student-b'};
+  pending.resolve(response({deleted_search_ids: ['0123456789ab', 'fedcba987654']}));
+  await retaking;
+  assert.deepEqual(requests, [['/api/search/problems/0123456789ab', 'GET'], ['/api/search/problems/0123456789ab', 'DELETE']]);
+  assert.equal(confirmations, 1);
+  assert.equal(cleared, 0);
+  assert.equal(location.href, '');
+});
+
+test('late camera permission after page teardown stops every track instead of reopening capture', async () => {
+  const {context, element} = setup('camera.js');
+  const permission = deferred();
+  let stopped = 0;
+  context.navigator.mediaDevices = {getUserMedia: () => permission.promise};
+  const starting = context.startCamera();
+  context.clearPrivateCamera();
+  permission.resolve({getTracks: () => [{stop() { stopped++; }}, {stop() { stopped++; }}]});
+  await starting;
+  assert.equal(stopped, 2);
+  assert.equal(element('#cm-video').srcObject, null);
+  assert.equal(vm.runInContext('stream', context), null);
+});
+
+test('late camera encoding after teardown cannot upload a captured photo', async () => {
+  const {context, element} = setup('camera.js');
+  const encoding = deferred();
+  element('#cm-video').videoWidth = 1000;
+  element('#cm-video').videoHeight = 2000;
+  context.document.createElement = () => ({getContext: () => ({drawImage() {}}), toBlob: callback => encoding.promise.then(callback)});
+  let picks = 0;
+  context.openPick = () => { picks++; };
+  const shooting = context.shoot();
+  context.clearPrivateCamera();
+  encoding.resolve({type: 'image/jpeg'});
+  await shooting;
+  assert.equal(picks, 0);
+});
+
+test('late demo image construction cannot restore photos after teardown', async () => {
+  const {context, element} = setup('camera.js', '?sim=1');
+  const building = deferred();
+  context.buildPage = () => building.promise;
+  const starting = context.startCamera();
+  context.clearPrivateCamera();
+  building.resolve({url: 'private-photo'});
+  await starting;
+  assert.equal(element('#cm-sim').src, undefined);
+  assert.equal(vm.runInContext('page', context), null);
+});
+
+test('pagehide while waiting for login cannot subsequently start the camera', async () => {
+  const {context, documentListeners, windowListeners} = setup('camera.js');
+  context.bindCrop = () => {};
+  const login = deferred();
+  context.window.SearchSession.login = () => login.promise;
+  let starts = 0;
+  context.startCamera = () => { starts++; };
+  const loading = documentListeners.get('DOMContentLoaded')();
+  await tick();
+  windowListeners.get('pagehide')();
+  login.resolve({id: 'student-a'});
+  await loading;
+  assert.equal(starts, 0);
+});
+
+test('a stale native file picker cannot reuse the new camera lifecycle', async () => {
+  const {context, element, documentListeners} = setup('camera.js');
+  context.bindCrop = () => {};
+  context.startCamera = () => {};
+  let picks = 0;
+  context.fromFile = () => { picks++; };
+  await documentListeners.get('DOMContentLoaded')();
+  documentListeners.get('click')({target: {closest: selector => selector === '[data-file]' ? {dataset: {file: 'cm-album'}} : null}});
+  await tick();
+  context.clearPrivateCamera();
+  element('#cm-album').listeners.get('change')({target: {files: [{type: 'image/png'}], value: 'old-photo'}});
+  assert.equal(picks, 0);
+});
+
+test('late continuation after record deletion cannot restart polling or stream transport', async () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  const request = deferred();
+  context.fetch = () => request.promise;
+  context.monitors = 0; context.refreshes = 0;
+  vm.runInContext(`pollLesson=()=>{monitors++}; streamTransport={stop(){},refresh(){refreshes++}}`, context);
+  const continuing = context.continueCalculation();
+  context.stopPrivateLesson();
+  request.resolve(response({}));
+  await continuing;
+  assert.equal(context.monitors, 0);
+  assert.equal(context.refreshes, 0);
+});
+
+test('stale goal callbacks cannot change the current actor or persist page progress', () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  const writes = [];
+  context.localStorage = {setItem: (...args) => writes.push(args)};
+  vm.runInContext(`lesson.part=0; lesson.actor='student'; progressOwner='student-a';
+    lesson.data={goals:[{walk:{bundle:{problemId:'new-goal',bundleVersion:'new-version'}}}]}`, context);
+  context.savePageProgress({actor: 'replay', problem_id: 'old-goal', base_bundle_version: 'new-version'});
+  context.savePageProgress({actor: 'replay', problem_id: 'new-goal', base_bundle_version: 'old-version'});
+  assert.equal(vm.runInContext('lesson.actor', context), 'student');
+  assert.deepEqual(writes, []);
+});
+
+test('a late stream update failure after deletion cannot restore the reconnect status', async () => {
+  const {context, element} = setup('problem.js');
+  let reject;
+  const pending = new Promise((_resolve, fail) => { reject = fail; });
+  context.pending = pending;
+  vm.runInContext(`lesson.part=0; lesson.data={stream:{run_id:'run',lesson_version:'version'},
+    goals:[{target_ref:'goal',walk:{}}]}; lesson.engine={walkView:()=>({target_ref:'goal'}),
+    updateStreamSelection:()=>pending,disposeWalk(){}}`, context);
+  context.updateStreamView({run_id: 'run', lesson_version: 'version'});
+  context.stopPrivateLesson();
+  reject(new Error('late update'));
+  await tick();
+  assert.equal(element('#pq-stream-status').hidden, true);
+});
+
+test('disposed private pages reject queued retries, loads and lesson updates without issuing requests', async () => {
+  const {context, location} = setup('problem.js', '?search=0123456789ab');
+  let requests = 0;
+  context.fetch = () => { requests++; throw new Error('must not request'); };
+  context.stopPrivateLesson();
+  await context.runLive();
+  await context.retry();
+  await context.retryLesson();
+  await context.pollLesson();
+  context.resumeLesson();
+  context.showLesson({status: 'completed', goals: [{walk: {}}]});
+  assert.equal(requests, 0);
+  assert.equal(location.reloads, 0);
+  assert.equal(vm.runInContext('lesson.data', context), null);
+});
+
+test('unsupported feedback states the limitation without pretending to record a request', () => {
+  const {context, element} = setup('problem.js');
+  vm.runInContext('showFail(FAILS.unsupported)', context);
+  assert.match(element('#pq-fail-text').textContent, /暂不支持/);
+  assert.doesNotMatch(element('#pq-fail-text').textContent, /已记下|尽快支持/);
+  assert.doesNotMatch(context.noteHtml({status: 'unsupported'}), /已记下|尽快支持/);
+});
 
 test('problem meaning follows the confirmed conversion and ignores another goal or bundle version', () => {
   const {context, element} = setup('problem.js');
@@ -119,6 +443,60 @@ test('a network submission failure is visible and the same crop can be retried',
   await context.go(rect);
   assert.deepEqual(posted, [crop, crop]);
   assert.equal(location.href, 'problem.html?search=fedcba987654');
+});
+
+test('changing the intended crop creates a new idempotency key after a lost response', async () => {
+  const {context} = setup('camera.js');
+  const posted = [];
+  context.fetch = async (url, options) => {
+    if (url.endsWith('/pages')) return response(page);
+    posted.push(JSON.parse(options.body));
+    throw new TypeError('Offline');
+  };
+  await context.openPick('photo.png', {type: 'image/png'}, []);
+  await context.go(rect);
+  await context.go(rect);
+  await context.go({...rect, w: .5});
+  assert.deepEqual(posted.map(item => item.client_request_id), ['request-1', 'request-1', 'request-2']);
+});
+
+test('cancelling login never starts the camera or uploads a photo', async () => {
+  const {context, documentListeners, location} = setup('camera.js');
+  let calls = 0;
+  context.window.SearchSession.user = null;
+  context.window.SearchSession.login = async () => null;
+  context.navigator.mediaDevices = {getUserMedia: async () => { calls++; }};
+  context.fetch = async () => { calls++; };
+  await documentListeners.get('DOMContentLoaded')();
+  assert.equal(calls, 0);
+  assert.equal(location.href, './');
+});
+
+test('a camera permission result arriving after logout is stopped without attachment', async () => {
+  const {context, element} = setup('camera.js');
+  const pending = deferred();
+  let stopped = 0;
+  context.navigator.mediaDevices = {getUserMedia: () => pending.promise};
+  const starting = context.startCamera();
+  context.window.SearchSession.valid = () => false;
+  context.clearPrivateCamera();
+  pending.resolve({getTracks: () => [{stop() { stopped++; }}]});
+  await starting;
+  assert.equal(stopped, 1);
+  assert.equal(element('#cm-video').srcObject, null);
+});
+
+test('logout invalidates pending uploads before a private image can return', async () => {
+  const {context, element} = setup('camera.js');
+  const pending = deferred();
+  context.fetch = () => pending.promise;
+  const uploading = context.openPick('old-photo', {type: 'image/png'}, []);
+  context.clearPrivateCamera();
+  pending.resolve(response(page));
+  await uploading;
+  assert.equal(vm.runInContext('pageId', context), null);
+  assert.equal(element('#cm-photo').src, undefined);
+  assert.equal(element('#cm-pick').hidden, true);
 });
 
 function cameraPage(id, box = [.1, .2, .6, .5], status = 'corrected') {
@@ -345,7 +723,7 @@ test('canonical image decoding gates boxes, previews, rotation and cropped submi
   assert.deepEqual(draws[0].slice(1, 5), [200, 200, 1000, 300]);
   assert.equal(element('#cm-rotate').disabled, false);
   await context.go({x: .1, y: .2, w: .5, h: .3});
-  assert.deepEqual(JSON.parse(requests[1].body), {page_id: 'oriented', box: [.1, .2, .6, .5]});
+  assert.deepEqual(JSON.parse(requests[1].body), {page_id: 'oriented', box: [.1, .2, .6, .5], client_request_id: 'request-1'});
   assert.equal(location.href, 'problem.html?search=selected');
 });
 
@@ -403,7 +781,7 @@ test('clockwise rotation installs the new raster and fresh coordinates and clear
   const [sx, sy, sw, sh] = draws.at(-1).slice(1, 5);
   for (const [actual, expected] of [[sx, 400], [sy, 300], [sw, 1200], [sh, 300]]) assert.ok(Math.abs(actual - expected) < 1e-9);
   await context.go({x: .2, y: .3, w: .6, h: .3});
-  assert.deepEqual(JSON.parse(requests[2].body), {page_id: 'rotated', box: [.2, .3, .8, .6]});
+  assert.deepEqual(JSON.parse(requests[2].body), {page_id: 'rotated', box: [.2, .3, .8, .6], client_request_id: 'request-1'});
 });
 
 for (const failure of ['request', 'image']) test(`rotation ${failure} failure restores the original raster and manual crop for a safe retry`, async () => {
@@ -601,7 +979,7 @@ test('manual-crop click does not pass a browser event as a crop rectangle', () =
   assert.deepEqual(args, []);
 });
 
-test('uncertain orientation offers manual rotation and offline fallback has no real page or rotation', async () => {
+test('uncertain orientation offers manual rotation and network failure never creates mock results', async () => {
   const {context, element, location} = setup('camera.js');
   context.fetch = async () => response(cameraPage('uncertain', [.1, .2, .6, .5], 'uncertain'));
   await context.openPick('local.jpg', {type: 'image/jpeg'}, []);
@@ -613,13 +991,42 @@ test('uncertain orientation offers manual rotation and offline fallback has no r
   assert.equal(element('#cm-photo').src, 'offline.jpg');
   assert.equal(element('#cm-orientation-note').hidden, true);
   assert.equal(element('#cm-rotate').disabled, true);
-  assert.match(element('#cm-proto-note').textContent, /离线原型.*模拟.*暂不支持旋转/);
-  assert.match(element('#cm-proto-note').textContent, /后续结果均为模拟，不识别这张照片/);
-  for (const id of ['#cm-go', '#cm-crop-go']) assert.match(element(id).innerHTML, /查看模拟流程/);
-  assert.equal(element('#cm-whole').textContent, '整图查看模拟流程');
+  assert.match(element('#cm-proto-note').textContent, /无法连接识别服务.*重试/);
+  assert.doesNotMatch(element('#cm-proto-note').textContent, /模拟/);
+  for (const id of ['#cm-go', '#cm-crop-go', '#cm-whole']) assert.equal(element(id).disabled, true);
   assert.equal(vm.runInContext('pageId', context), null);
   await context.go(rect);
-  assert.equal(location.href, 'problem.html?demo=ok&fresh=1');
+  assert.equal(location.href, '');
+});
+
+for (const outcome of ['expired', 'disabled']) test(`${outcome} history shows its canonical statement without fetching images or starting a lesson`, async () => {
+  const {context, element} = setup('problem.js', '?search=retained');
+  const urls = [];
+  context.fetch = async url => { urls.push(url); return response({state: 'done', outcome, statement: '规范题面', lesson: null}); };
+  await context.runLive();
+  assert.deepEqual(urls, ['/api/search/problems/retained']);
+  assert.equal(element('#pq-photo').src, undefined);
+  assert.equal(element('#pq-fail-quote').textContent, '规范题面');
+  assert.match(element('#pq-fail-text').textContent, outcome === 'expired' ? /到期清除.*重新拍摄/ : /题目已下线/);
+});
+
+test('a missing private record is terminal and does not poll or load its image', async () => {
+  const {context, element} = setup('problem.js', '?search=deleted');
+  let reads = 0;
+  context.fetch = async () => { reads++; return {ok: false, status: 404}; };
+  await context.runLive();
+  assert.equal(reads, 1);
+  assert.equal(element('#pq-photo').src, undefined);
+  assert.match(element('#pq-fail-text').textContent, /不存在或已删除/);
+});
+
+test('a detail without the authenticated server owner cannot mount private progress', async () => {
+  const {context, element} = setup('problem.js', '?search=private');
+  context.fetch = async () => ({ok: true, json: async () => ({state: 'done', outcome: 'ok', original_text: 'private'})});
+  await context.runLive();
+  assert.equal(element('#pq-photo').src, undefined);
+  assert.equal(vm.runInContext('progressScope()', context), null);
+  assert.match(element('#pq-fail-text').textContent, /登录状态无法确认/);
 });
 
 for (const mode of ['terminal', 'transient', 'lost']) test(`polling and retry preserve the correct run: ${mode}`, async () => {

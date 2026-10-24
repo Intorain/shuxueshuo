@@ -17,6 +17,10 @@ from ..repositories import insert, row, UserContext
 from ..storage import LocalArtifactStorage
 
 MUTABLE = {
+    'search_problems': 'status',
+    'search_pages': 'image_state pending_cleanup_keys',
+    'search_submissions': 'problem_id recognition_status lesson_status artifact_state error_code updated_at',
+    'student_search_problems': 'first_searched_at last_searched_at',
     'student_node_assessments': 'status probability strategy_version evidence_attempt_id evidence_position correct_count evaluated_at',
     'knowledge_drill_attempts': 'status completed_at updated_at',
     'knowledge_drill_answers': 'selected is_correct answered_at',
@@ -42,6 +46,8 @@ MUTABLE = {
     'extraction_runs': 'status workflow_binding result_json candidate_id finished_at error_code',
     'extraction_call_reservations': 'status response_artifact_id model_call_id details',
 }
+
+DELETABLE = frozenset({'search_submissions', 'student_search_problems'})
 
 PUBLIC_CONTENT_TABLES = frozenset({
     'knowledge_nodes', 'knowledge_entries', 'knowledge_edges', 'knowledge_resources',
@@ -114,6 +120,8 @@ def grant(c):
         if table in MUTABLE:
             columns = ','.join('"' + x + '"' for x in MUTABLE[table].split())
             c.exec_driver_sql(f'GRANT UPDATE ({columns}) ON "{table}" TO product_app')
+        if table in DELETABLE:
+            c.exec_driver_sql(f'GRANT DELETE ON "{table}" TO product_app')
 
 
 def seed(db):
@@ -147,7 +155,7 @@ def doctor(settings, *, probe=True, maintenance=False):
             for table in m.metadata.tables:
                 if table in PUBLIC_CONTENT_TABLES and c.scalar(text("SELECT has_table_privilege(current_user,:t,'INSERT')"), {'t': table}):
                     raise IntegrityFailure('doctor.app_public_content_write')
-                if c.scalar(text('SELECT has_table_privilege(current_user,:t,\'DELETE\')'), {'t': table}):
+                if bool(c.scalar(text('SELECT has_table_privilege(current_user,:t,\'DELETE\')'), {'t': table})) != (table in DELETABLE):
                     raise IntegrityFailure('doctor.app_delete')
                 allowed = set(MUTABLE.get(table, '').split())
                 for column in m.metadata.tables[table].c:

@@ -1,5 +1,5 @@
 .sq-page [hidden] { display: none !important; }
-.pq-bar { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 52px; padding: 0 12px; border-bottom: 1px solid var(--sq-line); background: rgba(255, 255, 255, .94); backdrop-filter: blur(8px); }
+.pq-bar { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; height: 52px; padding: 0 12px; border-bottom: 1px solid var(--sq-line); background: rgba(255, 255, 255, .94); backdrop-filter: blur(8px); }
 .pq-bar strong { font-size: 17px; }
 .pq-back { justify-self: start; padding: 0 10px; color: var(--sq-ink); font-size: 30px; line-height: 1; text-decoration: none; }
 .pq-history { justify-self: end; font-size: 14px; text-decoration: none; }
@@ -125,9 +125,6 @@
 .pq-devcheck dt { color: var(--sq-muted); white-space: nowrap; }
 .pq-devcheck dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, Menlo, monospace; }
 
-.pq-sheet .pq-options { display: grid; gap: 8px; margin-top: 14px; }
-.pq-sheet label { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--sq-line); border-radius: 12px; font-size: 15px; }
-.pq-sheet input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; margin: 0; accent-color: var(--sq-teal); }
 .pq-viewer { max-width: 96vw; padding: 12px; border: 0; border-radius: 16px; background: #1b2a2e; }
 .pq-viewer::backdrop { background: rgba(0, 0, 0, .7); }
 .pq-viewer img { display: block; max-width: 100%; max-height: 70vh; }

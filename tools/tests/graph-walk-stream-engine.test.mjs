@@ -209,7 +209,8 @@ function engine(value = fixture()) {
   Object.assign(context, {fixture: value, initialBase: base});
   const run = code => vm.runInContext(code, context);
   run(`bundle = fixture.bundle; state = studentState = fixture.state; streamView = fixture.view;
-    graphView = bundle.graph; options = {bundle: initialBase, stream: {...fixture.view, target_ref: bundle.stream.target_ref}};
+    graphView = bundle.graph; bundleScope = 'search-progress:v1:student-a:submission:';
+    options = {bundle: initialBase, progressScope: bundleScope, stream: {...fixture.view, target_ref: bundle.stream.target_ref}};
     actor = 'student'; renderCount = 0; realRender = render; realRenderGraph = renderGraph; realStopReplay = stopReplay;
     renderGraph = () => {}; stopReplay = () => {}; toggleSteps = () => {};
     render = () => {renderCount++; const current = currentDecision(bundle,state); if (current) ensureDraft(current); park();};`);
@@ -961,7 +962,7 @@ test('undo after restoring a multipart card rewinds one question and persists ac
   const value = fixture({parts: [part('location'), part('value'), part('condition'), part('range')]});
   const first = engine(value);
   first.run(`state = studentState = submitAnswer(bundle,state,{decision:'location',answer:'yes'}); render();`);
-  const persisted = [...first.storage.entries()].find(([key]) => key.startsWith('graph-walk:'));
+  const persisted = [...first.storage.entries()].find(([key]) => key.startsWith('search-progress:v1:student-a:submission:walk:'));
   assert.ok(persisted, 'park wrote the real progress serializer');
   // Start a new engine, whose in-memory event history and saved map are empty.
   const {run, storage} = engine(value);
@@ -981,7 +982,7 @@ test('undo after restoring a multipart card rewinds one question and persists ac
   await run('updateStreamSelection(fixture.view)');
   assert.equal(run('currentDecision(bundle,state).id'), 'location');
   run(`state = studentState = refreshStreamState(bundle,
-    JSON.parse(localStorage.getItem('graph-walk:'+bundle.problemId+':'+bundle.bundleVersion)).studentState);`);
+    JSON.parse(localStorage.getItem(storedProgressKey(bundle,bundleScope))).studentState);`);
   assert.equal(run('currentDecision(bundle,state).id'), 'location');
 });
 
@@ -1114,7 +1115,7 @@ test('routes retain independent drafts and selected fill slots, including persis
   const saved = JSON.parse([...storage.values()].at(-1));
   assert.equal(saved.studentState.streamRoutes.extremum.draft.answer[0], 'yes');
   assert.equal(saved.studentState.streamRoutes.discriminant.draft.selectedSlot, 0);
-  run(`state = studentState = refreshStreamState(bundle,JSON.parse(localStorage.getItem('graph-walk:'+bundle.problemId+':'+bundle.bundleVersion)).studentState);
+  run(`state = studentState = refreshStreamState(bundle,JSON.parse(localStorage.getItem(storedProgressKey(bundle,bundleScope))).studentState);
     draftKey=''; draft=null; selectedSlot=null; ensureDraft(currentDecision(bundle,state));`);
   assert.equal(run('JSON.stringify(draft)'), '["no"]');
   assert.equal(run('selectedSlot'), 0);
@@ -1155,6 +1156,153 @@ test('same problem ID keeps distinct parked progress per subquestion and run eve
   assert.equal(run('savedProgress(fixture.bundle).studentState.streamDraft.selectedSlot'), 0);
   assert.equal(run('savedProgress(other).studentState.introCompleted.length'), 0);
   assert.equal(run('savedProgress(newRun).studentState.introCompleted.length'), 0);
+});
+
+test('changing account scopes never saves the previous bundle under the next account', () => {
+  const {run, storage} = engine(fixture({parts: [part('first', 'fill')]}));
+  run(`ensureDraft(currentDecision(bundle,state)); draft=['no']; selectedSlot=0; park();
+    options.progressScope='search-progress:v1:student-b:submission:'; park();`);
+  assert.equal(run('savedProgress(bundle)'), undefined);
+  assert.equal([...storage.keys()].some(key => key.startsWith('search-progress:v1:student-b:')), false);
+  run(`bundleScope=options.progressScope; state=studentState=createState(bundle); draftKey=''; keptDraft=null; park();`);
+  assert.equal(run('savedProgress(bundle).studentState.introCompleted.length'), 0);
+  run(`options.progressScope='search-progress:v1:student-a:submission:';`);
+  assert.equal(run('savedProgress(bundle).studentState.streamDraft.answer[0]'), 'no');
+  assert.equal(run('savedProgress(bundle).studentState.streamDraft.selectedSlot'), 0);
+});
+
+test('legacy unscoped progress is ignored and stage-two fallback stays within the account', () => {
+  const {run, storage, value} = engine(fixture());
+  storage.set(`graph-walk:${value.bundle.problemId}:${value.bundle.bundleVersion}`, JSON.stringify({studentState: value.state}));
+  assert.equal(run('savedProgress(bundle)'), undefined);
+  run(`saved.set(progressKey({...bundle,stream:null,bundleVersion:bundle.stream.base_bundle_version},options.progressScope), {stage:'two'});`);
+  assert.equal(run('savedProgress(bundle).stage'), 'two');
+  run(`options.progressScope='search-progress:v1:student-b:submission:';`);
+  assert.equal(run('savedProgress(bundle)'), undefined);
+});
+
+test('disposing an account cancels queued graph work and cannot rewrite cleared progress', async () => {
+  const {run, storage} = engine(fixture());
+  run('park()');
+  assert.ok(storage.size);
+  const pending = run('updateStreamSelection(fixture.view)');
+  run('disposeWalk()');
+  storage.clear();
+  await pending;
+  run('park()');
+  assert.equal(storage.size, 0);
+  assert.equal(run('saved.size'), 0);
+  assert.equal(run('bundle'), null);
+});
+
+test('stage-two versions keep independent in-memory progress for the same search and problem', () => {
+  const {run, context} = engine();
+  context.first = structuredClone(base);
+  context.second = {...structuredClone(base), bundleVersion: base.bundleVersion + '-next'};
+  run(`bundle=first; state=studentState=createState(bundle); actor='student'; park();
+    bundle=second; state=studentState=createState(bundle); actor='replay'; park();`);
+  assert.equal(run('saved.size'), 2);
+  assert.equal(run('savedProgress(first).actor'), 'student');
+  assert.equal(run('savedProgress(second).actor'), 'replay');
+});
+
+test('disposing during AI playback cannot rewrite already-deleted local progress', () => {
+  const {run, storage} = engine();
+  run(`park(); actor='replay'; replay=streamReplay(); replayPlaying=true; stopReplay=realStopReplay;`);
+  storage.clear();
+  run('disposeWalk()');
+  assert.equal(storage.size, 0);
+  assert.equal(run('saved.size'), 0);
+});
+
+test('late graph construction is destroyed after disposal without restoring the graph', async () => {
+  const {run, context, storage} = engine();
+  let resolve;
+  context.pendingGraph = new Promise(done => { resolve = done; });
+  run('createGraph=()=>pendingGraph');
+  const installing = run('installGraph()');
+  run('disposeWalk()');
+  storage.clear();
+  let destroyed = 0;
+  resolve({destroy() { destroyed++; }});
+  assert.equal(await installing, false);
+  assert.equal(destroyed, 1);
+  assert.equal(run('graph'), null);
+  assert.equal(storage.size, 0);
+});
+
+test('late graph mode switches cannot replace a newer mounted graph', async () => {
+  const {run, context} = engine();
+  let resolve;
+  context.pendingGraph = new Promise(done => { resolve = done; });
+  run(`createGraph=()=>pendingGraph; mountCaption=()=>{};`);
+  const switching = run('switchGraphMode()');
+  let staleDestroyed = 0, currentDestroyed = 0;
+  context.newGraph = {destroy() { currentDestroyed++; }};
+  run('createGraph=async()=>newGraph');
+  assert.equal(await run('installGraph()'), true);
+  resolve({destroy() { staleDestroyed++; }});
+  await switching;
+  assert.equal(run('graph'), context.newGraph);
+  assert.equal(staleDestroyed, 1);
+  assert.equal(currentDestroyed, 0);
+});
+
+test('a pending load cannot render the old bundle while a new account mount waits for stream work', async () => {
+  const {run, context} = engine();
+  let releaseLayout, releaseQueue;
+  context.layout = new Promise(done => { releaseLayout = done; });
+  context.queue = new Promise(done => { releaseQueue = done; });
+  context.publicFixture = graph;
+  run(`publicGraph=publicFixture; withLayout=()=>layout; bound=true;`);
+  const loading = run('load()');
+  run('streamUpdateQueue=queue');
+  const mounting = run(`mountWalk({progressScope:'search-progress:v1:student-b:submission:'})`);
+  releaseLayout(run('bundle'));
+  await loading;
+  assert.equal(run('bundleScope'), 'search-progress:v1:student-a:submission:');
+  assert.equal(run('renderCount'), 0);
+  run('disposeWalk()');
+  releaseQueue();
+  await mounting;
+});
+
+test('queued stream work is discarded even when a new account uses the same public run identity', async () => {
+  const {run, context} = engine();
+  let release;
+  context.queue = new Promise(done => { release = done; });
+  run('streamUpdateQueue=queue; applied=0; applyStreamSelection=()=>{applied++}');
+  const updating = run('updateStreamSelection(fixture.view)');
+  run(`mountTicket++; options.progressScope='search-progress:v1:student-b:submission:'`);
+  release();
+  await updating;
+  assert.equal(run('applied'), 0);
+});
+
+test('an already-queued submit animation cannot clear the next mount draft or persist it', () => {
+  const {run, context, storage} = engine(fixture({parts: [part('first')]}));
+  let callback;
+  context.setTimeout = task => { callback = task; return 1; };
+  run(`ensureDraft(currentDecision(bundle,state)); draft='yes'; submit();`);
+  assert.equal(typeof callback, 'function');
+  run(`loadTicket++; draftKey='new-account-draft'; busy=true;`);
+  storage.clear();
+  callback();
+  assert.equal(run('draftKey'), 'new-account-draft');
+  assert.equal(run('busy'), true);
+  assert.equal(storage.size, 0);
+});
+
+test('an already-queued preview animation cannot show old private state after disposal', () => {
+  const {run, context} = engine();
+  let callback;
+  context.setTimeout = task => { callback = task; return 1; };
+  run('shownPreviews=0; showPreview=()=>{shownPreviews++}; togglePlay()');
+  assert.equal(run('shownPreviews'), 1);
+  run('disposeWalk()');
+  callback();
+  assert.equal(run('shownPreviews'), 1);
+  assert.equal(run('previewTimer'), null);
 });
 
 test('a late final interaction replaces the waiting state and leaves the next draft empty', async () => {

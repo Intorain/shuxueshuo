@@ -1316,7 +1316,8 @@ test("mistake book is linked from home and focused on this week's set study", ()
   );
 
   assert.match(homePage, /href="\.\/mistake-book\/index\.html">错题本 /);
-  assert.match(mistakePage, /<nav class="site-nav" aria-label="站内导航">(?:<a href="[^"]+">[^<]+<\/a>){4}<\/nav>/);
+  assert.match(mistakePage, /<nav class="site-nav" aria-label="站内导航">(?:<a href="[^"]+">[^<]+<\/a>){5}<\/nav>/);
+  assert.match(mistakePage, /<a href="\/lab\/search\/">拍题学<\/a>/);
   assert.doesNotMatch(mistakePage, /这一周，我们在集合里错了什么/);
   assert.match(mistakePage, /senior-high\/index\.html\?chapter=sets/);
   assert.match(mistakePage, /class="mistake-book-subsection-head"/);

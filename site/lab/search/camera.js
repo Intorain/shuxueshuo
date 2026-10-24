@@ -1,9 +1,9 @@
-/* Question boxes come from the local OCR segmentation API (run_site.py, POST /api/search/pages);
-   without it the page falls back to mocked boxes. ?sim=1 simulates the viewfinder with a
-   composed worksheet, ?sim=denied the no-permission state, ?demo=page skips the viewfinder. */
+/* Question boxes come from the authenticated OCR segmentation API. */
 const params = new URLSearchParams(location.search);
 const sim = params.get('sim');
 const $ = selector => document.querySelector(selector);
+const session = window.SearchSession;
+const searchFetch = (...args) => session.request(...args);
 
 /* Mock worksheet: known question boxes stand in for the detection service. */
 const PAGE = [
@@ -24,6 +24,8 @@ let boxes = [];
 let selected = 0;
 let crop = null;
 let generation = 0;
+let captureGeneration = 0;
+const pickerTickets = new Map();
 let readyGeneration = null;
 let loading = false;
 let submission = null;
@@ -31,6 +33,7 @@ let currentResult = null;
 let retryAction = null;
 let pendingResult = null;
 let rotationLimitedPageId = null;
+let submissionIntent = null;
 const MIN = .08;
 
 const load = src => new Promise((resolve, reject) => {
@@ -87,18 +90,25 @@ function showDenied() {
 }
 
 async function startCamera() {
+  const token = session.epoch;
+  const capture = ++captureGeneration;
+  const current = () => session.valid(token) && capture === captureGeneration;
   if (sim === '1') {
-    page = await buildPage();
+    const built = await buildPage();
+    if (!current()) return;
+    page = built;
     $('#cm-video').hidden = true;
     Object.assign($('#cm-sim'), {src: page.url, hidden: false});
     return;
   }
   if (sim === 'denied' || !navigator.mediaDevices?.getUserMedia) return showDenied();
   try {
-    stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: {ideal: 'environment'}, width: {ideal: 1920}, height: {ideal: 1440}}, audio: false});
+    const captured = await navigator.mediaDevices.getUserMedia({video: {facingMode: {ideal: 'environment'}, width: {ideal: 1920}, height: {ideal: 1440}}, audio: false});
+    if (!current()) { for (const track of captured.getTracks()) track.stop(); return; }
+    stream = captured;
     $('#cm-video').srcObject = stream;
   } catch {
-    showDenied();
+    if (current()) showDenied();
   }
 }
 
@@ -110,17 +120,27 @@ function stopCamera() {
 const toBlob = async url => (await fetch(url)).blob();
 
 async function shoot() {
-  if (page) return openPick(page.url, await toBlob(page.url), page.boxes);
+  if (!session.user) return;
+  const ticket = session.epoch;
+  const capture = captureGeneration;
+  const current = () => session.valid(ticket) && capture === captureGeneration;
+  if (page) {
+    const photo = page;
+    const blob = await toBlob(photo.url);
+    if (current()) return openPick(photo.url, blob, photo.boxes);
+    return;
+  }
   const video = $('#cm-video');
   if (!video.videoWidth) return;
   const canvas = Object.assign(document.createElement('canvas'), {width: video.videoWidth, height: video.videoHeight});
   canvas.getContext('2d').drawImage(video, 0, 0);
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .92));
+  if (!current()) return;
   openPick(URL.createObjectURL(blob), blob, MOCK_BANDS);
 }
 
 async function fromFile(file) {
-  if (!file) return;
+  if (!file || !session.user) return;
   if (!/^image\//.test(file.type)) { toast('请选择 PNG、JPEG 或 WebP 图片'); return; }
   openPick(URL.createObjectURL(file), file, MOCK_BANDS);
 }
@@ -145,15 +165,13 @@ function uploadErrorMessage(status, detail) {
   return `照片处理失败（HTTP ${status}${detail ? `：${detail}` : ''}），请重试。`;
 }
 
-/* Only a rejected network request enters the explicit offline prototype.
-   HTTP errors, invalid responses and preview decode errors retain the real failure. */
 async function detect(blob, fallback, url) {
   let response;
   try {
-    response = await fetch('/api/search/pages', {method: 'POST', body: blob, headers: {'Content-Type': blob.type || 'image/jpeg'}});
-  } catch {
-    return {pageId: null, url, found: fallback, offline: true,
-      note: '离线原型：题目框和后续结果均为模拟，不识别这张照片，暂不支持旋转（本地切题接口不可用）'};
+    response = await searchFetch('/api/search/pages', {method: 'POST', body: blob, headers: {'Content-Type': blob.type || 'image/jpeg'}});
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new PageDetectionError('暂时无法连接识别服务，请检查网络后重试。');
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -289,6 +307,7 @@ function retryResult(result, expectedGeneration) {
 async function openPick(url, blob, fallback) {
   stopCamera();
   currentResult = null;
+  submissionIntent = null;
   const token = beginDetection();
   $('#cm-photo').hidden = true;
   /* Show a local preview while OCR runs, without attaching coordinates or enabling actions. */
@@ -326,7 +345,7 @@ async function rotatePage() {
   const token = beginDetection();
   detection = (async () => {
     try {
-      const response = await fetch(`/api/search/pages/${sourcePageId}/rotate`, {
+      const response = await searchFetch(`/api/search/pages/${sourcePageId}/rotate`, {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({degrees: 90}),
       });
       const body = await response.json().catch(() => ({}));
@@ -374,8 +393,6 @@ function select(i, restoring = false) {
   $('#cm-title').textContent = `第 ${label(i)} 题`;
 }
 
-/* Live: the server crops the full-resolution page and starts stage one.
-   Offline (only after a network failure): mocked run. */
 async function go(rect, expectedGeneration = readyGeneration) {
   if (loading || submission || readyGeneration !== generation || expectedGeneration !== generation) return;
   const pending = {generation: expectedGeneration};
@@ -385,15 +402,13 @@ async function go(rect, expectedGeneration = readyGeneration) {
   try {
     await detection;
     if (submission !== pending || expectedGeneration !== generation || readyGeneration !== generation || !currentResult) return;
-    if (!pageId) {
-      if (!currentResult.offline) return;
-      try { sessionStorage.setItem('sq-image', cropUrl(requestedRect, 1600)); } catch { sessionStorage.removeItem('sq-image'); }
-      location.href = `problem.html?demo=${requestedRect.demo || 'ok'}&fresh=1`;
-      return;
-    }
-    const response = await fetch('/api/search/problems', {
+    if (!pageId) return;
+    const box = [requestedRect.x, requestedRect.y, requestedRect.x + requestedRect.w, requestedRect.y + requestedRect.h];
+    const identity = JSON.stringify([session.user.id, pageId, box]);
+    if (submissionIntent?.identity !== identity) submissionIntent = {identity, id: crypto.randomUUID()};
+    const response = await searchFetch('/api/search/problems', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({page_id: pageId, box: [requestedRect.x, requestedRect.y, requestedRect.x + requestedRect.w, requestedRect.y + requestedRect.h]}),
+      body: JSON.stringify({page_id: pageId, box, client_request_id: submissionIntent.id}),
     });
     const body = await response.json().catch(() => ({}));
     if (submission !== pending || expectedGeneration !== generation) return;
@@ -473,14 +488,53 @@ function reshoot() {
   location.href = sim ? `camera.html?sim=${sim}` : 'camera.html';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function clearPrivateCamera() {
+  captureGeneration++;
+  pickerTickets.clear();
+  generation++;
+  readyGeneration = null;
+  submission = null;
+  submissionIntent = null;
+  page = null;
+  pageId = null;
+  currentResult = null;
+  pendingResult = null;
+  retryAction = null;
+  boxes = [];
+  stopCamera();
+  $('#cm-video').srcObject = null;
+  for (const selector of ['#cm-photo', '#cm-chosen-img', '#cm-sim']) $(selector).removeAttribute('src');
+  $('#cm-boxes').replaceChildren();
+  $('#cm-shoot').hidden = true;
+  $('#cm-pick').hidden = true;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const lifecycle = captureGeneration;
+  window.addEventListener('pagehide', clearPrivateCamera);
+  window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
   $('#cm-shutter').addEventListener('click', shoot);
-  for (const id of ['#cm-album', '#cm-system']) $(id).addEventListener('change', event => fromFile(event.target.files[0]));
+  for (const id of ['#cm-album', '#cm-system']) $(id).addEventListener('change', event => {
+    const file = event.target.files[0], ticket = pickerTickets.get(id);
+    event.target.value = '';
+    pickerTickets.delete(id);
+    if (ticket && ticket.capture === captureGeneration && session.valid(ticket.epoch)) void fromFile(file);
+  });
   $('#cm-retake').addEventListener('click', reshoot);
   $('#cm-rotate').addEventListener('click', rotatePage);
   $('#cm-retry').addEventListener('click', () => retryAction?.());
   $('#cm-whole').addEventListener('click', () => go({x: 0, y: 0, w: 1, h: 1, demo: 'ok'}));
   document.addEventListener('click', event => {
+    const picker = event.target.closest('[data-file]');
+    if (picker) {
+      const capture = captureGeneration;
+      void session.login().then(user => {
+        if (!user || capture !== captureGeneration) return;
+        const id = `#${picker.dataset.file}`;
+        pickerTickets.set(id, {epoch: session.epoch, capture});
+        $(id).click();
+      }).catch(() => toast('登录服务暂不可用'));
+    }
     const target = event.target.closest('[data-box]');
     if (target) select(Number(target.dataset.box));
   });
@@ -490,10 +544,33 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#cm-crop-go').addEventListener('click', () => { if (crop) go({...crop, demo: boxes[selected]?.demo}); });
   bindCrop();
 
-  const handoff = params.get('from') === 'album' && sessionStorage.getItem('sq-page');
-  if (handoff) { $('#cm-video').hidden = true; toBlob(handoff).then(blob => openPick(handoff, blob, MOCK_BANDS)); return; }
+  await session.init((_next, previous) => {
+    if (!previous) return;
+    clearPrivateCamera();
+    location.href = './';
+  });
+  try { if (!await session.login()) { location.href = './'; return; } }
+  catch { toast('登录服务暂不可用，请返回后重试'); return; }
+  if (lifecycle !== captureGeneration) return;
+  let handoff;
+  try { handoff = JSON.parse(sessionStorage.getItem('sq-page') || 'null'); } catch {}
+  sessionStorage.removeItem('sq-page');
+  if (params.get('from') === 'album' && handoff?.user_id === session.user.id) {
+    const token = session.epoch;
+    const capture = captureGeneration;
+    $('#cm-video').hidden = true;
+    const blob = await toBlob(handoff.image);
+    if (session.valid(token) && capture === captureGeneration) await openPick(handoff.image, blob, []);
+    return;
+  }
   if (params.get('demo') === 'page') {
-    buildPage().then(async built => { page = built; openPick(page.url, await toBlob(page.url), page.boxes); });
+    const token = session.epoch;
+    const capture = captureGeneration;
+    buildPage().then(async built => {
+      const blob = await toBlob(built.url);
+      if (!session.valid(token) || capture !== captureGeneration) return;
+      page = built; openPick(page.url, blob, page.boxes);
+    });
     return;
   }
   startCamera();

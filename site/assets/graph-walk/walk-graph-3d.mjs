@@ -153,8 +153,9 @@ function glowTexture(THREE) {
   return texture;
 }
 
-export async function createWalkGraph3D(host, graph, {onSelect = () => {}, onSwitch = null} = {}) {
+export async function createWalkGraph3D(host, graph, {onSelect = () => {}, onSwitch = null, current = () => true} = {}) {
   const THREE = await import(THREE_URL);
+  if (!current()) return null;
   const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, powerPreference: 'high-performance'});
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarse = matchMedia('(pointer: coarse)').matches;
@@ -674,6 +675,7 @@ export async function createWalkGraph3D(host, graph, {onSelect = () => {}, onSwi
   return {
     render, fit, focus: (ids, animate) => focus(ids, animate), stage,
     destroy() {
+      if (destroyed) return;
       destroyed = true;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect(); visibility.disconnect();
@@ -686,7 +688,7 @@ export async function createWalkGraph3D(host, graph, {onSelect = () => {}, onSwi
       glow.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
-      host.replaceChildren();
+      controlsBar.remove(); stage.remove();
     },
   };
 }

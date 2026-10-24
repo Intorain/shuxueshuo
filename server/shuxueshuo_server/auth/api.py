@@ -63,7 +63,8 @@ class AuthBoundary(BaseHTTPMiddleware):
         auth_path = request.url.path.startswith("/api/auth/")
         tutor_path = request.url.path.startswith("/api/tutor-demo/")
         learning_path = request.url.path.startswith("/api/learning/")
-        if not (auth_path or tutor_path or learning_path):
+        search_path = request.url.path.startswith("/api/search/")
+        if not (auth_path or tutor_path or learning_path or search_path):
             return await call_next(request)
         auth = getattr(request.app.state, "student_auth", None)
         if auth and auth.config.mode == "mock":
@@ -81,7 +82,8 @@ class AuthBoundary(BaseHTTPMiddleware):
                     headers={"Cache-Control": "no-store"},
                 )
         length = request.headers.get("content-length", "0")
-        max_bytes = 512 * 1024 if tutor_path else 4096
+        max_bytes = (20 * 1024 * 1024 if search_path and request.url.path == "/api/search/pages"
+                     else 64 * 1024 if search_path else 512 * 1024 if tutor_path else 4096)
         if not length.isdigit() or int(length) > max_bytes:
             return JSONResponse(
                 {"detail": "请求过大。"}, 413, headers={"Cache-Control": "no-store"}

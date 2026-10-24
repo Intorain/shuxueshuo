@@ -1,5 +1,6 @@
 """PostgreSQL authority for private search access, history and lifecycle."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -76,6 +77,9 @@ class SearchRepository:
             problem = connection.execute(sa.select(PROBLEMS).where(PROBLEMS.c.id == value['problem_id'])).mappings().one()
             value['problem_status'] = problem['status']
             value['statement'] = problem['statement'] if problem['status'] == 'active' else None
+        if (value['lesson_status'] == 'ready' and value['artifact_state'] == 'active'
+                and value['problem_status'] != 'disabled' and not self.lesson_artifacts_available(value)):
+            value['lesson_status'] = 'unavailable'
         return value
 
     def submission(self, user, search_id, *, require_artifacts=False):
@@ -240,15 +244,18 @@ class SearchRepository:
                           and self.lesson_artifacts_available(row)]
                 chosen = self._decorate(connection, usable[0] if usable else latest)
                 disabled = chosen['problem_status'] == 'disabled'
+                latest_lesson = ('expired' if latest['expires_at'] <= self.clock() else
+                                 'unavailable' if latest['lesson_status'] == 'ready' and not any(
+                                     row['id'] == latest['id'] for row in usable) else latest['lesson_status'])
                 latest_status = ('disabled' if disabled else 'expired' if latest['expires_at'] <= self.clock()
-                                 else latest['lesson_status'] if latest['lesson_status'] != 'not_started'
+                                 else latest_lesson if latest_lesson != 'not_started'
                                  else latest['recognition_status'])
                 summary = chosen['statement'] or UNLINKED_SUMMARIES.get(latest['recognition_status'], '拍题记录')
                 items.append({'search_id': chosen['id'], 'problem_id': str(chosen['problem_id']) if chosen['problem_id'] else None,
                     'summary': '题目已下线，请重新拍摄' if disabled else summary[:160],
                     'last_searched_at': latest['recent_at'].isoformat(), 'latest_status': latest_status,
                     'recognition_status': latest['recognition_status'],
-                    'lesson_status': 'expired' if latest['expires_at'] <= self.clock() else latest['lesson_status'],
+                    'lesson_status': latest_lesson,
                     'lesson_available': bool(usable) and not disabled, 'image_state': chosen['artifact_state']})
         return {'user_id': str(owner), 'items': items, 'has_more': len(keys) > limit}
 
@@ -260,8 +267,17 @@ class SearchRepository:
         if not attempts:
             return False
         latest = max(attempts, key=lambda path: int(path.name.removeprefix('stage-two-')))
-        return all((latest / name).is_file() for name in ('stage-two-result.json', 'stage-three/run.json',
-                   'stage-three/frozen.json', 'stage-three/events.sqlite3', 'stage-three/stage-three-result.json'))
+        if not all((latest / name).is_file() for name in ('stage-two-result.json', 'stage-three/run.json',
+                   'stage-three/frozen.json', 'stage-three/stage-three-result.json')):
+            return False
+        try:
+            run_id = json.loads((latest / 'stage-three/run.json').read_text())['run_id']
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+        runs = metadata.tables['lesson_runs']
+        with transaction(self.db) as connection:
+            return connection.scalar(sa.select(runs.c.run_id).where(
+                runs.c.run_id == run_id, runs.c.submission_id == row['id'])) is not None
 
     def _queue(self, connection, page_id, key, *, search_id=None):
         entries = connection.scalar(sa.select(PAGES.c.pending_cleanup_keys).where(PAGES.c.id == page_id).with_for_update())
@@ -344,6 +360,8 @@ class SearchRepository:
                 rows = connection.execute(sa.select(SUBMISSIONS).where(SUBMISSIONS.c.page_id == page_id, expired_submission)
                     .order_by(SUBMISSIONS.c.id).with_for_update()).mappings().all()
                 for row in rows:
+                    runs = metadata.tables['lesson_runs']
+                    connection.execute(runs.delete().where(runs.c.submission_id == row['id']))
                     if self.storage.path(row['storage_key']).exists():
                         self._queue(connection, page_id, row['storage_key'], search_id=row['id'])
                     if row['problem_id']:

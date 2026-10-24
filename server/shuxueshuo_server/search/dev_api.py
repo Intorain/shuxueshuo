@@ -10,6 +10,7 @@ import secrets
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from contextvars import copy_context
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -40,6 +41,13 @@ from shuxueshuo_server.auth.api import (
 )
 from shuxueshuo_server.auth.service import AuthService
 from shuxueshuo_server.graph_lesson.stage_three.events import CursorExpired
+from shuxueshuo_server.graph_lesson.stage_three.storage import (
+    RunNotFound,
+    RunUnavailable,
+    StorageContextRequired,
+    require_storage_context,
+    storage_context,
+)
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
 from . import stage_three
@@ -61,9 +69,16 @@ MAX_UPLOAD = 20 * 1024 * 1024
 PREVIEW_SIDE = 1600
 MAX_PAGE_ROTATIONS = 8
 WS_AUTH_INTERVAL = 3.0
+WS_POLL_MIN_INTERVAL = 0.15
+WS_POLL_MAX_INTERVAL = 3.0
 ID = re.compile(r"^[0-9a-f]{12}$")
 FAILURES = {"missing_figure": "figure", "unreadable": "unclear", "ambiguous": "unclear"}
 LOGGER = logging.getLogger(__name__)
+
+
+async def execution_storage_scope():
+    with require_storage_context():
+        yield
 
 
 def search_user(request: Request, user: Annotated[dict, Depends(require_user)],
@@ -109,13 +124,19 @@ class SearchRoute(APIRoute):
 
         async def handle(request):
             try:
-                response = await handler(request)
+                repo = repository(request)
+                with storage_context(repo.db, request.path_params.get("search_id"), clock=repo.clock):
+                    response = await handler(request)
             except SearchError as exc:
                 response = JSONResponse({"detail": exc.code}, status_code=exc.status)
             except HTTPException as exc:
                 response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code,
                                         headers=exc.headers)
-            except (SQLAlchemyError, OSError):
+            except RunNotFound:
+                response = JSONResponse({"detail": "search.not_found"}, status_code=404)
+            except RunUnavailable as exc:
+                response = JSONResponse({"detail": exc.code}, status_code=410)
+            except (SQLAlchemyError, OSError, StorageContextRequired):
                 LOGGER.exception("Student search storage operation failed")
                 response = JSONResponse({"detail": "search.storage_unavailable"}, status_code=503)
             response.headers["Cache-Control"] = "no-store"
@@ -186,13 +207,16 @@ def create_search_router(root, *, stage_three_hooks=None):
         yield
         await run_in_threadpool(runs.shutdown, wait=True)
 
-    router = APIRouter(prefix="/api/search", route_class=SearchRoute, lifespan=lifespan)
+    router = APIRouter(prefix="/api/search", route_class=SearchRoute, lifespan=lifespan,
+                       dependencies=[Depends(execution_storage_scope)])
 
     def page_dir(request, page_id):
         return repository(request).page(request.state.search_user, page_id)["path"]
 
-    def problem_dir(request, search_id):
+    def problem_dir(request, search_id, *, for_execution=False):
         row = repository(request).submission(request.state.search_user, search_id, require_artifacts=True)
+        if for_execution and row["lesson_status"] == "unavailable":
+            raise HTTPException(409, "lesson.execution_unavailable")
         return row["path"]
 
     def prepare_page(source, repo, user, **options):
@@ -360,20 +384,22 @@ def create_search_router(root, *, stage_three_hooks=None):
                 LOGGER.exception("Student question recognition failed")
                 repo.set_state(search_id, recognition_state="failed", error_code="search.recognition_failed")
             finally:
-                lifecycle.close()
                 with errors_lock:
                     judging.discard(search_id)
+                lifecycle.close()
 
         # Marked before result.json can appear, so a poll never sees "done" without stage two.
         with errors_lock:
             judging.add(search_id)
         try:
-            runs.submit(work)
+            runs.submit(copy_context().run, work)
         except BaseException:
-            lifecycle.close()
-            repo.set_state(search_id, recognition_state="interrupted", error_code="search.queue_failed")
-            with errors_lock:
-                judging.discard(search_id)
+            try:
+                repo.set_state(search_id, recognition_state="interrupted", error_code="search.queue_failed")
+            finally:
+                with errors_lock:
+                    judging.discard(search_id)
+                lifecycle.close()
             raise
         return {"search_id": search_id, "crop_size": size}
 
@@ -394,8 +420,9 @@ def create_search_router(root, *, stage_three_hooks=None):
                           unsupported_root=directory / "unsupported")
             if not repo.set_state(search_id, lesson_state="running"):
                 return
-            stage_three.run_stage_three(stage_three.latest_attempt(directory), hooks=stage_three_hooks)
-            finish_lesson(repo, search_id, directory)
+            with storage_context(repo.db, search_id, clock=repo.clock):
+                stage_three.run_stage_three(stage_three.latest_attempt(directory), hooks=stage_three_hooks)
+                finish_lesson(repo, search_id, directory)
         except Exception as exc:
             LOGGER.exception("Student lesson generation failed")
             repo.set_state(search_id, lesson_state="failed", error_code="search.lesson_failed")
@@ -454,52 +481,61 @@ def create_search_router(root, *, stage_three_hooks=None):
     def retry_lesson(search_id: str, request: Request):
         """Rerun stage two only (no image reading) after a judging failure."""
         repo = repository(request)
-        directory = problem_dir(request, search_id)
+        directory = problem_dir(request, search_id, for_execution=True)
         row = repo.submission(request.state.search_user, search_id)
         if row["recognition_status"] != "reviewed":
-            raise HTTPException(409, "stage_one.not_reviewed")
-        if not (directory / RESULT_FILE).exists():
-            raise HTTPException(409, "stage_one.not_done")
-        result = json.loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
-        if result["status"] != "reviewed_candidate":
             raise HTTPException(409, "stage_one.not_reviewed")
         with errors_lock:
             if search_id in judging:
                 return {"status": "running"}
-            lifecycle = repo.storage.lifecycle_lock(search_id)
+        lifecycle = repo.storage.lifecycle_lock(search_id)
+        try:
+            problem_dir(request, search_id, for_execution=True)
+            if not (directory / RESULT_FILE).is_file():
+                raise HTTPException(409, "stage_one.not_done")
+            result = json.loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
+            if result["status"] != "reviewed_candidate":
+                raise HTTPException(409, "stage_one.not_reviewed")
+            lease = stage_three.acquire_problem(directory)
+        except stage_three.LessonBusy as exc:
+            lifecycle.close()
+            raise HTTPException(409, str(exc)) from exc
+        except BaseException:
+            lifecycle.close()
+            raise
+        try:
+            if not repo.set_state(search_id, lesson_state="running"):
+                raise HTTPException(404, "search.not_found")
+            stage_three.reserve_retry(directory)
+        except BaseException:
             try:
-                repo.submission(request.state.search_user, search_id, require_artifacts=True)
-                lease = stage_three.acquire_problem(directory)
-            except stage_three.LessonBusy as exc:
-                lifecycle.close()
-                raise HTTPException(409, str(exc)) from exc
-            except BaseException:
-                lifecycle.close()
-                raise
-            try:
-                if not repo.set_state(search_id, lesson_state="running"):
-                    raise HTTPException(404, "search.not_found")
-                stage_three.reserve_retry(directory)
-            except BaseException:
                 stage_three.release_problem(lease)
+            finally:
                 lifecycle.close()
-                raise
+            raise
+        with errors_lock:
             judging.add(search_id)
             lesson_errors.pop(search_id, None)
         def work():
             try:
                 judge(search_id, directory, result, lease, repo=repo)
             finally:
+                with errors_lock:
+                    judging.discard(search_id)
                 lifecycle.close()
 
         try:
-            runs.submit(work)
+            runs.submit(copy_context().run, work)
         except BaseException:
-            with errors_lock:
-                judging.discard(search_id)
-            stage_three.release_problem(lease)
-            lifecycle.close()
-            repo.set_state(search_id, lesson_state="interrupted")
+            try:
+                repo.set_state(search_id, lesson_state="interrupted")
+            finally:
+                with errors_lock:
+                    judging.discard(search_id)
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
             raise
         return {"status": "running"}
 
@@ -507,32 +543,39 @@ def create_search_router(root, *, stage_three_hooks=None):
         with errors_lock:
             if search_id in judging:
                 raise HTTPException(409, "lesson.running")
-            lifecycle = repo.storage.lifecycle_lock(search_id)
+        lifecycle = repo.storage.lifecycle_lock(search_id)
+        try:
+            row = repo.submission(user, search_id, require_artifacts=True)
+            if row["lesson_status"] == "unavailable":
+                raise HTTPException(409, "lesson.execution_unavailable")
+            lease = stage_three.acquire_problem(directory)
+        except stage_three.LessonBusy as exc:
+            lifecycle.close()
+            raise HTTPException(409, str(exc)) from exc
+        except BaseException:
+            lifecycle.close()
+            raise
+        # The request may have read the previous attempt just before a
+        # retry acquired this lease. Validate its identity while reserved,
+        # before queueing work or changing the in-memory running marker.
+        try:
+            if validate is not None:
+                validate()
+            if not repo.set_state(search_id, lesson_state="running"):
+                raise HTTPException(404, "search.not_found")
+        except stage_three.LessonConflict as exc:
             try:
-                repo.submission(user, search_id, require_artifacts=True)
-                lease = stage_three.acquire_problem(directory)
-            except stage_three.LessonBusy as exc:
+                stage_three.release_problem(lease)
+            finally:
                 lifecycle.close()
-                raise HTTPException(409, str(exc)) from exc
-            except BaseException:
-                lifecycle.close()
-                raise
-            # The request may have read the previous attempt just before a
-            # retry acquired this lease. Validate its identity while reserved,
-            # before queueing work or changing the in-memory running marker.
+            raise HTTPException(409, str(exc)) from exc
+        except BaseException:
             try:
-                if validate is not None:
-                    validate()
-                if not repo.set_state(search_id, lesson_state="running"):
-                    raise HTTPException(404, "search.not_found")
-            except stage_three.LessonConflict as exc:
                 stage_three.release_problem(lease)
+            finally:
                 lifecycle.close()
-                raise HTTPException(409, str(exc)) from exc
-            except BaseException:
-                stage_three.release_problem(lease)
-                lifecycle.close()
-                raise
+            raise
+        with errors_lock:
             judging.add(search_id)
             lesson_errors.pop(search_id, None)
 
@@ -540,31 +583,38 @@ def create_search_router(root, *, stage_three_hooks=None):
             try:
                 if not repo.set_state(search_id, lesson_state="running"):
                     return
-                operation()
-                finish_lesson(repo, search_id, directory)
+                with storage_context(repo.db, search_id, clock=repo.clock):
+                    operation()
+                    finish_lesson(repo, search_id, directory)
             except Exception as exc:
                 LOGGER.exception("Student lesson continuation failed")
                 repo.set_state(search_id, lesson_state="failed", error_code="search.lesson_failed")
                 with errors_lock:
                     lesson_errors[search_id] = _message(exc)
             finally:
-                stage_three.release_problem(lease)
-                lifecycle.close()
                 with errors_lock:
                     judging.discard(search_id)
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
 
         try:
-            runs.submit(work)
+            runs.submit(copy_context().run, work)
         except BaseException:
-            stage_three.release_problem(lease)
-            lifecycle.close()
-            with errors_lock:
-                judging.discard(search_id)
-            repo.set_state(search_id, lesson_state="interrupted")
+            try:
+                repo.set_state(search_id, lesson_state="interrupted")
+            finally:
+                with errors_lock:
+                    judging.discard(search_id)
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
             raise
 
-    def locate_run(request, search_id, run_id):
-        directory = problem_dir(request, search_id)
+    def locate_run(request, search_id, run_id, *, for_execution=False):
+        directory = problem_dir(request, search_id, for_execution=for_execution)
         try:
             return directory, stage_three.find_run(directory, run_id)
         except FileNotFoundError as exc:
@@ -573,7 +623,7 @@ def create_search_router(root, *, stage_three_hooks=None):
     @router.post("/problems/{search_id}/lesson/start")
     def start_existing_lesson(search_id: str, request: Request):
         """Explicitly start stage three for an already saved stage-two attempt."""
-        directory = problem_dir(request, search_id)
+        directory = problem_dir(request, search_id, for_execution=True)
         attempt = stage_three.latest_attempt(directory)
         if attempt is None or not (attempt / stage_three.RESULT).is_file():
             raise HTTPException(409, "stage_two.not_done")
@@ -586,7 +636,7 @@ def create_search_router(root, *, stage_three_hooks=None):
 
     @router.post("/problems/{search_id}/lesson/{run_id}/resume")
     def resume_lesson(search_id: str, run_id: str, request: Request):
-        directory, output = locate_run(request, search_id, run_id)
+        directory, output = locate_run(request, search_id, run_id, for_execution=True)
         try:
             stage_three.assert_resumable(directory, output)
         except stage_three.LessonConflict as exc:
@@ -604,7 +654,7 @@ def create_search_router(root, *, stage_three_hooks=None):
         problem_dir(request, search_id)
         with repository(request).storage.read_lock(search_id):
             _directory, output = locate_run(request, search_id, run_id)
-            if stage_three.stream_descriptor(search_id, output) is None:
+            if stage_three.stream_descriptor(search_id, output, strict=True) is None:
                 raise HTTPException(409, "lesson.stream_not_ready")
             return JSONResponse(stage_three.open_store(output).snapshot(), headers={"Cache-Control": "no-store"})
 
@@ -617,11 +667,13 @@ def create_search_router(root, *, stage_three_hooks=None):
         try:
             with repository(request).storage.read_lock(search_id):
                 _directory, output = locate_run(request, search_id, run_id)
-                if stage_three.stream_descriptor(search_id, output) is None:
+                if stage_three.stream_descriptor(search_id, output, strict=True) is None:
                     raise HTTPException(409, "lesson.stream_not_ready")
                 payload = stage_three.event_page(output, after_seq)
         except CursorExpired as exc:
             return JSONResponse(expired_payload(exc), status_code=409, headers={"Cache-Control": "no-store"})
+        except RunUnavailable:
+            raise
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         return JSONResponse(payload, headers={"Cache-Control": "no-store"})
@@ -642,10 +694,11 @@ def create_search_router(root, *, stage_three_hooks=None):
 
         def read_events():
             nonlocal next_authorization
-            with repository(websocket).storage.read_lock(search_id):
+            repo = repository(websocket)
+            with storage_context(repo.db, search_id, clock=repo.clock), repo.storage.read_lock(search_id):
                 try:
                     payload = stage_three.event_page(output, after)
-                except (OSError, ValueError):
+                except (RunNotFound, OSError, ValueError):
                     authorize()
                     raise
                 if first or payload["events"] or monotonic() >= next_authorization:
@@ -655,30 +708,44 @@ def create_search_router(root, *, stage_three_hooks=None):
 
         try:
             _directory, output = await run_in_threadpool(authorize)
-            if stage_three.stream_descriptor(search_id, output) is None:
+            repo = repository(websocket)
+            def descriptor():
+                with storage_context(repo.db, search_id, clock=repo.clock):
+                    return stage_three.stream_descriptor(search_id, output, strict=True)
+            if await run_in_threadpool(descriptor) is None:
                 raise HTTPException(409, "lesson.stream_not_ready")
             await websocket.accept()
             accepted = True
             first = True
+            poll_interval = WS_POLL_MIN_INTERVAL
+            loop = asyncio.get_running_loop()
             while True:
                 payload = await run_in_threadpool(read_events)
                 if first or payload["events"]:
                     await websocket.send_json(payload)
                     after = payload["last_seq"]
                     first = False
-                try:
-                    await asyncio.wait_for(websocket.receive_text(), timeout=0.15)
-                except TimeoutError:
-                    pass
+                poll_interval = (WS_POLL_MIN_INTERVAL if payload["events"]
+                                 else min(poll_interval * 2, WS_POLL_MAX_INTERVAL))
+                deadline = loop.time() + min(poll_interval, max(0.0, next_authorization - monotonic()))
+                while (remaining := deadline - loop.time()) > 0:
+                    try:
+                        await asyncio.wait_for(websocket.receive_text(), timeout=remaining)
+                    except TimeoutError:
+                        break
         except CursorExpired as exc:
             await websocket.send_json(expired_payload(exc))
             await websocket.close(code=4009)
+        except (RunNotFound, RunUnavailable) as exc:
+            if accepted:
+                await websocket.send_json({"error": exc.code})
+            await websocket.close(code=4404 if isinstance(exc, RunNotFound) else 4410)
         except (HTTPException, SearchError, ValueError) as exc:
             status = getattr(exc, "status_code", 400)
             if accepted:
                 await websocket.send_json({"error": getattr(exc, "detail", getattr(exc, "code", "search.stream_invalid"))})
             await websocket.close(code={401: 4401, 403: 4403, 404: 4404, 410: 4410}.get(status, 4400))
-        except (SQLAlchemyError, OSError):
+        except (SQLAlchemyError, OSError, StorageContextRequired):
             await websocket.close(code=1011)
         except WebSocketDisconnect:
             pass
@@ -710,7 +777,7 @@ def create_search_router(root, *, stage_three_hooks=None):
                  "problem_id": str(row["problem_id"]) if row["problem_id"] else None,
                  "statement": row["statement"], "recognition_status": row["recognition_status"],
                  "lesson_status": row["lesson_status"], "artifact_state": row["artifact_state"]}
-        unavailable = "disabled" if row["problem_status"] == "disabled" or row["error_code"] == "problem.disabled" else "expired" if row["artifact_state"] != "active" else None
+        unavailable = "disabled" if row["problem_status"] == "disabled" or row["error_code"] == "problem.disabled" else "expired" if row["artifact_state"] != "active" else "unavailable" if row["lesson_status"] == "unavailable" else None
         if unavailable:
             return {**state, "state": "done", "status": unavailable, "outcome": unavailable,
                     "original_text": row["statement"] or "", "lesson": None}

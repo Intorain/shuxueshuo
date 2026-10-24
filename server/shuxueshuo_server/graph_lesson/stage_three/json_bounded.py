@@ -372,10 +372,10 @@ def _supervisor(parent_requests, parent_responses, module, qualname):
             except (EOFError, OSError, TimeoutError):
                 pass
     finally:
-        _reap(worker)
+        reaped = _reap(worker)
         for connection in (parent_requests, parent_responses, math_requests, math_responses, sender, receiver):
             connection.close()
-        if worker.pid is not None:
+        if reaped and worker.pid is not None:
             worker.close()
     os._exit(0)
 
@@ -428,8 +428,8 @@ class JsonCalculationSession:
         if self._process is not None and self._process.pid is not None:
             # EOF wakes the supervisor, which first kills/reaps its math child.
             self._process.join(_CLEANUP_SECONDS)
-            _reap(self._process)
-            self._process.close()
+            if _reap(self._process):
+                self._process.close()
         if self._responses is not None:
             self._responses.close()
 

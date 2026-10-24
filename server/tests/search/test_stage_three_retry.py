@@ -3,9 +3,14 @@
 import threading
 import time
 from contextlib import nullcontext
+from contextvars import Context
+from uuid import uuid4
 
 import pytest
 
+from shuxueshuo_server.graph_lesson.stage_three.checkpoint import identity_from_seed
+from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
+from shuxueshuo_server.graph_lesson.stage_three.storage import storage_context
 from shuxueshuo_server.graph_lesson.stage_two.runner import replay_run
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from shuxueshuo_server.search import dev_api, stage_three
@@ -20,6 +25,19 @@ from tests.search.test_stage_three_api import (
 from tests.solver.test_graph_stage_three_recorded import Q01_SELECTION
 
 
+def completed_run(client, directory):
+    repo = client.app.state.search_repository
+    output = directory / "stage-two-1/stage-three"
+    seed = {"run_id": uuid4().hex, "lesson_version": "retry-fixture",
+            "stage_one": {"sha256": "a" * 64}, "stage_two": {"sha256": "b" * 64}}
+    identity = {**identity_from_seed(seed), "revisions": {"fixture": "c" * 64}}
+    save(output / "run.json", seed)
+    save(output / "frozen.json", {"implementation": identity["revisions"]})
+    with storage_context(repo.db, directory.name, clock=repo.clock):
+        EventStore(output, identity, create=True)
+    save(output / "stage-three-result.json", {"status": "completed"})
+
+
 @pytest.mark.parametrize("paused_phase", ["queued", "stage_two"])
 def test_accepted_retry_does_not_publish_previous_terminal_run(tmp_path, monkeypatch, paused_phase):
     root, directory = seed(tmp_path)
@@ -32,7 +50,8 @@ def test_accepted_retry_does_not_publish_previous_terminal_run(tmp_path, monkeyp
 
     class PausedExecutor(executor):
         def submit(self, function, *args, **kwargs):
-            if function.__qualname__.endswith("retry_lesson.<locals>.work"):
+            task = args[0] if isinstance(getattr(function, "__self__", None), Context) else function
+            if task.__qualname__.endswith("retry_lesson.<locals>.work"):
                 def queued():
                     try:
                         if paused_phase == "queued":
@@ -81,12 +100,12 @@ def test_accepted_retry_does_not_publish_previous_terminal_run(tmp_path, monkeyp
 @pytest.mark.parametrize("failure_phase", ["queue", "stage_two"])
 def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monkeypatch, failure_phase):
     root, directory = seed(tmp_path)
-    save(directory / "stage-two-1/stage-three/stage-three-result.json", {"status": "completed"})
     executor = dev_api.ThreadPoolExecutor
 
     class FailingExecutor(executor):
         def submit(self, function, *args, **kwargs):
-            if failure_phase == "queue" and function.__qualname__.endswith("retry_lesson.<locals>.work"):
+            task = args[0] if isinstance(getattr(function, "__self__", None), Context) else function
+            if failure_phase == "queue" and task.__qualname__.endswith("retry_lesson.<locals>.work"):
                 raise RuntimeError("injected queue failure")
             return super().submit(function, *args, **kwargs)
 
@@ -97,6 +116,7 @@ def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monk
     monkeypatch.setattr(dev_api, "run_stage_two", failed_stage_two)
     monkeypatch.setattr("shuxueshuo_server.graph_lesson.stage_two.selection.live_provider_factory", lambda: forbidden)
     with client_for(root) as client:
+        completed_run(client, directory)
         if failure_phase == "queue":
             with pytest.raises(RuntimeError, match="injected queue failure"):
                 client.post(f"/api/search/problems/{directory.name}/lesson")
@@ -123,7 +143,6 @@ def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monk
 
 def test_crashed_retry_intent_is_inactive_without_its_lease_and_not_inherited(tmp_path):
     root, directory = seed(tmp_path)
-    save(directory / "stage-two-1/stage-three/stage-three-result.json", {"status": "completed"})
     lease = stage_three.acquire_problem(directory)
     stage_three.reserve_retry(directory)
     assert stage_three.pending_retry(directory) == directory / "stage-two-2"
@@ -133,6 +152,7 @@ def test_crashed_retry_intent_is_inactive_without_its_lease_and_not_inherited(tm
     assert (directory / stage_three.RETRY_INTENT).is_file()
     assert stage_three.pending_retry(directory) is None
     with client_for(root) as observer:
+        completed_run(observer, directory)
         assert status(observer)["execution_status"] == "completed"
     lease = stage_three.acquire_problem(directory)
     try:

@@ -2,10 +2,10 @@
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
 from copy import deepcopy
 
 import pytest
+from sqlalchemy import text
 
 from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
 from tests.solver.test_graph_stage_three_events import (
@@ -114,8 +114,10 @@ def test_disabled_route_never_reopens_and_future_cards_ignore_bad_seeds(tmp_path
 
 def test_fallback_never_reads_or_parses_the_broken_checkpoint(tmp_path):
     store, _, _ = _pending(tmp_path)
-    with closing(store._connect()) as db:
-        db.execute("UPDATE checkpoints SET value='broken JSON' WHERE target=? AND route=?", (TARGET, ROUTE))
+    with store.transaction(write=True) as db:
+        db.execute(text("UPDATE lesson_checkpoints SET value='broken JSON' "
+                        "WHERE run_id=:run_id AND target=:target AND route=:route"),
+                   {"run_id": store.identity["run_id"], "target": TARGET, "route": ROUTE})
     result = _failure(store, "terminal", limit=1)
     assert result["disabled"] and result["resolved_count"] == 1
     assert _states(store) == ["readonly"]
@@ -219,9 +221,10 @@ def test_interaction_context_preserves_checkpoint_identity_validation(tmp_path):
     store, _, _ = _pending(tmp_path)
     cp = store.checkpoint(TARGET, ROUTE)
     cp["run_id"] = "different-run"
-    with closing(store._connect()) as db:
-        db.execute("UPDATE checkpoints SET value=? WHERE target=? AND route=?",
-                   (json.dumps(cp), TARGET, ROUTE))
+    with store.transaction(write=True) as db:
+        db.execute(text("UPDATE lesson_checkpoints SET value=:value "
+                        "WHERE run_id=:run_id AND target=:target AND route=:route"),
+                   {"value": json.dumps(cp), "run_id": store.identity["run_id"], "target": TARGET, "route": ROUTE})
     with pytest.raises(ValueError, match="checkpoint.identity_mismatch"):
         store.interaction_context(TARGET, ROUTE)
 

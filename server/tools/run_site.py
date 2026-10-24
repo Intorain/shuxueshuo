@@ -148,6 +148,7 @@ def main():
         raise RuntimeError("student-auth.env must have private permissions")
     load_dotenv(private, override=True)
     os.environ.update(
+        PRODUCT_EXECUTION_STORAGE_CONTEXT_REQUIRED="1",
         AUTH_SMS_MODE=args.sms,
         AUTH_ENVIRONMENT="development",
         AUTH_ORIGIN=f"http://127.0.0.1:{args.port}",

@@ -3,14 +3,15 @@
 import fcntl
 import json
 import os
-import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from hashlib import sha256
 from pathlib import Path
 from threading import Event
 
 import pytest
 from jsonschema import ValidationError
+from sqlalchemy import text
 from test_graph_stage_three_events import (
     IDENTITY,
     TARGET,
@@ -34,14 +35,25 @@ def _selection(store, commit_id, title):
 
 def _trace(store, monkeypatch):
     statements = []
-    connect = store._connect
+    transaction = store.transaction
 
-    def traced():
-        db = connect()
-        db.set_trace_callback(statements.append)
-        return db
+    class TracedConnection:
+        def __init__(self, connection):
+            self.connection = connection
 
-    monkeypatch.setattr(store, "_connect", traced)
+        def execute(self, statement, *args, **kwargs):
+            statements.append(str(statement))
+            return self.connection.execute(statement, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self.connection, name)
+
+    @contextmanager
+    def traced(*, write=False):
+        with transaction(write=write) as connection:
+            yield TracedConnection(connection)
+
+    monkeypatch.setattr(store, "transaction", traced)
     return statements
 
 
@@ -79,8 +91,8 @@ def test_selection_snapshots_read_materialized_rows_not_historical_receipts(tmp_
         assert store.snapshot()["selection_chunks"] == [
             {"target_ref": TARGET, "kind": "D3", "chunk": {"title": "19"}},
         ]
-    assert not any("FROM commits" in sql for sql in statements)
-    assert sum("FROM selection_chunks" in sql for sql in statements) == 3
+    assert not any("FROM lesson_commits" in sql for sql in statements)
+    assert sum("FROM lesson_selection_chunks" in sql for sql in statements) == 3
 
 
 def test_checkpoint_uses_summary_index_without_loading_prior_card_bodies(tmp_path, monkeypatch):
@@ -93,8 +105,8 @@ def test_checkpoint_uses_summary_index_without_loading_prior_card_bodies(tmp_pat
     monkeypatch.setattr(store, "_steps", full_steps_forbidden)
     store.commit_route(checkpoint(position=2), commit_id="second", math_steps=[fragment(ordinal=2)])
     assert [item["ordinal"] for item in store.checkpoint(TARGET, "discriminant")["math_steps"]] == [1, 2]
-    assert any("SELECT step,ordinal,hash FROM step_summaries" in sql for sql in statements)
-    assert not any("FROM steps" in sql and "ORDER BY" in sql for sql in statements)
+    assert any("SELECT step,ordinal,hash FROM lesson_step_summaries" in sql for sql in statements)
+    assert not any("FROM lesson_steps" in sql and "ORDER BY" in sql for sql in statements)
 
 
 def test_receipts_never_retain_growing_driver_history(tmp_path):
@@ -106,69 +118,50 @@ def test_receipts_never_retain_growing_driver_history(tmp_path):
         assert "driver_state" not in result["checkpoint"]
         assert result["checkpoint"]["last_seq"] == index
         assert store.commit_route(cp, commit_id=f"commit-{index}", events=[operation()]) == result
-    with sqlite3.connect(store.path) as db:
-        receipts = [json.loads(row[0]) for row in db.execute("SELECT result FROM commits")]
+    with store.transaction() as db:
+        receipts = [json.loads(row[0]) for row in db.execute(text("SELECT result FROM lesson_commits WHERE run_id=:run_id"),
+                                                          {"run_id": store.identity["run_id"]})]
     assert all("history" not in json.dumps(receipt) for receipt in receipts)
     assert len({len(json.dumps(receipt["checkpoint"])) for receipt in receipts}) == 1
     assert len(store.checkpoint(TARGET, "discriminant")["driver_state"]["history"]) == 9
 
 
-def _legacy_database(tmp_path):
+def test_reopening_preserves_pruned_selection_and_compact_receipts_without_history_scans(tmp_path, monkeypatch):
     store, _ = store_with_step(tmp_path)
     _selection(store, "z-older", "old")
     _selection(store, "a-newer", "new")
-    saved = store.checkpoint(TARGET, "discriminant")
     store.prune_events(4)
-    with sqlite3.connect(store.path) as db:
-        db.execute("DROP TABLE selection_chunks")
-        db.execute("DROP TABLE step_summaries")
-        db.execute("DELETE FROM metadata WHERE key='storage_version'")
-        receipt = json.loads(db.execute("SELECT result FROM commits WHERE id='first'").fetchone()[0])
-        receipt["checkpoint"] = saved
-        db.execute("UPDATE commits SET result=? WHERE id='first'", (json.dumps(receipt),))
-    return store
-
-
-def test_legacy_database_migrates_pruned_selection_receipts_and_summary_index_once(tmp_path, monkeypatch):
-    _legacy_database(tmp_path)
     reopened = EventStore(tmp_path, IDENTITY)
     assert reopened.snapshot()["selection_chunks"] == [
         {"target_ref": TARGET, "kind": "D3", "chunk": {"title": "new"}},
     ]
     reopened.commit_route(checkpoint(position=2), commit_id="second", math_steps=[fragment(ordinal=2)])
     assert len(reopened.checkpoint(TARGET, "discriminant")["math_steps"]) == 2
-    with sqlite3.connect(reopened.path) as db:
-        receipt = json.loads(db.execute("SELECT result FROM commits WHERE id='first'").fetchone()[0])
+    with reopened.transaction() as db:
+        receipt = json.loads(db.execute(text("SELECT result FROM lesson_commits WHERE run_id=:run_id AND id='first'"),
+                                       {"run_id": reopened.identity["run_id"]}).scalar_one())
         assert "driver_state" not in receipt["checkpoint"]
-    statements = []
-    original = EventStore._connect
-
-    def traced(self):
-        db = original(self)
-        db.set_trace_callback(statements.append)
-        return db
-
-    monkeypatch.setattr(EventStore, "_connect", traced)
     again = EventStore(tmp_path, IDENTITY)
+    statements = _trace(again, monkeypatch)
     assert again.snapshot()["selection_chunks"] == reopened.snapshot()["selection_chunks"]
-    assert not any("FROM commits" in sql for sql in statements)
+    assert not any("FROM lesson_commits" in sql for sql in statements)
 
 
-def test_failed_legacy_migration_rolls_back_and_can_retry(tmp_path, monkeypatch):
-    legacy = _legacy_database(tmp_path)
-    original = EventStore._put_selection
+def test_failed_selection_publication_rolls_back_and_can_retry(tmp_path, monkeypatch):
+    store, _ = store_with_step(tmp_path)
+    before = store.snapshot_with_events()
+    original = store._put_selection
 
-    def fail(db, event):
-        original(db, event)
-        raise RuntimeError("migration interrupted")
+    def fail(*args, **kwargs):
+        original(*args, **kwargs)
+        raise RuntimeError("publication interrupted")
 
     with monkeypatch.context() as patch:
-        patch.setattr(EventStore, "_put_selection", staticmethod(fail))
-        with pytest.raises(RuntimeError, match="migration interrupted"):
-            EventStore(tmp_path, IDENTITY)
-    with sqlite3.connect(legacy.path) as db:
-        assert db.execute("SELECT value FROM metadata WHERE key='storage_version'").fetchone() is None
-        assert db.execute("SELECT name FROM sqlite_master WHERE name='selection_chunks'").fetchone() is None
+        patch.setattr(store, "_put_selection", fail)
+        with pytest.raises(RuntimeError, match="publication interrupted"):
+            _selection(store, "choice", "new")
+    assert store.snapshot_with_events() == before
+    _selection(store, "choice", "new")
     assert EventStore(tmp_path, IDENTITY).snapshot()["selection_chunks"][0]["chunk"] == {"title": "new"}
 
 
@@ -238,7 +231,7 @@ def test_export_manifest_keeps_only_the_current_pair_after_retention(tmp_path):
     assert len(list((tmp_path / ".event-exports").iterdir())) == 1
 
 
-def test_export_crash_preserves_published_pair_and_sqlite_resume(tmp_path, monkeypatch):
+def test_export_crash_preserves_published_pair_and_postgres_resume(tmp_path, monkeypatch):
     store, _ = store_with_step(tmp_path)
     store.export()
     store.commit_route(checkpoint(position=2), commit_id="second", math_steps=[fragment(ordinal=2)])

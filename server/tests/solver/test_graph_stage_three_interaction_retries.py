@@ -41,7 +41,6 @@ def test_three_failed_invocations_resolve_bad_input_or_output_from_stored_card_i
     durable.commit_route(cp, commit_id="damaged-input")
     original_math = _math(durable)
     for count in (1, 2, 3):
-        # Reopen SQLite, just as a new process would after a student resumes.
         durable = EventStore(tmp_path, durable.identity)
         scheduler = interaction_jobs.InteractionScheduler(durable)
         if damage == "result":

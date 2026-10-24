@@ -15,6 +15,7 @@ from shuxueshuo_server.auth.api import cookie_name
 from shuxueshuo_server.auth.config import AuthConfig
 from shuxueshuo_server.auth.service import AuthService
 from shuxueshuo_server.auth.sms import MockSms
+from shuxueshuo_server.graph_lesson.stage_three.storage import storage_context
 from shuxueshuo_server.product.config import Settings
 from shuxueshuo_server.product.db import engine
 from shuxueshuo_server.search import dev_api
@@ -30,7 +31,7 @@ def test_database(data_dir, instance):
 def session_for(root):
     data_dir = os.getenv("PRODUCT_TEST_DATA_DIR")
     if not data_dir:
-        pytest.skip("Requires independently migrated PRODUCT_TEST_DATA_DIR")
+        pytest.fail("Requires independently migrated PRODUCT_TEST_DATA_DIR")
     database = test_database(data_dir, os.getenv("PRODUCT_TEST_INSTANCE", "search-stage1"))
     config = AuthConfig(mode="mock", environment="test", origin="https://testserver", secret=secrets.token_urlsafe(48))
     auth = AuthService(database, config, MockSms())
@@ -51,3 +52,14 @@ def authenticated_client(root, *, hooks=None, raise_server_exceptions=True):
                         raise_server_exceptions=raise_server_exceptions)
     client.cookies.set(cookie_name(session.auth.config), session.token)
     return client
+
+
+def execution_scope(root):
+    session = session_for(Path(root))
+    return storage_context(session.repository.db, session.search_id, clock=session.repository.clock)
+
+
+def execution_store(root, output):
+    from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
+    with execution_scope(root):
+        return open_store(output)

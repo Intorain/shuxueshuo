@@ -537,11 +537,25 @@ test('history paginates by twenty and opens the available search while showing t
   assert.equal(element('#sq-history-all').hidden, true);
 });
 
+test('unavailable courses never claim readiness while older available courses stay usable', async () => {
+  const {context, session, history} = harness();
+  await session.init();
+  history();
+  for (const latest_status of ['unavailable', 'ready', 'completed']) {
+    const row = context.historyRow({search_id: 'missing', latest_status, lesson_available: false});
+    assert.equal(row.children[0].children[2].textContent, '课程不可用');
+    assert.equal(row.children[0].children[2].dataset.status, 'unsupported');
+  }
+  const available = context.historyRow({search_id: 'older', latest_status: 'unavailable', lesson_available: true});
+  assert.equal(available.children[0].href, 'problem.html?search=older');
+  assert.equal(available.children[0].children[2].textContent, '可开始学习 · 最近一次课程不可用');
+});
+
 test('history only spins for active processing, not terminal or confirmation states', async () => {
   const {context, session, history} = harness();
   await session.init();
   history();
-  for (const latest of ['unsupported', 'failed', 'error', 'interrupted', 'expired', 'disabled']) {
+  for (const latest of ['unsupported', 'failed', 'error', 'interrupted', 'expired', 'disabled', 'unavailable']) {
     const row = context.historyRow({search_id: 'one', latest_status: latest, lesson_available: false});
     assert.equal(row.children[0].children[2].dataset.status, 'unsupported');
   }

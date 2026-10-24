@@ -70,7 +70,7 @@ def _commit(store, state, suffix, *, events=(), phase="method", status="running"
                            before_commit=callback("before_commit"), after_commit=callback("after_commit"))
     except BaseException:
         # A failed publication must not advance the caller's in-memory cursor.
-        # If the commit actually succeeded before a fault, SQLite retains the
+        # If the commit actually succeeded before a fault, PostgreSQL retains the
         # authoritative cursor for resume and duplicate steps stay immutable.
         if previous_cursor is None:
             state.pop("publication_cursor", None)

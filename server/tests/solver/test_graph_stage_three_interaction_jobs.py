@@ -3,12 +3,11 @@
 Every case runs the real Q13 recording offline through supervised workers.
 """
 
-import sqlite3
 import time
-from contextlib import closing
 from copy import deepcopy
 
 import pytest
+from sqlalchemy import text
 
 from shuxueshuo_server.graph_lesson.stage_three import (
     interaction,
@@ -239,11 +238,11 @@ def test_a_returned_result_survives_a_crash_before_its_commit(paused):
 
 def test_unavailable_engine_or_goal_resolves_pending_cards_readonly(paused, tmp_path):
     _, durable = paused
-    with closing(sqlite3.connect(durable.path)) as db:
-        settings = durable.interaction_settings()
-        settings["engine_revision"] = "0" * 64
-        db.execute("UPDATE metadata SET value=? WHERE key='interactions'", (interaction._canonical(settings),))
-        db.commit()
+    settings = durable.interaction_settings()
+    settings["engine_revision"] = "0" * 64
+    with durable.transaction(write=True) as db:
+        db.execute(text("UPDATE lesson_metadata SET value=:value WHERE run_id=:run_id AND key='interactions'"),
+                   {"value": interaction._canonical(settings), "run_id": durable.identity["run_id"]})
     interaction_jobs.run_pending(durable, dispatch=offline_dispatch)
     assert {chunk["reason"] for chunk in durable.snapshot()["interactions"]} == {"engine_unavailable"}
 

@@ -1,9 +1,13 @@
 """Public CLI admission, report regeneration, and immutable output directories."""
 
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from shuxueshuo_server.graph_lesson.stage_three.cli import main
 from shuxueshuo_server.graph_lesson.stage_three.runner import run_sample
@@ -55,3 +59,22 @@ def test_identical_inputs_have_identical_decisions_but_distinct_runs(tmp_path):
     assert first["goals"] == second["goals"]
     assert first["events"]["last_seq"] == second["events"]["last_seq"] == 0
     assert first["events"]["snapshot"] is second["events"]["snapshot"] is None
+
+
+def test_cli_child_inherits_the_isolated_postgres_schema(tmp_path, stage_three_storage):
+    output = tmp_path / "child-run"
+    environment = os.environ.copy()
+    assert environment["PRODUCT_TEST_DATA_DIR"] and environment["PRODUCT_TEST_INSTANCE"]
+    assert environment["PRODUCT_TEST_SCHEMA"].startswith("test_stage_three_")
+    completed = subprocess.run(
+        [sys.executable, "-m", "shuxueshuo_server.graph_lesson.stage_three.cli", "run", "--input", str(SOURCE),
+         "--output", str(output), "--milestone", "1a"],
+        cwd=Path(__file__).parents[2], env=environment, capture_output=True, text=True, timeout=60, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert json.loads(completed.stdout)["status"] == "completed"
+    run = json.loads((output / "run.json").read_text())
+    with stage_three_storage.connect() as connection:
+        assert connection.scalar(text("SELECT current_schema()")) == environment["PRODUCT_TEST_SCHEMA"]
+        assert connection.scalar(text("SELECT run_id FROM lesson_runs WHERE run_id=:run_id"), {"run_id": run["run_id"]}) == run["run_id"]
+    assert not list(output.rglob("*.sqlite*"))

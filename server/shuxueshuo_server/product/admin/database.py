@@ -1,22 +1,30 @@
 from io import BytesIO
-from pathlib import Path
-from uuid import uuid4
 
-from alembic import command
+import psycopg
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-import psycopg
 from psycopg import sql
 from sqlalchemy import select, text
 
+from alembic import command
+
 from .. import models as m
 from ..config import REPO
-from ..db import engine, transaction, lock
+from ..db import engine, lock, transaction
 from ..errors import Conflict, IntegrityFailure
-from ..repositories import insert, row, UserContext
+from ..repositories import UserContext, insert, row
 from ..storage import LocalArtifactStorage
 
 MUTABLE = {
+    'lesson_runs': 'updated_at',
+    'lesson_metadata': 'value',
+    'lesson_checkpoints': 'value',
+    'lesson_goals': 'value',
+    'lesson_handoffs': 'value',
+    'lesson_selection_chunks': 'seq value',
+    'lesson_interaction_states': 'status interaction_id',
+    'lesson_calculation_leases': 'owner pid acquired_at released',
+    'lesson_calculation_attempts': 'status elapsed_seconds reserved_upper_seconds receipt',
     'search_problems': 'status',
     'search_pages': 'image_state pending_cleanup_keys',
     'search_submissions': 'problem_id recognition_status lesson_status artifact_state error_code updated_at',
@@ -47,7 +55,7 @@ MUTABLE = {
     'extraction_call_reservations': 'status response_artifact_id model_call_id details',
 }
 
-DELETABLE = frozenset({'search_submissions', 'student_search_problems'})
+DELETABLE = frozenset({'search_submissions', 'student_search_problems', 'lesson_runs', 'lesson_events'})
 
 PUBLIC_CONTENT_TABLES = frozenset({
     'knowledge_nodes', 'knowledge_entries', 'knowledge_edges', 'knowledge_resources',

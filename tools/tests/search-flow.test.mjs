@@ -311,6 +311,38 @@ test('a stale native file picker cannot reuse the new camera lifecycle', async (
   assert.equal(picks, 0);
 });
 
+for (const entry of ['runLive', 'pollLesson']) test(`unavailable course is a terminal retake-only state during ${entry}`, async () => {
+  const {context, element} = setup('problem.js', '?search=0123456789ab');
+  const requests = [];
+  context.fetch = async url => {
+    requests.push(url);
+    return response({state: 'done', outcome: 'unavailable', lesson_status: 'unavailable',
+      statement: '保留的公共题面', lesson: null});
+  };
+  await context[entry]();
+  assert.equal(requests.length, 1);
+  assert.equal(vm.runInContext('privateStopped', context), true);
+  assert.match(element('#pq-fail-text').textContent, /课程文件或运行记录不可用/);
+  assert.equal(element('.pq-fail-photo').hidden, true);
+  assert.equal(element('#pq-fail-quote').textContent, '保留的公共题面');
+  assert.match(element('#pq-fail-actions').innerHTML, /重新拍照/);
+  assert.doesNotMatch(element('#pq-fail-actions').innerHTML, /重试|继续计算|生成解题/);
+  await context.continueCalculation();
+  await context.runLive();
+  assert.equal(requests.length, 1);
+});
+
+test('unavailable execution stops an already open course without offering resume', () => {
+  const {context, element} = setup('problem.js', '?search=0123456789ab');
+  context.fetch = () => assert.fail('unavailable execution must not start a request');
+  vm.runInContext('shown.text="保留题面"', context);
+  context.showLesson({status: 'completed', execution_status: 'unavailable', stream: null});
+  assert.equal(vm.runInContext('privateStopped', context), true);
+  assert.equal(element('#pq-fail-quote').textContent, '保留题面');
+  assert.equal(element('#pq-result').hidden, true);
+  assert.match(element('#pq-fail-text').textContent, /课程文件或运行记录不可用/);
+});
+
 test('late continuation after record deletion cannot restart polling or stream transport', async () => {
   const {context} = setup('problem.js', '?search=0123456789ab');
   const request = deferred();

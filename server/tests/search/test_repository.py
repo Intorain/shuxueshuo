@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 from concurrent.futures import ThreadPoolExecutor
@@ -12,9 +13,12 @@ import sqlalchemy as sa
 from PIL import Image
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
+from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
+from shuxueshuo_server.graph_lesson.stage_three.storage import storage_context
 from shuxueshuo_server.product.admin.database import DELETABLE, MUTABLE, doctor
 from shuxueshuo_server.product.config import Settings
 from shuxueshuo_server.product.db import canonical, engine
+from shuxueshuo_server.product.models import metadata
 from shuxueshuo_server.search.repository import (
     PAGES,
     PROBLEMS,
@@ -39,10 +43,12 @@ def repository(tmp_path):
         connection.exec_driver_sql(f'GRANT USAGE ON SCHEMA "{schema}" TO product_app')
         script = Path(__file__).parents[2] / 'alembic/versions/0013_student_search.sql'
         connection.execute(sa.text(script.read_text()))
-        for table in (PROBLEMS, PAGES, SUBMISSIONS, RELATIONS):
+        connection.execute(sa.text(script.with_name('0014_lesson_execution.sql').read_text()))
+        for table in (PROBLEMS, PAGES, SUBMISSIONS, RELATIONS, *[table for name, table in metadata.tables.items() if name.startswith('lesson_')]):
             connection.exec_driver_sql(f'GRANT SELECT, INSERT ON "{table.name}" TO product_app')
-            columns = ','.join('"' + name + '"' for name in MUTABLE[table.name].split())
-            connection.exec_driver_sql(f'GRANT UPDATE ({columns}) ON "{table.name}" TO product_app')
+            if table.name in MUTABLE:
+                columns = ','.join('"' + name + '"' for name in MUTABLE[table.name].split())
+                connection.exec_driver_sql(f'GRANT UPDATE ({columns}) ON "{table.name}" TO product_app')
             if table.name in DELETABLE:
                 connection.exec_driver_sql(f'GRANT DELETE ON "{table.name}" TO product_app')
     database = engine(settings.url())
@@ -103,13 +109,19 @@ def identity():
             'identity': value, 'statement': '已知 x > 0，求解。', 'structured_problem': {'condition': 'x > 0'}}
 
 
-def lesson_artifacts(row):
+def lesson_artifacts(repo, row):
     for name in ('result.json', 'crop.json', 'stage-two-1/stage-two-result.json', 'stage-two-1/stage-three/run.json',
-                 'stage-two-1/stage-three/frozen.json', 'stage-two-1/stage-three/events.sqlite3',
+                 'stage-two-1/stage-three/frozen.json',
                  'stage-two-1/stage-three/stage-three-result.json'):
         target = row['path'] / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text('{}')
+    run_id = uuid4().hex
+    output = row['path'] / 'stage-two-1/stage-three'
+    (output / 'run.json').write_text('{"run_id":"' + run_id + '"}')
+    with storage_context(repo.db, row['id'], clock=repo.clock):
+        EventStore(output, {'run_id': run_id, 'lesson_version': 'fixture', 'input_sha256': 'a' * 64,
+                            'revisions': {'fixture': 'b' * 64}}, create=True)
 
 
 def count(repo, table, condition):
@@ -195,7 +207,7 @@ def test_history_prefers_ready_and_retains_latest_status(repository):
     early, _ = submission(repository, user)
     common = identity()
     repository.link_identity(early['id'], common)
-    lesson_artifacts(early)
+    lesson_artifacts(repository, early)
     repository.set_state(early['id'], lesson_state='ready')
     repository.test_time[0] += timedelta(seconds=2)
     latest, _ = submission(repository, user)
@@ -455,9 +467,45 @@ def test_history_skips_missing_private_lesson_artifacts(repository):
     for row in (earlier, later):
         repository.link_identity(row['id'], common)
         repository.set_state(row['id'], lesson_state='ready')
-        lesson_artifacts(row)
+        lesson_artifacts(repository, row)
     (later['path'] / 'result.json').unlink()
-    assert repository.history(user)['items'][0]['search_id'] == earlier['id']
+    item = repository.history(user)['items'][0]
+    assert item['search_id'] == earlier['id'] and item['lesson_available']
+    assert item['latest_status'] == item['lesson_status'] == 'unavailable'
+    assert repository.submission(user, earlier['id'])['lesson_status'] == 'ready'
+    assert repository.submission(user, later['id'])['lesson_status'] == 'unavailable'
+
+
+@pytest.mark.parametrize('missing', [
+    'postgres_run', 'legacy_sqlite', 'result.json', 'crop.json', 'question.png',
+    'stage-two-1/stage-two-result.json', 'stage-two-1/stage-three/run.json',
+    'stage-two-1/stage-three/frozen.json', 'stage-two-1/stage-three/stage-three-result.json',
+])
+def test_ready_submission_missing_runtime_authority_or_files_is_unavailable_without_rewriting_history(repository, missing):
+    user = student(repository)
+    row, _ = submission(repository, user)
+    repository.link_identity(row['id'], identity())
+    lesson_artifacts(repository, row)
+    repository.set_state(row['id'], lesson_state='ready')
+    assert repository.submission(user, row['id'])['lesson_status'] == 'ready'
+    output = row['path'] / 'stage-two-1/stage-three'
+    if missing in {'postgres_run', 'legacy_sqlite'}:
+        run_id = json.loads((output / 'run.json').read_text())['run_id']
+        runs = metadata.tables['lesson_runs']
+        with repository.db.begin() as connection:
+            connection.execute(runs.delete().where(runs.c.run_id == run_id))
+        if missing == 'legacy_sqlite':
+            (output / 'events.sqlite3').write_bytes(b'legacy archival evidence, never authoritative')
+    else:
+        (row['path'] / missing).unlink()
+    detail = repository.submission(user, row['id'])
+    assert detail['lesson_status'] == 'unavailable' and detail['artifact_state'] == 'active'
+    assert detail['statement']
+    history = repository.history(user)['items'][0]
+    assert history['search_id'] == row['id'] and not history['lesson_available']
+    assert history['latest_status'] == history['lesson_status'] == 'unavailable'
+    with repository.db.connect() as connection:
+        assert connection.scalar(sa.select(SUBMISSIONS.c.lesson_status).where(SUBMISSIONS.c.id == row['id'])) == 'ready'
 
 
 def test_expired_linked_directory_recreated_by_late_reader_is_cleaned_again(repository):
@@ -468,7 +516,7 @@ def test_expired_linked_directory_recreated_by_late_reader_is_cleaned_again(repo
     repository.cleanup()
     assert not row['path'].exists()
     row['path'].mkdir()
-    (row['path'] / 'events.sqlite3').write_text('late-reader')
+    (row['path'] / 'private-result.json').write_text('late-reader')
     os.utime(row['path'], (repository.clock().timestamp(), repository.clock().timestamp()))
     repository.cleanup()
     assert not row['path'].exists()
@@ -709,6 +757,7 @@ def test_identity_link_rolls_back_new_public_problem_if_it_expires_before_commit
 def test_recovery_rechecks_terminal_state_after_worker_finishes(repository):
     user = student(repository)
     row, _ = submission(repository, user)
+    lesson_artifacts(repository, row)
     selected, completed = Event(), Event()
 
     def finish():

@@ -501,6 +501,10 @@ function offerStart() {
 
 function showLesson(data) {
   if (privateStopped) return;
+  if (data.execution_status === 'unavailable') {
+    unavailableStatus({outcome: 'unavailable', statement: shown.text});
+    return;
+  }
   const action = $('#pq-stream-action');
   action.hidden = !searchId || !(data.execution_status === 'not_started' ||
     (data.stream && ['interrupted', 'error'].includes(data.execution_status)));
@@ -681,7 +685,7 @@ async function pollLesson() {
     const status = response?.ok ? await response.json().catch(() => null) : null;
     if (ticket !== lessonPoll) return;
     if (response?.status === 404) { unavailable('这条拍题记录不存在或已删除。'); return; }
-    if (status && ['expired', 'disabled'].includes(status.outcome)) { unavailableStatus(status); return; }
+    if (status && ['expired', 'disabled', 'unavailable'].includes(status.outcome)) { unavailableStatus(status); return; }
     if (!status) { misses += 1; continue; }
     if (status.user_id !== session.user?.id) { unavailable('账号状态已变更，请重新打开这道题。'); return; }
     misses = 0;
@@ -767,7 +771,7 @@ async function runLive() {
       if (ticket !== liveTicket || privateStopped) return;
       if (!status.user_id || status.user_id !== session.user?.id) { unavailable('登录状态无法确认，请返回后重新打开。'); return; }
       progressOwner = status.user_id;
-      if (['expired', 'disabled'].includes(status.outcome)) { unavailableStatus(status); return; }
+      if (['expired', 'disabled', 'unavailable'].includes(status.outcome)) { unavailableStatus(status); return; }
       if (!photosLoaded) { setPhotos(`/api/search/problems/${searchId}/image`); photosLoaded = true; }
       liveCrop = status.crop || liveCrop;
       misses = 0;
@@ -875,12 +879,16 @@ function stopPrivateLesson() {
 
 function unavailable(message) {
   stopPrivateLesson();
+  $('.pq-fail-photo').hidden = true;
   $('#main').hidden = false;
   showFail({icon: '!', title: '暂时无法打开这道题', text: message, actions: ['retake']});
 }
 
 function unavailableStatus(status) {
-  unavailable(status.outcome === 'disabled' ? '题目已下线，请重新拍摄。' : '原图已到期清除。解析已随原图到期清除，重新拍摄可再次学习。');
+  const message = status.outcome === 'disabled' ? '题目已下线，请重新拍摄。'
+    : status.outcome === 'unavailable' ? '课程文件或运行记录不可用，无法继续学习。请重新拍摄。'
+      : '原图已到期清除。解析已随原图到期清除，重新拍摄可再次学习。';
+  unavailable(message);
   if (status.statement) {
     $('#pq-fail-quote').textContent = status.statement;
     $('#pq-fail-quote').hidden = false;

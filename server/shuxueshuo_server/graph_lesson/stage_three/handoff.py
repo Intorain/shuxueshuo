@@ -67,7 +67,8 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
         route_hash = revision({"route": route, "verification": verification, "feasible_set": feasible_set,
                                "answer": answer, "math_steps": frozen_steps, "revisions": store.identity["revisions"],
                                **choice_fields})
-        saved = db.execute("SELECT value FROM handoffs WHERE target=? AND route=?", (target, route_id)).fetchone()
+        saved = store._execute(db, 'SELECT value FROM lesson_handoffs WHERE run_id=:run_id AND target=:target AND route=:route',
+                               target=target, route=route_id).fetchone()
         if saved:
             previous = json.loads(saved[0])
             if previous["verified_route_sha256"] != route_hash:
@@ -97,7 +98,8 @@ def complete_route(store, checkpoint, *, route, verification, feasible_set, answ
         task["task_id"] = revision({key: task[key] for key in (
             "lesson_version", "run_id", "target_ref", "route_id", "verified_route_sha256",
         )})
-        db.execute("INSERT INTO handoffs VALUES (?,?,?)", (target, route_id, _dump(task)))
+        store._execute(db, 'INSERT INTO lesson_handoffs (run_id,target,route,value) VALUES (:run_id,:target,:route,:value)',
+                       target=target, route=route_id, value=_dump(task))
         goal = {"status": "solved", "available": True, "feasible_set": feasible_set, "answer": answer}
         store._put_goal(db, target, goal)
         store._append_event(db, commit_id, {"type": "lesson.goal_status", "target_ref": target,
@@ -138,7 +140,8 @@ def attach_qa(store, chunk, *, commit_id, before_commit=None, after_commit=None)
         goal = store._goal(db, target)
         if not goal or goal["status"] != "solved" or goal_unavailable(goal):
             raise ValueError("handoff.goal_unavailable")
-        task_row = db.execute("SELECT value FROM handoffs WHERE target=? AND route=?", (target, route)).fetchone()
+        task_row = store._execute(db, 'SELECT value FROM lesson_handoffs WHERE run_id=:run_id AND target=:target AND route=:route',
+                                  target=target, route=route).fetchone()
         if not task_row:
             raise ValueError("handoff.missing_task")
         task = json.loads(task_row[0])
@@ -147,12 +150,14 @@ def attach_qa(store, chunk, *, commit_id, before_commit=None, after_commit=None)
         step = next((value for value in task["math_steps"] if value["step_id"] == step_id), None)
         if step is None or step["math_step_sha256"] != chunk["math_step_sha256"]:
             raise ValueError("handoff.step_hash_mismatch")
-        previous = db.execute("SELECT value FROM qa WHERE target=? AND route=? AND step=?", (target, route, step_id)).fetchone()
+        previous = store._execute(db, 'SELECT value FROM lesson_qa WHERE run_id=:run_id AND target=:target AND route=:route AND step=:step',
+                                  target=target, route=route, step=step_id).fetchone()
         if previous:
             if json.loads(previous[0]) != chunk:
                 raise ValueError("handoff.immutable_qa")
             return {"qa": deepcopy(chunk)}
-        db.execute("INSERT INTO qa VALUES (?,?,?,?)", (target, route, step_id, _dump(chunk)))
+        store._execute(db, 'INSERT INTO lesson_qa (run_id,target,route,step,value) VALUES (:run_id,:target,:route,:step,:value)',
+                       target=target, route=route, step=step_id, value=_dump(chunk))
         store._append_event(db, commit_id, {"type": "lesson.chunk_ready", "target_ref": target,
             "route_id": route, "payload": {"kind": "step_qa", "step_id": step_id,
                 "math_step_sha256": chunk["math_step_sha256"], "verified_route_sha256": chunk["verified_route_sha256"],
@@ -170,16 +175,19 @@ def enrichment_status(store, target_ref, route_id, *, status, commit_id, diagnos
     def mutate(db):
         if goal_unavailable(store._goal(db, target_ref)):
             raise ValueError("handoff.goal_unavailable")
-        saved = db.execute("SELECT value FROM handoffs WHERE target=? AND route=?", (target_ref, route_id)).fetchone()
+        saved = store._execute(db, 'SELECT value FROM lesson_handoffs WHERE run_id=:run_id AND target=:target AND route=:route',
+                               target=target_ref, route=route_id).fetchone()
         if not saved:
             raise ValueError("handoff.missing_task")
         task = json.loads(saved[0])
         if status == "completed":
-            count = db.execute("SELECT COUNT(*) FROM qa WHERE target=? AND route=?", (target_ref, route_id)).fetchone()[0]
+            count = store._execute(db, 'SELECT COUNT(*) FROM lesson_qa WHERE run_id=:run_id AND target=:target AND route=:route',
+                                   target=target_ref, route=route_id).fetchone()[0]
             if count != len(task["math_steps"]):
                 raise ValueError("handoff.incomplete_qa")
         task.update(status=status, diagnostic=diagnostic)
-        db.execute("UPDATE handoffs SET value=? WHERE target=? AND route=?", (_dump(task), target_ref, route_id))
+        store._execute(db, 'UPDATE lesson_handoffs SET value=:value WHERE run_id=:run_id AND target=:target AND route=:route',
+                       value=_dump(task), target=target_ref, route=route_id)
         store._append_event(db, commit_id, {"type": "lesson.enrichment_status", "target_ref": target_ref,
             "route_id": route_id, "payload": {"status": status, "diagnostic": diagnostic}})
         return {"handoff": task}

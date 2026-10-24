@@ -9,15 +9,22 @@ import fcntl
 import json
 import logging
 import re
-import sqlite3
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from pathlib import Path
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from shuxueshuo_server.graph_lesson.stage_three import runner
 from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetConflict
 from shuxueshuo_server.graph_lesson.stage_three.checkpoint import identity_from_seed
+from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
 from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
 from shuxueshuo_server.graph_lesson.stage_three.runner import fingerprint
+from shuxueshuo_server.graph_lesson.stage_three.storage import (
+    RunNotFound,
+    RunUnavailable,
+    read_run,
+)
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 
 from .lesson import RESULT, attempts
@@ -146,30 +153,40 @@ def find_run(directory, run_id):
     raise FileNotFoundError("lesson.run_not_found")
 
 
-def stream_descriptor(search_id, output):
+def stream_descriptor(search_id, output, *, strict=False):
     """Use stored identity; old streams remain readable after a code update."""
     output = Path(output)
     try:
-        if not (output / "run.json").is_file() or not (output / "events.sqlite3").is_file():
+        if not (output / "run.json").is_file():
             return None
-        # EventStore first reserves the file, then commits its identity. Exposing
-        # the URL between those operations would make a harmless poll race fail.
-        with closing(sqlite3.connect((output / "events.sqlite3").resolve().as_uri() + "?mode=ro",
-                                     uri=True, timeout=0.2)) as db:
-            db.execute("BEGIN")
-            if not db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'").fetchone():
-                return None
-            row = db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()
-            if row is None:
-                return None
-            identity = json.loads(row[0])
         seed = read(output / "run.json")
+        if not isinstance(seed, dict) or any(not isinstance(seed.get(key), str) or not seed[key]
+                                            for key in ("run_id", "lesson_version")):
+            raise ValueError("checkpoint.invalid_identity")
+        identity = read_run(seed["run_id"])["identity"]
         if not isinstance(seed, dict) or not isinstance(identity, dict):
             raise TypeError("checkpoint.invalid_identity")
-        if any(not isinstance(seed.get(key), str) or not seed[key] or seed[key] != identity.get(key)
-               for key in ("run_id", "lesson_version")):
+        expected = identity_from_seed(seed) if 'stage_one' in seed or 'stage_two' in seed else seed
+        if any(identity.get(key) != expected[key] for key in expected
+               if key in {'run_id', 'lesson_version', 'input_sha256'}):
             raise ValueError("checkpoint.identity_mismatch")
-    except (sqlite3.Error, OSError, ValueError, KeyError, TypeError):
+    except RunUnavailable:
+        if strict:
+            raise
+        return None
+    except RunNotFound:
+        if strict:
+            raise
+        return None
+    except SQLAlchemyError:
+        if strict:
+            raise
+        _LOG.warning("Could not read stage-three stream identity in %s; stream temporarily unavailable", output,
+                     exc_info=True)
+        return None
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError, KeyError, TypeError):
         _LOG.warning("Could not read stage-three stream identity in %s; stream temporarily unavailable", output,
                      exc_info=True)
         return None
@@ -186,10 +203,13 @@ def presentation(directory, search_id, *, running=False, attempt=None):
         return {"execution_status": "not_started", "stream": None}
     running = running or _locked(Path(directory) / ".lesson.lock") or _locked(attempt / ".stage-three.lock")
     output = attempt / "stage-three"
+    stream = stream_descriptor(search_id, output)
     # A completed file can precede the worker's finally/lease release. Keep
     # polling until that operation can actually accept the student's retry.
     if running:
         status = "running" if output.exists() else "starting"
+    elif output.exists() and (stream is None or not resumable_files(output)):
+        return {"execution_status": "unavailable", "stream": None}
     elif (output / "stage-three-result.json").is_file():
         status = read(output / "stage-three-result.json")["status"]
         if has_pending_interactions(output):
@@ -200,33 +220,24 @@ def presentation(directory, search_id, *, running=False, attempt=None):
         status = "error"
     else:
         status = "interrupted" if output.exists() else "not_started"
-    return {"execution_status": status, "stream": stream_descriptor(search_id, output)}
+    return {"execution_status": status, "stream": stream}
 
 
 def has_pending_interactions(output):
-    """Read status without opening EventStore, changing journal mode or migrating.
-
-    Read the live WAL as well as the main database: ``immutable=1`` would miss
-    newly committed cards. Legacy databases have no interaction table.
-    """
+    """Read committed interaction state without creating or migrating storage."""
     output = Path(output)
-    path = output / "events.sqlite3"
     try:
-        if not path.is_file():
+        if not (output / "run.json").is_file():
             return False
-        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.2)) as db:
-            db.execute("BEGIN")
-            row = db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()
-            saved, seed = json.loads(row[0]) if row else None, read(output / "run.json")
-            if not isinstance(saved, dict):
-                raise TypeError("checkpoint.invalid_identity")
-            expected = identity_from_seed(seed)
-            if any(saved.get(key) != value for key, value in expected.items()):
-                raise ValueError("checkpoint.identity_mismatch")
-            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='interaction_states'").fetchone() is None:
-                return False
-            return db.execute("SELECT 1 FROM interaction_states WHERE status='pending' LIMIT 1").fetchone() is not None
-    except (sqlite3.Error, OSError, ValueError, KeyError, TypeError):
+        seed = read(output / "run.json")
+        expected = identity_from_seed(seed)
+        saved = read_run(seed["run_id"])["identity"]
+        if any(saved.get(key) != value for key, value in expected.items()):
+            raise ValueError("checkpoint.identity_mismatch")
+        return EventStore(output, saved).has_pending_interactions()
+    except (FileNotFoundError, RunNotFound, RunUnavailable):
+        return False
+    except (SQLAlchemyError, OSError, ValueError, KeyError, TypeError):
         _LOG.warning("Could not read pending interaction status in %s; keeping mathematical status", output,
                      exc_info=True)
         return False
@@ -245,8 +256,21 @@ def assert_current_attempt(directory, attempt):
         raise LessonConflict("lesson.stale_run")
 
 
+def resumable_files(output):
+    output = Path(output)
+    return all(path.is_file() for path in (output / 'run.json', output / 'frozen.json', output.parent / RESULT))
+
+
 def assert_resumable(directory, output):
     assert_current_attempt(directory, output.parent)
+    if not resumable_files(output):
+        raise LessonConflict("lesson.execution_unavailable")
+    try:
+        available = stream_descriptor(Path(directory).name, output, strict=True)
+    except (RunNotFound, RunUnavailable) as exc:
+        raise LessonConflict("lesson.execution_unavailable") from exc
+    if available is None:
+        raise LessonConflict("lesson.execution_unavailable")
     frozen = read(output / "frozen.json")
     if frozen["implementation"] != fingerprint():
         raise LessonConflict("checkpoint.revisions_changed")

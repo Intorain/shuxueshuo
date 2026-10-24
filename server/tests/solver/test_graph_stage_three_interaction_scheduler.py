@@ -1,4 +1,4 @@
-"""Lightweight scheduling recovery with real SQLite leases and durable receipts."""
+"""Lightweight scheduling recovery with real PostgreSQL leases and durable receipts."""
 
 import json
 import threading

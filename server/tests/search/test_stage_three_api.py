@@ -15,7 +15,12 @@ from shuxueshuo_server.graph_lesson.stage_two.runner import replay_run
 from shuxueshuo_server.problem_understanding.identity import revision
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from shuxueshuo_server.search import dev_api, stage_three
-from tests.search.support import authenticated_client, session_for
+from tests.search.support import (
+    authenticated_client,
+    execution_scope,
+    execution_store,
+    session_for,
+)
 from tests.search.test_lesson import search_result
 from tests.solver.test_graph_stage_three_recorded import Q01_SELECTION
 
@@ -53,7 +58,7 @@ def seed(tmp_path):
     shutil.copyfile(directory / "question.png", page / "page.png")
     session.repository.register_page(session.user, page_id, {})
     session.repository.create_submission(session.user, search_id, page_id, [0, 0, 1, 1])
-    session.repository.set_state(search_id, recognition_state="reviewed", lesson_state="ready")
+    session.repository.set_state(search_id, recognition_state="reviewed", lesson_state="not_started")
     return root, directory
 
 
@@ -88,6 +93,7 @@ def start(client):
 
 def test_status_pins_material_and_stream_to_one_attempt_during_concurrent_retry(tmp_path, monkeypatch):
     root, directory = seed(tmp_path)
+    first_run_id, second_run_id = secrets.token_hex(16), secrets.token_hex(16)
 
     def stream(attempt, run_id):
         output = attempt / "stage-three"
@@ -96,11 +102,12 @@ def test_status_pins_material_and_stream_to_one_attempt_during_concurrent_retry(
                 "stage_one": {"sha256": "c" * 64}, "stage_two": {"sha256": "d" * 64}}
         save(output / "run.json", seed)
         save(output / "frozen.json", frozen)
-        EventStore(output, {"run_id": run_id, "lesson_version": seed["lesson_version"],
-                            "input_sha256": revision({"stage_one": "c" * 64, "stage_two": "d" * 64}),
-                            "revisions": frozen["implementation"]}, create=True)
+        with execution_scope(root):
+            EventStore(output, {"run_id": run_id, "lesson_version": seed["lesson_version"],
+                                "input_sha256": revision({"stage_one": "c" * 64, "stage_two": "d" * 64}),
+                                "revisions": frozen["implementation"]}, create=True)
 
-    stream(directory / "stage-two-1", "1" * 32)
+    stream(directory / "stage-two-1", first_run_id)
     present = dev_api.present_lesson
     published = False
 
@@ -116,29 +123,33 @@ def test_status_pins_material_and_stream_to_one_attempt_during_concurrent_retry(
                     option["role"] = "primary" if option["type_id"] == "type-amgm-quantified" else "alternative"
             attempt = directory / "stage-two-2"
             save(attempt / stage_three.RESULT, second)
-            stream(attempt, "2" * 32)
+            stream(attempt, second_run_id)
         return rendered
 
     monkeypatch.setattr(dev_api, "present_lesson", publish_retry_between_material_read_and_stream_read)
     with client_for(root) as client:
         first = status(client)
         assert first["goals"][0]["primary"] == "type-quantified-quadratic"
-        assert first["stream"]["run_id"] == "1" * 32
+        assert first["stream"]["run_id"] == first_run_id
         second = status(client)
         assert second["goals"][0]["primary"] == "type-amgm-quantified"
-        assert second["stream"]["run_id"] == "2" * 32
-        assert client.get(first["stream"]["snapshot_url"]).json()["run_id"] == "1" * 32
-        assert client.get(second["stream"]["snapshot_url"]).json()["run_id"] == "2" * 32
+        assert second["stream"]["run_id"] == second_run_id
+        assert client.get(first["stream"]["snapshot_url"]).json()["run_id"] == first_run_id
+        assert client.get(second["stream"]["snapshot_url"]).json()["run_id"] == second_run_id
 
 
 @pytest.mark.parametrize("operation", ["start", "resume"])
 def test_start_and_resume_recheck_attempt_after_acquiring_problem_lease(tmp_path, monkeypatch, operation):
     root, directory = seed(tmp_path)
+    run_id = secrets.token_hex(16)
     if operation == "resume":
         # The run identity is already durable, but no route has been submitted.
         output = directory / "stage-two-1/stage-three"
-        save(output / "run.json", {"run_id": "e" * 32, "lesson_version": "existing-lesson"})
+        save(output / "run.json", {"run_id": run_id, "lesson_version": "existing-lesson"})
         save(output / "frozen.json", {"implementation": stage_three.fingerprint()})
+        with execution_scope(root):
+            EventStore(output, {'run_id': run_id, 'lesson_version': 'existing-lesson', 'input_sha256': 'a' * 64,
+                                'revisions': {'fixture': 'b' * 64}}, create=True)
     original_acquire = stage_three.acquire_problem
 
     def retry_finishes_before_lease_acquisition(problem):
@@ -150,7 +161,7 @@ def test_start_and_resume_recheck_attempt_after_acquiring_problem_lease(tmp_path
     monkeypatch.setattr(stage_three, "acquire_problem", retry_finishes_before_lease_acquisition)
     monkeypatch.setattr(stage_three, "run_stage_three", forbidden)
     monkeypatch.setattr(stage_three, "resume_stage_three", forbidden)
-    suffix = "start" if operation == "start" else "e" * 32 + "/resume"
+    suffix = "start" if operation == "start" else run_id + "/resume"
     with client_for(root) as client:
         response = client.post(f"/api/search/problems/{directory.name}/lesson/{suffix}")
         assert response.status_code == 409
@@ -212,7 +223,7 @@ def test_real_recorded_two_routes_stream_while_running_and_refresh_never_recompu
         assert client.post(f"/api/search/problems/{directory.name}/lesson/start").json()["stream"] == completed["stream"]
         resume_url = completed["stream"]["snapshot_url"].removesuffix("/snapshot") + "/resume"
         assert client.post(resume_url).json()["status"] == "completed"
-        stable = stage_three.open_store(directory / "stage-two-1/stage-three").snapshot()
+        stable = execution_store(root, directory / "stage-two-1/stage-three").snapshot()
         assert (stable["last_seq"], [step["math_step_sha256"] for step in stable["math_steps"]]) == marker
 
 
@@ -226,7 +237,7 @@ def test_http_ws_cursor_expiry_and_snapshot_recovery_share_authoritative_store(t
         expected = client.get(stream["events_url"], params={"after_seq": middle}).json()
         with client.websocket_connect(stream["websocket_url"] + f"?after={middle}") as socket:
             assert socket.receive_json() == expected
-        durable = stage_three.open_store(directory / "stage-two-1/stage-three")
+        durable = execution_store(root, directory / "stage-two-1/stage-three")
         before = durable.snapshot()
         durable.prune_events(middle)
         expired = client.get(stream["events_url"], params={"after_seq": 0})
@@ -286,7 +297,7 @@ def test_explicit_resume_continues_same_partial_run_and_rejects_changed_revision
     def interrupt(_state, _store):
         raise Interrupted()
 
-    with pytest.raises(Interrupted):
+    with execution_scope(root), pytest.raises(Interrupted):
         stage_three.run_stage_three(directory / "stage-two-1", hooks={"before_verification": interrupt})
     with client_for(root) as client:
         partial = status(client)

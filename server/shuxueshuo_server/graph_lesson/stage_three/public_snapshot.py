@@ -45,7 +45,7 @@ def trajectory_evidence(checkpoint):
 
 
 def project_snapshot(snapshot):
-    """Project a single SQLite read snapshot without exposing driver_state."""
+    """Project a single database read snapshot without exposing driver_state."""
     result = _fields(snapshot, (
         "run_id", "lesson_version", "input_sha256", "stream_id", "last_seq", "minimum_seq",
         "math_steps", "goals", "handoffs", "qa", "selection_chunks", "interaction_protocol", "interaction_states",

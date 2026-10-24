@@ -1,14 +1,14 @@
 """All run entry points derive the same immutable identity from the saved seed."""
 
-import sqlite3
-from contextlib import closing
 from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from shuxueshuo_server.graph_lesson.stage_three import preview, runner
 from shuxueshuo_server.graph_lesson.stage_three.checkpoint import identity_from_seed
+from shuxueshuo_server.graph_lesson.stage_three.storage import RunNotFound
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
 from shuxueshuo_server.search import stage_three
 
@@ -23,9 +23,12 @@ def create_run(directory):
     store = runner._open_store(directory, SEED, FROZEN, create=True)
     save(directory / "run.json", SEED)
     save(directory / "frozen.json", {"implementation": FROZEN})
-    with closing(sqlite3.connect(store.path, isolation_level=None)) as db:
-        db.execute("INSERT INTO interaction_states VALUES (?,?,?,?,?,?,?)",
-                   ("/root/goals/0", "interval", "step-1", 1, "e" * 64, "pending", None))
+    with store.transaction(write=True) as db:
+        db.execute(text("""INSERT INTO lesson_interaction_states
+            (run_id,target,route,step,ordinal,hash,status,interaction_id)
+            VALUES (:run_id,:target,:route,:step,:ordinal,:hash,:status,NULL)"""),
+                   {"run_id": store.identity["run_id"], "target": "/root/goals/0", "route": "interval",
+                    "step": "step-1", "ordinal": 1, "hash": "e" * 64, "status": "pending"})
     return store
 
 
@@ -112,12 +115,14 @@ def test_all_entry_points_reject_seed_identity_different_from_stored_run(tmp_pat
     else:
         changed[field] = "different"
     save(tmp_path / "run.json", changed)
-    with pytest.raises(ValueError, match="checkpoint.identity_mismatch"):
+    error_type = RunNotFound if field == "run_id" else ValueError
+    code = "events.run_not_found" if field == "run_id" else "checkpoint.identity_mismatch"
+    with pytest.raises(error_type, match=code):
         runner._open_store(tmp_path, changed, FROZEN, create=False)
-    with pytest.raises(ValueError, match="checkpoint.identity_mismatch"):
+    with pytest.raises(error_type, match=code):
         preview.open_store(tmp_path)
     assert stage_three.has_pending_interactions(tmp_path) is False
-    assert len(caplog.records) == 1
+    assert len(caplog.records) == (0 if field == "run_id" else 1)
 
 
 def test_runner_and_preview_still_validate_the_frozen_implementation(tmp_path):

@@ -19,6 +19,7 @@ Python calculation. Platforms without that timer use a child watchdog thread;
 the living parent still enforces the deadline by terminating/killing the process.
 """
 
+import logging
 import math
 import multiprocessing as mp
 import os
@@ -39,10 +40,12 @@ _MAX_FRAME_BYTES = _CHUNK_BYTES + 1
 _MAX_RESULT_BYTES = 128 * 1024 * 1024
 _WATCHDOG_EXIT = 124
 _TERMINATE_GRACE_SECONDS = 0.15
+_REAP_SECONDS = 1.0
+_LOG = logging.getLogger(__name__)
 
 
 class CalculationTimeout(TimeoutError):
-    """The computation/transport deadline expired; its worker has been reaped."""
+    """The computation/transport deadline expired; worker cleanup was attempted."""
 
     def __init__(self, *, elapsed_seconds, pid=None, phase="calculation"):
         super().__init__(f"calculation deadline exceeded during {phase}")
@@ -124,15 +127,25 @@ def _worker(connection, function, args, deadline):
 
 
 def _reap(process):
-    """Stop all calculation before returning; SIGKILL is followed by waitpid."""
+    """Stop calculation, returning whether exit was confirmed within a deadline."""
     if process is None or process.pid is None:
-        return
+        return True
+    deadline = time.monotonic() + _REAP_SECONDS
     if process.is_alive():
         process.terminate()
-        process.join(_TERMINATE_GRACE_SECONDS)
+        process.join(max(0, min(_TERMINATE_GRACE_SECONDS, deadline - time.monotonic())))
     if process.is_alive():
         process.kill()
-    process.join()
+    while True:
+        process.join(max(0, deadline - time.monotonic()))
+        if process.exitcode is not None:
+            return True
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            _LOG.warning("Worker cleanup unconfirmed for pid %s after %.3f seconds; process handle left open",
+                         process.pid, _REAP_SECONDS)
+            return False
+        time.sleep(min(0.001, remaining))
 
 
 def _timeout_exit(exitcode):
@@ -203,7 +216,8 @@ def run_bounded(function, *args, timeout_seconds):
     callers decide which mathematical failures or programming errors they imply.
     Timeouts, including races with the child's own expiration, always use
     ``CalculationTimeout``. Every parent exit path, including BaseException,
-    closes pipe handles and terminates/joins the spawned worker.
+    closes pipe handles and attempts bounded termination/reaping of the worker.
+    Unconfirmed cleanup is logged without replacing a result or original error.
     """
     if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (float, int)):
         raise TypeError("timeout_seconds must be a finite number")
@@ -247,14 +261,15 @@ def run_bounded(function, *args, timeout_seconds):
             elapsed_seconds=time.monotonic()-started, pid=process.pid, exitcode=process.exitcode,
         )
     finally:
+        reaped = False
         try:
-            _reap(process)
+            reaped = _reap(process)
             if isinstance(error, CalculationWorkerError):
                 error.exitcode = process.exitcode
         finally:
             receiver.close()
             sender.close()
-            if process.pid is not None:
+            if reaped and process.pid is not None:
                 process.close()
     elapsed = time.monotonic() - started
     if error is not None:

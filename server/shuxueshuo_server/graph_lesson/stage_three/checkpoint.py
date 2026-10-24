@@ -1,6 +1,6 @@
 """JSON checkpoint identities and atomic debug exports.
 
-The SQLite commit in events.py is authoritative. These JSON files are portable
+The PostgreSQL commit in events.py is authoritative. These JSON files are portable
 views; a crash while exporting them cannot advance or rewind execution.
 """
 

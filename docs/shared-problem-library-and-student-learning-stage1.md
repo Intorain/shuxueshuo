@@ -2,6 +2,8 @@
 
 更新日期：2026-10-24。范围依据[设计稿第 9.1 节](shared-problem-library-and-student-learning-design.md#91-第一期范围冻结真实登录题目入库与个人历史)。本期实现本地拍题登录、公共题目身份与去重、个人历史和删除；代码验证与浏览器验收分别记录，不将离线测试视为真实模型或生产上线验收。
 
+本轮执行存储更新：阶段三已通过 `0014_lesson_execution` 接入同一 PostgreSQL，替代私有运行目录中的 SQLite 权威存储；执行事件、检查点与预算随提交删除或 30 天到期一并清理。详见[PostgreSQL 执行存储实施说明](stage-three-postgresql-execution-storage.md)，历史验收数字不据此改写。
+
 ## 1. 已接入的实现
 
 - 现有手机号 Cookie 登录用于 `/api/search`，写操作验证 Origin；所有页面、提交、图片和课程读取以数据库中的用户归属为准。WebSocket 在连接及推送期间检查身份与权限。

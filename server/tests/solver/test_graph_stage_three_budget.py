@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from shuxueshuo_server.graph_lesson.stage_three.budget import (
     BudgetConflict,
@@ -262,6 +263,7 @@ def test_receipt_json_is_inert_and_stored_in_authoritative_database(tmp_path):
         expected = receipt(attempt, result=arbitrary)
         export_json(attempt["receipt_path"], expected)
         ledger.finish(attempt["attempt_id"], owner)
-    with store._connect() as db:
-        saved = db.execute("SELECT receipt FROM calculation_attempts WHERE attempt_id=?", (attempt["attempt_id"],)).fetchone()
-    assert json.loads(saved[0])["result"] == arbitrary
+    with store.transaction() as db:
+        saved = db.execute(text("SELECT receipt FROM lesson_calculation_attempts WHERE run_id=:run_id AND attempt_id=:attempt_id"),
+                           {"run_id": store.identity["run_id"], "attempt_id": attempt["attempt_id"]}).scalar_one()
+    assert json.loads(saved)["result"] == arbitrary

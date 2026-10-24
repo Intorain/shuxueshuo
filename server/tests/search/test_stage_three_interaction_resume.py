@@ -8,8 +8,8 @@ import pytest
 
 from shuxueshuo_server.graph_lesson.stage_three import runner
 from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetLedger
-from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
 from shuxueshuo_server.search import stage_three
+from tests.search.support import execution_scope, execution_store
 from tests.search.test_stage_three_api import (
     client_for,
     forbidden,
@@ -36,13 +36,14 @@ def test_product_resume_drains_completed_math_without_recalculation(tmp_path, mo
             armed = False
             raise RuntimeError("interrupted after interaction receipt")
 
-    result = stage_three.run_stage_three(directory / "stage-two-1", hooks={
-        "calculation_dispatch": offline_dispatch, "interaction_returned": interrupt,
-        "interaction_budget": (6.0, 17.0),
-    })
+    with execution_scope(root):
+        result = stage_three.run_stage_three(directory / "stage-two-1", hooks={
+            "calculation_dispatch": offline_dispatch, "interaction_returned": interrupt,
+            "interaction_budget": (6.0, 17.0),
+        })
     assert result["status"] == "completed" and not armed
     output = directory / "stage-two-1/stage-three"
-    durable = open_store(output)
+    durable = execution_store(root, output)
     assert durable.has_pending_interactions()
     assert durable.interaction_settings()["budget"] == {"group_seconds": 6.0, "route_seconds": 17.0}
     before = durable.snapshot()
@@ -100,12 +101,13 @@ def test_repeated_interaction_failure_eventually_removes_the_resume_action(tmp_p
     def fail(chunk, durable):
         raise RuntimeError("persistent scheduling fault")
 
-    result = stage_three.run_stage_three(directory / "stage-two-1", hooks={
-        "calculation_dispatch": offline_dispatch, "interaction_dispatch": interaction_only_dispatch,
-        "interaction_returned": fail,
-    })
+    with execution_scope(root):
+        result = stage_three.run_stage_three(directory / "stage-two-1", hooks={
+            "calculation_dispatch": offline_dispatch, "interaction_dispatch": interaction_only_dispatch,
+            "interaction_returned": fail,
+        })
     output = directory / "stage-two-1/stage-three"
-    durable = open_store(output)
+    durable = execution_store(root, output)
     before = durable.snapshot()
     assert result["status"] == "completed" and durable.has_pending_interactions()
     monkeypatch.setattr(runner, "run_sample", forbidden)

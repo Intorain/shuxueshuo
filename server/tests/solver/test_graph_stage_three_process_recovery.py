@@ -3,19 +3,18 @@
 import json
 import multiprocessing as mp
 import os
-import sqlite3
 import time
 import traceback
 from collections import Counter
-from contextlib import closing
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from shuxueshuo_server.graph_lesson.stage_three import calculations, runner
 from shuxueshuo_server.graph_lesson.stage_three.budget import BudgetLedger
 from shuxueshuo_server.graph_lesson.stage_three.checkpoint import export_json
-from shuxueshuo_server.graph_lesson.stage_three.events import EventStore
+from shuxueshuo_server.graph_lesson.stage_three.preview import open_store
 from tests.solver.test_graph_stage_three_contracts import upstream
 
 TARGET = "/root/goals/0"
@@ -106,18 +105,15 @@ def _read(path):
 
 
 def _durable(output):
-    with closing(sqlite3.connect(output / "events.sqlite3")) as db:
-        identity = json.loads(db.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()[0])
-    return EventStore(output, identity)
+    return open_store(output)
 
 
 def _attempts(output):
-    with closing(sqlite3.connect(output / "events.sqlite3")) as db:
-        db.row_factory = sqlite3.Row
-        return [dict(row) for row in db.execute(
-            "SELECT * FROM calculation_attempts WHERE target=? AND route=? AND bucket='solve' ORDER BY rowid",
-            (TARGET, ROUTE),
-        )]
+    durable = _durable(output)
+    with durable.transaction() as db:
+        return [dict(row) for row in db.execute(text("""SELECT * FROM lesson_calculation_attempts
+            WHERE run_id=:run_id AND target=:target AND route=:route AND bucket='solve' ORDER BY sequence"""),
+            {"run_id": durable.identity["run_id"], "target": TARGET, "route": ROUTE}).mappings()]
 
 
 def _pid_exists(pid):

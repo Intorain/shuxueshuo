@@ -89,7 +89,7 @@ def recorded_pipeline(monkeypatch, *, entered=None, release=None, verified=True)
 
     def finish(directory, **_kwargs):
         output = directory / "stage-three"
-        seed = {"run_id": "f" * 32, "lesson_version": "offline-boundary-fixture",
+        seed = {"run_id": secrets.token_hex(16), "lesson_version": "offline-boundary-fixture",
                 "stage_one": {"sha256": "a" * 64}, "stage_two": {"sha256": "c" * 64}}
         identity = {**identity_from_seed(seed), "revisions": {"fixture": "b" * 64}}
         save(output / "run.json", seed)
@@ -104,6 +104,49 @@ def recorded_pipeline(monkeypatch, *, entered=None, release=None, verified=True)
     monkeypatch.setattr(dev_api.stage_three, "run_stage_three", finish)
     monkeypatch.setattr(dev_api, "present_lesson", lambda *_args, **_kwargs: {"status": "resolved", "goals": []})
     return calls
+
+
+@pytest.mark.parametrize('change,expected', [('delete', 404), ('expire', 410), ('disable', 410)])
+@pytest.mark.parametrize('endpoint', ['snapshot_url', 'events_url', 'websocket_url'])
+@pytest.mark.parametrize('phase', ['open_store', 'read_run'])
+def test_execution_snapshot_lifecycle_race_is_not_a_server_error(private_app, repository, monkeypatch, change, expected, endpoint, phase):
+    recorded_pipeline(monkeypatch)
+    app, auth = private_app
+    with TestClient(app, base_url=auth.config.origin) as client:
+        user, _token = login(client, auth)
+        page = upload(client)
+        search_id = client.post('/api/search/problems', json={
+            'page_id': page['page_id'], 'box': [0, 0, 1, 1], 'client_request_id': 'snapshot-race',
+        }).json()['search_id']
+        row = wait_ready(repository, user, search_id)
+        stream = client.get(f'/api/search/problems/{search_id}').json()['lesson']['stream']
+        original = getattr(dev_api.stage_three, phase)
+        changed = False
+
+        def raced(output):
+            nonlocal changed
+            if changed:
+                return original(output)
+            changed = True
+            if change == 'delete':
+                repository.delete(user, search_id)
+            elif change == 'expire':
+                repository.test_time[0] = row['expires_at']
+            else:
+                repository.disable(row['problem_id'])
+            return original(output)
+
+        monkeypatch.setattr(dev_api.stage_three, phase, raced)
+        if endpoint == 'websocket_url':
+            from starlette.websockets import WebSocketDisconnect
+            with pytest.raises(WebSocketDisconnect) as closed, client.websocket_connect(stream[endpoint]) as socket:
+                socket.receive_json()
+                socket.receive_json()
+            assert closed.value.code == (4404 if expected == 404 else 4410)
+        else:
+            response = client.get(stream[endpoint])
+            assert response.status_code == expected, response.text
+            assert response.headers['cache-control'] == 'no-store'
 
 
 def wait_ready(repo, user, search_id):
@@ -392,7 +435,7 @@ def test_revoked_stage_two_does_not_start_another_teaching_phase(private_app, re
 def test_websocket_handshake_and_revocation(private_app, repository, monkeypatch, revocation):
     app, auth = private_app
     monkeypatch.setattr(dev_api.stage_three, "find_run", lambda directory, _run_id: directory)
-    monkeypatch.setattr(dev_api.stage_three, "stream_descriptor", lambda *_args: {})
+    monkeypatch.setattr(dev_api.stage_three, "stream_descriptor", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(dev_api.stage_three, "event_page", lambda *_args: {"events": [], "last_seq": 0})
     with TestClient(app, base_url=auth.config.origin) as client:
         url = "/api/search/problems/" + "a" * 12 + "/lesson/" + "b" * 32 + "/ws"
@@ -444,13 +487,13 @@ def test_idle_websocket_checks_authority_periodically_not_on_every_poll(private_
 
     def events(_directory, after):
         reads.append(after)
-        if len(reads) >= 8:
+        if len(reads) >= 3:
             idle.set()
         return {"events": [], "last_seq": after}
 
     monkeypatch.setattr(dev_api, "monotonic", lambda: clock[0], raising=False)
     monkeypatch.setattr(dev_api.stage_three, "find_run", lambda directory, _run_id: directory)
-    monkeypatch.setattr(dev_api.stage_three, "stream_descriptor", lambda *_args: {})
+    monkeypatch.setattr(dev_api.stage_three, "stream_descriptor", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(dev_api.stage_three, "event_page", events)
     with TestClient(app, base_url=auth.config.origin) as client:
         user, _token = login(client, auth)
@@ -475,7 +518,7 @@ def test_websocket_rechecks_before_new_events_even_inside_idle_check_interval(pr
     published = Event()
     monkeypatch.setattr(dev_api, "monotonic", lambda: 10.0, raising=False)
     monkeypatch.setattr(dev_api.stage_three, "find_run", lambda directory, _run_id: directory)
-    monkeypatch.setattr(dev_api.stage_three, "stream_descriptor", lambda *_args: {})
+    monkeypatch.setattr(dev_api.stage_three, "stream_descriptor", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(dev_api.stage_three, "event_page", lambda *_args: {
         "events": [{"seq": 1, "private": "not to be delivered"}] if published.is_set() else [], "last_seq": 1,
     })
@@ -509,7 +552,8 @@ def test_websocket_cached_location_cannot_recreate_cleaned_artifacts(private_app
         page = upload(client)
         started = client.post("/api/search/problems", json={"page_id": page["page_id"], "box": [0, 0, 1, 1]}).json()
         row = wait_ready(repository, user, started["search_id"])
-        with client.websocket_connect(f"/api/search/problems/{row['id']}/lesson/" + "f" * 32 + "/ws") as socket:
+        stream = client.get(f"/api/search/problems/{row['id']}").json()['lesson']['stream']
+        with client.websocket_connect(stream['websocket_url']) as socket:
             assert socket.receive_json()["events"] == []
             repository.delete(user, row["id"])
             deadline = time.monotonic() + 5

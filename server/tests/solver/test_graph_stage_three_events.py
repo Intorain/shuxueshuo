@@ -18,6 +18,7 @@ from shuxueshuo_server.graph_lesson.stage_three.handoff import (
     enrichment_status,
     invalidate_goal,
 )
+from shuxueshuo_server.graph_lesson.stage_three.storage import RunNotFound
 
 IDENTITY = {"run_id": "run-01", "lesson_version": "lesson-01", "input_sha256": "a" * 64,
             "revisions": {"methods": "b" * 64, "presentation": "c" * 64}}
@@ -70,6 +71,15 @@ def qa_chunk(step, task):
     }
 
 
+def test_named_query_parameters_preserve_json_operators_and_literal_question_marks(tmp_path):
+    store = EventStore(tmp_path, IDENTITY, create=True)
+    with store.transaction() as connection:
+        row = store._execute(connection,
+            "SELECT CAST(:document AS jsonb) ? :key, '?' AS literal, :run_id AS run_id, :key AS repeated",
+            document='{"question?":"why?"}', key="question?", run_id="another-run").one()
+    assert tuple(row) == (True, "?", IDENTITY["run_id"], "question?")
+
+
 def test_running_route_already_exposes_committed_math_and_exact_checkpoint(tmp_path):
     store, step = store_with_step(tmp_path)
     snapshot = store.snapshot()
@@ -119,7 +129,9 @@ def test_resume_rejects_every_identity_or_implementation_change(tmp_path, field)
         changed[field]["presentation"] = "d" * 64
     else:
         changed[field] = "d" * 64
-    with pytest.raises(ValueError, match="identity_mismatch"):
+    error_type = RunNotFound if field == "run_id" else ValueError
+    code = "events.run_not_found" if field == "run_id" else "identity_mismatch"
+    with pytest.raises(error_type, match=code):
         EventStore(tmp_path, changed)
 
 

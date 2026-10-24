@@ -2,14 +2,21 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
+
+from shuxueshuo_server.product.config import Settings
+from shuxueshuo_server.product.db import engine
 
 from .preparation import ADMISSION_BUDGET_SECONDS, SELECTION_BUDGET_SECONDS
 from .runner import MILESTONE, MILESTONES, resume_sample, run_recorded_batch, run_sample
+from .storage import current_storage, storage_context
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-dir", default=os.getenv("PRODUCT_TEST_DATA_DIR") or os.getenv("PRODUCT_DATA_DIR"))
+    parser.add_argument("--instance", default=os.getenv("PRODUCT_TEST_INSTANCE") or os.getenv("PRODUCT_INSTANCE", "local"))
     commands = parser.add_subparsers(dest="command", required=True)
     single = commands.add_parser("run")
     single.add_argument("--input", required=True, type=Path)
@@ -36,6 +43,23 @@ def main(argv=None):
     report = commands.add_parser("report")
     report.add_argument("--run", required=True, type=Path)
     args = parser.parse_args(argv)
+    settings = Settings.load("local", args.data_dir, args.instance)
+    if os.getenv("PRODUCT_TEST_SCHEMA"):
+        if (not os.getenv("PRODUCT_TEST_DATA_DIR")
+                or settings.root != Path(os.environ["PRODUCT_TEST_DATA_DIR"]).resolve()
+                or settings.instance != os.getenv("PRODUCT_TEST_INSTANCE")):
+            raise ValueError("events.test_schema_configuration_mismatch")
+        database = current_storage().db
+    else:
+        database = engine(settings.url())
+    try:
+        with storage_context(database):
+            return execute(args)
+    finally:
+        database.dispose()
+
+
+def execute(args):
     if args.command in {"events", "serve"}:
         from .preview import open_store, serve
 

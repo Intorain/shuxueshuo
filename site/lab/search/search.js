@@ -10,7 +10,7 @@ const historyItems = new Map();
 const labels = {queued: '等待识别', recognizing: '识别中', pending: '识别中', running: '处理中', generating: '生成中',
   reviewed: '题目已核对', needs_confirmation: '待确认',
   ready: '可开始学习', completed: '可开始学习', failed: '处理失败', error: '处理失败',
-  unsupported: '暂不支持', interrupted: '已中断', expired: '已到期', disabled: '已下线',
+  unsupported: '暂不支持', interrupted: '已中断', expired: '已到期', disabled: '已下线', unavailable: '课程不可用',
   unclear: '待确认', figure: '缺少配图'};
 
 function renderMath(root) {
@@ -49,7 +49,8 @@ function historyRow(item) {
   meta.textContent = new Date(item.last_searched_at).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
   const status = document.createElement('span');
   status.className = 'sq-status';
-  const latest = labels[item.latest_status] || '待处理';
+  const latestStatus = !item.lesson_available && ['ready', 'completed'].includes(item.latest_status) ? 'unavailable' : item.latest_status;
+  const latest = labels[latestStatus] || '待处理';
   status.textContent = item.lesson_available && !['ready', 'completed'].includes(item.latest_status)
     ? '可开始学习 · 最近一次' + latest : item.lesson_available ? '可开始学习' : latest;
   status.dataset.status = item.lesson_available ? 'done'

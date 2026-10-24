@@ -1,6 +1,6 @@
 """Durable calculation accounting, distinct from checkpoints and wall-clock downtime.
 
-A route's kernel file lock is its lease. SQLite owns attempts, receipts, actual
+A route's PostgreSQL session lock is its lease. PostgreSQL owns attempts, receipts, actual
 usage and conservative reservations; a dead process cannot release its budget
 by omitting a checkpoint. Supervisor receipts record only the measured worker
 operation. Missing receipts reserve an explicit upper bound, never invented
@@ -12,10 +12,13 @@ import hashlib
 import json
 import math
 import os
-import sqlite3
 import time
 import uuid
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
+
+from sqlalchemy import text
+
+from .storage import RunNotFound, RunUnavailable
 
 
 class BudgetConflict(ValueError):
@@ -51,75 +54,82 @@ def _text(value, name):
 
 
 class BudgetLedger:
-    """Add calculation tables to one already identity-validated EventStore."""
+    """Account for one identity-validated run in the shared PostgreSQL store."""
 
     def __init__(self, store):
+        self._store = store
+        self._run_id = store.identity["run_id"]
         self.directory = store.directory / "calculation-budget"
-        self.directory.mkdir(exist_ok=True)
         self.receipts = self.directory / "receipts"
-        self.receipts.mkdir(exist_ok=True)
-        self._store_connect = store._connect
         self._owners = {}
-        with closing(self._connect()) as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS calculation_budgets (
-                    target TEXT NOT NULL, route TEXT NOT NULL, bucket TEXT NOT NULL,
-                    limit_seconds REAL NOT NULL, initial_seconds REAL NOT NULL,
-                    PRIMARY KEY(target, route, bucket));
-                CREATE TABLE IF NOT EXISTS calculation_leases (
-                    target TEXT NOT NULL, route TEXT NOT NULL, owner TEXT NOT NULL,
-                    pid INTEGER NOT NULL, acquired_at REAL NOT NULL, released INTEGER NOT NULL,
-                    PRIMARY KEY(target, route));
-                CREATE TABLE IF NOT EXISTS calculation_attempts (
-                    attempt_id TEXT PRIMARY KEY, target TEXT NOT NULL, route TEXT NOT NULL,
-                    bucket TEXT NOT NULL, operation_key TEXT NOT NULL, input_hash TEXT NOT NULL,
-                    ordinal INTEGER NOT NULL, owner TEXT NOT NULL, status TEXT NOT NULL,
-                    allowance_seconds REAL NOT NULL, elapsed_seconds REAL NOT NULL,
-                    reserved_upper_seconds REAL NOT NULL, receipt TEXT,
-                    UNIQUE(target, route, bucket, operation_key, ordinal));
-            """)
+        with store.transaction(write=True):
+            self.directory.mkdir(exist_ok=True)
+            self.receipts.mkdir(exist_ok=True)
 
-    def _connect(self):
-        db = self._store_connect()
-        db.row_factory = sqlite3.Row
-        return db
+    def _execute(self, db, statement, **parameters):
+        return db.execute(text(statement), {**parameters, "run_id": self._run_id})
+
+    @contextmanager
+    def _database_lease(self, target, route):
+        with self._store._storage.db.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            connection.detach()
+            table_id = connection.scalar(text("SELECT 'lesson_runs'::regclass::oid"))
+            digest = hashlib.sha256(_dump([table_id, self._run_id, target, route]).encode()).digest()
+            key = int.from_bytes(digest[:8], "big", signed=True)
+            if not connection.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": key}):
+                raise BudgetConflict("budget.lease_busy")
+            try:
+                yield connection, connection.scalar(text("SELECT pg_backend_pid()"))
+            finally:
+                try:
+                    connection.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": key})
+                except BaseException:
+                    connection.invalidate()
+                    raise
 
     @contextmanager
     def route_lease(self, target, route):
-        """Hold a nonblocking kernel lease; process exit/SIGKILL releases it."""
+        """Hold nonblocking database and local leases without a long transaction."""
         _text(target, "target")
         _text(route, "route")
-        key = hashlib.sha256(_dump([target, route]).encode()).hexdigest()
-        with (self.directory / (key + ".lock")).open("a+b") as lock:
+        key = hashlib.sha256(_dump([self._run_id, target, route]).encode()).hexdigest()
+        with self._database_lease(target, route) as session, (self.directory / (key + ".lock")).open("a+b") as lock:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as exc:
                 raise BudgetConflict("budget.lease_busy") from exc
             owner = uuid.uuid4().hex
-            with closing(self._connect()) as db:
-                db.execute("BEGIN IMMEDIATE")
-                db.execute("""INSERT INTO calculation_leases VALUES (?,?,?,?,?,0)
-                              ON CONFLICT(target,route) DO UPDATE SET owner=excluded.owner,
-                              pid=excluded.pid, acquired_at=excluded.acquired_at,released=0""",
-                           (target, route, owner, os.getpid(), time.time()))
-                db.commit()
-            self._owners[owner] = (target, route)
+            with self._store.transaction(write=True) as db:
+                self._execute(db, """INSERT INTO lesson_calculation_leases
+                    (run_id,target,route,owner,pid,acquired_at,released)
+                    VALUES (:run_id,:target,:route,:owner,:pid,:acquired_at,0)
+                    ON CONFLICT(run_id,target,route) DO UPDATE SET owner=excluded.owner,
+                    pid=excluded.pid,acquired_at=excluded.acquired_at,released=0""",
+                    target=target, route=route, owner=owner, pid=os.getpid(), acquired_at=time.time())
+            self._owners[owner] = (target, route, *session)
             try:
                 yield owner
             finally:
                 self._owners.pop(owner, None)
                 try:
-                    with closing(self._connect()) as db:
-                        db.execute("UPDATE calculation_leases SET released=1 WHERE target=? AND route=? AND owner=?",
-                                   (target, route, owner))
+                    with self._store.transaction(write=True) as db:
+                        self._execute(db, """UPDATE lesson_calculation_leases SET released=1
+                            WHERE run_id=:run_id AND target=:target AND route=:route AND owner=:owner""",
+                            target=target, route=route, owner=owner)
+                except (RunNotFound, RunUnavailable):
+                    pass
                 finally:
                     fcntl.flock(lock, fcntl.LOCK_UN)
 
     def _require_owner(self, db, target, route, owner):
-        if self._owners.get(owner) != (target, route):
+        lease = self._owners.get(owner)
+        if lease is None or lease[:2] != (target, route):
             raise BudgetConflict("budget.lease_not_owned")
-        saved = db.execute("SELECT owner,released FROM calculation_leases WHERE target=? AND route=?",
-                           (target, route)).fetchone()
+        if lease[2].scalar(text("SELECT pg_backend_pid()")) != lease[3]:
+            raise BudgetConflict("budget.lease_stale")
+        saved = self._execute(db, """SELECT owner,released FROM lesson_calculation_leases
+            WHERE run_id=:run_id AND target=:target AND route=:route""",
+            target=target, route=route).mappings().one_or_none()
         if saved is None or saved["owner"] != owner or saved["released"]:
             raise BudgetConflict("budget.lease_stale")
 
@@ -131,33 +141,38 @@ class BudgetLedger:
             raise ValueError("budget.invalid_bucket")
         limit_seconds = _seconds(limit_seconds, "limit_seconds")
         initial_seconds = _seconds(initial_seconds, "initial_seconds")
-        with closing(self._connect()) as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT limit_seconds FROM calculation_budgets WHERE target=? AND route=? AND bucket=?",
-                             (target, route, bucket)).fetchone()
-            if row and row[0] != limit_seconds:
+        with self._store.transaction(write=True) as db:
+            row = self._execute(db, """SELECT limit_seconds FROM lesson_calculation_budgets
+                WHERE run_id=:run_id AND target=:target AND route=:route AND bucket=:bucket""",
+                target=target, route=route, bucket=bucket).one_or_none()
+            if row is not None and row[0] != limit_seconds:
                 raise BudgetConflict("budget.limit_mismatch")
-            db.execute("INSERT OR IGNORE INTO calculation_budgets VALUES (?,?,?,?,?)",
-                       (target, route, bucket, limit_seconds, initial_seconds))
-            db.commit()
+            self._execute(db, """INSERT INTO lesson_calculation_budgets
+                (run_id,target,route,bucket,limit_seconds,initial_seconds)
+                VALUES (:run_id,:target,:route,:bucket,:limit_seconds,:initial_seconds)
+                ON CONFLICT(run_id,target,route,bucket) DO NOTHING""",
+                target=target, route=route, bucket=bucket,
+                limit_seconds=limit_seconds, initial_seconds=initial_seconds)
             return self._summary(db, target, route, bucket)
 
     def _receipt_path(self, attempt_id):
         return self.receipts / (attempt_id + ".json")
 
     def _attempt(self, row):
-        value = dict(row)
+        value = {key: item for key, item in row.items() if key not in {"run_id", "sequence"}}
         value["receipt"] = json.loads(value["receipt"]) if value["receipt"] is not None else None
         value["receipt_path"] = str(self._receipt_path(value["attempt_id"]))
         return value
 
     def _summary(self, db, target, route, bucket):
-        budget = db.execute("SELECT * FROM calculation_budgets WHERE target=? AND route=? AND bucket=?",
-                            (target, route, bucket)).fetchone()
+        budget = self._execute(db, """SELECT * FROM lesson_calculation_budgets
+            WHERE run_id=:run_id AND target=:target AND route=:route AND bucket=:bucket""",
+            target=target, route=route, bucket=bucket).mappings().one_or_none()
         if budget is None:
             raise ValueError("budget.not_configured")
-        rows = db.execute("""SELECT rowid,* FROM calculation_attempts WHERE target=? AND route=? AND bucket=?
-                             ORDER BY rowid""", (target, route, bucket)).fetchall()
+        rows = self._execute(db, """SELECT * FROM lesson_calculation_attempts
+            WHERE run_id=:run_id AND target=:target AND route=:route AND bucket=:bucket ORDER BY sequence""",
+            target=target, route=route, bucket=bucket).mappings().all()
         actual = budget["initial_seconds"] + sum(row["elapsed_seconds"] for row in rows)
         reserved = sum(row["reserved_upper_seconds"] for row in rows)
         operations = []
@@ -175,7 +190,7 @@ class BudgetLedger:
                 "operations": operations}
 
     def summary(self, target, route, bucket):
-        with closing(self._connect()) as db:
+        with self._store.transaction() as db:
             return self._summary(db, target, route, bucket)
 
     @staticmethod
@@ -198,9 +213,10 @@ class BudgetLedger:
             if row["receipt"] != encoded:
                 raise BudgetConflict("budget.receipt_reuse_mismatch")
             return
-        db.execute("""UPDATE calculation_attempts SET status='settled',elapsed_seconds=?,
-                      reserved_upper_seconds=0,receipt=? WHERE attempt_id=?""",
-                   (receipt["elapsed_seconds"], encoded, row["attempt_id"]))
+        self._execute(db, """UPDATE lesson_calculation_attempts
+            SET status='settled',elapsed_seconds=:elapsed_seconds,reserved_upper_seconds=0,receipt=:receipt
+            WHERE run_id=:run_id AND attempt_id=:attempt_id""",
+            elapsed_seconds=receipt["elapsed_seconds"], receipt=encoded, attempt_id=row["attempt_id"])
 
     def _read_receipt(self, row):
         path = self._receipt_path(row["attempt_id"])
@@ -211,26 +227,27 @@ class BudgetLedger:
 
     def recover(self, target, route, owner):
         """Import completed work or retain an explicit unknown upper reservation."""
-        with closing(self._connect()) as db:
-            db.execute("BEGIN IMMEDIATE")
+        with self._store.transaction(write=True) as db:
             self._require_owner(db, target, route, owner)
-            rows = db.execute("SELECT * FROM calculation_attempts WHERE target=? AND route=? AND status!='settled'",
-                              (target, route)).fetchall()
+            rows = self._execute(db, """SELECT * FROM lesson_calculation_attempts
+                WHERE run_id=:run_id AND target=:target AND route=:route AND status!='settled'
+                ORDER BY sequence""", target=target, route=route).mappings().all()
             recovered = []
             for row in rows:
                 receipt = self._read_receipt(row)
                 if receipt is not None:
                     self._settle(db, row, receipt)
                 elif row["owner"] != owner:
-                    db.execute("UPDATE calculation_attempts SET status='interrupted_unknown' WHERE attempt_id=?",
-                               (row["attempt_id"],))
-                updated = db.execute("SELECT * FROM calculation_attempts WHERE attempt_id=?",
-                                     (row["attempt_id"],)).fetchone()
+                    self._execute(db, """UPDATE lesson_calculation_attempts SET status='interrupted_unknown'
+                        WHERE run_id=:run_id AND attempt_id=:attempt_id""", attempt_id=row["attempt_id"])
+                updated = self._execute(db, """SELECT * FROM lesson_calculation_attempts
+                    WHERE run_id=:run_id AND attempt_id=:attempt_id""",
+                    attempt_id=row["attempt_id"]).mappings().one()
                 recovered.append(self._attempt(updated))
-            buckets = [row[0] for row in db.execute(
-                "SELECT bucket FROM calculation_budgets WHERE target=? AND route=?", (target, route))]
+            buckets = self._execute(db, """SELECT bucket FROM lesson_calculation_budgets
+                WHERE run_id=:run_id AND target=:target AND route=:route ORDER BY bucket""",
+                target=target, route=route).scalars().all()
             summaries = {bucket: self._summary(db, target, route, bucket) for bucket in buckets}
-            db.commit()
             return {"recovered": recovered, "summaries": summaries}
 
     def begin(self, target, route, bucket, operation_key, input_hash, owner, *, allowance_seconds=None):
@@ -241,12 +258,13 @@ class BudgetLedger:
         """
         _text(operation_key, "operation_key")
         _text(input_hash, "input_hash")
-        with closing(self._connect()) as db:
-            db.execute("BEGIN IMMEDIATE")
+        exhausted = None
+        with self._store.transaction(write=True) as db:
             self._require_owner(db, target, route, owner)
-            previous = db.execute("""SELECT * FROM calculation_attempts
-                WHERE target=? AND route=? AND bucket=? AND operation_key=? ORDER BY ordinal DESC LIMIT 1""",
-                                  (target, route, bucket, operation_key)).fetchone()
+            previous = self._execute(db, """SELECT * FROM lesson_calculation_attempts
+                WHERE run_id=:run_id AND target=:target AND route=:route AND bucket=:bucket
+                AND operation_key=:operation_key ORDER BY ordinal DESC LIMIT 1""",
+                target=target, route=route, bucket=bucket, operation_key=operation_key).mappings().one_or_none()
             ordinal = 1
             if previous is not None:
                 if previous["input_hash"] != input_hash:
@@ -256,39 +274,44 @@ class BudgetLedger:
                     receipt = self._read_receipt(previous)
                     if receipt is not None:
                         self._settle(db, previous, receipt)
-                        previous = db.execute("SELECT * FROM calculation_attempts WHERE attempt_id=?",
-                                              (previous["attempt_id"],)).fetchone()
+                        previous = self._execute(db, """SELECT * FROM lesson_calculation_attempts
+                            WHERE run_id=:run_id AND attempt_id=:attempt_id""",
+                            attempt_id=previous["attempt_id"]).mappings().one()
                     else:
                         raise BudgetPending(self._attempt(previous))
                 receipt = json.loads(previous["receipt"])
                 if receipt["status"] != "parent_lost":
                     summary = self._summary(db, target, route, bucket)
-                    db.commit()
                     return {**self._attempt(previous), "reused": True,
                             "remaining_seconds": summary["remaining_seconds"], "summary": summary}
             summary = self._summary(db, target, route, bucket)
             remaining = summary["remaining_seconds"]
             if remaining <= 0:
-                # A receipt imported above must remain settled even if its
-                # parent-lost attempt exhausted the allowance before retry.
-                db.commit()
-                raise BudgetExhausted(summary)
-            if allowance_seconds is not None:
-                remaining = min(remaining, _seconds(allowance_seconds, "allowance_seconds"))
-            attempt_id = uuid.uuid4().hex
-            db.execute("INSERT INTO calculation_attempts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL)",
-                       (attempt_id, target, route, bucket, operation_key, input_hash, ordinal, owner,
-                        "pending", remaining, 0.0, remaining))
-            row = db.execute("SELECT * FROM calculation_attempts WHERE attempt_id=?", (attempt_id,)).fetchone()
-            summary = self._summary(db, target, route, bucket)
-            db.commit()
-            return {**self._attempt(row), "reused": False, "remaining_seconds": remaining, "summary": summary}
+                exhausted = BudgetExhausted(summary)
+            else:
+                if allowance_seconds is not None:
+                    remaining = min(remaining, _seconds(allowance_seconds, "allowance_seconds"))
+                attempt_id = uuid.uuid4().hex
+                row = self._execute(db, """INSERT INTO lesson_calculation_attempts
+                    (run_id,attempt_id,target,route,bucket,operation_key,input_hash,ordinal,owner,status,
+                     allowance_seconds,elapsed_seconds,reserved_upper_seconds,receipt)
+                    VALUES (:run_id,:attempt_id,:target,:route,:bucket,:operation_key,:input_hash,:ordinal,:owner,
+                            'pending',:allowance_seconds,0,:allowance_seconds,NULL) RETURNING *""",
+                    attempt_id=attempt_id, target=target, route=route, bucket=bucket,
+                    operation_key=operation_key, input_hash=input_hash, ordinal=ordinal,
+                    owner=owner, allowance_seconds=remaining).mappings().one()
+                summary = self._summary(db, target, route, bucket)
+                result = {**self._attempt(row), "reused": False, "remaining_seconds": remaining, "summary": summary}
+        if exhausted is not None:
+            raise exhausted
+        return result
 
     def finish(self, attempt_id, owner, receipt=None):
         """Settle exactly once. Durable receipt reuse does not depend on its file surviving."""
-        with closing(self._connect()) as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT * FROM calculation_attempts WHERE attempt_id=?", (attempt_id,)).fetchone()
+        with self._store.transaction(write=True) as db:
+            row = self._execute(db, """SELECT * FROM lesson_calculation_attempts
+                WHERE run_id=:run_id AND attempt_id=:attempt_id""",
+                attempt_id=attempt_id).mappings().one_or_none()
             if row is None:
                 raise ValueError("budget.unknown_attempt")
             self._require_owner(db, row["target"], row["route"], owner)
@@ -298,5 +321,4 @@ class BudgetLedger:
                 raise BudgetPending(self._attempt(row))
             self._settle(db, row, receipt)
             summary = self._summary(db, row["target"], row["route"], row["bucket"])
-            db.commit()
             return {"receipt": receipt, "summary": summary}

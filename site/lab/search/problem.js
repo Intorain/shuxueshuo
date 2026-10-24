@@ -644,9 +644,14 @@ async function openPart(index) {
 async function retryLesson() {
   if (privateStopped) return;
   if (!searchId) return toast('原型不能重试');
+  const ticket = liveTicket;
   const response = await searchFetch(`/api/search/problems/${searchId}/lesson`, {method: 'POST'}).catch(() => null);
-  if (privateStopped) return;
-  if (!response?.ok) return toast('重试失败，请稍后再试');
+  if (privateStopped || ticket !== liveTicket) return;
+  if (!response?.ok) {
+    const body = await response?.json().catch(() => ({}));
+    if (privateStopped || ticket !== liveTicket) return;
+    return toast(window.SearchErrors.message(body?.detail, '重试失败，请稍后再试'));
+  }
   resumeLesson();
 }
 
@@ -659,12 +664,16 @@ async function continueCalculation() {
   try {
     const response = await searchFetch(url, {method: 'POST'});
     if (privateStopped || ticket !== liveTicket) return;
-    if (!response.ok) throw new Error('resume rejected');
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      if (privateStopped || ticket !== liveTicket) return;
+      return toast(window.SearchErrors.message(body?.detail, '暂时无法继续计算，请稍后重试'));
+    }
     action.hidden = true;
     void pollLesson();
     await streamTransport?.refresh();
-  } catch { if (!privateStopped) toast('暂时无法继续计算，请稍后重试'); }
-  finally { if (!privateStopped) action.disabled = false; }
+  } catch { if (!privateStopped && ticket === liveTicket) toast('暂时无法继续计算，请稍后重试'); }
+  finally { if (!privateStopped && ticket === liveTicket) action.disabled = false; }
 }
 
 const LESSON_MISSES = 10;
@@ -746,7 +755,7 @@ async function retry() {
     const body = await response.json().catch(() => ({}));
     if (privateStopped) return;
     if (response.ok) { location.href = `problem.html?search=${body.search_id}`; return; }
-    toast(`重试失败：${body.detail || response.status}`);
+    toast(window.SearchErrors.message(body.detail, `重试失败：${body.detail || response.status}`));
   } catch (error) {
     if (!privateStopped) toast(`重试失败：${error.message}`);
   }

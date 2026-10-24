@@ -307,7 +307,7 @@ def test_manual_rotation_requires_an_existing_page(tmp_path, monkeypatch):
 
 
 def test_large_jpeg_has_a_small_preview_but_keeps_full_resolution_crop_pixels(tmp_path, monkeypatch):
-    photograph = Image.new("RGB", (4000, 3000), (238, 232, 220))
+    photograph = Image.new("RGB", (4000, 2500), (238, 232, 220))
     draw = ImageDraw.Draw(photograph)
     # Thin, differently spaced strokes survive in the full-resolution crop
     # but would disappear or shift if the preview were used for stage one.
@@ -322,7 +322,7 @@ def test_large_jpeg_has_a_small_preview_but_keeps_full_resolution_crop_pixels(tm
                      lambda self, path: _observed(canonical.size, _orientation(90)))
     received, done = _capture_stage_one(monkeypatch)
     page = _upload(client, content=content)
-    assert [page["width"], page["height"]] == [3000, 4000]
+    assert [page["width"], page["height"]] == [2500, 4000]
     assert page["preview_url"] != page["image_url"]
     preview = client.get(page["preview_url"])
     assert preview.status_code == 200
@@ -330,14 +330,14 @@ def test_large_jpeg_has_a_small_preview_but_keeps_full_resolution_crop_pixels(tm
     assert len(preview.content) < 1_000_000
     with Image.open(BytesIO(preview.content)) as image:
         assert image.format == "JPEG"
-        assert image.size == (1200, 1600)
+        assert image.size == (1000, 1600)
     _assert_image(tmp_path / "pages" / page["page_id"] / "page.png", canonical)
     box = [0.12, 0.13, 0.27, 0.29]
-    crop = canonical.crop((360, 520, 810, 1160))
+    crop = canonical.crop((300, 520, 675, 1160))
     started = client.post("/api/search/problems", json={"page_id": page["page_id"], "box": box})
     assert started.status_code == 200, started.text
     assert done.wait(5)
-    assert started.json()["crop_size"] == [450, 640]
+    assert started.json()["crop_size"] == [375, 640]
     assert received["png"] == question_png(crop)
     assert (received["output"] / "question.png").read_bytes() == received["png"]
 

@@ -3,6 +3,8 @@
 P1 提供 27 张产品表、不可变产物存储和内部事务接口。P2 已增加本地上传 API、页面 HTTP 路由、RabbitMQ/Celery 和 Review；完整启停命令见 [P2 本地运行手册](../../docs/product-p2-local-runbook.md)。本文件继续说明数据库底座和后续服务器部署。
 不读取或迁移旧 Review SQLite。主站静态页面不进发布包：Nginx 直接读取服务器仓库 `site/`，用 `git pull` 更新；教学内容版本须与学习库一致，步骤见 [学习内容正式替换](learning-rollout.md)。
 
+拍题学现已接入单机生产 API、共享 OCR sidecar、清理维护及 HTTP/WebSocket 代理；接入约束与不联网的镜像演练方法见[拍题学单机生产说明](../../docs/search-single-host-production.md)。这不表示已部署线上，也不替代真实供应商和备份恢复验收。
+
 ## 本地原生 PostgreSQL
 
 预装 uv；macOS 预装 Homebrew。安装入口按需安装 `postgresql@17`，不要求 Docker。

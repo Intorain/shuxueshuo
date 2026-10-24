@@ -1,4 +1,4 @@
-"""Authenticated local student search backed by PostgreSQL and private files."""
+"""Authenticated student search backed by PostgreSQL and private files."""
 
 import asyncio
 import json
@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 import threading
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from contextvars import copy_context
@@ -66,6 +67,9 @@ from .stage_one import (
 )
 
 MAX_UPLOAD = 20 * 1024 * 1024
+MAX_UPLOAD_PIXELS = 32_000_000
+IMAGE_PREPARE_LOCK = threading.Lock()
+PAGE_SIDE = 4096
 PREVIEW_SIDE = 1600
 MAX_PAGE_ROTATIONS = 8
 WS_AUTH_INTERVAL = 3.0
@@ -88,8 +92,16 @@ def search_user(request: Request, user: Annotated[dict, Depends(require_user)],
         raise HTTPException(409, "search.account_changed")
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         require_origin(request, auth)
+    if request.method == "POST":
+        require_accepting(request.app)
     request.state.search_user = user
     return user
+
+
+def require_accepting(app):
+    drain_path = getattr(app.state, "search_drain_path", None)
+    if not getattr(app.state, "search_accepting", True) or (drain_path is not None and drain_path.exists()):
+        raise HTTPException(503, "service.draining")
 
 
 def repository(request):
@@ -157,8 +169,9 @@ class RotatePageRequest(BaseModel):
 
 def _save_preview(page, path):
     """Publish a bounded preview atomically, also for legacy pages on first read."""
-    preview = page.copy()
-    preview.thumbnail((PREVIEW_SIDE, PREVIEW_SIDE), Image.Resampling.LANCZOS)
+    with IMAGE_PREPARE_LOCK:
+        preview = page.copy()
+        preview.thumbnail((PREVIEW_SIDE, PREVIEW_SIDE), Image.Resampling.LANCZOS)
     temporary = None
     try:
         with NamedTemporaryFile(dir=path.parent, suffix=".jpg", delete=False) as output:
@@ -204,8 +217,14 @@ def create_search_router(root, *, stage_three_hooks=None):
     errors_lock = threading.Lock()
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        await run_in_threadpool(runs.shutdown, wait=True)
+        try:
+            yield
+        finally:
+            app.state.search_accepting = False
+            try:
+                await run_in_threadpool(runs.shutdown, wait=True)
+            finally:
+                await run_in_threadpool(ocr.close)
 
     router = APIRouter(prefix="/api/search", route_class=SearchRoute, lifespan=lifespan,
                        dependencies=[Depends(execution_storage_scope)])
@@ -227,8 +246,8 @@ def create_search_router(root, *, stage_three_hooks=None):
     def write_page(source, repo, user, page_id, *, parent_page_id=None, manual_degrees=None, rotation_count=0):
         """Run the complete image/OCR/artifact pipeline on one worker thread.
 
-        source.png is EXIF-normalized upload input, or an already manually
-        rotated parent page. Worker angles always refer to that source; public
+        source.png is bounded EXIF-normalized upload input, or an already
+        manually rotated parent page. Worker angles refer to that source; public
         manual angles instead refer to the immutable parent page.png.
         """
         directory = repo.storage.path(repo.storage.page_key(page_id))
@@ -248,7 +267,8 @@ def create_search_router(root, *, stage_three_hooks=None):
                 orientation = {"status": "manual", "rotation_degrees": manual_degrees,
                                "predicted_degrees": None, "confidence": None}
             else:
-                page = rotate_clockwise(source, orientation["rotation_degrees"])
+                with IMAGE_PREPARE_LOCK:
+                    page = rotate_clockwise(source, orientation["rotation_degrees"])
         except OcrWorkerError as exc:
             LOGGER.exception("Student page OCR failed")
             raise HTTPException(503, "ocr.unavailable") from exc
@@ -270,8 +290,18 @@ def create_search_router(root, *, stage_three_hooks=None):
 
     def prepare_upload(body, repo, user):
         try:
-            with Image.open(BytesIO(body)) as image:
-                page = ImageOps.exif_transpose(image).convert("RGB")
+            with IMAGE_PREPARE_LOCK, warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(BytesIO(body)) as image:
+                    if image.width * image.height > MAX_UPLOAD_PIXELS:
+                        raise HTTPException(413, "page.pixels")
+                    scale = min(1.0, PAGE_SIDE / max(image.size))
+                    image.draft("RGB", (max(1, round(image.width * scale)), max(1, round(image.height * scale))))
+                    image.thumbnail((PAGE_SIDE, PAGE_SIDE), Image.Resampling.LANCZOS)
+                    page = ImageOps.exif_transpose(image).convert("RGB")
+                    page.info.clear()
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+            raise HTTPException(413, "page.pixels") from exc
         except (UnidentifiedImageError, OSError) as exc:
             raise HTTPException(400, "page.not_an_image") from exc
         return prepare_page(page, repo, user)
@@ -298,8 +328,10 @@ def create_search_router(root, *, stage_three_hooks=None):
                 raise HTTPException(409, "page.rotation_metadata_invalid")
             if count >= MAX_PAGE_ROTATIONS:
                 raise HTTPException(409, "page.rotation_limit")
-            with Image.open(directory / "page.png") as page:
+            with IMAGE_PREPARE_LOCK, Image.open(directory / "page.png") as page:
+                page.thumbnail((PAGE_SIDE, PAGE_SIDE), Image.Resampling.LANCZOS)
                 source = rotate_clockwise(page.convert("RGB"), body.degrees)
+                source.info.clear()
         return prepare_page(source, repository(request), request.state.search_user,
                             parent_page_id=page_id, manual_degrees=body.degrees, rotation_count=count + 1)
 
@@ -331,16 +363,17 @@ def create_search_router(root, *, stage_three_hooks=None):
             raise HTTPException(503, "stage_one.disabled: start run_site.py with RUN_LLM_INTEGRATION=1")
         with repo.storage.page_lock(body.page_id, blocking=True):
             directory = page_dir(request, body.page_id)
-            with Image.open(directory / "page.png") as page:
+            with IMAGE_PREPARE_LOCK, Image.open(directory / "page.png") as page:
                 width, height = page.size
                 crop = page.crop((round(x0 * width), round(y0 * height), round(x1 * width), round(y1 * height)))
-        png = question_png(crop)
+                png = question_png(crop)
         with Image.open(BytesIO(png)) as sent:
             size = list(sent.size)
         search_id = secrets.token_hex(6)
         output = repo.storage.path(repo.storage.submission_key(search_id))
         lifecycle = repo.storage.lifecycle_lock(search_id)
         try:
+            require_accepting(request.app)
             output.mkdir(parents=True)
             crop.save(output / "original.png")
             save(output / "crop.json", {"page_id": body.page_id, "box": [x0, y0, x1, y1], "page_size": [width, height],
@@ -504,6 +537,7 @@ def create_search_router(root, *, stage_three_hooks=None):
             lifecycle.close()
             raise
         try:
+            require_accepting(request.app)
             if not repo.set_state(search_id, lesson_state="running"):
                 raise HTTPException(404, "search.not_found")
             stage_three.reserve_retry(directory)
@@ -539,7 +573,7 @@ def create_search_router(root, *, stage_three_hooks=None):
             raise
         return {"status": "running"}
 
-    def queue_execution(search_id, directory, operation, *, repo, user, validate=None):
+    def queue_execution(search_id, directory, operation, *, repo, user, app, validate=None):
         with errors_lock:
             if search_id in judging:
                 raise HTTPException(409, "lesson.running")
@@ -559,6 +593,7 @@ def create_search_router(root, *, stage_three_hooks=None):
         # retry acquired this lease. Validate its identity while reserved,
         # before queueing work or changing the in-memory running marker.
         try:
+            require_accepting(app)
             if validate is not None:
                 validate()
             if not repo.set_state(search_id, lesson_state="running"):
@@ -630,7 +665,7 @@ def create_search_router(root, *, stage_three_hooks=None):
         if (attempt / "stage-three").exists():
             return stage_three.presentation(directory, search_id)
         queue_execution(search_id, directory, lambda: stage_three.run_stage_three(attempt, hooks=stage_three_hooks),
-                        repo=repository(request), user=request.state.search_user,
+                        repo=repository(request), user=request.state.search_user, app=request.app,
                         validate=lambda: stage_three.assert_current_attempt(directory, attempt))
         return {"status": "running", **stage_three.presentation(directory, search_id, running=True)}
 
@@ -645,7 +680,7 @@ def create_search_router(root, *, stage_three_hooks=None):
             return {"status": "completed", **stage_three.presentation(directory, search_id)}
         queue_execution(search_id, directory,
                         lambda: stage_three.resume_stage_three(directory, run_id, hooks=stage_three_hooks),
-                        repo=repository(request), user=request.state.search_user,
+                        repo=repository(request), user=request.state.search_user, app=request.app,
                         validate=lambda: stage_three.assert_resumable(directory, output))
         return {"status": "running", "stream": stage_three.stream_descriptor(search_id, output)}
 

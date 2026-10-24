@@ -69,8 +69,8 @@ def test_main_site_static_catalog_gzip_and_etag(tmp_path, via_cdn):
     repo = Path(__file__).resolve().parents[2]
     template = (repo / 'deploy/nginx/shuxueshuo.conf').read_text()
     # Test each deployed location; TLS certificates are unrelated to gzip.
-    blocks = template.split('\nserver {')
-    production = 'server {' + (blocks[1] if via_cdn else blocks[2].split('# -----', 1)[0])
+    blocks = re.findall(r'^server \{.*?^\}', template, re.MULTILINE | re.DOTALL)
+    production = next(block for block in blocks if 'root ' in block and ('listen 80;' in block) == via_cdn)
     production = re.sub(r'listen (?:80|443 ssl http2);', 'listen 8080;', production)
     production = re.sub(r'listen \[::\]:(?:80|443 ssl http2);', '', production)
     production = re.sub(r'^\s*ssl_(?:certificate|certificate_key|protocols)\s+.*?;', '', production, flags=re.M)
@@ -83,7 +83,8 @@ def test_main_site_static_catalog_gzip_and_etag(tmp_path, via_cdn):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
         bodies[path] = body
-    (tmp_path / 'nginx.conf').write_text('events {}\nhttp { include /etc/nginx/mime.types; access_log off;\n' + production + '\n}')
+    shared_configuration = template.split('\nserver {', 1)[0]
+    (tmp_path / 'nginx.conf').write_text('events {}\nhttp { include /etc/nginx/mime.types; access_log off;\n' + shared_configuration + production + '\n}')
     name = 'main-site-gzip-test-' + uuid4().hex
 
     def docker(*args):

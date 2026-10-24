@@ -37,6 +37,13 @@ internal/docs/**
 !site/
 !site/assets/
 !site/assets/**
+!site/data/
+!site/data/knowledge-next/
+!site/data/knowledge-next/**
+!site/data/graph-walk/
+!site/data/graph-walk/quadratic-always-q01.source.json
+!site/knowledge/
+!site/knowledge/graph.json
 site/assets/xiaohongshu
 site/assets/xiaohongshu/**
 !deploy/

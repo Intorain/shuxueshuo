@@ -158,11 +158,12 @@ function pageResult(result) {
 class PageDetectionError extends Error {}
 
 function uploadErrorMessage(status, detail) {
+  if (detail === 'page.pixels') return '照片分辨率超过 3200 万像素，请缩小图片后重试。';
   if (status === 413) return '照片太大，请压缩后重试。';
   if (detail === 'page.not_an_image') return '图片格式不受支持或文件已损坏，请改用 JPEG、PNG 或 WebP。';
   if (detail === 'page.size') return '照片内容为空，请重新选择照片。';
   if (detail.startsWith('ocr.unavailable')) return '识别服务暂不可用，请稍后重试。';
-  return `照片处理失败（HTTP ${status}${detail ? `：${detail}` : ''}），请重试。`;
+  return window.SearchErrors.message(detail, `照片处理失败（HTTP ${status}${detail ? `：${detail}` : ''}），请重试。`);
 }
 
 async function detect(blob, fallback, url) {
@@ -358,7 +359,8 @@ async function rotatePage() {
       const limited = error.message === 'page.rotation_limit';
       if (limited) rotationLimitedPageId = sourcePageId;
       installPage(previous.result, previous.image, token, previous);
-      const message = limited ? '已达到连续旋转次数上限，请重新选择照片' : '旋转失败，已保留原图和选区，请重试';
+      const message = window.SearchErrors.message(error.message,
+        limited ? '已达到连续旋转次数上限，请重新选择照片' : '旋转失败，已保留原图和选区，请重试');
       if (limited) Object.assign($('#cm-proto-note'), {textContent: message, hidden: false});
       toast(message);
     }
@@ -414,7 +416,8 @@ async function go(rect, expectedGeneration = readyGeneration) {
     if (submission !== pending || expectedGeneration !== generation) return;
     if (response.ok) { location.href = `problem.html?search=${body.search_id}`; return; }
     const detail = String(body.detail || response.status);
-    toast(detail.startsWith('stage_one.disabled') ? '本地没开启阶段①：用 RUN_LLM_INTEGRATION=1 启动 run_site.py' : `提交失败：${detail}`);
+    toast(window.SearchErrors.message(detail,
+      detail.startsWith('stage_one.disabled') ? '本地没开启阶段①：用 RUN_LLM_INTEGRATION=1 启动 run_site.py' : `提交失败：${detail}`));
   } catch {
     if (submission === pending && expectedGeneration === generation) toast('提交失败，请检查连接后重试');
   } finally {

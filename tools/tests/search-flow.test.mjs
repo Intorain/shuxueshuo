@@ -45,6 +45,7 @@ function setup(file, search = '') {
   context.window.SearchSession = {user: {id: 'student-a'}, epoch: 1,
     request: (...args) => context.fetch(...args), init: async () => {}, login: async () => ({id: 'student-a'}),
     valid: ticket => ticket === 1, scope: id => `search-progress:v1:student-a:${id}:`, writable: () => true};
+  vm.runInContext(fs.readFileSync(new URL('../../site/lab/search/search-errors.js', import.meta.url), 'utf8'), context);
   vm.runInContext(fs.readFileSync(new URL(`../../site/lab/search/${file}`, import.meta.url), 'utf8'), context);
   return {context, element, location, delays, draws, imageLoads, documentListeners, windowListeners, setImageDecode(fn) { imageDecoder = fn; }};
 }
@@ -544,10 +545,14 @@ const recognitionFailures = [
     response: () => ({ok: false, status: 503, json: async () => ({detail: 'ocr.unavailable: private_worker_failure'})})},
   {name: 'oversized image rejected by the API', reason: /照片太大.*压缩后重试/,
     response: () => ({ok: false, status: 413, json: async () => ({detail: 'page.size'})})},
+  {name: 'excessive image resolution rejected by the API', reason: /^照片分辨率超过 3200 万像素，请缩小图片后重试。$/,
+    response: () => ({ok: false, status: 413, json: async () => ({detail: 'page.pixels'})})},
   {name: 'oversized image rejected by a proxy with HTML', reason: /照片太大.*压缩后重试/,
     response: () => ({ok: false, status: 413, json: async () => { throw new SyntaxError('Unexpected token < in JSON'); }})},
   {name: 'invalid success JSON', reason: /识别服务返回了无效数据.*重试/,
     response: () => ({ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected token < in JSON'); }})},
+  {name: 'maintenance', reason: /^系统维护中，请稍后再试。$/,
+    response: () => ({ok: false, status: 503, json: async () => ({detail: 'service.draining'})})},
 ];
 
 for (const failure of recognitionFailures) test(`${failure.name} remains a recognition error and retries the same upload without mocked boxes`, async () => {
@@ -619,6 +624,125 @@ function captureToasts(context) {
   context.toast = message => { messages.push(message); toast(message); };
   return messages;
 }
+
+const maintenanceMessage = '系统维护中，请稍后再试。';
+const maintenanceResponse = () => ({ok: false, status: 503, json: async () => ({detail: 'service.draining'})});
+const postActions = ['upload', 'rotate', 'submit', 'retry', 'retryLesson', 'start', 'resume'];
+
+async function postAction(action) {
+  const camera = ['upload', 'rotate', 'submit'].includes(action);
+  const harness = setup(camera ? 'camera.js' : 'problem.js', camera ? '' : '?search=0123456789ab');
+  const {context, element} = harness;
+  if (camera && action !== 'upload') {
+    context.fetch = async () => response(cameraPage('current', [.1, .2, .6, .5], 'upright'));
+    await context.openPick('blob:current', {type: 'image/jpeg'}, []);
+    if (action === 'rotate') context.startCrop({x: .2, y: .3, w: .4, h: .5});
+  }
+  if (!camera) {
+    context.cropFixture = crop;
+    vm.runInContext('liveCrop = cropFixture; lesson.data = {status: "completed", goals: []}', context);
+    context.pollLesson = () => assert.fail('a rejected POST must not start polling');
+    context.resumeLesson = () => assert.fail('a rejected POST must not resume the lesson');
+    if (action === 'resume') vm.runInContext(`lesson.data.stream = {run_id: 'preserved-run',
+      snapshot_url: '/api/search/problems/0123456789ab/lesson/preserved-run/snapshot'}`, context);
+    element('#pq-stream-action').hidden = false;
+  }
+  const invoke = action === 'upload' ? () => context.openPick('blob:current', {type: 'image/jpeg'}, [])
+    : action === 'rotate' ? () => context.rotatePage()
+      : action === 'submit' ? () => context.go(rect)
+        : ['start', 'resume'].includes(action) ? () => context.continueCalculation() : () => context[action]();
+  const url = {upload: '/api/search/pages', rotate: '/api/search/pages/current/rotate',
+    submit: '/api/search/problems', retry: '/api/search/problems', retryLesson: '/api/search/problems/0123456789ab/lesson',
+    start: '/api/search/problems/0123456789ab/lesson/start',
+    resume: '/api/search/problems/0123456789ab/lesson/preserved-run/resume'}[action];
+  return {...harness, camera, invoke, url};
+}
+
+for (const action of postActions) test(`maintenance at ${action} gives the shared notice without losing the current work or retry identity`, async () => {
+  const {context, element, location, invoke, url, camera} = await postAction(action);
+  const requests = [];
+  const priorLesson = camera ? null : vm.runInContext('lesson.data', context);
+  const priorImage = element('#cm-photo').src;
+  const priorBoxes = element('#cm-boxes').innerHTML;
+  context.fetch = async (target, options) => { requests.push({target, options}); return maintenanceResponse(); };
+  await invoke();
+  assert.equal(requests.length, 1, 'rejected work must not retry automatically');
+  assert.equal(requests[0].target, url);
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(element(action === 'upload' ? '#cm-proto-note' : '#sq-toast').textContent, maintenanceMessage);
+  assert.equal(location.href, '');
+  assert.equal(context.window.SearchSession.user.id, 'student-a');
+  if (camera && action !== 'upload') {
+    assert.equal(vm.runInContext('pageId', context), 'current');
+    assert.equal(element('#cm-photo').src, priorImage);
+    assert.equal(element('#cm-boxes').innerHTML, priorBoxes);
+    assert.equal(element('#cm-go').disabled, false);
+    assert.equal(element('#cm-rotate').disabled, false);
+    if (action === 'rotate') {
+      assert.equal(element('#cm-crop').hidden, false);
+      assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(crop)', context)), {x: .2, y: .3, w: .4, h: .5});
+    }
+  }
+  if (!camera) {
+    assert.equal(vm.runInContext('lesson.data', context), priorLesson);
+    assert.equal(vm.runInContext('privateStopped', context), false);
+    assert.equal(element('#pq-stream-action').disabled, false);
+    assert.equal(element('[data-retry]').disabled, false);
+  }
+  if (action === 'submit' || action === 'retry') {
+    context.fetch = async (target, options) => { requests.push({target, options}); return response({search_id: 'recovered'}); };
+    await invoke();
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].options.body, requests[0].options.body, 'manual retry reuses the original idempotency key');
+    assert.equal(location.href, 'problem.html?search=recovered');
+  }
+});
+
+for (const action of postActions) for (const boundary of ['response', 'json']) test(`late ${action} maintenance ${boundary} cannot update the page after an account change`, async () => {
+  const {context, element, location, invoke, camera} = await postAction(action);
+  const pending = deferred(), messages = captureToasts(context);
+  let requests = 0;
+  context.fetch = async () => {
+    requests++;
+    return boundary === 'response' ? pending.promise : {ok: false, status: 503, json: () => pending.promise};
+  };
+  const active = invoke();
+  await tick();
+  context.window.SearchSession.user = {id: 'student-b'};
+  if (camera) context.clearPrivateCamera(); else context.stopPrivateLesson();
+  const note = element('#cm-proto-note').textContent;
+  pending.resolve(boundary === 'response' ? maintenanceResponse() : {detail: 'service.draining'});
+  await active;
+  assert.equal(requests, 1);
+  assert.deepEqual(messages, []);
+  assert.equal(location.href, '');
+  assert.equal(element('#cm-proto-note').textContent, note);
+  assert.equal(vm.runInContext(camera ? 'pageId' : 'lesson.data', context), null);
+});
+
+for (const action of ['retryLesson', 'start', 'resume']) for (const failure of ['other-503', 'invalid-json', 'network']) test(`${action} keeps its ordinary failure notice for ${failure}`, async () => {
+  const {context, element, invoke} = await postAction(action);
+  context.fetch = async () => {
+    if (failure === 'network') throw new TypeError('Failed to fetch');
+    return {ok: false, status: 503, json: async () => {
+      if (failure === 'invalid-json') throw new SyntaxError('invalid JSON');
+      return {detail: 'ocr.unavailable'};
+    }};
+  };
+  await invoke();
+  assert.equal(element('#sq-toast').textContent,
+    action === 'retryLesson' ? '重试失败，请稍后再试' : '暂时无法继续计算，请稍后重试');
+  assert.equal(element('#pq-stream-action').disabled, false);
+});
+
+test('camera and problem pages load the versioned pure notice helper before their updated scripts', () => {
+  for (const [name, version] of [['camera', '20261024-32mp'], ['problem', '20261024-maintenance']]) {
+    const html = fs.readFileSync(new URL(`../../site/lab/search/${name}.html`, import.meta.url), 'utf8');
+    const helper = html.indexOf('src="search-errors.js?v=20261024-maintenance" defer');
+    assert.ok(helper >= 0);
+    assert.ok(html.indexOf(`src="${name}.js?v=${version}" defer`) > helper);
+  }
+});
 
 for (const status of ['corrected', 'manual', 'upright', 'uncertain']) test(`${status} orientation only announces an automatic correction when appropriate`, async () => {
   const {context, element} = setup('camera.js');

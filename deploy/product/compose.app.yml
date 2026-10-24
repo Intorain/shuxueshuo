@@ -36,6 +36,7 @@ services:
       PYTHONPATH: /opt/shuxueshuo/server
       PRODUCT_OCR_BIND: 0.0.0.0
       PRODUCT_OCR_PORT: "8080"
+      PRODUCT_DATA_DIR: /var/lib/shuxueshuo
     volumes:
       - ${PRODUCT_DATA_DIR:?data root required}:/var/lib/shuxueshuo
       - ${PRODUCT_REPO_HOST:?host repo path required}:/opt/shuxueshuo:ro
@@ -74,6 +75,7 @@ services:
       PRODUCT_FRONTEND_PORT: ${PRODUCT_FRONTEND_PORT:-3000}
       PRODUCT_PUBLIC_ORIGINS: ${PRODUCT_PUBLIC_ORIGINS:-https://studio.shuxueshuo.com}
       PRODUCT_OCR_URL: http://ocr:8080
+      PRODUCT_EXECUTION_STORAGE_CONTEXT_REQUIRED: "1"
       REVIEW_BACKEND: product
     ports:
       - "127.0.0.1:${PRODUCT_API_PORT:-8000}:8000"
@@ -83,7 +85,8 @@ services:
     working_dir: /app/server
     # Nginx reaches the container through the Docker bridge (172.19.0.1 on the server);
     # trusting the private Docker pool lets rate limits see the real client IP.
-    command: ["uvicorn", "shuxueshuo_server.main:app", "--host", "0.0.0.0", "--port", "8000", "--forwarded-allow-ips", "172.16.0.0/12"]
+    command: ["uvicorn", "shuxueshuo_server.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--forwarded-allow-ips", "172.16.0.0/12"]
+    stop_grace_period: 10m
     depends_on:
       postgres:
         condition: service_healthy

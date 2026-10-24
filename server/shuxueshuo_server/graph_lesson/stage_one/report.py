@@ -19,10 +19,6 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[4]
 CORPUS = ROOT / "server/tests/solver/fixtures/graph-guided-stage-one/quadratic-always"
-CASES = tuple(
-    case["case_id"]
-    for case in json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))["cases"]
-)
 TITLE = "图谱课程 · 阶段①调试报告"
 CSS = """
 :root{color-scheme:light;--ink:#172c35;--muted:#64757c;--line:#dce6e7;--teal:#087f79}
@@ -315,7 +311,10 @@ def render_batch(batch: Path, output: Path) -> Path:
     passed = sum(row.get("passed") is True for row in rows)
     p50 = f"{statistics.median(durations):.3f}s" if durations else "未记录"
     maximum = f"{max(durations):.3f}s" if durations else "未记录"
-    metrics = [("样本通过", f"{passed} / {len(rows)}"), ("题目覆盖", f"{len({row.get('case_id') for row in rows})} / {len(CASES)}"), ("阶段① P50", p50), ("阶段①最大耗时", maximum)]
+    requested = summary.get("requested_cases", _dict(batch / "batch-manifest.json").get("requested_cases"))
+    expected = (len(set(requested)) if isinstance(requested, list) and requested
+                and all(isinstance(case, str) for case in requested) else "未记录")
+    metrics = [("样本通过", f"{passed} / {len(rows)}"), ("题目覆盖", f"{len({row.get('case_id') for row in rows})} / {expected}"), ("阶段① P50", p50), ("阶段①最大耗时", maximum)]
     body = '<header><div class="eyebrow">GRAPH LESSON · STAGE 01</div><h1>' + TITLE + '</h1><p class="muted">题图 → 题意 → 数学特征。点击每个样本检查实际输入、独立金标差异与全部调用材料。</p><p>来源：synthetic-rendered 合成题图；本页展示已保存结果，不代表真实扫描识图验收。</p></header>'
     if summary.get("mode") == "offline_replay":
         body += '<section><h2>当前离线重评</h2><p>新网络调用 0 次。下表为当前代码重评结果；各样本页单独保留历史 live 结论，未修改历史批次。</p></section>'

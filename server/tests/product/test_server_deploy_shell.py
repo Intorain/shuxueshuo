@@ -11,7 +11,7 @@ import pytest
 from shuxueshuo_server.product.config import REPO
 
 
-def shell_fixture(tmp_path, *, site):
+def shell_fixture(tmp_path, *, site, services=False, failure=''):
     release = tmp_path / 'release'
     shutil.copytree(REPO / 'deploy/product', release / 'scripts')
     admin_id = 'sha256:' + 'a' * 64
@@ -33,6 +33,17 @@ def shell_fixture(tmp_path, *, site):
     teaching.mkdir(parents=True)
     if site:
         (teaching / 'version.json').write_text('{}')
+    if services:
+        with (release / 'release.env').open('a') as stream:
+            stream.write('PRODUCT_APP_IMAGE=sha256:' + 'c' * 64 + '\n')
+            stream.write('PRODUCT_RABBITMQ_IMAGE=sha256:' + 'd' * 64 + '\n')
+        (config / 'runtime.env').write_text(
+            "BROKER_PORT='5672'\nBROKER_USER='fixture'\nBROKER_PASSWORD='fixture'\n"
+            "BROKER_VHOST='fixture'\nBROKER_COOKIE='fixture'\n"
+            "API_PORT='8000'\nFRONTEND_PORT='3000'\n"
+        )
+        (repo / 'server').mkdir()
+        (repo / 'server/.env').write_text('')
 
     binary = tmp_path / 'bin'
     binary.mkdir()
@@ -41,6 +52,7 @@ def shell_fixture(tmp_path, *, site):
     docker.write_text(f'#!{sys.executable}\n' + '''
 import json
 import os
+from pathlib import Path
 import sys
 
 args = sys.argv[1:]
@@ -49,7 +61,9 @@ with open(os.environ['DOCKER_CALL_LOG'], 'a') as stream:
 if args[:2] == ['compose', 'version']:
     pass
 elif args[:2] == ['image', 'inspect']:
-    if args[3] == '{{.Id}}':
+    if len(args) == 3:
+        pass
+    elif args[3] == '{{.Id}}':
         print(args[-1])
     elif args[3] == '{{.Os}}/{{.Architecture}}':
         print('linux/amd64')
@@ -64,6 +78,18 @@ elif args[0] == 'run':
 elif args[0] == 'compose':
     if args[-3:] == ['ps', '-q', 'postgres']:
         print('fixture-postgres-container')
+    elif 'stop' in args:
+        assert Path(os.environ['TEST_DRAIN_MARKER']).exists(), args
+        if os.environ['TEST_SERVICE_FAILURE'] == 'stop-api' and args[-1] == 'api':
+            sys.exit(39)
+    elif 'up' in args:
+        if os.environ['TEST_SERVICE_FAILURE'] == 'up' and args[-1] == 'publisher':
+            sys.exit(39)
+    elif args[-1] == 'services-doctor':
+        assert Path(os.environ['TEST_DRAIN_MARKER']).exists(), args
+        if os.environ['TEST_SERVICE_FAILURE'] == 'doctor':
+            sys.exit(39)
+        print(json.dumps({'ok': True}))
     else:
         assert 'run' in args and 'admin' in args, args
         assert 'deploy' in args or 'verify-release' in args, args
@@ -80,7 +106,9 @@ else:
              '--release', str(release), '--data-dir', str(root), operation, *flags],
             env={**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'],
                  'DOCKER_CALL_LOG': str(log), 'TEST_POSTGRES_IMAGE': postgres_id,
-                 'PRODUCT_REPO_HOST': str(repo)},
+                 'PRODUCT_REPO_HOST': str(repo), 'PRODUCT_HOST_HOME': str(tmp_path / 'home'),
+                 'TEST_DRAIN_MARKER': str(root / 'locks/services-draining'),
+                 'TEST_SERVICE_FAILURE': failure},
             capture_output=True, text=True, check=False,
         )
     return release, root, repo, log, run
@@ -148,3 +176,36 @@ def test_strict_verify_checks_repository_before_configure_or_database(tmp_path, 
         assert not [args for args in calls if args[0] == 'compose' and args[1:] != ['version']]
         assert not (root / 'locks').exists()
         assert before == {str(file.relative_to(root)): file.read_bytes() for file in root.rglob('*') if file.is_file()}
+
+
+@pytest.mark.parametrize('failure', ['', 'stop-api'])
+def test_service_stop_drains_api_before_ocr_and_retains_marker(tmp_path, failure):
+    _, root, _, log, run = shell_fixture(tmp_path, site=False, services=True, failure=failure)
+    marker = root / 'locks/services-draining'
+    assert not marker.exists()
+    result = run('services-stop')
+    assert result.returncode == (39 if failure else 0), result.stderr
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    stops = [args[args.index('stop') + 1:] for args in calls if 'stop' in args]
+    assert stops == ([['api']] if failure else [['api'], ['worker', 'publisher'], ['ocr', 'rabbitmq']])
+    assert marker.exists()
+    assert not (root / 'locks/server-operation').exists()
+    if not failure:
+        assert json.loads(result.stdout.splitlines()[-1])['postgres'] == 'left_running'
+
+
+@pytest.mark.parametrize('operation', ['services-start', 'services-doctor'])
+@pytest.mark.parametrize('failure', ['', 'up', 'doctor'])
+def test_service_start_only_reopens_admission_after_health_checks(tmp_path, operation, failure):
+    _, root, _, log, run = shell_fixture(tmp_path, site=False, services=True, failure=failure)
+    marker = root / 'locks/services-draining'
+    marker.parent.mkdir()
+    marker.touch()
+    result = run(operation)
+    assert result.returncode == (39 if failure else 0), result.stderr
+    assert marker.exists() == bool(failure or operation == 'services-doctor')
+    assert not (root / 'locks/server-operation').exists()
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    assert any(args[-1] == 'verify-release' or args[-2:] == ['verify-release', '--site-optional'] for args in calls)
+    doctors = [args for args in calls if args[-1] == 'services-doctor']
+    assert len(doctors) == (0 if failure == 'up' else 1)

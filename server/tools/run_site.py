@@ -8,11 +8,9 @@ running stage one on a chosen question also needs RUN_LLM_INTEGRATION=1.
 """
 
 import argparse
-import asyncio
-import logging
 import os
 import secrets
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
 import uvicorn
@@ -21,7 +19,6 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 
 from shuxueshuo_server.auth.api import install_auth
@@ -31,8 +28,7 @@ from shuxueshuo_server.product.admin.cli import instance_lock
 from shuxueshuo_server.product.application import schema_head
 from shuxueshuo_server.product.config import REPO, Settings, write_private
 from shuxueshuo_server.product.db import engine
-from shuxueshuo_server.search.dev_api import create_search_router
-from shuxueshuo_server.search.repository import SearchRepository
+from shuxueshuo_server.search.application import install_search
 from shuxueshuo_server.tutor_demo.api import create_router
 
 
@@ -82,7 +78,6 @@ def create_local_app(settings, config):
     @asynccontextmanager
     async def lifespan(app):
         db = engine(settings.url())
-        cleaner = None
         try:
             with db.connect() as connection:
                 if (
@@ -92,33 +87,15 @@ def create_local_app(settings, config):
                     raise RuntimeError(
                         "Migrate the local database before starting the login site"
                     )
-            app.state.product = SimpleNamespace(db=db)
-            search = SearchRepository(db, settings.root / "work/search/private-v1")
-            app.state.search_repository = search
-            await run_in_threadpool(search.recover)
-            await run_in_threadpool(search.cleanup)
-
-            async def clean_search():
-                while True:
-                    await asyncio.sleep(60)
-                    try:
-                        await run_in_threadpool(search.cleanup)
-                    except Exception:
-                        logging.getLogger(__name__).exception("Search cleanup will retry")
-
-            cleaner = asyncio.create_task(clean_search())
+            app.state.product = SimpleNamespace(db=db, settings=settings)
             yield
         finally:
-            if cleaner is not None:
-                cleaner.cancel()
-                with suppress(asyncio.CancelledError):
-                    await cleaner
             db.dispose()
 
     app = FastAPI(lifespan=lifespan)
     install_auth(app, config=config)
     app.include_router(create_router(budget=LocalModelBudget(), enable_explanation=True))
-    app.include_router(create_search_router(settings.root / "work/search"))
+    install_search(app, settings=settings)
     app.mount("/", SiteStaticFiles(directory=REPO / "site", html=True), name="site")
     return app
 

@@ -5,16 +5,53 @@ exercise the isolated worker with fake model outputs and real raster arrays.
 """
 
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from PIL import Image
 
 
 @unittest.skipUnless(importlib.util.find_spec("numpy"), "requires the isolated OCR interpreter")
 class OrientationWorkerTests(unittest.TestCase):
+    def test_server_requires_orientation_while_local_startup_can_fall_back(self):
+        from shuxueshuo_server.search.ocr_worker import load_models
+
+        calls = []
+
+        def create_model(name, **_kwargs):
+            calls.append(name)
+            if name == "PP-LCNet_x1_0_doc_ori":
+                raise RuntimeError("orientation cache unavailable")
+            return object()
+
+        with patch.dict(sys.modules, {"paddlex": SimpleNamespace(create_model=create_model)}):
+            with self.assertRaisesRegex(RuntimeError, "orientation cache unavailable"):
+                load_models(require_orientation=True)
+            self.assertEqual(calls, ["PP-DocLayout-S", "PP-OCRv6_medium_det",
+                                     "PP-OCRv6_medium_rec", "PP-LCNet_x1_0_doc_ori"])
+            self.assertIsNone(load_models()["orientation"])
+
+    def test_strict_startup_loads_every_search_model_and_rejects_missing_instances(self):
+        from shuxueshuo_server.search.ocr_worker import load_models
+
+        models = {name: object() for name in ("PP-DocLayout-S", "PP-OCRv6_medium_det",
+                                              "PP-OCRv6_medium_rec", "PP-LCNet_x1_0_doc_ori")}
+
+        def create_model(name, **_kwargs):
+            return models[name]
+
+        with patch.dict(sys.modules, {"paddlex": SimpleNamespace(create_model=create_model)}):
+            result = load_models(require_orientation=True)
+            self.assertEqual(set(result), {"layout", "det", "rec", "orientation"})
+            self.assertEqual(set(result.values()), set(models.values()))
+            models["PP-LCNet_x1_0_doc_ori"] = None
+            with self.assertRaisesRegex(RuntimeError, "ocr.models_unavailable"):
+                load_models(require_orientation=True)
+
     def run_observation(self, label="90", confidence=.99, *, automatic=True, failure=False, available=True):
         from shuxueshuo_server.search.ocr_worker import observe
 

@@ -189,6 +189,26 @@ test('requests include the expected account and reject a response for another ac
   assert.equal(session.user, null);
 });
 
+test('maintenance remains an ordinary HTTP response without account invalidation or implicit POST retries', async () => {
+  const {context, session, auth} = harness();
+  await session.init();
+  const epoch = session.epoch, scope = session.scope('one');
+  let requests = 0;
+  auth.refresh = () => assert.fail('maintenance must not refresh or invalidate the account');
+  context.fetch = async () => {
+    requests++;
+    return new Response(JSON.stringify({detail: 'service.draining'}), {status: 503});
+  };
+  const response = await session.request('/api/search/problems', {method: 'POST'});
+  assert.equal(response.status, 503);
+  assert.equal(response.ok, false);
+  assert.equal((await response.json()).detail, 'service.draining');
+  assert.equal(requests, 1);
+  assert.equal(session.user.id, 'a');
+  assert.equal(session.epoch, epoch);
+  assert.equal(session.scope('one'), scope);
+});
+
 test('a different account confirmed by refresh invalidates private reads held during login verification', async () => {
   const {context, session, events, auth} = harness();
   await session.init();

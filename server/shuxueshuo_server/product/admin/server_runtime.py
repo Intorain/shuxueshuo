@@ -1,9 +1,9 @@
 """Server P2 service helpers executed inside the admin container."""
-from pathlib import Path
 import json
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from kombu import Connection
 
@@ -59,6 +59,8 @@ def _ocr_sidecar_health():
     try:
         with urllib.request.urlopen(f'{url}/health', timeout=5) as response:
             body = json.loads(response.read().decode())
+        if not isinstance(body, dict) or body.get('ok') is not True or body.get('ready') is not True:
+            raise ValueError('ocr.not_ready')
         return {
             'ocr_sidecar': True,
             'ocr_sidecar_configured': True,
@@ -78,7 +80,17 @@ def _api_health():
     try:
         with urllib.request.urlopen('http://api:8000/api/product/v1/health', timeout=5) as response:
             body = json.loads(response.read().decode())
-        return {'api': True, 'api_health': body}
+        if (not isinstance(body, dict) or body.get('status') != 'ok' or body.get('mode') != 'product'
+                or body.get('ok', True) is not True or body.get('ready', True) is not True):
+            raise ValueError('api.not_ready')
+        with urllib.request.urlopen('http://api:8000/api/health', timeout=5) as response:
+            admission = json.loads(response.read().decode())
+        if (not isinstance(admission, dict) or admission.get('status') != 'ok'
+                or type(admission.get('accepting')) is not bool or type(admission.get('draining')) is not bool
+                or admission['accepting'] == admission['draining']):
+            raise ValueError('api.invalid_admission_health')
+        return {'api': True, 'api_health': body,
+                'accepting': admission['accepting'], 'draining': admission['draining']}
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as exc:
         return {'api': False, 'api_error': type(exc).__name__}
 
@@ -87,6 +99,11 @@ def doctor(runtime):
     result = database.doctor(runtime.settings)
     with Connection(runtime.broker_url, connect_timeout=5) as connection:
         connection.ensure_connection(max_retries=0)
+    health = {**_ocr_sidecar_health(), **_api_health()}
+    if not health['ocr_sidecar']:
+        raise ProductError('runtime.ocr_not_ready')
+    if not health['api']:
+        raise ProductError('runtime.api_not_ready')
     return {
         **result,
         'broker': True,
@@ -95,6 +112,5 @@ def doctor(runtime):
         'ocr_python': runtime.values['OCR_PYTHON'],
         'ocr_python_configured': _ocr_configured(runtime.values['OCR_PYTHON'], mode=runtime.settings.mode),
         'product_mode': os.environ.get('PRODUCT_MODE', runtime.settings.mode),
-        **_ocr_sidecar_health(),
-        **_api_health(),
+        **health,
     }

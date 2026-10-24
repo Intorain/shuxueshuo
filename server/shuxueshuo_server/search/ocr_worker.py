@@ -11,6 +11,7 @@ head of each row-leading line is recognised. Full-page recognition took
 """
 
 import json
+import logging
 import sys
 from time import monotonic
 
@@ -18,6 +19,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from shuxueshuo_server.search.ocr_crops import head_crop
+from shuxueshuo_server.search.ocr_protocol import MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES
 from shuxueshuo_server.search.page_orientation import (
     orientation_from_prediction,
     rotate_clockwise,
@@ -30,7 +32,7 @@ DETECT_SIDE = 736
 ENGINE = {"run_mode": "paddle", "device_type": "cpu", "cpu_threads": 8, "enable_new_ir": False}
 
 
-def load_models():
+def load_models(*, require_orientation=False):
     from paddlex import create_model
 
     models = {name: create_model(model, engine="paddle_static", engine_config=ENGINE)
@@ -38,9 +40,13 @@ def load_models():
                                   ("rec", "PP-OCRv6_medium_rec"))}
     try:
         models["orientation"] = create_model("PP-LCNet_x1_0_doc_ori", engine="paddle_static", engine_config=ENGINE)
-    except Exception as exc:  # noqa: BLE001 - optional model failure must leave manual correction usable
+    except Exception as exc:
+        if require_orientation:
+            raise
         print(f"Page orientation unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
         models["orientation"] = None
+    if require_orientation and any(model is None for model in models.values()):
+        raise RuntimeError("ocr.models_unavailable")
     return models
 
 
@@ -119,15 +125,21 @@ def main():
     replies, sys.stdout = sys.stdout, sys.stderr
     models = load_models()
     print(json.dumps({"ready": True}), file=replies, flush=True)
-    for line in sys.stdin:
+    while line := sys.stdin.readline(MAX_REQUEST_BYTES + 1):
         if not line.strip():
             continue
         try:
+            if len(line.encode()) > MAX_REQUEST_BYTES or not line.endswith("\n"):
+                raise ValueError("ocr.invalid_request")
             request = json.loads(line)
             reply = {"ok": True, **observe(models, request["image"], auto_orient=request.get("auto_orient", True))}
-        except Exception as exc:  # noqa: BLE001 - one bad image must not kill the worker
-            reply = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        print(json.dumps(reply, ensure_ascii=False), file=replies, flush=True)
+            encoded = json.dumps(reply, ensure_ascii=False, allow_nan=False)
+            if len(encoded.encode()) > MAX_RESPONSE_BYTES:
+                raise ValueError("ocr.invalid_response")
+        except Exception:
+            logging.getLogger(__name__).exception("Search OCR request failed")
+            encoded = json.dumps({"ok": False, "error": "ocr.failed"})
+        print(encoded, file=replies, flush=True)
 
 
 if __name__ == "__main__":

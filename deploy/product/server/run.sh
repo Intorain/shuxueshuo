@@ -199,12 +199,16 @@ case "$operation" in
     "${compose[@]}" up -d --wait --wait-timeout 90 postgres
     "${admin[@]}" verify-release --site-optional
     "${compose_app[@]}" up -d --wait --wait-timeout 240 rabbitmq ocr api worker publisher
-    "${admin_net[@]}" services-doctor;;
+    "${admin_net[@]}" services-doctor
+    rm -f "$root/locks/services-draining";;
   services-stop)
     [[ "$PRODUCT_APP_IMAGE" == sha256:* ]] || fail '当前发布包缺少 PRODUCT_APP_IMAGE；请使用包含 API/Worker 的 P2 发布包'
     [[ -f "$release/scripts/compose.app.yml" ]] || fail '发布包缺少 compose.app.yml'
     load_runtime_exports
-    "${compose_app[@]}" stop api worker publisher ocr rabbitmq
+    touch "$root/locks/services-draining"
+    "${compose_app[@]}" stop api
+    "${compose_app[@]}" stop worker publisher
+    "${compose_app[@]}" stop ocr rabbitmq
     printf '%s\n' '{"ok": true, "api": "stopped", "worker": "stopped", "publisher": "stopped", "ocr": "stopped", "rabbitmq": "stopped", "postgres": "left_running"}';;
   services-status)
     [[ "$PRODUCT_APP_IMAGE" == sha256:* ]] || fail '当前发布包缺少 PRODUCT_APP_IMAGE；请使用包含 API/Worker 的 P2 发布包'

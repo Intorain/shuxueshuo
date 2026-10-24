@@ -104,7 +104,7 @@ node tools/build-public-knowledge-graph.mjs --check
 
 目前新公共身份契约使用离线题目样例和模拟/录制结果验证。此说明不声称已经完成新契约的真实 LLM 端到端调用，也不把真实 PostgreSQL 测试等同于真实 OCR/provider 质量验收。
 
-公共课程包、跨设备作答同步、账号注销、备份恢复的删除重放、生产清理任务部署与生产 OCR/代理/WebSocket 配置均未纳入本期。
+公共课程包、跨设备作答同步、账号注销及备份恢复的删除重放仍未纳入本期。后续已完成生产入口、清理生命周期及 OCR/代理/WebSocket 的单机接入，见[单机生产接入与离线镜像演练](search-single-host-production.md)；尚未部署线上，历史验收数字不据此改写。
 
 ## 5. 8779 离线浏览器验收记录
 

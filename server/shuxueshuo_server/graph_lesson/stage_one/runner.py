@@ -4,7 +4,9 @@ import fcntl
 import json
 import shutil
 import traceback
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import cached_property
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -41,10 +43,23 @@ from .features import extract_features, registry
 from .report import STATE_FILE, batch_rows, sample_number, sample_state
 
 CORPUS = REPO / "server/tests/solver/fixtures/graph-guided-stage-one/quadratic-always"
-CASES = tuple(
-    case["case_id"]
-    for case in json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))["cases"]
-)
+
+
+class _CorpusCases(Sequence):
+    """Load acceptance-only fixtures when a batch command actually needs them."""
+
+    @cached_property
+    def values(self):
+        return tuple(case["case_id"] for case in read_json(CORPUS / "manifest.json")["cases"])
+
+    def __len__(self):
+        return len(self.values)
+
+    def __getitem__(self, index):
+        return self.values[index]
+
+
+CASES = _CorpusCases()
 
 
 def digest(path):

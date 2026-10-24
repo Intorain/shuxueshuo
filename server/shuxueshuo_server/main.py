@@ -7,11 +7,11 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 
 from shuxueshuo_server.auth.api import install_auth
-from shuxueshuo_server.wechat_jssdk import WeChatJsSdkSigner
 from shuxueshuo_server.tutor_demo.api import create_router as create_tutor_demo_router
+from shuxueshuo_server.wechat_jssdk import WeChatJsSdkSigner
 
 # 本地开发：加载 server/.env
 _env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -35,6 +35,12 @@ else:
     from shuxueshuo_server.product.api import create_app
     app = create_app()
 
+    if os.environ.get('PRODUCT_MODE') == 'server':
+        from shuxueshuo_server.search.application import install_search
+
+        os.environ['PRODUCT_EXECUTION_STORAGE_CONTEXT_REQUIRED'] = '1'
+        install_search(app)
+
 app.include_router(create_tutor_demo_router())
 
 install_auth(app)
@@ -54,8 +60,18 @@ def get_signer() -> WeChatJsSdkSigner:
 
 
 @app.get("/api/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health(response: Response) -> dict[str, str | bool]:
+    drain_path = getattr(app.state, "search_drain_path", None)
+    product = getattr(app.state, "product", None)
+    if drain_path is None and product is not None:
+        drain_path = product.settings.root / "locks/services-draining"
+    try:
+        draining = drain_path is not None and drain_path.exists()
+    except OSError:
+        draining = True
+    draining = bool(draining or not getattr(app.state, "search_accepting", True))
+    response.headers["Cache-Control"] = "no-store"
+    return {"status": "ok", "accepting": not draining, "draining": draining}
 
 
 @app.get("/api/wechat/jssdk-config")

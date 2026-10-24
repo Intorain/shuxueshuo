@@ -139,7 +139,7 @@ OCR sidecar 仍串行处理，增加并发主要让其他题在某题等待模�
 | **Mac 本地**（`--mode local`） | 无 Docker；本机直接安装 Paddle；`REVIEW_OCR_PYTHON` 指向本机 Python。不设 `PRODUCT_OCR_URL`。 |
 | **服务器**（`compose.app`） | 常驻 `ocr` sidecar（`shuxueshuo-ocr` 镜像 + [`../ocr/sidecar_server.py`](../ocr/sidecar_server.py)）；worker 经 `PRODUCT_OCR_URL=http://ocr:8080` 调用。**不再**挂 `docker.sock` / 嵌套 `docker run`。 |
 
-服务器需已构建 OCR 镜像并预热 `~/.paddlex`（见 [OCR 文档](../ocr/README.md)）。sidecar 脚本与 observation 代码从宿主机仓库只读挂载，发版前请 `git pull` 仓库并打含新 compose/runner 的产品包。常驻模型会多占内存（约数百 MB～1G+），建议主机 ≥8G；2G 机不建议。
+服务器需已构建 OCR 镜像并预热 `~/.paddlex` 中的五种模型（见 [OCR 文档](../ocr/README.md)）。sidecar 脚本与 observation 代码从宿主机仓库只读挂载，发版前请 `git pull` 仓库并打含新 compose/runner 的产品包。产品和搜索共用一个 OCR 进程；[本地真实镜像验收](../../docs/search-real-ocr-local-acceptance.md)的容器观测峰值为 3.009 GiB，不能再按旧的单套模型内存估算。该数据来自 Rosetta 和有限样本，不是主机规格承诺；上线前须在原生服务器上同时运行 API、数据库、业务 worker 和 OCR，实测峰值、排队及剩余内存。
 
 普通管理命令自动读取实例保存的 release 路径。若镜像尚未加载，验证离线包哈希再 load。
 数据库仅映射 `127.0.0.1:5432`，可通过 `--port` 修改；持久卷名绑定实例和数据根，不复用其他实例的卷。

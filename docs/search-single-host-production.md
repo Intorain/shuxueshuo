@@ -24,7 +24,7 @@
 
 `server/.env.example` 默认关闭付费生成与短信。正式获准启用时，需显式配置 `RUN_LLM_INTEGRATION=1`、有效 provider 密钥，以及 `AUTH_ENVIRONMENT=production`、正确的 `AUTH_ORIGIN`、`AUTH_COOKIE_SECURE=1`、稳定的 `AUTH_SECRET` 和 `AUTH_SMS_MODE=aliyun_sms` 的凭据。不开启生成门槛时，历史读取仍可用，新提交返回 `stage_one.disabled`；本次没有修改真实 `.env`。
 
-sidecar 启动时严格预热产品和搜索模型（含方向模型），全部加载成功后才就绪，请求中不再首次加载。产品 OCR 保留原来一直等待模型锁的行为，搜索独立等锁最多 100 秒；读请求体仍限 15 秒，搜索客户端 HTTP 读取等待仍为 120 秒。API 自身的串行 OCR 锁没有排队时限、不计入 HTTP 读取等待，因此产品整页识别繁忙时，多次上传可能逐个等待 100 秒后失败，端到端耗时并无 120 秒保证；很晚才拿到 sidecar 锁的请求也可能在推理完成前超时。客户端超时不会终止已经进入 Paddle 的推理，若推理永久卡住需重启 sidecar。本次保留这些行为，详见 [OCR 排队与容量限制](../deploy/ocr/README.md#已知容量与排队限制)。真实 OCR 镜像导入、五种模型缓存、断网预热和双模型常驻内存是[上线前必验项](../deploy/ocr/README.md#搜题上线前必验项本轮未完成)，此次 fixture 演练不代替这些验证。
+sidecar 启动时严格预热产品和搜索模型（含方向模型），全部加载成功后才就绪，请求中不再首次加载。产品 OCR 保留原来一直等待模型锁的行为，搜索独立等锁最多 100 秒；读请求体仍限 15 秒，搜索客户端 HTTP 读取等待仍为 120 秒。API 自身的串行 OCR 锁没有排队时限、不计入 HTTP 读取等待，因此产品整页识别繁忙时，多次上传可能逐个等待 100 秒后失败，端到端耗时并无 120 秒保证；很晚才拿到 sidecar 锁的请求也可能在推理完成前超时。客户端超时不会终止已经进入 Paddle 的推理，若推理永久卡住需重启 sidecar。本次保留这些行为，详见 [OCR 排队与容量限制](../deploy/ocr/README.md#已知容量与排队限制)。真实 OCR 镜像导入、五种模型缓存、断网预热和双模型常驻内存已另行完成[本地真实镜像验收](search-real-ocr-local-acceptance.md)，不是此次 fixture 演练的结果；目标服务器仍须按[原生环境复验清单](../deploy/ocr/README.md#真实镜像本地验收与上线前复验)检查。
 
 OCR 初期保持 **单容器、单 Python 进程**。`ThreadingHTTPServer` 可以并发接收请求，但共享模型锁仍串行推理；搜索模型的 `cpu_threads=8` 不是 OCR 进程数，API 仍是一个 worker。本轮不扩 OCR 进程或副本。先测真实 CPU、RSS/峰值内存、排队时间和延迟；若产品长任务明显阻塞学生请求，再评估按产品/学生拆分实例及其模型内存成本，不能盲目增加共享 sidecar 副本。
 
@@ -147,3 +147,9 @@ OCR 排队问题此次仅记录，不增加队列、优先级或远程取消机�
 冻结实现后重跑离线镜像演练，报告 `/private/tmp/search-image-rehearsal-20261024-32mp/report.json` 为 `passed: true`：真实 6000×4000 JPEG 成功并归一为 4096×2731、完整 32MP 低位深 PNG 边界成功，以及超过 32MP 的轻量 JPEG 头部拒绝；原 HTTPS 登录、账号隔离、幂等、课程/TLS WebSocket、停用删除、排空、重启和到期清理链路仍通过。本轮临时容器、网络和 PostgreSQL 卷已清理。OCR 预热和推理仍使用 fixture，并非真实 Paddle 或多进程容量验收，也未做浏览器交互验收。
 
 32MP 与串行预处理的完整 Search/Auth 回归为 847 passed、6 skipped，无数据库跳过（`/private/tmp/search-auth-32mp-final.log`）。其中 5 个 OCR 解释器用例已独立用假模型全部补跑通过（`/private/tmp/search-ocr-32mp-final.log`），另 1 个付费 LLM 用例保持显式禁用。新增 6 项确定性并发测试覆盖解码/缩图两阶段互斥、上传/旋转双向互斥、异常释放，以及阻塞 OCR 时另一次上传仍能完成图像准备；不依赖睡眠猜测调度。前端拍题专项 190 passed、0 skipped（`/private/tmp/search-32mp-node-tests.log`），Ruff、JavaScript 语法及差异检查通过。未调用付费模型或真实短信，未部署、提交或 push。
+
+## 9. 后续真实 OCR 镜像验收
+
+2026-10-24 已另用生产 Dockerfile 构建 Linux/amd64 OCR 镜像，在 Apple Silicon/Rosetta 上完成断网实测：五模型缓存与严格预热、12 项方向检查、产品真实公式推理及同一进程恢复搜索均通过。缺方向模型的负例不能就绪并退出 1；容器观测峰值 3.009 GiB，OOM 为 0。OCR 保持一个进程，临时验收容器已清理。
+
+详细环境、失败探索记录、内存口径、证据和回归命令见[真实 OCR 本地验收记录](search-real-ocr-local-acceptance.md)。该结果补齐第 7 节当时缺少的本地真实镜像证据，不改写历史 fixture 结果，也不代替原生服务器整套服务容量、真实供应商及拍题备份恢复验收。

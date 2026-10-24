@@ -108,16 +108,23 @@ docker exec shuxueshuo-product-server-ocr-1 \
   python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8080/health').read())"
 ```
 
-### 搜题上线前必验项（本轮未完成）
+### 真实镜像本地验收与上线前复验
 
-应用镜像加 fixture 的演练不替代真实 `shuxueshuo-ocr:3.3.0` 镜像验收。本机尚无该镜像，本轮没有拉取镜像或下载模型。
-上线前须在匹配服务器架构的真实 OCR 镜像、相同 UID/HOME/挂载路径下逐项验证：
+应用镜像加 fixture 的演练不替代真实 `shuxueshuo-ocr:3.3.0` 镜像验收。
+2026-10-24 已在本机构建真实 Linux/amd64 镜像，用已有五模型缓存、UID/GID 1000、HOME=/tmp 和断网容器完成预热、12 项方向用例、产品公式推理及峰值内存检查。
+缺方向缓存时不能就绪并退出 1；运行过程没有下载模型。详见[真实 OCR 本地验收记录](../../docs/search-real-ocr-local-acceptance.md)。
+本机使用 Apple Silicon/Rosetta，不等同于目标服务器原生 x86 容量验收。上线前仍须在真实服务器架构、相同 UID/HOME/挂载路径下逐项复验：
 
 1. 能导入 `shuxueshuo_server.search.ocr_protocol` 和 `shuxueshuo_server.search.ocr_worker`，不是只检查应用镜像。
 2. `preheat_models.py` 成功验证全部五种模型，包括方向模型；缓存目录跟随 `Path.home()`，Compose 中是 `/tmp/.paddlex/official_models`。
 3. 使用已备好的缓存、禁用网络启动 sidecar，严格预热成功且 `/health` 返回 `ok: true, ready: true`；缺方向模型必须不能就绪。
 4. 用明确授权的离线图片验证方向识别、手动旋转以及产品/搜题交错调用，产品不能因搜索占锁 15 秒而失败。
 5. 测量两套模型同时常驻时的启动峰值和推理峰值内存，确认容器/宿主机余量及启动时限；不能拿 fixture 的内存或延迟代替。
+
+本机实测严格预热等待 13.77 秒，样本工作负载的容器累计峰值 3.009 GiB，OOM 为 0；不能将该值当成生产总内存上限。
+仍保持一个 OCR 进程。本轮串行复用了产品/搜索路径，未替代并发上传、产品长任务和整套服务共同运行的容量复验。
+`acceptance_probe.py` 可通过 `docker exec` 对已有 PID 1 sidecar 采集真实 HTTP 结果及内存；它不是 OCR 服务，不加载模型。
+输出包含阶段采样最大值与内核累计峰值；指标缺失、OOM、方向不确定或请求超过 120 秒均不能整体通过。
 
 可先在已存在的真实镜像上执行不下载模型的模块检查（仓库路径及模型缓存均需与服务器配置一致）：
 
@@ -137,4 +144,4 @@ docker run --rm --pull=never --network none \
 - `.venv-ocr/` 与 `~/.paddlex/` 不进 Git。
 - sidecar 与 worker 共享 `/var/lib/shuxueshuo`；以部署用户 UID 运行，避免 work 目录权限问题。
 
-当前统一 32MP / 20 MiB / 长边 4096 规则覆盖此前按格式区分及统一 10MP 的像素阈值；旧镜像演练中的 48MP JPEG 成功记录仅代表当时的代码。本轮已重跑 fixture 离线镜像演练，24MP JPEG、32MP PNG 和超限拒绝均通过，报告见 `/private/tmp/search-image-rehearsal-20261024-32mp/report.json`；仍未完成真实 OCR 镜像、Paddle 或容量验收。
+当前统一 32MP / 20 MiB / 长边 4096 规则覆盖此前按格式区分及统一 10MP 的像素阈值；旧镜像演练中的 48MP JPEG 成功记录仅代表当时的代码。fixture 离线镜像演练的 24MP JPEG、32MP PNG 和超限拒绝均通过，报告见 `/private/tmp/search-image-rehearsal-20261024-32mp/report.json`；真实 OCR 镜像另有上述本地验收，不应混淆两类证据。

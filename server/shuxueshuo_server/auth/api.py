@@ -1,7 +1,8 @@
 """Shared site auth routes; require_user is reusable by subsequent feature routers."""
 
 import ipaddress
-from contextlib import asynccontextmanager
+import re
+from contextlib import asynccontextmanager, nullcontext
 from typing import Annotated
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from ..search.upload_admission import UploadAdmission, UploadAdmissionBusy
 from .config import AuthConfig
 from .service import AuthError, AuthService
 from .sms import AliyunSms, MockSms
@@ -59,6 +61,38 @@ class VerifyBody(SendBody):
 
 
 class AuthBoundary(BaseHTTPMiddleware):
+    def __init__(self, app, **kwargs):
+        super().__init__(app, **kwargs)
+        self.upload_admission = UploadAdmission.from_env()
+
+    async def upload_slot(self, request, auth):
+        if auth is None:
+            raise HTTPException(503, "登录服务暂未开放。")
+        user = await run_in_threadpool(auth.current_user, request.cookies.get(cookie_name(auth.config)))
+        if user is None:
+            raise HTTPException(401, "请先登录。")
+        expected = request.headers.get("X-Search-User")
+        if expected and expected != str(user["id"]):
+            raise HTTPException(409, "search.account_changed")
+        require_origin(request, auth)
+        drain_path = getattr(request.app.state, "search_drain_path", None)
+        if not getattr(request.app.state, "search_accepting", True) or (drain_path is not None and drain_path.exists()):
+            raise HTTPException(503, "service.draining")
+        admission = getattr(request.app.state, "search_upload_admission", self.upload_admission)
+        return admission.admit(user["id"])
+
+    async def bounded_request(self, request, call_next, max_bytes):
+        length = request.headers.get("content-length", "0")
+        if not length.isascii() or not length.isdigit() or len(length) > 20 or int(length) > max_bytes:
+            return JSONResponse({"detail": "请求过大。"}, 413)
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > max_bytes:
+                return JSONResponse({"detail": "请求过大。"}, 413)
+        request._body = bytes(body)
+        return await call_next(request)
+
     async def dispatch(self, request, call_next):
         auth_path = request.url.path.startswith("/api/auth/")
         tutor_path = request.url.path.startswith("/api/tutor-demo/")
@@ -81,24 +115,22 @@ class AuthBoundary(BaseHTTPMiddleware):
                     403,
                     headers={"Cache-Control": "no-store"},
                 )
-        length = request.headers.get("content-length", "0")
         max_bytes = (20 * 1024 * 1024 if search_path and request.url.path == "/api/search/pages"
                      else 64 * 1024 if search_path else 512 * 1024 if tutor_path else 4096)
-        if not length.isdigit() or int(length) > max_bytes:
-            return JSONResponse(
-                {"detail": "请求过大。"}, 413, headers={"Cache-Control": "no-store"}
-            )
-        # Also bound chunked input before Pydantic reads it; never echo OTP inputs.
-        body = bytearray()
-        async for chunk in request.stream():
-            body.extend(chunk)
-            if len(body) > max_bytes:
-                return JSONResponse(
-                    {"detail": "请求过大。"}, 413, headers={"Cache-Control": "no-store"}
-                )
-        request._body = bytes(body)
         try:
-            response = await call_next(request)
+            is_upload = request.method == "POST" and (
+                request.url.path == "/api/search/pages"
+                or re.fullmatch(r"/api/search/pages/[^/]+/rotate", request.url.path)
+            )
+            slot = await self.upload_slot(request, auth) if is_upload else nullcontext()
+            with slot as lease:
+                if is_upload:
+                    request.state.search_upload_lease = lease
+                response = await self.bounded_request(request, call_next, max_bytes)
+        except UploadAdmissionBusy:
+            response = JSONResponse({"detail": "search.upload_busy"}, 429)
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, exc.status_code, headers=exc.headers)
         except AuthError as exc:
             response = JSONResponse(
                 {"code": exc.code, "detail": exc.message},

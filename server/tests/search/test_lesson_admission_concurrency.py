@@ -2,6 +2,7 @@
 
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -236,6 +237,7 @@ def test_old_worker_cleanup_cannot_clear_a_new_admission_marker(tmp_path, monkey
     released, finish_cleanup = threading.Event(), threading.Event()
     with client_for(root) as client:
         repository = client.app.state.search_repository
+        repository.admission.config = replace(repository.admission.config, generation_account_concurrency=2)
         original_lock = repository.storage.lifecycle_lock
         first_lease = True
 

@@ -83,6 +83,7 @@ def install_search(app, *, settings=None):
         app.state.search_drain_path = configured.root / "locks/services-draining"
         app.state.search_accepting = False
         maintenance = _SearchMaintenance(repository, configured)
+        await run_in_threadpool(repository.admission.recover)
         await run_in_threadpool(repository.recover)
         await run_in_threadpool(maintenance.cleanup)
         stopped = asyncio.Event()

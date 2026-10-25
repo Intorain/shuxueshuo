@@ -2,6 +2,8 @@
 
 日期：2026-10-24。本次只接通既有能力，不增加公共课程缓存、任务队列或分布式运行；未部署线上，也不把离线 fixture 当成真实模型、短信或 Paddle 推理验收。
 
+2026-10-25 后续补充：[拍题准入与费用保护](search-admission.md)在既有本机线程池外增加有界准入、账号／全站每日额度及热停止开关；没有新增分布式队列，OCR 仍为一个进程。下文保留此前镜像演练结果，新规则和本轮离线证据以该说明为准。
+
 ## 1. 生产入口与持久化
 
 服务器使用既有 `shuxueshuo_server.main:app`，`PRODUCT_MODE=server` 且非 legacy 后端时自动安装拍题 API。它与登录、产品服务复用同一个 `Settings`、PostgreSQL 引擎及应用角色，迁移必须包含 `0014_lesson_execution` 和 `0015_search_recovery`。不再通过开发用的 `run_site.py` 启动生产服务。

@@ -35,6 +35,7 @@ from shuxueshuo_server.solver.runtime.config import (
 )
 
 from .problem_domain_prompt_rules import DOMAIN_RULES
+from .request_guard import check_model_request
 
 MULTIMODAL_PROVIDER_NAME = "doubao"
 DEEPSEEK_TEXT_PROVIDER_NAME = "deepseek"
@@ -569,6 +570,7 @@ class DoubaoMultimodalExtractionProvider:
         attempts: list[ProviderSubAttempt] = []
         started = perf_counter()
         for provider_attempt in range(1, 3):
+            check_model_request()
             attempt_started = perf_counter()
             try:
                 options: dict[str, Any] = {
@@ -714,8 +716,10 @@ class _DeepSeekChatProvider:
         attempts: list[ProviderSubAttempt] = []
         started = perf_counter()
         for provider_attempt in range(1, 3):
+            check_model_request()
             # Uploads are separate file operations, never counted as inference retries.
             messages = self._messages_for_attempt(request, provider_attempt)
+            check_model_request()
             attempt_started = perf_counter()
             try:
                 options: dict[str, Any] = {

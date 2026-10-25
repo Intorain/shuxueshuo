@@ -113,6 +113,7 @@ def rehearse(args, output):
         'ALIYUN_SMS_ACCESS_KEY_ID=offline-fixture', 'ALIYUN_SMS_ACCESS_KEY_SECRET=offline-fixture',
         'ALIYUN_SMS_SIGN_NAME=offline-fixture', 'ALIYUN_SMS_TEMPLATE_CODE=offline-fixture',
         'RUN_LLM_INTEGRATION=1', 'REVIEW_BACKEND=product',
+        'SEARCH_OFFLINE_REHEARSAL=1', 'SEARCH_GENERATION_ACCOUNT_DAILY=1', 'SEARCH_RERUN_ACCOUNT_DAILY=1',
     ]) + '\n')
     certificate = output / 'cert'
     certificate.mkdir()

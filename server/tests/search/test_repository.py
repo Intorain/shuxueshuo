@@ -45,7 +45,9 @@ def repository(tmp_path):
         connection.execute(sa.text(script.read_text()))
         connection.execute(sa.text(script.with_name('0014_lesson_execution.sql').read_text()))
         connection.execute(sa.text(script.with_name('0015_search_recovery.sql').read_text()))
+        connection.execute(sa.text(script.with_name('0016_search_admission.sql').read_text()))
         for table in (PROBLEMS, PAGES, SUBMISSIONS, RELATIONS, metadata.tables['search_recovery_state'],
+                      metadata.tables['search_admission_control'], metadata.tables['search_admission_tickets'],
                       *[table for name, table in metadata.tables.items() if name.startswith('lesson_')]):
             connection.exec_driver_sql(f'GRANT SELECT, INSERT ON "{table.name}" TO product_app')
             if table.name in MUTABLE:

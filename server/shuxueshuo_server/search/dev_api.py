@@ -10,8 +10,7 @@ import secrets
 import threading
 import warnings
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager
-from contextvars import copy_context
+from contextlib import asynccontextmanager, nullcontext
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -50,8 +49,12 @@ from shuxueshuo_server.graph_lesson.stage_three.storage import (
     storage_context,
 )
 from shuxueshuo_server.problem_understanding.workflow_ledger import save
+from shuxueshuo_server.solver.extraction.request_guard import (
+    require_model_request_scope,
+)
 
 from . import stage_three
+from .admission import SearchLimits
 from .identity import IdentityUnavailable, build_identity
 from .lesson import present_lesson, run_stage_two
 from .ocr_client import OcrClient, OcrWorkerError
@@ -65,6 +68,7 @@ from .stage_one import (
     reviewing_candidate,
     run_question_image,
 )
+from .task_runner import SearchTaskRunner
 
 MAX_UPLOAD = 20 * 1024 * 1024
 MAX_UPLOAD_PIXELS = 32_000_000
@@ -167,6 +171,10 @@ class RotatePageRequest(BaseModel):
     degrees: int = Field(strict=True, gt=0, le=270, multiple_of=90)
 
 
+class LessonRequest(BaseModel):
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=128)
+
+
 def _save_preview(page, path):
     """Publish a bounded preview atomically, also for legacy pages on first read."""
     with IMAGE_PREPARE_LOCK:
@@ -212,17 +220,35 @@ def _observed_orientation(observed, *, manual=False):
 
 def create_search_router(root, *, stage_three_hooks=None):
     ocr = OcrClient()
-    runs = ThreadPoolExecutor(max_workers=2, thread_name_prefix="search-stage-one")
+    limits = SearchLimits.from_env()
+    executor = ThreadPoolExecutor(max_workers=limits.generation_workers, thread_name_prefix="search-stage-one")
+    runs = SearchTaskRunner(executor, limits.generation_workers, limits.generation_queue_size)
     lesson_errors, judging = {}, set()
     errors_lock = threading.Lock()
     @asynccontextmanager
     async def lifespan(app):
+        app.state.search_task_runner = runs
+        stopped = asyncio.Event()
+
+        async def reap():
+            while not stopped.is_set():
+                try:
+                    await asyncio.wait_for(stopped.wait(), timeout=1)
+                except TimeoutError:
+                    try:
+                        await run_in_threadpool(runs.reap)
+                    except Exception:
+                        LOGGER.exception('Search queue cancellation will retry')
+
+        reaper = asyncio.create_task(reap())
         try:
             yield
         finally:
             app.state.search_accepting = False
+            stopped.set()
+            await reaper
             try:
-                await run_in_threadpool(runs.shutdown, wait=True)
+                await run_in_threadpool(runs.shutdown)
             finally:
                 await run_in_threadpool(ocr.close)
 
@@ -288,7 +314,11 @@ def create_search_router(root, *, stage_three_hooks=None):
         repo.register_page(user, page_id, payload, parent_page_id=parent_page_id)
         return payload
 
-    def prepare_upload(body, repo, user):
+    def prepare_upload(body, repo, user, lease=None):
+        with lease.hold() if lease is not None else nullcontext():
+            return process_upload(body, repo, user)
+
+    def process_upload(body, repo, user):
         try:
             with IMAGE_PREPARE_LOCK, warnings.catch_warnings():
                 warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -315,10 +345,16 @@ def create_search_router(root, *, stage_three_hooks=None):
                 raise HTTPException(413, "page.size")
         if not body:
             raise HTTPException(400, "page.size")
-        return await run_in_threadpool(prepare_upload, bytes(body), repository(request), request.state.search_user)
+        return await run_in_threadpool(prepare_upload, bytes(body), repository(request), request.state.search_user,
+                                       getattr(request.state, 'search_upload_lease', None))
 
     @router.post("/pages/{page_id}/rotate")
     def rotate_page(page_id: str, body: RotatePageRequest, request: Request):
+        lease = getattr(request.state, 'search_upload_lease', None)
+        with lease.hold() if lease is not None else nullcontext():
+            return process_rotation(page_id, body, request)
+
+    def process_rotation(page_id, body, request):
         page_dir(request, page_id)
         with repository(request).storage.page_lock(page_id, blocking=True):
             directory = page_dir(request, page_id)
@@ -360,7 +396,7 @@ def create_search_router(root, *, stage_three_hooks=None):
         if x1 - x0 < 0.02 or y1 - y0 < 0.01:
             raise HTTPException(400, "box.too_small")
         if os.getenv("RUN_LLM_INTEGRATION") != "1":
-            raise HTTPException(503, "stage_one.disabled: start run_site.py with RUN_LLM_INTEGRATION=1")
+            raise HTTPException(503, "stage_one.disabled")
         with repo.storage.page_lock(body.page_id, blocking=True):
             directory = page_dir(request, body.page_id)
             with IMAGE_PREPARE_LOCK, Image.open(directory / "page.png") as page:
@@ -380,13 +416,29 @@ def create_search_router(root, *, stage_three_hooks=None):
                                         "crop_size": size, "bytes": len(png)})
             (output / "question.png").write_bytes(png)
             submission, created = repo.create_submission(user, search_id, body.page_id,
-                                                         [x0, y0, x1, y1], client_request_id=body.client_request_id)
+                                                         [x0, y0, x1, y1], client_request_id=body.client_request_id,
+                                                         admit=True)
+        except (SearchError, HTTPException):
+            try:
+                repo.storage.remove(repo.storage.submission_key(search_id))
+            finally:
+                lifecycle.close()
+            raise
         except BaseException:
             lifecycle.close()
             raise
         if not created:
             lifecycle.close()
             return {"search_id": submission["id"]}
+        ticket = submission['admission_ticket']
+
+        def cancelled():
+            try:
+                repo.set_state(search_id, recognition_state="interrupted", error_code="search.interrupted")
+            finally:
+                with errors_lock:
+                    judging.discard(search_id)
+                lifecycle.close()
 
         def work():
             from shuxueshuo_server.problem_understanding.batch_smoke import (
@@ -394,6 +446,7 @@ def create_search_router(root, *, stage_three_hooks=None):
             )
 
             try:
+                require_model_request_scope()
                 if not repo.set_state(search_id, recognition_state="running"):
                     return
                 result = run_question_image(png, output, live_provider_factory("deepseek")(), problem_id=search_id)
@@ -425,9 +478,10 @@ def create_search_router(root, *, stage_three_hooks=None):
         with errors_lock:
             judging.add(search_id)
         try:
-            runs.submit(copy_context().run, work)
+            runs.submit(ticket, repo, work, cancelled)
         except BaseException:
             try:
+                runs.cancel_unstarted(ticket, repo)
                 repo.set_state(search_id, recognition_state="interrupted", error_code="search.queue_failed")
             finally:
                 with errors_lock:
@@ -446,6 +500,7 @@ def create_search_router(root, *, stage_three_hooks=None):
             judging.add(search_id)
             lesson_errors.pop(search_id, None)
         try:
+            require_model_request_scope()
             if not repo.set_state(search_id, lesson_state="running"):
                 return
             lease = lease or stage_three.acquire_problem(directory)
@@ -511,13 +566,19 @@ def create_search_router(root, *, stage_three_hooks=None):
         return presented
 
     @router.post("/problems/{search_id}/lesson")
-    def retry_lesson(search_id: str, request: Request):
+    def retry_lesson(search_id: str, request: Request, body: LessonRequest | None = None):
         """Rerun stage two only (no image reading) after a judging failure."""
         repo = repository(request)
         directory = problem_dir(request, search_id, for_execution=True)
         row = repo.submission(request.state.search_user, search_id)
         if row["recognition_status"] != "reviewed":
             raise HTTPException(409, "stage_one.not_reviewed")
+        request_id = body.client_request_id if body else None
+        existing = repo.admission.find_request(request.state.search_user, 'rerun', request_id) if request_id else None
+        if existing is not None:
+            if existing.search_id != search_id:
+                raise HTTPException(409, 'search.request_conflict')
+            return {'status': row['lesson_status'], 'duplicate': True}
         with errors_lock:
             if search_id in judging:
                 return {"status": "running"}
@@ -536,16 +597,25 @@ def create_search_router(root, *, stage_three_hooks=None):
         except BaseException:
             lifecycle.close()
             raise
+        ticket = None
         try:
             require_accepting(request.app)
-            if not repo.set_state(search_id, lesson_state="running"):
-                raise HTTPException(404, "search.not_found")
+            ticket = repo.reserve_lesson(request.state.search_user, search_id, 'rerun', request_id)
+            if not ticket.created:
+                stage_three.release_problem(lease)
+                lifecycle.close()
+                return {'status': row['lesson_status'], 'duplicate': True}
             stage_three.reserve_retry(directory)
         except BaseException:
             try:
-                stage_three.release_problem(lease)
+                if ticket is not None and ticket.created:
+                    runs.cancel_unstarted(ticket, repo)
+                    repo.set_state(search_id, lesson_state='interrupted')
             finally:
-                lifecycle.close()
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
             raise
         with errors_lock:
             judging.add(search_id)
@@ -558,10 +628,22 @@ def create_search_router(root, *, stage_three_hooks=None):
                     judging.discard(search_id)
                 lifecycle.close()
 
+        def cancelled():
+            try:
+                repo.set_state(search_id, lesson_state='interrupted', error_code='search.interrupted')
+            finally:
+                with errors_lock:
+                    judging.discard(search_id)
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
+
         try:
-            runs.submit(copy_context().run, work)
+            runs.submit(ticket, repo, work, cancelled)
         except BaseException:
             try:
+                runs.cancel_unstarted(ticket, repo)
                 repo.set_state(search_id, lesson_state="interrupted")
             finally:
                 with errors_lock:
@@ -592,12 +674,12 @@ def create_search_router(root, *, stage_three_hooks=None):
         # The request may have read the previous attempt just before a
         # retry acquired this lease. Validate its identity while reserved,
         # before queueing work or changing the in-memory running marker.
+        ticket = None
         try:
             require_accepting(app)
             if validate is not None:
                 validate()
-            if not repo.set_state(search_id, lesson_state="running"):
-                raise HTTPException(404, "search.not_found")
+            ticket = repo.reserve_lesson(user, search_id, 'continuation')
         except stage_three.LessonConflict as exc:
             try:
                 stage_three.release_problem(lease)
@@ -606,9 +688,13 @@ def create_search_router(root, *, stage_three_hooks=None):
             raise HTTPException(409, str(exc)) from exc
         except BaseException:
             try:
-                stage_three.release_problem(lease)
+                if ticket is not None:
+                    runs.cancel_unstarted(ticket, repo)
             finally:
-                lifecycle.close()
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
             raise
         with errors_lock:
             judging.add(search_id)
@@ -634,10 +720,22 @@ def create_search_router(root, *, stage_three_hooks=None):
                 finally:
                     lifecycle.close()
 
+        def cancelled():
+            try:
+                repo.set_state(search_id, lesson_state='interrupted', error_code='search.interrupted')
+            finally:
+                with errors_lock:
+                    judging.discard(search_id)
+                try:
+                    stage_three.release_problem(lease)
+                finally:
+                    lifecycle.close()
+
         try:
-            runs.submit(copy_context().run, work)
+            runs.submit(ticket, repo, work, cancelled)
         except BaseException:
             try:
+                runs.cancel_unstarted(ticket, repo)
                 repo.set_state(search_id, lesson_state="interrupted")
             finally:
                 with errors_lock:

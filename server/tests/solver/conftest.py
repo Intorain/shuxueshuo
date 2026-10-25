@@ -41,7 +41,7 @@ def stage_three_storage(request, tmp_path_factory):
         assert connection.scalar(text("SELECT to_regclass('public.lesson_runs')")), "Apply the PostgreSQL executor migration to the isolated test instance first"
         connection.exec_driver_sql(f"CREATE SCHEMA {schema}")
         connection.exec_driver_sql(f"SET LOCAL search_path TO {schema}, public")
-        for name in ('0013_student_search.sql', '0014_lesson_execution.sql', '0015_search_recovery.sql'):
+        for name in ('0013_student_search.sql', '0014_lesson_execution.sql', '0015_search_recovery.sql', '0016_search_admission.sql'):
             connection.exec_driver_sql((migrations / name).read_text())
         connection.exec_driver_sql(f"GRANT USAGE ON SCHEMA {schema} TO product_app")
         connection.exec_driver_sql(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {schema} TO product_app")

@@ -39,7 +39,7 @@ def session_for(root):
         connection.exec_driver_sql(f'SET LOCAL search_path TO "{schema}", public')
         connection.exec_driver_sql(f'GRANT USAGE ON SCHEMA "{schema}" TO product_app')
         migrations = Path(__file__).parents[2] / 'alembic/versions'
-        for name in ('0013_student_search.sql', '0014_lesson_execution.sql', '0015_search_recovery.sql'):
+        for name in ('0013_student_search.sql', '0014_lesson_execution.sql', '0015_search_recovery.sql', '0016_search_admission.sql'):
             connection.execute(sa.text((migrations / name).read_text()))
         for name, table in metadata.tables.items():
             if not name.startswith(('search_', 'student_search_', 'lesson_')):
@@ -67,7 +67,9 @@ def session_for(root):
     challenge = auth.send(phone, "fixture-" + secrets.token_hex(6))
     code = auth.sms.messages[challenge["challenge_id"]][1]
     user, token = auth.verify(phone, UUID(challenge["challenge_id"]), code, "fixture-" + secrets.token_hex(6))
-    return SimpleNamespace(auth=auth, user=user, token=token, repository=SearchRepository(database, Path(root)))
+    repository = SearchRepository(database, Path(root))
+    repository.admission.set_generation_enabled(True)
+    return SimpleNamespace(auth=auth, user=user, token=token, repository=repository)
 
 
 def authenticated_client(root, *, hooks=None, raise_server_exceptions=True):

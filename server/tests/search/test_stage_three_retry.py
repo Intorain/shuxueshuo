@@ -25,6 +25,13 @@ from tests.search.test_stage_three_api import (
 from tests.solver.test_graph_stage_three_recorded import Q01_SELECTION
 
 
+def submitted_work(function, arguments):
+    task = arguments[0] if isinstance(getattr(function, '__self__', None), Context) else function
+    if task.__qualname__ == 'SearchTaskRunner._run':
+        return arguments[1].work
+    return task
+
+
 def completed_run(client, directory):
     repo = client.app.state.search_repository
     output = directory / "stage-two-1/stage-three"
@@ -50,7 +57,7 @@ def test_accepted_retry_does_not_publish_previous_terminal_run(tmp_path, monkeyp
 
     class PausedExecutor(executor):
         def submit(self, function, *args, **kwargs):
-            task = args[0] if isinstance(getattr(function, "__self__", None), Context) else function
+            task = submitted_work(function, args)
             if task.__qualname__.endswith("retry_lesson.<locals>.work"):
                 def queued():
                     try:
@@ -104,7 +111,7 @@ def test_retry_failure_releases_intent_and_keeps_history_readable(tmp_path, monk
 
     class FailingExecutor(executor):
         def submit(self, function, *args, **kwargs):
-            task = args[0] if isinstance(getattr(function, "__self__", None), Context) else function
+            task = submitted_work(function, args)
             if failure_phase == "queue" and task.__qualname__.endswith("retry_lesson.<locals>.work"):
                 raise RuntimeError("injected queue failure")
             return super().submit(function, *args, **kwargs)

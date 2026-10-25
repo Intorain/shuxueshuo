@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..product.db import transaction
 from ..product.models import metadata
+from .admission import ACTIVE, TICKETS, SearchAdmission
 from .recovery import STATE, RecoveryJournal, entry_key
 from .storage import SearchError, SearchStorage
 
@@ -36,11 +37,12 @@ class _LinkExpired(Exception):
 
 
 class SearchRepository:
-    def __init__(self, db, root, *, clock=None, initialize_recovery=True):
+    def __init__(self, db, root, *, clock=None, initialize_recovery=True, admission_disabled=False):
         self.db = db
         self.storage = SearchStorage(root)
         self.root = self.storage.root
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.admission = None if admission_disabled else SearchAdmission(db, clock=self.clock)
         self.recovery = RecoveryJournal(self.root)
         if initialize_recovery:
             self.recovery.initialize(db)
@@ -129,7 +131,7 @@ class SearchRepository:
                 SUBMISSIONS.c.user_id == user_uuid(user), SUBMISSIONS.c.client_request_id == request_id)).mappings().first()
             return self._decorate(connection, row) if row else None
 
-    def create_submission(self, user, search_id, page_id, box, *, client_request_id=None):
+    def create_submission(self, user, search_id, page_id, box, *, client_request_id=None, admit=False):
         key = self.storage.submission_key(search_id)
         digest = self.storage.digest(key + '/question.png')
         original = self.storage.digest(key + '/original.png')
@@ -149,7 +151,66 @@ class SearchRepository:
                 row = connection.execute(sa.select(SUBMISSIONS).where(
                     SUBMISSIONS.c.user_id == user_uuid(user), SUBMISSIONS.c.client_request_id == client_request_id)).mappings().one()
                 self._queue(connection, page_id, key, search_id=search_id)
-            return self._decorate(connection, row), created
+            value = self._decorate(connection, row)
+            if admit and created:
+                try:
+                    value['admission_ticket'] = self.admission.reserve(user, 'generation', search_id,
+                        request_id=client_request_id, connection=connection)
+                except SearchError as exc:
+                    if exc.code == 'search.request_conflict':
+                        raise SearchError('search.request_retired', 409) from exc
+                    raise
+                if not value['admission_ticket'].created:
+                    raise SearchError('search.request_retired', 409)
+            return value, created
+
+    def admitted_submission_live(self, ticket):
+        with transaction(self.db) as connection:
+            row = connection.execute(sa.select(SUBMISSIONS).where(SUBMISSIONS.c.id == ticket.search_id)).mappings().first()
+            return self._live(connection, row)
+
+    def start_admitted(self, ticket):
+        with transaction(self.db) as connection:
+            row = self._locked_submission(connection, ticket.search_id)
+            if not self._live(connection, row):
+                self.admission.cancel(ticket.id, connection=connection)
+                return False
+            return self.admission.start(ticket.id, connection=connection)
+
+    def require_admitted_model_call(self, ticket):
+        self.admission.require_generation_enabled()
+        if not self.admitted_submission_live(ticket):
+            raise SearchError('search.not_found', 404)
+
+    def interrupt_admitted(self, ticket):
+        with transaction(self.db) as connection:
+            row = self._locked_submission(connection, ticket.search_id)
+            if row is None:
+                return
+            self.admission._control(connection)
+            other = connection.scalar(sa.select(TICKETS.c.id).where(
+                TICKETS.c.search_id == ticket.search_id, TICKETS.c.id != UUID(ticket.id),
+                TICKETS.c.state.in_(ACTIVE)).limit(1))
+            if other is not None:
+                return
+            values = {}
+            if ticket.kind == 'generation' and row['recognition_status'] in {'queued', 'running'}:
+                values['recognition_status'] = 'interrupted'
+            if row['lesson_status'] == 'running':
+                values['lesson_status'] = 'interrupted'
+            if values:
+                connection.execute(SUBMISSIONS.update().where(SUBMISSIONS.c.id == ticket.search_id).values(
+                    **values, error_code='search.interrupted', updated_at=self.clock()))
+
+    def reserve_lesson(self, user, search_id, kind, request_id=None):
+        with transaction(self.db) as connection:
+            row = self._locked_submission(connection, search_id)
+            if row is None or row['user_id'] != user_uuid(user) or not self._live(connection, row):
+                raise SearchError('search.not_found', 404)
+            ticket = self.admission.reserve(user, kind, search_id, request_id=request_id, connection=connection)
+            if ticket.created:
+                self.set_state(search_id, lesson_state='running')
+            return ticket
 
     def _locked_submission(self, connection, search_id):
         hint = connection.execute(sa.select(SUBMISSIONS.c.page_id, SUBMISSIONS.c.user_id).where(SUBMISSIONS.c.id == search_id)).first()
@@ -334,6 +395,8 @@ class SearchRepository:
         for row in rows:
             self._queue(connection, row['page_id'], row['storage_key'], search_id=row['id'])
         identifiers = [row['id'] for row in rows]
+        if self.admission is not None:
+            self.admission.cancel_for_submissions(identifiers, connection=connection)
         connection.execute(SUBMISSIONS.delete().where(SUBMISSIONS.c.id.in_(identifiers)))
         for owner, problem_id in sorted({(row['user_id'], row['problem_id']) for row in rows if row['problem_id']}):
             relation = sa.and_(RELATIONS.c.user_id == owner, RELATIONS.c.problem_id == problem_id)
@@ -406,6 +469,7 @@ class SearchRepository:
             sa.and_(PAGES.c.expires_at <= now, PAGES.c.image_state == 'active'),
             PAGES.c.id.in_(sa.select(SUBMISSIONS.c.page_id).where(expired_submission)))
         with transaction(self.db) as connection:
+            expired_ids = []
             page_ids = connection.scalars(sa.select(PAGES.c.id).where(pending_page)
                 .order_by(PAGES.c.id)).all()
             for page_id in page_ids:
@@ -420,6 +484,7 @@ class SearchRepository:
                 rows = connection.execute(sa.select(SUBMISSIONS).where(SUBMISSIONS.c.page_id == page_id, expired_submission)
                     .order_by(SUBMISSIONS.c.id).with_for_update()).mappings().all()
                 for row in rows:
+                    expired_ids.append(row['id'])
                     runs = metadata.tables['lesson_runs']
                     connection.execute(runs.delete().where(runs.c.submission_id == row['id']))
                     if self.storage.path(row['storage_key']).exists():
@@ -430,6 +495,8 @@ class SearchRepository:
                                 artifact_state='expired', lesson_status='expired', updated_at=now))
                     else:
                         connection.execute(SUBMISSIONS.delete().where(SUBMISSIONS.c.id == row['id']))
+            if self.admission is not None:
+                self.admission.cancel_for_submissions(expired_ids, connection=connection, error_code='search.expired')
         with transaction(self.db) as connection:
             pending = connection.execute(sa.select(PAGES.c.id, PAGES.c.pending_cleanup_keys).where(
                 sa.func.jsonb_array_length(PAGES.c.pending_cleanup_keys) > 0)).all()

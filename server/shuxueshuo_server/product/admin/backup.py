@@ -16,7 +16,7 @@ from .. import models as m
 from ..db import engine, transaction
 from ..errors import Conflict, IntegrityFailure
 from ..storage import LocalArtifactStorage, parts
-from .database import doctor, dsn, grant
+from .database import doctor, dsn, migrate
 from .search_backup import backup_lease, collect_search_files, restore_search_files, validate_search_files
 
 
@@ -100,9 +100,11 @@ def backup(settings, *, fenced=False, now=None):
             recovery_cursor = None
             with db.connect() as connection:
                 has_recovery = connection.exec_driver_sql("SELECT to_regclass('search_recovery_state')").scalar() is not None
+                has_admission = connection.exec_driver_sql("SELECT to_regclass('search_admission_control')").scalar() is not None
             if has_recovery:
                 from ...search.repository import SearchRepository
-                repository = SearchRepository(db, settings.root / 'work/search/private-v1', clock=lambda: now)
+                repository = SearchRepository(db, settings.root / 'work/search/private-v1', clock=lambda: now,
+                                              admission_disabled=not has_admission)
                 repository.cleanup()
                 recovery_cursor = repository.recovery.snapshot().cursor
             with transaction(db) as c:
@@ -139,6 +141,7 @@ def backup(settings, *, fenced=False, now=None):
 
 
 def _restore_search(db, settings, source, manifest, snapshot, now):
+    from ...search.admission import SearchAdmission
     from ...search.recovery import initialize_restored_authority
     from ...search.repository import PAGES, SUBMISSIONS, SearchRepository
 
@@ -146,6 +149,9 @@ def _restore_search(db, settings, source, manifest, snapshot, now):
         has_recovery = connection.exec_driver_sql("SELECT to_regclass('search_recovery_state')").scalar() is not None
     if not has_recovery:
         return {'files': 0, 'deleted_search_ids': []}
+    admission = SearchAdmission(db, clock=lambda: now)
+    admission.set_generation_enabled(False)
+    admission_recovered = admission.recover()
     deleted = {'deleted_search_ids': []}
     if snapshot is not None:
         repository = SearchRepository(db, settings.root / 'work/search/private-v1', clock=lambda: now, initialize_recovery=False)
@@ -186,7 +192,8 @@ def _restore_search(db, settings, source, manifest, snapshot, now):
     with db.connect() as connection:
         if any(connection.scalars(select(PAGES.c.pending_cleanup_keys))):
             raise IntegrityFailure('restore.search_cleanup_incomplete')
-    return {**deleted, 'files': restored, 'cleanup': cleanup, 'interrupted': recovered}
+    return {**deleted, 'files': restored, 'cleanup': cleanup, 'interrupted': recovered,
+            'admission_recovered': admission_recovered, 'generation_enabled': False}
 
 
 def restore_data(settings, source, *, search_recovery_root=None, now=None):
@@ -241,11 +248,11 @@ def restore_data(settings, source, *, search_recovery_root=None, now=None):
             pg_tool(settings, 'pg_restore', '--exit-on-error', '--single-transaction', '--no-owner', '--no-acl',
                     '--dbname', 'product', source / 'database.dump')
             with transaction(db) as c:
-                grant(c)
                 if table_counts(c) != manifest['counts']:
                     raise IntegrityFailure('restore.row_count')
                 if c.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one() != manifest['revision']:
                     raise IntegrityFailure('restore.revision')
+                migrate(settings, connection=c)
                 c.execute(m.student_login_sessions.update().values(revoked_at=now))
                 c.execute(m.student_sms_challenges.update().where(
                     m.student_sms_challenges.c.consumed_at.is_(None)).values(consumed_at=now))

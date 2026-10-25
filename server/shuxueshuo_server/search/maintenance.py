@@ -16,12 +16,26 @@ def main():
     parser.add_argument('--instance', default=os.environ.get('PRODUCT_INSTANCE'))
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('cleanup')
+    for name in ('generation-enable', 'generation-stop', 'generation-status'):
+        commands.add_parser(name)
     disabled = commands.add_parser('disable')
     disabled.add_argument('problem_id')
     args = parser.parse_args()
     settings = Settings.load(args.mode, args.data_dir, args.instance)
     db = engine(settings.url())
     try:
+        if args.command.startswith('generation-'):
+            from ..product.admin.backup import require_restore_complete
+            from .admission import SearchAdmission, SearchLimits
+            admission = SearchAdmission(db, config=SearchLimits())
+            cancelled = []
+            if args.command == 'generation-enable':
+                require_restore_complete(settings)
+                admission.set_generation_enabled(True)
+            elif args.command == 'generation-stop':
+                cancelled = admission.set_generation_enabled(False)
+            print(json.dumps({'generation_enabled': admission.generation_enabled(), 'cancelled': len(cancelled)}))
+            return
         repository = SearchRepository(db, settings.root / 'work/search/private-v1')
         if args.command == 'cleanup':
             from .application import cleanup_search

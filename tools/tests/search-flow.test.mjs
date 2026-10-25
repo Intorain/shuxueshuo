@@ -736,12 +736,155 @@ for (const action of ['retryLesson', 'start', 'resume']) for (const failure of [
 });
 
 test('camera and problem pages load the versioned pure notice helper before their updated scripts', () => {
-  for (const [name, version] of [['camera', '20261024-32mp'], ['problem', '20261024-maintenance']]) {
+  for (const name of ['camera', 'problem']) {
     const html = fs.readFileSync(new URL(`../../site/lab/search/${name}.html`, import.meta.url), 'utf8');
-    const helper = html.indexOf('src="search-errors.js?v=20261024-maintenance" defer');
+    const helper = html.indexOf('src="search-errors.js?v=20261025-admission-review" defer');
     assert.ok(helper >= 0);
-    assert.ok(html.indexOf(`src="${name}.js?v=${version}" defer`) > helper);
+    assert.ok(html.indexOf(`src="${name}.js?v=20261025-admission-review" defer`) > helper);
   }
+});
+
+const admissionMessages = {
+  'search.account_busy': '你已有一道题正在排队或生成，请等它处理完再试。',
+  'search.queue_full': '当前生成任务较多，请稍后再试。',
+  'search.daily_generation_limit': '你今天的新生成次数已用完，请明天再来。已生成的课程仍可学习。',
+  'search.daily_rerun_limit': '你今天的课程重跑次数已用完，请明天再试。',
+  'search.global_generation_limit': '今天的全站新生成额度已用完，请明天再来。已生成的课程仍可学习。',
+  'search.global_rerun_limit': '今天的全站课程重跑额度已用完，请明天再试。',
+  'search.generation_paused': '课程生成已暂停，请稍后再试。已生成的课程仍可学习。',
+  'search.upload_busy': '照片识别请求较多，请等当前照片处理完再试。',
+  'search.request_retired': '上次提交的记录已删除，请再次点击重试以新建记录。',
+};
+
+for (const [detail, message] of Object.entries(admissionMessages)) for (const action of postActions) {
+  test(`${action} explains ${detail} without automatically retrying or discarding work`, async () => {
+    const {context, element, location, invoke, camera} = await postAction(action);
+    const priorLesson = camera ? null : vm.runInContext('lesson.data', context);
+    let requests = 0;
+    context.fetch = async () => { requests++; return {ok: false, status: detail === 'search.generation_paused' ? 503
+      : detail === 'search.request_retired' ? 409 : 429,
+      json: async () => ({detail})}; };
+    await invoke();
+    assert.equal(requests, 1);
+    assert.equal(element(action === 'upload' ? '#cm-proto-note' : '#sq-toast').textContent, message);
+    assert.equal(location.href, '');
+    if (!camera) assert.equal(vm.runInContext('lesson.data', context), priorLesson);
+  });
+}
+
+for (const action of postActions) test(`${action} does not expose unknown server error details`, async () => {
+  const {context, element, invoke} = await postAction(action);
+  context.fetch = async () => ({ok: false, status: 500, json: async () => ({detail: 'private.internal.failure'})});
+  await invoke();
+  assert.doesNotMatch(element(action === 'upload' ? '#cm-proto-note' : '#sq-toast').textContent, /private\.internal|HTTP 500/);
+});
+
+test('unknown inherited property names do not become notices', () => {
+  const {context} = setup('problem.js');
+  for (const detail of ['__proto__', 'toString', 'constructor']) {
+    assert.equal(context.window.SearchErrors.message(detail, 'safe fallback'), 'safe fallback');
+  }
+});
+
+test('unused pending-request errors do not imply that the server accepted work', () => {
+  const {context} = setup('problem.js');
+  assert.equal(context.window.SearchErrors.message('search.request_pending', 'safe fallback'), 'safe fallback');
+});
+
+for (const action of ['submit', 'retry', 'retryLesson']) test(`${action} retires a deleted request key only after a confirmed rejection`, async () => {
+  const {context, element, location, invoke} = await postAction(action);
+  const requests = [];
+  context.resumeLesson = () => {};
+  context.fetch = async (_url, options) => {
+    requests.push(JSON.parse(options.body));
+    return requests.length === 1 ? {ok: false, status: 409, json: async () => ({detail: 'search.request_retired'})}
+      : response({search_id: 'new-search'});
+  };
+  await invoke();
+  assert.equal(requests.length, 1, 'a retired request never automatically starts another paid task');
+  assert.equal(location.href, '');
+  assert.equal(element('#sq-toast').textContent, admissionMessages['search.request_retired']);
+  const intent = {submit: 'submissionIntent', retry: 'retryRequestId', retryLesson: 'lessonRetryIntent'}[action];
+  assert.equal(vm.runInContext(intent, context), null);
+  await invoke();
+  assert.deepEqual(requests.map(item => item.client_request_id), ['request-1', 'request-2']);
+  if (action !== 'retryLesson') assert.equal(location.href, 'problem.html?search=new-search');
+});
+
+test('lesson rerun retries reuse an account-scoped request key after an uncertain network outcome', async () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  const requests = [];
+  let resumed = 0;
+  context.resumeLesson = () => { resumed++; };
+  context.fetch = async (url, options) => {
+    requests.push({url, options});
+    if (requests.length === 1) throw new TypeError('network disconnected after acceptance');
+    return response({});
+  };
+  await context.retryLesson();
+  await context.retryLesson();
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].options.headers['Content-Type'], 'application/json');
+  assert.deepEqual(JSON.parse(requests[0].options.body), {client_request_id: 'request-1'});
+  assert.equal(requests[1].options.body, requests[0].options.body);
+  assert.equal(resumed, 1);
+});
+
+test('duplicate lesson rerun clicks cannot create new requests before acceptance or task completion', async () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  const pending = deferred(), requests = [];
+  let resumed = 0;
+  context.resumeLesson = () => { resumed++; };
+  context.fetch = (url, options) => { requests.push({url, options}); return requests.length === 1 ? pending.promise : response({}); };
+  const first = context.retryLesson();
+  await context.retryLesson();
+  assert.equal(requests.length, 1);
+  pending.resolve(response({}));
+  await first;
+  await context.retryLesson();
+  assert.equal(requests.length, 1);
+  context.showLesson({status: 'error'});
+  await context.retryLesson();
+  assert.equal(requests.length, 2);
+  assert.notEqual(requests[1].options.body, requests[0].options.body);
+  assert.equal(resumed, 2);
+});
+
+for (const invalidation of ['switch-account', 'logout', 'stop-page']) test(`late accepted rerun cannot resume after ${invalidation}`, async () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  const pending = deferred();
+  context.fetch = () => pending.promise;
+  context.resumeLesson = () => assert.fail('old account cannot resume a lesson');
+  const active = context.retryLesson();
+  if (invalidation === 'stop-page') context.stopPrivateLesson();
+  else context.window.SearchSession.user = invalidation === 'logout' ? null : {id: 'student-b'};
+  pending.resolve(response({}));
+  await active;
+  assert.equal(vm.runInContext('lessonRetryAccepted', context), false);
+  context.stopPrivateLesson();
+  assert.equal(vm.runInContext('lessonRetryIntent', context), null);
+  assert.equal(vm.runInContext('retryRequestId', context), null);
+});
+
+test('re-recognition coalesces pending clicks and preserves its key for a manual network retry', async () => {
+  const {context} = setup('problem.js', '?search=0123456789ab');
+  const pending = deferred(), requests = [];
+  context.cropFixture = crop;
+  vm.runInContext('liveCrop = cropFixture', context);
+  context.fetch = async (url, options) => {
+    requests.push({url, options});
+    await pending.promise;
+    throw new TypeError('network disconnected after acceptance');
+  };
+  const first = context.retry();
+  await context.retry();
+  assert.equal(requests.length, 1);
+  pending.resolve();
+  await first;
+  context.fetch = async (url, options) => { requests.push({url, options}); return response({search_id: 'accepted'}); };
+  await context.retry();
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].options.body, requests[0].options.body);
 });
 
 for (const status of ['corrected', 'manual', 'upright', 'uncertain']) test(`${status} orientation only announces an automatic correction when appropriate`, async () => {

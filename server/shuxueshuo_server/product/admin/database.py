@@ -16,6 +16,8 @@ from ..repositories import UserContext, insert, row
 from ..storage import LocalArtifactStorage
 
 MUTABLE = {
+    'search_admission_control': 'generation_enabled updated_at',
+    'search_admission_tickets': 'state consumed started_at finished_at error_code',
     'search_recovery_state': 'initialized sequence digest replayed_sequence',
     'lesson_runs': 'updated_at',
     'lesson_metadata': 'value',
@@ -170,6 +172,8 @@ def doctor(settings, *, probe=True, maintenance=False):
                 for column in m.metadata.tables[table].c:
                     if column.name not in allowed and c.scalar(text("SELECT has_column_privilege(current_user,:t,:c,'UPDATE')"), {'t': table, 'c': column.name}):
                         raise IntegrityFailure('doctor.app_frozen_column')
+            if c.scalar(text('SELECT count(*) FROM search_admission_control WHERE singleton')) != 1:
+                raise IntegrityFailure('doctor.search_admission_control_missing')
             user, workspace = row(c, m.users, key='internal'), row(c, m.workspaces, slug='default')
             if not user or not workspace or not row(c, m.workspace_members, workspace_id=workspace['id'], user_id=user['id'], role='owner'):
                 raise IntegrityFailure('doctor.seed_missing')

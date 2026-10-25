@@ -163,7 +163,7 @@ function uploadErrorMessage(status, detail) {
   if (detail === 'page.not_an_image') return '图片格式不受支持或文件已损坏，请改用 JPEG、PNG 或 WebP。';
   if (detail === 'page.size') return '照片内容为空，请重新选择照片。';
   if (detail.startsWith('ocr.unavailable')) return '识别服务暂不可用，请稍后重试。';
-  return window.SearchErrors.message(detail, `照片处理失败（HTTP ${status}${detail ? `：${detail}` : ''}），请重试。`);
+  return window.SearchErrors.message(detail, '照片处理失败，请稍后重试。');
 }
 
 async function detect(blob, fallback, url) {
@@ -416,8 +416,8 @@ async function go(rect, expectedGeneration = readyGeneration) {
     if (submission !== pending || expectedGeneration !== generation) return;
     if (response.ok) { location.href = `problem.html?search=${body.search_id}`; return; }
     const detail = String(body.detail || response.status);
-    toast(window.SearchErrors.message(detail,
-      detail.startsWith('stage_one.disabled') ? '本地没开启阶段①：用 RUN_LLM_INTEGRATION=1 启动 run_site.py' : `提交失败：${detail}`));
+    if (detail === 'search.request_retired') submissionIntent = null;
+    toast(window.SearchErrors.message(detail, '提交失败，请稍后重试。'));
   } catch {
     if (submission === pending && expectedGeneration === generation) toast('提交失败，请检查连接后重试');
   } finally {

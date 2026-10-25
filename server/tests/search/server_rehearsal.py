@@ -3,6 +3,7 @@
 import argparse
 import importlib.util
 import json
+import os
 import secrets
 import shutil
 import ssl
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import time
 from datetime import UTC, datetime, timedelta
+from contextlib import asynccontextmanager
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -24,6 +26,8 @@ def forbidden(*_args, **_kwargs):
 
 
 def api():
+    if os.getenv('SEARCH_OFFLINE_REHEARSAL') != '1':
+        raise RuntimeError('Offline fixture API requires SEARCH_OFFLINE_REHEARSAL=1')
     import uvicorn
 
     from shuxueshuo_server.auth import api as auth_api
@@ -76,6 +80,15 @@ def api():
     dev_api.run_stage_two = classify
     from shuxueshuo_server.main import app
 
+    previous_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def fixture_lifespan(application):
+        async with previous_lifespan(application) as state:
+            application.state.search_repository.admission.set_generation_enabled(True)
+            yield state
+
+    app.router.lifespan_context = fixture_lifespan
     uvicorn.run(app, host='0.0.0.0', port=8000, proxy_headers=True,
                 forwarded_allow_ips='127.0.0.1', access_log=False)
 
@@ -150,6 +163,25 @@ def maintenance(*arguments):
                     '--mode', 'server', '--instance', 'search-rehearsal', *arguments], check=True)
 
 
+def wait_admission_idle(user_id):
+    from sqlalchemy import text
+
+    database_engine = database()
+    try:
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            with database_engine.connect() as connection:
+                remaining = connection.scalar(text(
+                    "SELECT count(*) FROM search_admission_tickets WHERE user_id=:user "
+                    "AND state IN ('reserved', 'running')"), {'user': user_id})
+            if remaining == 0:
+                return
+            time.sleep(0.05)
+        raise TimeoutError('Offline admission tasks did not finish')
+    finally:
+        database_engine.dispose()
+
+
 def exercise():
     from PIL import Image
     from sqlalchemy import text
@@ -213,6 +245,28 @@ def exercise():
                      additional_headers={'Cookie': cookie}, open_timeout=15) as websocket:
             assert websocket.recv(timeout=15)
         checks.append('real sidecar HTTP upload/rotation, request idempotency, recorded lesson and TLS WebSocket')
+        wait_admission_idle(user['id'])
+        rejected = checked(browser.post('/api/search/problems', json={**request, 'client_request_id': 'over-quota'}), 429)
+        assert rejected['detail'] == 'search.daily_generation_limit'
+        rerun = {'client_request_id': 'offline-rerun'}
+        checked(browser.post(f'/api/search/problems/{first}/lesson', json=rerun))
+        ready = wait_lesson(browser, first)
+        wait_admission_idle(user['id'])
+        assert checked(browser.post(f'/api/search/problems/{first}/lesson', json=rerun))['duplicate'] is True
+        rejected = checked(browser.post(f'/api/search/problems/{first}/lesson',
+                                        json={'client_request_id': 'over-rerun-quota'}), 429)
+        assert rejected['detail'] == 'search.daily_rerun_limit'
+        checks.append('fixture-only daily limits of 1 generation and 1 rerun; durable rejection and rerun idempotency')
+        maintenance('generation-stop')
+        try:
+            rejected = checked(browser.post('/api/search/problems',
+                                            json={**request, 'client_request_id': 'paused-request'}), 503)
+            assert rejected['detail'] == 'search.generation_paused'
+            checked(browser.get(f'/api/search/problems/{first}'))
+            checked(browser.get('/api/search/problems'))
+        finally:
+            maintenance('generation-enable')
+        checks.append('operator expense stop rejects generation while preserving private reads')
         login(other, '19900000002')
         checked(other.get(f'/api/search/problems/{first}'), 404)
         assert checked(other.get('/api/search/problems'))['items'] == []

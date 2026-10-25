@@ -34,6 +34,7 @@ def repository(tmp_path):
 
 @pytest.fixture
 def private_app(repository, monkeypatch):
+    repository.admission.set_generation_enabled(True)
     config = AuthConfig(mode="mock", environment="test", origin="https://testserver", session_seconds=90 * 86400,
                         secret=secrets.token_urlsafe(48))
     auth = AuthService(repository.db, config, MockSms(), clock=repository.clock)

@@ -91,6 +91,7 @@ def test_lifespan_runs_backup_once_and_shares_schedule_with_background(
     now = [0.0]
     settings = SimpleNamespace(root=tmp_path)
     repository = SimpleNamespace(recover=lambda: calls.append('recover'),
+                                 admission=SimpleNamespace(recover=lambda: calls.append('admission-recover')),
                                  cleanup=lambda: calls.append('live'))
 
     def backup(_settings):
@@ -114,7 +115,7 @@ def test_lifespan_runs_backup_once_and_shares_schedule_with_background(
     application.install_search(app)
     with TestClient(app):
         assert app.state.search_accepting is True
-    assert calls == ['recover', 'live', 'backup', 'live']
+    assert calls == ['admission-recover', 'recover', 'live', 'backup', 'live']
     assert app.state.search_accepting is False
     assert len(caplog.records) == int(backup_fails)
 

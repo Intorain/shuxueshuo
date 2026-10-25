@@ -28,6 +28,7 @@ from shuxueshuo_server.product.admin.search_backup import prune_backups
 from shuxueshuo_server.product.config import Settings
 from shuxueshuo_server.product.db import canonical, engine
 from shuxueshuo_server.product.errors import Conflict, IntegrityFailure
+from shuxueshuo_server.search.admission import SearchAdmission, SearchLimits, TICKETS
 from shuxueshuo_server.search.repository import PROBLEMS, SUBMISSIONS, SearchError, SearchRepository
 
 
@@ -128,6 +129,60 @@ def missing(repo, owner, identifier):
 def role_login(settings):
     with psycopg.connect(database.dsn(settings.url('bootstrap'))) as connection:
         return connection.execute("SELECT rolcanlogin FROM pg_roles WHERE rolname='product_app'").fetchone()[0]
+
+
+def test_restore_preserves_consumed_admission_quota_releases_queue_and_closes_generation(clusters):
+    settings = clusters.create('quota-source')
+    repo = clusters.repository(settings)
+    first, second = student(repo), student(repo)
+    first_row, second_row = submission(repo, first), submission(repo, second)
+    admission = SearchAdmission(repo.db, config=SearchLimits(generation_account_daily=1), clock=repo.clock)
+    admission.set_generation_enabled(True)
+    running = admission.reserve(first, 'generation', first_row['id'], request_id='started')
+    queued = admission.reserve(second, 'generation', second_row['id'], request_id='queued')
+    admission.start(running.id)
+    repo.db.dispose()
+    saved = backup(settings, now=NOW)
+    manifest = json.loads((Path(saved['backup']) / 'manifest.json').read_text())
+    assert manifest['counts']['search_admission_tickets'] == 2
+    restored = clusters.create('quota-target', initialized=False)
+    result = restore_data(restored, saved['backup'], search_recovery_root=repo.root, now=NOW + timedelta(minutes=1))
+    assert result['search']['admission_recovered'] == {'cancelled': 0, 'interrupted': 1}
+    recovered = clusters.repository(restored, NOW + timedelta(minutes=1))
+    limits = SearchAdmission(recovered.db, config=admission.config, clock=recovered.clock)
+    assert not limits.generation_enabled()
+    assert limits.ticket_states([running.id, queued.id]) == {running.id: 'interrupted', queued.id: 'cancelled'}
+    with recovered.db.connect() as connection:
+        rows = {str(row.id): row for row in connection.execute(sa.select(TICKETS))}
+    assert rows[running.id].consumed and not rows[queued.id].consumed
+    limits.set_generation_enabled(True)
+    with pytest.raises(SearchError, match='search.daily_generation_limit'):
+        limits.reserve(first, 'generation', first_row['id'])
+    assert limits.reserve(second, 'generation', second_row['id']).created
+
+
+def test_pre_admission_v2_backup_upgrades_and_starts_with_generation_closed(clusters):
+    settings = clusters.create('previous-source')
+    repo = clusters.repository(settings)
+    owner = student(repo)
+    original = submission(repo, owner)
+    repo.db.dispose()
+    migration = engine(settings.url('migration'))
+    try:
+        with migration.begin() as connection:
+            connection.exec_driver_sql('DROP TABLE search_admission_tickets, search_admission_control')
+            connection.exec_driver_sql("UPDATE alembic_version SET version_num = '0015_search_recovery'")
+    finally:
+        migration.dispose()
+    saved = backup(settings, now=NOW)
+    restored = clusters.create('previous-target', initialized=False)
+    assert restore_data(restored, saved['backup'], search_recovery_root=repo.root, now=NOW)['ok']
+    recovered = clusters.repository(restored)
+    assert recovered.submission(owner, original['id'])['id'] == original['id']
+    assert not SearchAdmission(recovered.db).generation_enabled()
+    with recovered.db.connect() as connection:
+        assert connection.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one() == '0016_search_admission'
+        assert connection.scalar(sa.select(sa.func.count()).select_from(TICKETS)) == 0
 
 
 def test_snapshot_delete_restore_isolated_ready_course_and_new_authority(clusters):

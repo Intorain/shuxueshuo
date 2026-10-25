@@ -39,6 +39,7 @@ def repository(tmp_path):
 
 @pytest.fixture
 def production_app(repository, monkeypatch):
+    repository.admission.set_generation_enabled(True)
     importlib.import_module("shuxueshuo_server.tutor_demo.api")
     settings = SimpleNamespace(mode="server", root=repository.root.parent / "instance")
     (settings.root / "locks").mkdir(parents=True)

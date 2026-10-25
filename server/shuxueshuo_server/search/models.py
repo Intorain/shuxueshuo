@@ -5,6 +5,37 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 
 def register(metadata):
+    sa.Table('search_admission_control', metadata,
+        sa.Column('singleton', sa.Boolean, primary_key=True, server_default=sa.text('true')),
+        sa.Column('generation_enabled', sa.Boolean, nullable=False, server_default=sa.text('false')),
+        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')),
+        sa.CheckConstraint('singleton', name='search_admission_singleton'))
+    tickets = sa.Table('search_admission_tickets', metadata,
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('user_id', UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=False),
+        sa.Column('search_id', sa.Text, nullable=False),
+        sa.Column('kind', sa.Text, nullable=False),
+        sa.Column('request_id', sa.Text),
+        sa.Column('quota_day', sa.Date, nullable=False),
+        sa.Column('accepted_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('state', sa.Text, nullable=False),
+        sa.Column('consumed', sa.Boolean, nullable=False, server_default=sa.text('false')),
+        sa.Column('started_at', sa.DateTime(timezone=True)),
+        sa.Column('finished_at', sa.DateTime(timezone=True)),
+        sa.Column('error_code', sa.Text),
+        sa.UniqueConstraint('user_id', 'kind', 'request_id'),
+        sa.CheckConstraint("kind IN ('generation','rerun','continuation')", name='search_admission_kind'),
+        sa.CheckConstraint("state IN ('reserved','running','finished','cancelled','interrupted')", name='search_admission_state'),
+        sa.CheckConstraint("NOT consumed OR (kind IN ('generation','rerun') AND started_at IS NOT NULL)", name='search_admission_consumed'),
+        sa.CheckConstraint("state != 'reserved' OR (NOT consumed AND started_at IS NULL AND finished_at IS NULL)", name='search_admission_reserved'),
+        sa.CheckConstraint("state NOT IN ('running','finished','interrupted') OR started_at IS NOT NULL", name='search_admission_started'),
+        sa.CheckConstraint("state NOT IN ('finished','cancelled','interrupted') OR finished_at IS NOT NULL", name='search_admission_finished'))
+    sa.Index('ix_search_admission_active', tickets.c.state, tickets.c.user_id,
+             postgresql_where=tickets.c.state.in_(('reserved', 'running')))
+    sa.Index('ix_search_admission_daily', tickets.c.quota_day, tickets.c.kind, tickets.c.user_id,
+             postgresql_where=sa.or_(tickets.c.consumed.is_(True), tickets.c.state == 'reserved'))
+    sa.Index('ix_search_admission_submission', tickets.c.search_id,
+             postgresql_where=tickets.c.state == 'reserved')
     sa.Table('search_recovery_state', metadata,
         sa.Column('singleton', sa.Boolean, primary_key=True, server_default=sa.text('true')),
         sa.Column('authority_id', UUID(as_uuid=True), nullable=False),

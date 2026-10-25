@@ -12,6 +12,10 @@ const searchFetch = (...args) => session.request(...args);
 let privateStopped = false;
 let liveTicket = 0;
 let retryRequestId = null;
+let retryPending = false;
+let lessonRetryIntent = null;
+let lessonRetryPending = false;
+let lessonRetryAccepted = false;
 let progressOwner = null;
 let retakePending = false;
 const started = performance.now();
@@ -501,6 +505,10 @@ function offerStart() {
 
 function showLesson(data) {
   if (privateStopped) return;
+  if (lessonRetryAccepted && !lessonNeedsPolling(data)) {
+    lessonRetryIntent = null;
+    lessonRetryAccepted = false;
+  }
   if (data.execution_status === 'unavailable') {
     unavailableStatus({outcome: 'unavailable', statement: shown.text});
     return;
@@ -642,17 +650,36 @@ async function openPart(index) {
 }
 
 async function retryLesson() {
-  if (privateStopped) return;
+  if (privateStopped || lessonRetryPending || lessonRetryAccepted || !session.user) return;
   if (!searchId) return toast('原型不能重试');
   const ticket = liveTicket;
-  const response = await searchFetch(`/api/search/problems/${searchId}/lesson`, {method: 'POST'}).catch(() => null);
-  if (privateStopped || ticket !== liveTicket) return;
-  if (!response?.ok) {
-    const body = await response?.json().catch(() => ({}));
-    if (privateStopped || ticket !== liveTicket) return;
-    return toast(window.SearchErrors.message(body?.detail, '重试失败，请稍后再试'));
+  const owner = session.user.id;
+  if (lessonRetryIntent?.owner !== owner) lessonRetryIntent = {owner, id: crypto.randomUUID()};
+  const active = () => !privateStopped && ticket === liveTicket && session.user?.id === owner;
+  lessonRetryPending = true;
+  for (const button of document.querySelectorAll('[data-lesson-retry]')) button.disabled = true;
+  try {
+    const response = await searchFetch(`/api/search/problems/${searchId}/lesson`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({client_request_id: lessonRetryIntent.id}),
+    });
+    if (!active()) return;
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      if (!active()) return;
+      if (body?.detail === 'search.request_retired') lessonRetryIntent = null;
+      return toast(window.SearchErrors.message(body?.detail, '重试失败，请稍后再试'));
+    }
+    lessonRetryAccepted = true;
+    resumeLesson();
+  } catch {
+    if (active()) toast('重试失败，请稍后再试');
+  } finally {
+    if (active()) {
+      lessonRetryPending = false;
+      for (const button of document.querySelectorAll('[data-lesson-retry]')) button.disabled = lessonRetryAccepted;
+    }
   }
-  resumeLesson();
 }
 
 async function continueCalculation() {
@@ -742,9 +769,13 @@ let pollLost = false;
 /* Lost polling: the run may still be going, so reload and keep polling the same search.
    A run that ended in failure never reruns, so submit the same page crop as a new search. */
 async function retry() {
-  if (privateStopped) return;
+  if (privateStopped || retryPending || !session.user) return;
   if (pollLost || !liveCrop) return location.reload();
+  const ticket = liveTicket;
+  const owner = session.user.id;
+  const active = () => !privateStopped && ticket === liveTicket && session.user?.id === owner;
   const button = $('[data-retry]');
+  retryPending = true;
   button.disabled = true;
   try {
     retryRequestId ||= crypto.randomUUID();
@@ -753,13 +784,15 @@ async function retry() {
       body: JSON.stringify({page_id: liveCrop.page_id, box: liveCrop.box, client_request_id: retryRequestId}),
     });
     const body = await response.json().catch(() => ({}));
-    if (privateStopped) return;
+    if (!active()) return;
     if (response.ok) { location.href = `problem.html?search=${body.search_id}`; return; }
-    toast(window.SearchErrors.message(body.detail, `重试失败：${body.detail || response.status}`));
-  } catch (error) {
-    if (!privateStopped) toast(`重试失败：${error.message}`);
+    if (body.detail === 'search.request_retired') retryRequestId = null;
+    toast(window.SearchErrors.message(body.detail, '重试失败，请稍后再试'));
+  } catch {
+    if (active()) toast('重试失败，请稍后再试');
+  } finally {
+    if (active()) { retryPending = false; button.disabled = false; }
   }
-  button.disabled = false;
 }
 
 async function runLive() {
@@ -879,6 +912,11 @@ function stopPrivateLesson() {
   lesson.teaching = null;
   shown.text = null; shown.parts = []; shown.root = null;
   liveCrop = null;
+  retryRequestId = null;
+  retryPending = false;
+  lessonRetryIntent = null;
+  lessonRetryPending = false;
+  lessonRetryAccepted = false;
   progressOwner = null;
   for (const selector of ['#pq-photo', '#pq-thumb-img', '#pq-fail-img', '#pq-viewer img']) $(selector)?.removeAttribute('src');
   for (const selector of ['#pq-text', '#pq-meaning-body', '#pq-lesson', '#pq-fail-quote', '#gw-steps', '#pq-stream', '#gw-ready']) $(selector)?.replaceChildren();

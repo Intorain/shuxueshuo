@@ -186,7 +186,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(dev_api.OcrClient, "observe", lambda self, path: recorded)
     monkeypatch.setenv("RUN_LLM_INTEGRATION", "1")
     monkeypatch.setattr("shuxueshuo_server.problem_understanding.batch_smoke.live_provider_factory",
-                        lambda name: (lambda: object()))
+                        lambda name, **_kwargs: (lambda: object()))
     return authenticated_client(tmp_path)
 
 

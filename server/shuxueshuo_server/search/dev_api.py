@@ -449,7 +449,10 @@ def create_search_router(root, *, stage_three_hooks=None):
                 require_model_request_scope()
                 if not repo.set_state(search_id, recognition_state="running"):
                     return
-                result = run_question_image(png, output, live_provider_factory("deepseek")(), problem_id=search_id)
+                # The image's code tree is read-only in containers; the cache lives in the data root.
+                provider = live_provider_factory(
+                    "deepseek", file_cache_dir=repo.storage.root.parent / "deepseek-files-cache")()
+                result = run_question_image(png, output, provider, problem_id=search_id)
                 if result is None:
                     result = stage_three.read(output / RESULT_FILE)
                 if result["status"] == "reviewed_candidate":

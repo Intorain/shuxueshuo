@@ -5,6 +5,7 @@ import time
 from datetime import timedelta
 from hashlib import sha256
 from io import BytesIO
+from pathlib import Path
 from threading import Event
 
 import pytest
@@ -70,8 +71,14 @@ def upload(client):
 def recorded_pipeline(monkeypatch, *, entered=None, release=None, verified=True):
     calls = []
     monkeypatch.setenv("RUN_LLM_INTEGRATION", "1")
+    def provider_factory(_name, *, file_cache_dir):
+        # Containers mount the code tree read-only; the cache must live under the data root.
+        assert file_cache_dir.name == "deepseek-files-cache"
+        assert not file_cache_dir.is_relative_to(Path(dev_api.__file__).resolve().parents[3])
+        return lambda: object()
+
     monkeypatch.setattr("shuxueshuo_server.problem_understanding.batch_smoke.live_provider_factory",
-                        lambda _name: lambda: object())
+                        provider_factory)
     monkeypatch.setattr("shuxueshuo_server.graph_lesson.stage_two.selection.live_provider_factory", lambda: object())
 
     def recognize(png, directory, _provider, *, problem_id):

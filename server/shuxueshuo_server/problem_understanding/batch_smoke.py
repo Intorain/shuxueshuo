@@ -213,7 +213,7 @@ def run_batch(
     return summary
 
 
-def live_provider_factory(provider_name="deepseek", *, image_transport=None):
+def live_provider_factory(provider_name="deepseek", *, image_transport=None, file_cache_dir=None):
     from dotenv import load_dotenv
 
     from shuxueshuo_server.solver.extraction.multimodal_provider import (
@@ -259,7 +259,7 @@ def live_provider_factory(provider_name="deepseek", *, image_transport=None):
         request_timeout=300,
         max_output_tokens=16384,
         file_cache_dir=(
-            REPO / "internal/solver-runs/.deepseek-files-cache"
+            Path(file_cache_dir or REPO / "internal/solver-runs/.deepseek-files-cache")
             if image_transport == "files"
             else None
         ),

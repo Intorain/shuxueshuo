@@ -32,14 +32,14 @@ class OrientationWorkerTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "orientation cache unavailable"):
                 load_models(require_orientation=True)
             self.assertEqual(calls, ["PP-DocLayout-S", "PP-OCRv6_medium_det",
-                                     "PP-OCRv6_medium_rec", "PP-LCNet_x1_0_doc_ori"])
+                                     "PP-OCRv6_small_rec", "PP-LCNet_x1_0_doc_ori"])
             self.assertIsNone(load_models()["orientation"])
 
     def test_strict_startup_loads_every_search_model_and_rejects_missing_instances(self):
         from shuxueshuo_server.search.ocr_worker import load_models
 
         models = {name: object() for name in ("PP-DocLayout-S", "PP-OCRv6_medium_det",
-                                              "PP-OCRv6_medium_rec", "PP-LCNet_x1_0_doc_ori")}
+                                              "PP-OCRv6_small_rec", "PP-LCNet_x1_0_doc_ori")}
 
         def create_model(name, **_kwargs):
             return models[name]

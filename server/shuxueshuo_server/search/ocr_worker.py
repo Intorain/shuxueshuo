@@ -39,9 +39,11 @@ ENGINE = {"run_mode": "paddle", "device_type": "cpu",
 def load_models(*, require_orientation=False):
     from paddlex import create_model
 
+    # Heads only need question numbers: small_rec kept every number on real phone photos at 1.8x
+    # the speed. Detection must stay medium at DETECT_SIDE; lower sides or smaller det dropped heads.
     models = {name: create_model(model, engine="paddle_static", engine_config=ENGINE)
               for name, model in (("layout", "PP-DocLayout-S"), ("det", "PP-OCRv6_medium_det"),
-                                  ("rec", "PP-OCRv6_medium_rec"))}
+                                  ("rec", "PP-OCRv6_small_rec"))}
     try:
         models["orientation"] = create_model("PP-LCNet_x1_0_doc_ori", engine="paddle_static", engine_config=ENGINE)
     except Exception as exc:

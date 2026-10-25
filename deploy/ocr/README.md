@@ -48,6 +48,7 @@ API 进程内串行执行图片解码和缩图，进入 OCR 等待前释放预�
 ### OCR 进程数量
 
 当前 Compose 默认只有一个 `ocr` 容器，运行一个 `python sidecar_server.py` 进程；`ThreadingHTTPServer` 用线程接收请求，产品与学生搜索共用模型锁，同一时刻只执行一项推理。API 固定一个 Uvicorn worker。搜索模型的 `cpu_threads` 是模型内部计算线程数，不是 OCR 进程数；默认 1，可用 `SEARCH_OCR_CPU_THREADS` 覆盖。2 vCPU（单物理核）服务器实测单页 1 线程 8.9 秒、2 线程 10.4 秒、8 线程 12.9 秒，打框结果一致；`run_mode=mkldnn` 在该机卡死。
+搜索行首识别使用 `PP-OCRv6_small_rec`（产品 OCR 仍用 medium）：服务器 4 页真实手机照片题号全部一致，总耗时 59.7 秒降到 33.4 秒。检测保持 `PP-OCRv6_medium_det` 与长边 736：降到 640/512 或改用 small/tiny 检测都会漏掉题号行（第 4、15 题）或截断题目。
 
 初期保持 **1 个 OCR 进程**，本轮不增加进程或副本。增加副本会重复常驻模型并争用 CPU，不能只按上传人数扩容；先测真实镜像的 CPU、RSS/峰值内存、排队时间和推理延迟。若产品长任务确实影响学生请求，再结合容量评估分别部署产品与学生 OCR 实例，而不是直接扩大当前共享 sidecar。
 
@@ -116,7 +117,7 @@ docker exec shuxueshuo-product-server-ocr-1 \
 本机使用 Apple Silicon/Rosetta，不等同于目标服务器原生 x86 容量验收。上线前仍须在真实服务器架构、相同 UID/HOME/挂载路径下逐项复验：
 
 1. 能导入 `shuxueshuo_server.search.ocr_protocol` 和 `shuxueshuo_server.search.ocr_worker`，不是只检查应用镜像。
-2. `preheat_models.py` 成功验证全部五种模型，包括方向模型；缓存目录跟随 `Path.home()`，Compose 中是 `/tmp/.paddlex/official_models`。
+2. `preheat_models.py` 成功验证全部六种模型，包括方向模型和搜索行首识别 `PP-OCRv6_small_rec`；缓存目录跟随 `Path.home()`，Compose 中是 `/tmp/.paddlex/official_models`。
 3. 使用已备好的缓存、禁用网络启动 sidecar，严格预热成功且 `/health` 返回 `ok: true, ready: true`；缺方向模型必须不能就绪。
 4. 用明确授权的离线图片验证方向识别、手动旋转以及产品/搜题交错调用，产品不能因搜索占锁 15 秒而失败。
 5. 测量两套模型同时常驻时的启动峰值和推理峰值内存，确认容器/宿主机余量及启动时限；不能拿 fixture 的内存或延迟代替。

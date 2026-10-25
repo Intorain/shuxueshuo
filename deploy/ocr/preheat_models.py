@@ -5,6 +5,7 @@ MODEL_NAMES = (
     "PP-DocLayout-S",
     "PP-OCRv6_medium_det",
     "PP-OCRv6_medium_rec",
+    "PP-OCRv6_small_rec",
     "PP-FormulaNet_plus-M",
     "PP-LCNet_x1_0_doc_ori",
 )
@@ -33,12 +34,12 @@ def main(image=SOURCE_IMAGE):
     if not image.is_file():
         raise FileNotFoundError(image)
 
-    print("1/4 layout PP-DocLayout-S")
+    print("1/5 layout PP-DocLayout-S")
     layout = create_model(model_name="PP-DocLayout-S", engine="paddle_static", engine_config=ENGINE)
     list(layout.predict(str(image), batch_size=1, layout_nms=True))
     print("layout OK")
 
-    print("2/4 text OCR PP-OCRv6_medium_det/rec")
+    print("2/5 text OCR PP-OCRv6_medium_det/rec")
     ocr = PaddleOCR(
         text_detection_model_name="PP-OCRv6_medium_det",
         text_recognition_model_name="PP-OCRv6_medium_rec",
@@ -50,15 +51,20 @@ def main(image=SOURCE_IMAGE):
     list(ocr.predict(str(image)))
     print("text OCR OK")
 
-    print("3/4 formula PP-FormulaNet_plus-M")
+    print("3/5 formula PP-FormulaNet_plus-M")
     formula = create_model(model_name="PP-FormulaNet_plus-M", engine="paddle_static", engine_config=ENGINE)
     list(formula.predict(str(image)))
     print("formula OK")
 
-    print("4/4 orientation PP-LCNet_x1_0_doc_ori")
+    print("4/5 orientation PP-LCNet_x1_0_doc_ori")
     orientation = create_model(model_name="PP-LCNet_x1_0_doc_ori", engine="paddle_static", engine_config=ENGINE)
     list(orientation.predict(str(image)))
     print("orientation OK")
+
+    print("5/5 search heads PP-OCRv6_small_rec")
+    heads = create_model(model_name="PP-OCRv6_small_rec", engine="paddle_static", engine_config=ENGINE)
+    list(heads.predict(str(image)))
+    print("search heads OK")
 
     validate_cache()
     print("PREHEAT_OK")

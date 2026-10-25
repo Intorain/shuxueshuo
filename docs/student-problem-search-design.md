@@ -75,7 +75,7 @@ flowchart TD
 
 切题用本地 OCR，不调用 LLM（决策见下）：
 
-- 方向判断使用 [Paddle 的 `PP-LCNet_x1_0_doc_ori`](https://www.paddleocr.ai/main/version3.x/module_usage/doc_img_orientation_classification.html)，当前自动转正阈值为 0.90。分数无效、低置信度或模型不可用时不猜方向，保留手动旋转入口；它与文字检测／识别都在隔离 OCR 环境的 `search/ocr_worker.py` 中运行，不调用 LLM。该 worker 使用版面识别 `PP-DocLayout-S`、文字检测 `PP-OCRv6_medium_det` 与行首识别 `PP-OCRv6_medium_rec`，得到文字行、配图和公式块。
+- 方向判断使用 [Paddle 的 `PP-LCNet_x1_0_doc_ori`](https://www.paddleocr.ai/main/version3.x/module_usage/doc_img_orientation_classification.html)，当前自动转正阈值为 0.90。分数无效、低置信度或模型不可用时不猜方向，保留手动旋转入口；它与文字检测／识别都在隔离 OCR 环境的 `search/ocr_worker.py` 中运行，不调用 LLM。该 worker 使用版面识别 `PP-DocLayout-S`、文字检测 `PP-OCRv6_medium_det` 与行首识别 `PP-OCRv6_small_rec`，得到文字行、配图和公式块。
 - 所有公共旋转角度统一为顺时针；Paddle 的逆时针校正角在 worker 边界转换。`rotation_reference=upload_after_exif` 表示相对去除 EXIF 方向后的上传图片；`parent_page` 表示相对 `parent_page_id` 的转正图片，不能把手动角度当成相对最初上传的累计角度。旋转使用无插值的整 90° 转置。
 - 服务端保留 `source.png` 与全分辨率 `page.png`，另从 `page.png` 等比例生成长边不超过 1600、质量 85 的 `preview.jpg`。前端展示、选区预览和手动选框用 JPEG；提交仍使用归一化坐标，后台从全分辨率 PNG 裁题，不降低送题图片的精度。上传解码、EXIF、旋转、图像编码与存盘都在线程池执行。`page.png` 和 `preview.jpg` 保存完成后，最后原子发布 `segments.json`；没有清单的半成品目录不可访问、不可裁题。
 - 手动旋转生成新的页面 ID，保留 `parent_page_id`，不覆盖旧页面和已生成的题目。旋转后的图片关闭自动方向判断，以免把手动调整转回去；必须重新切题并等待新图解码完成，才可提交新选区。更换照片或重拍后，迟到的旧请求不能覆盖当前页面。开发接口每条连续旋转链最多 8 次，次数写入 `rotation_count`（旧清单缺省为 0）；第 9 次返回 `page.rotation_limit`，不再创建目录或调用 OCR。此限制控制连续操作，不等同于上传总额度或存储生命周期；上线前仍需按保留期清理无题目引用的页面，不能直接删除被旧题目引用的父页面。

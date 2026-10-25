@@ -103,7 +103,8 @@ def test_preheat_loads_orientation_and_verifies_home_cache(preheat, tmp_path, mo
             preheat.module.main(image)
     assert calls == [("load", "PP-DocLayout-S"), ("predict", "PP-DocLayout-S"), ("predict", "text_ocr"),
                      ("load", "PP-FormulaNet_plus-M"), ("predict", "PP-FormulaNet_plus-M"),
-                     ("load", "PP-LCNet_x1_0_doc_ori"), ("predict", "PP-LCNet_x1_0_doc_ori")]
+                     ("load", "PP-LCNet_x1_0_doc_ori"), ("predict", "PP-LCNet_x1_0_doc_ori"),
+                     ("load", "PP-OCRv6_small_rec"), ("predict", "PP-OCRv6_small_rec")]
     output = capsys.readouterr().out
     if cache_complete:
         assert str(preheat.root) in output
@@ -111,7 +112,7 @@ def test_preheat_loads_orientation_and_verifies_home_cache(preheat, tmp_path, mo
 
 
 @pytest.mark.parametrize("model", ["PP-DocLayout-S", "PP-OCRv6_medium_det", "PP-OCRv6_medium_rec",
-                                   "PP-FormulaNet_plus-M", "PP-LCNet_x1_0_doc_ori"])
+                                   "PP-OCRv6_small_rec", "PP-FormulaNet_plus-M", "PP-LCNet_x1_0_doc_ori"])
 @pytest.mark.parametrize("filename", ["inference.json", "inference.pdiparams", "inference.yml"])
 @pytest.mark.parametrize("invalid", ["missing", "empty"])
 def test_preheat_rejects_missing_or_empty_model_cache(preheat, model, filename, invalid):

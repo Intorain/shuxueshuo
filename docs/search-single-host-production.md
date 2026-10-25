@@ -4,9 +4,11 @@
 
 2026-10-25 后续补充：[拍题准入与费用保护](search-admission.md)在既有本机线程池外增加有界准入、账号／全站每日额度及热停止开关；没有新增分布式队列，OCR 仍为一个进程。下文保留此前镜像演练结果，新规则和本轮离线证据以该说明为准。
 
+同日完成[最终容器离线演练](search-final-container-rehearsal.md)：原生产三份 Compose 与 Nginx、空库迁移至 `0016`、单进程 OCR、默认准入额度及费用热停止通过。下文旧轮次结果只作历史记录，不替代最新报告。
+
 ## 1. 生产入口与持久化
 
-服务器使用既有 `shuxueshuo_server.main:app`，`PRODUCT_MODE=server` 且非 legacy 后端时自动安装拍题 API。它与登录、产品服务复用同一个 `Settings`、PostgreSQL 引擎及应用角色，迁移必须包含 `0014_lesson_execution` 和 `0015_search_recovery`。不再通过开发用的 `run_site.py` 启动生产服务。
+服务器使用既有 `shuxueshuo_server.main:app`，`PRODUCT_MODE=server` 且非 legacy 后端时自动安装拍题 API。它与登录、产品服务复用同一个 `Settings`、PostgreSQL 引擎及应用角色，迁移必须包含 `0014_lesson_execution`、`0015_search_recovery` 和 `0016_search_admission`。不再通过开发用的 `run_site.py` 启动生产服务。
 
 `compose.app.yml` 与应用镜像固定一个 Uvicorn worker。拍题仍使用进程内两个工作线程和本机文件锁；不能在同一数据根上启动多个 API 副本。`PRODUCT_EXECUTION_STORAGE_CONTEXT_REQUIRED=1` 禁止网页路径漏设执行上下文后回退到默认本地数据库。
 
@@ -73,7 +75,7 @@ python -m shuxueshuo_server.search.maintenance --mode server \
 
 ## 4. 可复现的离线镜像演练
 
-使用本机已存在的应用、管理、PostgreSQL、Nginx 镜像，不拉取镜像。应用和管理镜像的依赖锁必须与当前 `deploy/product/requirements.lock` 相同；脚本复用缓存依赖层，再按生产 Dockerfile 的 COPY 和启动段装入当前代码，并检查镜像未包含测试及 `.env`。
+使用本机已存在的应用、管理、PostgreSQL、Nginx、RabbitMQ 和真实 OCR 镜像，不拉取镜像。应用和管理镜像的依赖锁必须与当前 `deploy/product/requirements.lock` 相同；脚本复用缓存依赖层，再按生产 Dockerfile 的 COPY 和启动段装入当前代码，并检查镜像未包含测试及 `.env`。
 
 ```bash
 python3 deploy/product/rehearse-search.py \
@@ -81,14 +83,16 @@ python3 deploy/product/rehearse-search.py \
   --admin docker.io/library/shuxueshuo-product-admin:p2-app-202610151203 \
   --postgres docker.io/library/shuxueshuo-product-postgres:p1-20260912 \
   --nginx docker.io/library/nginx:1.28-alpine \
+  --rabbitmq docker.io/library/rabbitmq:4.3.2 \
+  --ocr docker.io/library/shuxueshuo-ocr:3.3.0 \
   --output /private/tmp/search-image-rehearsal-new
 ```
 
-输出目录必须全新且位于仓库外。构建使用 `--network=none`，运行使用独立 `--internal` 网络，不发布宿主端口；数据库从空卷通过真实迁移和应用授权安装。TLS 使用一次性自签名证书，Nginx 使用原生产配置；不挂载日常数据库或真实模型/SMS `.env`。
+输出目录必须全新且位于仓库外。构建使用 `--network=none`，运行合并原生产 `compose.yml`、`compose.server.yml`、`compose.app.yml` 与隔离 overlay：只使用独立内部网络，不发布宿主端口；数据库从空卷通过真实迁移和应用授权安装。保留生产依赖健康检查、admin 只读根目录与 API 十分钟排空宽限，启动原产品 worker/publisher 但不投递产品任务。TLS 使用一次性自签名证书，Nginx 使用原生产配置；不挂载日常数据库或真实模型/SMS `.env`。Nginx 与 API 共享网络命名空间，以保留配置中的 loopback 上游；这不是服务器宿主 Nginx 网络拓扑验收。
 
-仅在 `/rehearsal:ro` 挂载测试适配器：短信写本地 fixture，新公共身份复核是明确标记的合成数据，阶段二回放已核验录制，OCR 只替换最底层推理函数。生产认证、真实 OCR HTTP 传输与路径检查、阶段三 PostgreSQL 执行、HTTP/WS 和 Nginx 均未替换。测试适配器不进入发布镜像，不能用于线上。
+仅在 `/rehearsal:ro` 挂载测试适配器：短信写本地 fixture，新公共身份复核是明确标记的合成数据，阶段二回放已核验录制；真实 OCR 镜像运行当前 sidecar，但预热和推理使用 fixture，不加载 Paddle 模型。生产认证、真实 OCR HTTP 传输与路径检查、阶段三 PostgreSQL 执行、HTTP/WS 和 Nginx 均未替换。测试适配器不进入发布镜像，不能用于线上。
 
-脚本检查登录 Cookie、匿名及跨账号拒绝、上传旋转、错误 Origin、20 MiB 上限、幂等提交、课程快照/事件及 TLS WebSocket、停机准入、运营停用、删题及整页保留、重启中断和到期清理，并执行一次服务器模式维护命令。结束时清理本次临时容器、网络和数据库卷；输出保留镜像 ID、源码版本及脏工作树摘要、日志与 `report.json`。只有 `passed: true` 才表示该轮完成。
+脚本检查登录 Cookie、匿名及跨账号拒绝、上传旋转、错误 Origin、20 MiB/32MP/4096 边界、幂等提交、课程快照/事件及 TLS WebSocket、停机准入、运营停用、删题及整页保留、重启中断和到期清理，并执行一次服务器模式维护命令。准入检查使用未覆盖的生产默认限额：账号每日 10/3、全站 100/50、上传 2/10、生成账号 1 与全局 2+4；日额度使用明确标记的隔离账本预置和真实边界 HTTP 请求，不冒充实际生成 150 次。费用开关初始关闭，由维护 CLI 显式开启，热停止取消等待任务，重启后保持关闭。结束时清理本次临时容器、网络和数据库卷；输出保留镜像 ID、源码版本及脏工作树摘要、日志与 `report.json`。只有 `passed: true` 才表示该轮完成。
 
 输出目录还含一次性测试凭据与 Cookie，不应提交或公开。演练派生镜像留在本机，后续可按输出记录的名称清理。本工具不是正式 `build-release.sh` 发布包，不绕过其干净工作树和提交快照要求。
 

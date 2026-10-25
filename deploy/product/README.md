@@ -176,6 +176,8 @@ admin 以部署用户 UID/GID 运行，按需挂载配置及数据；不启动�
 
 拍题准入新增 `0016_search_admission` 迁移：每账号每日新生成 10／重跑 3、全站 100／50，生成账号并发 1、全局 2 运行＋4 等待，上传/OCR 在途每账号 2、全站 10。OCR 保持单进程。费用开关初始关闭且恢复后强制关闭，须显式启用；配置、停开命令及离线验收见[拍题准入说明](../../docs/search-admission.md)。额度账本随备份保存，但题目删除或到期不能退回已消耗额度。
 
+上述生产 Compose 组合、Nginx、空库迁移、单进程 OCR 和费用开关已完成[最终容器离线演练](../../docs/search-final-container-rehearsal.md)。复现入口 `deploy/product/rehearse-search.py` 需要本机已有 app/admin/PostgreSQL/Nginx/RabbitMQ/OCR 六种镜像；仅使用隔离内部网络和 fixtures，不代表正式发布、真实供应商或目标服务器容量验收。
+
 先停止业务写入和产物清理。`product-backup/v2` 包含逻辑数据库 dump、产品登记产物，以及数据库登记且尚未到期的拍题页面和提交私有文件；拍题文件逐项记录 SHA-256、字节数、归属和原始 `expires_at`，不按目录扫描导入匿名或孤立文件。备份清单还记录行数、迁移版本和删除权威游标；不包含原始凭据。
 备份前阻止新的 app 登录，现存 app 连接会令操作失败；不会强制终止其他进程。
 以 migration/bootstrap 身份运行的其他管理程序也必须停止，不能绕过维护窗口约定。

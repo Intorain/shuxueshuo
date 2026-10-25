@@ -47,7 +47,7 @@ API 进程内串行执行图片解码和缩图，进入 OCR 等待前释放预�
 
 ### OCR 进程数量
 
-当前 Compose 默认只有一个 `ocr` 容器，运行一个 `python sidecar_server.py` 进程；`ThreadingHTTPServer` 用线程接收请求，产品与学生搜索共用模型锁，同一时刻只执行一项推理。API 固定一个 Uvicorn worker。搜索模型配置的 `cpu_threads=8` 是模型内部计算线程数，不是 8 个 OCR 进程。
+当前 Compose 默认只有一个 `ocr` 容器，运行一个 `python sidecar_server.py` 进程；`ThreadingHTTPServer` 用线程接收请求，产品与学生搜索共用模型锁，同一时刻只执行一项推理。API 固定一个 Uvicorn worker。搜索模型的 `cpu_threads` 是模型内部计算线程数，不是 OCR 进程数；默认 1，可用 `SEARCH_OCR_CPU_THREADS` 覆盖。2 vCPU（单物理核）服务器实测单页 1 线程 8.9 秒、2 线程 10.4 秒、8 线程 12.9 秒，打框结果一致；`run_mode=mkldnn` 在该机卡死。
 
 初期保持 **1 个 OCR 进程**，本轮不增加进程或副本。增加副本会重复常驻模型并争用 CPU，不能只按上传人数扩容；先测真实镜像的 CPU、RSS/峰值内存、排队时间和推理延迟。若产品长任务确实影响学生请求，再结合容量评估分别部署产品与学生 OCR 实例，而不是直接扩大当前共享 sidecar。
 

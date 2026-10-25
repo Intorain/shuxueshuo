@@ -12,6 +12,7 @@ head of each row-leading line is recognised. Full-page recognition took
 
 import json
 import logging
+import os
 import sys
 from time import monotonic
 
@@ -29,7 +30,10 @@ from shuxueshuo_server.search.segmentation import page_head_candidates
 
 MAX_SIDE = 1600
 DETECT_SIDE = 736
-ENGINE = {"run_mode": "paddle", "device_type": "cpu", "cpu_threads": 8, "enable_new_ir": False}
+# One thread measured fastest on the 2-vCPU (one physical core) server: 8.9 s vs 12.9 s with 8.
+# oneDNN (run_mode=mkldnn) hangs there, so it stays off.
+ENGINE = {"run_mode": "paddle", "device_type": "cpu",
+          "cpu_threads": int(os.environ.get("SEARCH_OCR_CPU_THREADS", "1")), "enable_new_ir": False}
 
 
 def load_models(*, require_orientation=False):

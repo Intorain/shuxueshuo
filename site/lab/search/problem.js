@@ -863,6 +863,7 @@ async function runLive() {
 
 /* Developer panel: proves which image reached stage one and what came back. */
 function devCheck(status, container) {
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) return;
   const check = status.image_check;
   const short = hash => (hash || '').slice(0, 12);
   const shownAfter = shown.previewAt ? `${((shown.previewAt - started) / 1000).toFixed(1)} 秒（复核前）` : '复核后才展示';
